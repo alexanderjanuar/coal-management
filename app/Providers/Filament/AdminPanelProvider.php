@@ -42,7 +42,6 @@ class AdminPanelProvider extends PanelProvider
                 Widgets\AccountWidget::class,
                 Widgets\FilamentInfoWidget::class,
             ])
-            ->viteTheme('resources/css/filament/admin/theme.css')
             ->middleware([
                 EncryptCookies::class,
                 AddQueuedCookiesToResponse::class,
@@ -63,6 +62,7 @@ class AdminPanelProvider extends PanelProvider
                     ->emptyPanelBackgroundImageOpacity('70%')
                     ->emptyPanelBackgroundImageUrl('https://images.pexels.com/photos/466685/pexels-photo-466685.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=2')
             ])
+            ->viteTheme('resources/css/filament/admin/theme.css')
             ->authMiddleware([
                 Authenticate::class,
             ]);

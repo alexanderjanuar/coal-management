@@ -4,9 +4,9 @@ export default {
     presets: [preset],
     content: [
         './app/Filament/**/*.php',
-        './resources/views/filament/**/*.blade.php',
         './vendor/filament/**/*.blade.php',
         './vendor/diogogpinto/filament-auth-ui-enhancer/resources/**/*.blade.php',
-        './app/Filament/**/*.php'
+        './app/Filament/**/*.php',
+        './resources/views/**/*.blade.php',
     ],
 }
