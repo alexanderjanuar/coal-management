@@ -14,6 +14,7 @@ return new class extends Migration
         Schema::create('progress', function (Blueprint $table) {
             $table->id();
             $table->foreignId( 'client_id')->constrained('clients')->onDelete('cascade');
+            $table->enum('status',['done','in progress','draft','canceled','delayed'])->default('draft');
             $table->time('start_time')->nullable();
             $table->time('end_time')->nullable();
             $table->timestamps();

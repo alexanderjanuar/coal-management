@@ -2,6 +2,7 @@
 
 namespace Database\Factories;
 
+use App\Models\Client;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
 /**
@@ -9,15 +10,13 @@ use Illuminate\Database\Eloquent\Factories\Factory;
  */
 class ProgressFactory extends Factory
 {
-    /**
-     * Define the model's default state.
-     *
-     * @return array<string, mixed>
-     */
     public function definition(): array
     {
         return [
-            //
+            'client_id' => Client::factory(),
+            'status' => fake()->randomElement(['done', 'in progress', 'draft', 'canceled', 'delayed']),
+            'start_time' => fake()->time(),
+            'end_time' => fake()->time(),
         ];
     }
 }

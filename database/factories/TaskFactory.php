@@ -2,6 +2,7 @@
 
 namespace Database\Factories;
 
+use App\Models\Progress;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
 /**
@@ -9,15 +10,16 @@ use Illuminate\Database\Eloquent\Factories\Factory;
  */
 class TaskFactory extends Factory
 {
-    /**
-     * Define the model's default state.
-     *
-     * @return array<string, mixed>
-     */
+
     public function definition(): array
     {
         return [
-            //
+            'progress_id' => Progress::factory(),
+            'title' => fake()->sentence(),
+            'description' => fake()->paragraph(),
+            'status' => fake()->randomElement(['done', 'in progress', 'draft', 'canceled', 'delayed']),
+            'start_time' => fake()->time(),
+            'end_time' => fake()->time(),
         ];
     }
 }

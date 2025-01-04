@@ -9,7 +9,7 @@ class Client extends Model
 {
     use HasFactory;
 
-    public function progresses(){
+    public function progress(){
         return $this->hasMany(Progress::class);
     }
 }

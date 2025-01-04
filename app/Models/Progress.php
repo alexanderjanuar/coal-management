@@ -12,4 +12,8 @@ class Progress extends Model
     public function client(){
         return $this->belongsTo(Client::class);
     }
+
+    public function tasks(){
+        return $this->hasMany(Task::class);
+    }
 }
