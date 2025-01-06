@@ -3,6 +3,8 @@
 namespace App\Filament\Resources;
 
 use App\Filament\Resources\ClientResource\Pages;
+use App\Filament\Resources\ClientResource\RelationManagers\ProgressRelationManager;
+use Filament\Forms\Components\Section;
 use App\Filament\Resources\ClientResource\RelationManagers;
 use App\Models\Client;
 use Filament\Forms;
@@ -14,25 +16,37 @@ use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\SoftDeletingScope;
 use Filament\Forms\Components\FileUpload;
+use Filament\Forms\Components\Fieldset;
 
 class ClientResource extends Resource
 {
     protected static ?string $model = Client::class;
 
-    protected static ?string $navigationIcon = 'heroicon-o-rectangle-stack';
+    protected static ?string $navigationIcon = 'heroicon-o-users';
 
     public static function form(Form $form): Form
     {
         return $form
             ->schema([
-                Forms\Components\TextInput::make('name')
-                    ->required()
-                    ->maxLength(255),
-                Forms\Components\TextInput::make('email')
-                    ->email()
-                    ->required()
-                    ->maxLength(255),
-                FileUpload::make('logo')
+                Section::make('Profil Client')
+                    ->description('Detail dari Client')
+                    ->icon('heroicon-o-building-office-2')
+                    ->schema([
+                        Forms\Components\TextInput::make('name')
+                            ->required()
+                            ->label('Client Detail')
+                            ->unique()
+                            ->maxLength(255),
+                        Forms\Components\TextInput::make('email')
+                            ->email()
+                            ->label('Client Email')
+                            ->required()
+                            ->maxLength(255),
+                        FileUpload::make('logo')
+                            ->label('Client Logo')
+                            ->columnSpanFull()
+
+                    ])->columns(2)
             ]);
     }
 
@@ -43,6 +57,7 @@ class ClientResource extends Resource
                 ImageColumn::make('logo')
                     ->circular(),
                 Tables\Columns\TextColumn::make('name')
+                    ->label('Client Name')
                     ->searchable(),
                 Tables\Columns\TextColumn::make('email')
                     ->searchable(),
@@ -72,7 +87,7 @@ class ClientResource extends Resource
     public static function getRelations(): array
     {
         return [
-            //
+            ProgressRelationManager::class
         ];
     }
 
