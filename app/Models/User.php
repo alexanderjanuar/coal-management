@@ -3,11 +3,15 @@
 namespace App\Models;
 
 // use Illuminate\Contracts\Auth\MustVerifyEmail;
+
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Laravel\Sanctum\HasApiTokens;
 use SolutionForest\FilamentAccessManagement\Concerns\FilamentUserHelpers;
+use Filament\Models\Contracts\FilamentUser;
+use Filament\Panel;
+
 class User extends Authenticatable
 {
     use HasApiTokens, HasFactory, Notifiable;
@@ -43,7 +47,13 @@ class User extends Authenticatable
         'password' => 'hashed',
     ];
 
-    public function documents(){
+    public function documents()
+    {
         return $this->hasMany(Document::class);
+    }
+
+    public function canAccessPanel(Panel $panel): bool
+    {
+        return true; // Or add your custom logic here
     }
 }

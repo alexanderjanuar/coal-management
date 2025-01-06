@@ -15,7 +15,7 @@ return new class extends Migration
             $table->id();
             $table->foreignId( 'progress_id')->constrained('progress')->onDelete('cascade');
             $table->string('title');
-            $table->string('description');
+            $table->text('description');
             $table->enum('status',['done','in progress','draft','canceled','delayed'])->default('draft');
             $table->time('start_time')->nullable();
             $table->time('end_time')->nullable();
