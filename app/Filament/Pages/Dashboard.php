@@ -5,6 +5,7 @@ namespace App\Filament\Pages;
 use App\Filament\Widgets\DocumentsOverview;
 use App\Models\Client;
 use App\Models\Progress;
+use App\Models\Project;
 use App\Models\Task;
 use Filament\Pages\Page;
 use Filament\Pages\Dashboard as BaseDashboard;
@@ -20,10 +21,12 @@ class Dashboard extends BaseDashboard
     {
         // Get statistics
         $stats = [
-            'total_projects' => \App\Models\Project::count(),
-            'active_projects' => \App\Models\Project::where('status', 'in_progress')->count(),
-            'completed_projects' => \App\Models\Project::where('status', 'completed')->count(),
-            'pending_documents' => \App\Models\SubmittedDocument::where('status', 'pending_review')->count(),
+            'total_projects' => Project::count(),
+            'active_projects' => Project::where('status', 'in_progress')->count(),
+            'completed_projects' => Project::where('status', 'completed')->count(),
+            'pending_documents' => DB::table('submitted_documents')
+                ->where('status', 'pending_review')
+                ->count(),
         ];
 
         // Get clients with their projects and all related data
@@ -41,7 +44,7 @@ class Dashboard extends BaseDashboard
 
         return [
             'clients' => $clients,
-            'stats' => $stats,  // Make sure this is included
+            'stats' => $stats,
         ];
     }
 }
