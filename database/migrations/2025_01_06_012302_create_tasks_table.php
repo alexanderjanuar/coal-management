@@ -13,12 +13,11 @@ return new class extends Migration
     {
         Schema::create('tasks', function (Blueprint $table) {
             $table->id();
-            $table->foreignId( 'progress_id')->constrained('progress')->onDelete('cascade');
+            $table->foreignId('project_step_id')->constrained('project_steps')->onDelete('cascade');
             $table->string('title');
             $table->text('description');
-            $table->enum('status',['done','in progress','draft','canceled','delayed'])->default('draft');
-            $table->time('start_time')->nullable();
-            $table->time('end_time')->nullable();
+            $table->enum('status', ['pending', 'in_progress', 'completed', 'blocked'])->default('pending');
+            $table->boolean('requires_document')->default(false);
             $table->timestamps();
         });
     }

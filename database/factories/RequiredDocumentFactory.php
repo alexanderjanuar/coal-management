@@ -6,9 +6,9 @@ use App\Models\ProjectStep;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
 /**
- * @extends \Illuminate\Database\Eloquent\Factories\Factory<\App\Models\Task>
+ * @extends \Illuminate\Database\Eloquent\Factories\Factory<\App\Models\RequiredDocument>
  */
-class TaskFactory extends Factory
+class RequiredDocumentFactory extends Factory
 {
     /**
      * Define the model's default state.
@@ -19,10 +19,9 @@ class TaskFactory extends Factory
     {
         return [
             'project_step_id' => ProjectStep::factory(),
-            'title' => fake()->sentence(),
+            'name' => fake()->sentence(2),
             'description' => fake()->paragraph(),
-            'status' => fake()->randomElement(['pending', 'in_progress', 'completed', 'blocked']),
-            'requires_document' => fake()->boolean(),
+            'is_required' => fake()->boolean(80), // 80% chance of being required
         ];
     }
 }

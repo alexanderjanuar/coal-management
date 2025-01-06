@@ -9,7 +9,10 @@ class Client extends Model
 {
     use HasFactory;
 
-    public function progress(){
-        return $this->hasMany(Progress::class);
+    protected $fillable = ['name', 'email', 'logo'];
+
+    public function projects()
+    {
+        return $this->hasMany(Project::class);
     }
 }

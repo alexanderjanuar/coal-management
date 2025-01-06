@@ -11,11 +11,12 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('documents', function (Blueprint $table) {
+        Schema::create('projects', function (Blueprint $table) {
             $table->id();
+            $table->foreignId('client_id')->constrained();
             $table->string('name');
-            $table->string('document_path');
-            $table->foreignId( 'task_id')->constrained('tasks')->onDelete('cascade');
+            $table->text('description')->nullable();
+            $table->enum('status', ['draft', 'in_progress', 'completed', 'on_hold', 'canceled'])->default('draft');
             $table->timestamps();
         });
     }
@@ -25,6 +26,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists('documents');
+        Schema::dropIfExists('projects');
     }
 };

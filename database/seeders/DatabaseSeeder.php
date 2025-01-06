@@ -8,6 +8,12 @@ use App\Models\Client;
 use App\Models\Progress;
 use App\Models\Task;
 use App\Models\Document;
+use App\Models\Project;
+use App\Models\ProjectStep;
+use App\Models\RequiredDocument;
+use App\Models\SubmittedDocument;
+use App\Models\User;
+use Illuminate\Support\Facades\Hash;
 
 class DatabaseSeeder extends Seeder
 {
@@ -16,26 +22,44 @@ class DatabaseSeeder extends Seeder
      */
     public function run(): void
     {
-        Client::factory()
-            ->count(10)
-            ->has(
-                Progress::factory()
-                    ->count(3)
-                    ->has(
-                        Task::factory()
-                            ->count(4)
-                            ->has(
-                                Document::factory()
-                                    ->count(2)
-                            )
-                    )
-            )
-            ->create();
-        // \App\Models\User::factory(10)->create();
+        // Create admin user
+        User::factory()->create([
+            'name' => 'Admin User',
+            'email' => 'admin@example.com',
+            'password' => Hash::make('password'),
+        ]);
 
-        // \App\Models\User::factory()->create([
-        //     'name' => 'Test User',
-        //     'email' => 'test@example.com',
-        // ]);
+        // Create clients with complete project structure
+        Client::factory(5)->create()->each(function ($client) {
+            Project::factory(2)->create([
+                'client_id' => $client->id,
+            ])->each(function ($project) {
+                // Create 4 steps for each project
+                for ($i = 1; $i <= 4; $i++) {
+                    $step = ProjectStep::factory()->create([
+                        'project_id' => $project->id,
+                        'order' => $i,
+                        'name' => "Step $i",
+                    ]);
+
+                    // Create 2-4 tasks for each step
+                    Task::factory(fake()->numberBetween(2, 4))->create([
+                        'project_step_id' => $step->id,
+                    ]);
+
+                    // Create 1-3 required documents for each step
+                    RequiredDocument::factory(fake()->numberBetween(1, 3))->create([
+                        'project_step_id' => $step->id,
+                    ])->each(function ($requiredDoc) {
+                        // Maybe create submitted documents
+                        if (fake()->boolean(70)) {
+                            SubmittedDocument::factory()->create([
+                                'required_document_id' => $requiredDoc->id,
+                            ]);
+                        }
+                    });
+                }
+            });
+        });
     }
 }

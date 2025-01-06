@@ -18,38 +18,30 @@ class Dashboard extends BaseDashboard
 
     public function getViewData(): array
     {
-        // Get clients with their progress and tasks
-        $clients = Client::with(['progress' => function ($query) {
-            $query->with('tasks')->orderBy('created_at', 'desc');
-        }])->get();
-
-        // Get process steps
-        $processSteps = [
-            [
-                'number' => '1',
-                'title' => 'Client Registration',
-                'subtitle' => 'Create client profile'
-            ],
-            [
-                'number' => '2',
-                'title' => 'Progress Creation',
-                'subtitle' => 'Initialize shipping process'
-            ],
-            [
-                'number' => '3',
-                'title' => 'Task Assignment',
-                'subtitle' => 'Define shipping tasks'
-            ],
-            [
-                'number' => '4',
-                'title' => 'Document Upload',
-                'subtitle' => 'Upload required files'
-            ],
+        // Get statistics
+        $stats = [
+            'total_projects' => \App\Models\Project::count(),
+            'active_projects' => \App\Models\Project::where('status', 'in_progress')->count(),
+            'completed_projects' => \App\Models\Project::where('status', 'completed')->count(),
+            'pending_documents' => \App\Models\SubmittedDocument::where('status', 'pending_review')->count(),
         ];
+
+        // Get clients with their projects and all related data
+        $clients = Client::with([
+            'projects' => function ($query) {
+                $query->latest();
+            },
+            'projects.steps' => function ($query) {
+                $query->orderBy('order');
+            },
+            'projects.steps.tasks',
+            'projects.steps.requiredDocuments',
+            'projects.steps.requiredDocuments.submittedDocuments'
+        ])->get();
 
         return [
             'clients' => $clients,
-            'processSteps' => $processSteps,
+            'stats' => $stats,  // Make sure this is included
         ];
     }
 }
