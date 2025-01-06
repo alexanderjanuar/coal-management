@@ -17,6 +17,7 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\SoftDeletingScope;
 use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\Fieldset;
+use Guava\FilamentModalRelationManagers\Actions\Table\RelationManagerAction;
 
 class ClientResource extends Resource
 {
@@ -74,6 +75,12 @@ class ClientResource extends Resource
                 //
             ])
             ->actions([
+                RelationManagerAction::make('progress-relation-manager')
+                    ->label('Projects')
+                    ->slideOver()
+                    ->Icon('heroicon-o-folder')
+                    ->color('warning')
+                    ->relationManager(ProgressRelationManager::make()),
                 Tables\Actions\ViewAction::make(),
                 Tables\Actions\EditAction::make(),
             ])
