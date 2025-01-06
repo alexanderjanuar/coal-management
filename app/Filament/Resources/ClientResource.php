@@ -17,11 +17,13 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\SoftDeletingScope;
 use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\Fieldset;
+use Guava\FilamentModalRelationManagers\Actions\Table\RelationManagerAction;
 
 class ClientResource extends Resource
 {
     protected static ?string $model = Client::class;
 
+    protected static ?string $recordTitleAttribute = 'name';
     protected static ?string $navigationIcon = 'heroicon-o-users';
 
     public static function form(Form $form): Form
@@ -74,6 +76,12 @@ class ClientResource extends Resource
                 //
             ])
             ->actions([
+                RelationManagerAction::make('progress-relation-manager')
+                    ->label('Projects')
+                    ->slideOver()
+                    ->Icon('heroicon-o-folder')
+                    ->color('warning')
+                    ->relationManager(ProgressRelationManager::make()),
                 Tables\Actions\ViewAction::make(),
                 Tables\Actions\EditAction::make(),
             ])
@@ -82,6 +90,11 @@ class ClientResource extends Resource
                     Tables\Actions\DeleteBulkAction::make(),
                 ]),
             ]);
+    }
+
+    public static function getGloballySearchableAttributes(): array
+    {
+        return ['name', 'email', 'projects.name'];
     }
 
     public static function getRelations(): array
