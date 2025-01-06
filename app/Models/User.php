@@ -11,6 +11,7 @@ use Laravel\Sanctum\HasApiTokens;
 use SolutionForest\FilamentAccessManagement\Concerns\FilamentUserHelpers;
 use Filament\Models\Contracts\FilamentUser;
 use Filament\Panel;
+use League\CommonMark\Node\Block\Document;
 
 class User extends Authenticatable
 {
