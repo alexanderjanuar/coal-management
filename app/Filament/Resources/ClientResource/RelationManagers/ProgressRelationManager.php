@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\ClientResource\RelationManagers;
 
+use App\Models\Client;
 use App\Models\Project;
 use Filament\Forms;
 use Filament\Forms\Form;
@@ -15,6 +16,10 @@ use Illuminate\Support\Str;
 use Guava\FilamentModalRelationManagers\Concerns\CanBeEmbeddedInModals;
 use IbrahimBougaoua\FilaProgress\Infolists\Components\ProgressBarEntry;
 use IbrahimBougaoua\FilaProgress\Tables\Columns\ProgressBar;
+use Filament\Forms\Components\Section;
+use Filament\Forms\Components\Select;
+use Filament\Forms\Components\Textarea;
+use Filament\Forms\Components\Repeater;
 
 class ProgressRelationManager extends RelationManager
 {
@@ -26,9 +31,26 @@ class ProgressRelationManager extends RelationManager
     {
         return $form
             ->schema([
-                Forms\Components\TextInput::make('status')
-                    ->required()
-                    ->maxLength(255),
+                Section::make('Project Detail')
+                    ->icon('heroicon-o-folder-open')
+                    ->schema([
+                        Forms\Components\TextInput::make('name')
+                            ->required()
+                            ->label('Project Detail')
+                            ->unique()
+                            ->maxLength(255),
+                        Select::make('client_id')
+                            ->required()
+                            ->label('Client')
+                            ->options(Client::all()->pluck('name', 'id')),
+                        Textarea::make('description')
+                            ->columnSpanFull()
+                    ])->columns(2),
+                Section::make('steps')
+                    ->icon('heroicon-o-list-bullet')
+                    ->schema([
+                        
+                    ])->columns(2)
             ]);
     }
 
