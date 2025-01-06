@@ -12,6 +12,8 @@ use Filament\Tables;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\SoftDeletingScope;
+use Illuminate\Support\Str;
+use IbrahimBougaoua\FilaProgress\Tables\Columns\ProgressBar;
 
 class ProjectResource extends Resource
 {
@@ -40,12 +42,34 @@ class ProjectResource extends Resource
     {
         return $table
             ->columns([
-                Tables\Columns\TextColumn::make('client_id')
+                Tables\Columns\TextColumn::make('client.name')
+                    ->label('Client Name')
                     ->numeric()
                     ->sortable(),
                 Tables\Columns\TextColumn::make('name')
+                    ->label('Project Name')
+                    ->description(fn(Project $record): string => \Str::limit($record->description, 45, '...'))
                     ->searchable(),
-                Tables\Columns\TextColumn::make('status'),
+                Tables\Columns\TextColumn::make('status')
+                    ->badge()
+                    ->color(fn(string $state): string => match ($state) {
+                        'draft' => 'gray',
+                        'on_hold' => 'gray',
+                        'in_progress' => 'warning',
+                        'completed' => 'success',
+                        'canceled' => 'danger',
+                    })
+                    ->formatStateUsing(fn(string $state): string => __(Str::title($state))),
+                ProgressBar::make('bar')
+                    ->label('Progress')
+                    ->getStateUsing(function ($record) {
+                        $total = $record->steps()->count();
+                        $progress = $record->steps()->where('status', 'completed')->count();
+                        return [
+                            'total' => $total,
+                            'progress' => $progress,
+                        ];
+                    }),
                 Tables\Columns\TextColumn::make('created_at')
                     ->dateTime()
                     ->sortable()
