@@ -20,7 +20,7 @@ use Filament\Forms\Components\Section;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\Repeater;
-
+use Filament\Tables\Filters\SelectFilter;
 class ProgressRelationManager extends RelationManager
 {
     protected static string $relationship = 'projects';
@@ -46,11 +46,21 @@ class ProgressRelationManager extends RelationManager
                         Textarea::make('description')
                             ->columnSpanFull()
                     ])->columns(2),
-                Section::make('steps')
+                Section::make('Project Step')
                     ->icon('heroicon-o-list-bullet')
                     ->schema([
-                        
-                    ])->columns(2)
+                        Repeater::make('steps')
+                            ->relationship()
+                            ->schema([
+                                Forms\Components\TextInput::make('name')
+                                    ->columnSpanFull(),
+                                Textarea::make('description')
+                                    ->columnSpanFull()
+                            ])
+                            ->orderColumn('order')
+                            ->columnSpanFull(),
+                    ])
+                    ->columns(2)
             ]);
     }
 
@@ -85,7 +95,14 @@ class ProgressRelationManager extends RelationManager
                     })
             ])
             ->filters([
-                //
+                SelectFilter::make('status')
+                    ->options([
+                        'draft' => 'Draft',
+                        'on_hold' => 'On Hold',
+                        'in_progress' => 'In Progress',
+                        'completed' => 'Completed',
+                        'canceled' => 'Canceled',
+                    ])
             ])
             ->headerActions([
                 Tables\Actions\CreateAction::make(),

@@ -21,6 +21,8 @@ use Illuminate\View\Middleware\ShareErrorsFromSession;
 use DiogoGPinto\AuthUIEnhancer\AuthUIEnhancerPlugin;
 use SolutionForest\FilamentAccessManagement\FilamentAccessManagementPanel;
 use CharrafiMed\GlobalSearchModal\GlobalSearchModalPlugin;
+use Devonab\FilamentEasyFooter\EasyFooterPlugin;
+use Illuminate\Support\HtmlString;
 class AdminPanelProvider extends PanelProvider
 {
     public function panel(Panel $panel): Panel
@@ -55,6 +57,9 @@ class AdminPanelProvider extends PanelProvider
                 DispatchServingFilamentEvent::class,
             ])
             ->plugins([
+                EasyFooterPlugin::make()
+                    ->withFooterPosition('sidebar.footer')
+                    ->withSentence(new HtmlString('<img src="https://www.eurasia-center.eu/mt-content/uploads/2018/03/thumbnails/logop_5aabf280efee3_m_300x151.png" style="margin-right:.5rem;" alt="Laravel Logo" width="50" height="20"> Eurasia Center AG')),
                 GlobalSearchModalPlugin::make(),
                 FilamentAccessManagementPanel::make(),
                 AuthUIEnhancerPlugin::make()

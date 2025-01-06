@@ -14,6 +14,7 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\SoftDeletingScope;
 use Illuminate\Support\Str;
 use IbrahimBougaoua\FilaProgress\Tables\Columns\ProgressBar;
+use Filament\Tables\Filters\SelectFilter;
 
 class ProjectResource extends Resource
 {
@@ -80,7 +81,15 @@ class ProjectResource extends Resource
                     ->toggleable(isToggledHiddenByDefault: true),
             ])
             ->filters([
-                //
+                SelectFilter::make('status')
+                    ->multiple()
+                    ->options([
+                        'draft' => 'Draft',
+                        'on_hold' => 'On Hold',
+                        'in_progress' => 'In Progress',
+                        'completed' => 'Completed',
+                        'canceled' => 'Canceled',
+                    ])
             ])
             ->actions([
                 Tables\Actions\ViewAction::make(),
