@@ -8,6 +8,7 @@
         "php": "^8.1",
         "awcodes/filament-table-repeater": "^3.1",
         "charrafimed/global-search-modal": "^3.4",
+        "devonab/filament-easy-footer": "^1.0",
         "diogogpinto/filament-auth-ui-enhancer": "^1.0",
         "filament/filament": "^3.2",
         "guava/filament-modal-relation-managers": "^1.1",

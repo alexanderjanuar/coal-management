@@ -19,7 +19,10 @@ use IbrahimBougaoua\FilaProgress\Tables\Columns\ProgressBar;
 use Filament\Forms\Components\Section;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
+use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Repeater;
+use Filament\Tables\Filters\SelectFilter;
+use Illuminate\Database\Eloquent\Model;
 
 class ProgressRelationManager extends RelationManager
 {
@@ -45,12 +48,32 @@ class ProgressRelationManager extends RelationManager
                             ->options(Client::all()->pluck('name', 'id')),
                         Textarea::make('description')
                             ->columnSpanFull()
-                    ])->columns(2),
-                Section::make('steps')
+                    ])
+                    ->collapsible()
+                    ->columns(2),
+                Section::make('Project Step')
                     ->icon('heroicon-o-list-bullet')
                     ->schema([
-                        
-                    ])->columns(2)
+                        Repeater::make('steps')
+                            ->relationship()
+                            ->schema([
+                                Forms\Components\TextInput::make('name')
+                                    ->columnSpanFull(),
+                                Textarea::make('description')
+                                    ->columnSpanFull(),
+                                Repeater::make('tasks')
+                                    ->relationship('tasks')
+                                    ->schema([
+                                        TextInput::make('title')->required(),
+                                        TextInput::make('description')->required(),
+                                    ])
+                                    ->columns(2)
+                            ])
+                            ->orderColumn('order')
+                            ->columnSpanFull(),
+                    ])
+                    ->collapsible()
+                    ->columns(2)
             ]);
     }
 
@@ -85,7 +108,14 @@ class ProgressRelationManager extends RelationManager
                     })
             ])
             ->filters([
-                //
+                SelectFilter::make('status')
+                    ->options([
+                        'draft' => 'Draft',
+                        'on_hold' => 'On Hold',
+                        'in_progress' => 'In Progress',
+                        'completed' => 'Completed',
+                        'canceled' => 'Canceled',
+                    ])
             ])
             ->headerActions([
                 Tables\Actions\CreateAction::make(),
@@ -94,6 +124,9 @@ class ProgressRelationManager extends RelationManager
                 Tables\Actions\EditAction::make(),
                 Tables\Actions\DeleteAction::make(),
             ])
+            ->recordUrl(
+                fn (Model $record): string => route('filament.admin.resources.projects.view', ['record' => $record]),
+            )
             ->bulkActions([
             ]);
     }
