@@ -23,7 +23,9 @@ use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Repeater;
 use Filament\Tables\Filters\SelectFilter;
 use Illuminate\Database\Eloquent\Model;
-
+use Filament\Forms\Components\Wizard;
+use Illuminate\Support\HtmlString;
+use Illuminate\Support\Facades\Blade;
 class ProgressRelationManager extends RelationManager
 {
     protected static string $relationship = 'projects';
@@ -34,46 +36,85 @@ class ProgressRelationManager extends RelationManager
     {
         return $form
             ->schema([
-                Section::make('Project Detail')
-                    ->icon('heroicon-o-folder-open')
-                    ->schema([
-                        Forms\Components\TextInput::make('name')
-                            ->required()
-                            ->label('Project Detail')
-                            ->unique()
-                            ->maxLength(255),
-                        Select::make('client_id')
-                            ->required()
-                            ->label('Client')
-                            ->options(Client::all()->pluck('name', 'id')),
-                        Textarea::make('description')
-                            ->columnSpanFull()
-                    ])
-                    ->collapsible()
-                    ->columns(2),
-                Section::make('Project Step')
-                    ->icon('heroicon-o-list-bullet')
-                    ->schema([
-                        Repeater::make('steps')
-                            ->relationship()
-                            ->schema([
-                                Forms\Components\TextInput::make('name')
-                                    ->columnSpanFull(),
-                                Textarea::make('description')
-                                    ->columnSpanFull(),
-                                Repeater::make('tasks')
-                                    ->relationship('tasks')
-                                    ->schema([
-                                        TextInput::make('title')->required(),
-                                        TextInput::make('description')->required(),
+                Wizard::make([
+                    Wizard\Step::make('Project Detail')
+                        ->description('Set the Project Detail')
+                        ->schema([
+                            Forms\Components\TextInput::make('name')
+                                ->required()
+                                ->label('Project Name')
+                                ->unique()
+                                ->maxLength(255),
+                            Select::make('client_id')
+                                ->required()
+                                ->label('Client')
+                                ->options(Client::all()->pluck('name', 'id')),
+                            Textarea::make('description')
+                                ->columnSpanFull()
+                        ])
+                    ,
+                    Wizard\Step::make('Step & Task')
+                        ->description('Set the Project Step & Task')
+                        ->schema([
+                            Repeater::make('steps')
+                                ->label('Project Step')
+                                ->addActionLabel('Add New Step')
+                                ->relationship()
+                                ->schema([
+                                    Forms\Components\TextInput::make('name')
+                                        ->columnSpanFull(),
+                                    Textarea::make('description')
+                                        ->columnSpanFull(),
+                                    Section::make('Tasks')
+                                        ->description('Prevent abuse by limiting the number of requests per period')
+                                        ->collapsed()
+                                        ->schema([
+                                            Repeater::make('tasks')
+                                                ->label('Project Task')
+                                                ->relationship('tasks')
+                                                ->schema([
+                                                    TextInput::make('title')->required(),
+                                                    TextInput::make('description')->required(),
+                                                ])
+                                                ->itemLabel(fn(array $state): ?string => $state['title'] ?? null)
+                                                ->addActionLabel('Add New Task')
+                                                ->collapsed()
+                                                ->columns(2),
+                                        ]),
+                                    Section::make('Required Documents')
+                                        ->description('Prevent abuse by limiting the number of requests per period')
+                                        ->collapsed()
+                                        ->schema([
+                                            Repeater::make('requiredDocuments')
+                                                ->label('Required Documents')
+                                                ->relationship('requiredDocuments')
+                                                ->schema([
+                                                    TextInput::make('name')->required(),
+                                                    TextInput::make('description')->required(),
+                                                ])
+                                                ->itemLabel(fn(array $state): ?string => $state['name'] ?? null)
+                                                ->addActionLabel('Add New Task')
+                                                ->collapsed()
+                                                ->columns(2)
                                     ])
-                                    ->columns(2)
-                            ])
-                            ->orderColumn('order')
-                            ->columnSpanFull(),
-                    ])
-                    ->collapsible()
-                    ->columns(2)
+                                ])
+                                ->itemLabel(fn(array $state): ?string => $state['name'] ?? null)
+                                ->collapsed()
+                                ->orderColumn('order')
+                                ->columnSpanFull(),
+
+                        ]),
+                ])
+                    ->skippable()
+                    ->submitAction(new HtmlString(Blade::render(<<<BLADE
+                                <x-filament::button
+                                    type="submit"
+                                    size="sm"
+                                >
+                                    Submit
+                                </x-filament::button>
+                            BLADE)))
+                    ->columnSpanFull(),
             ]);
     }
 
@@ -125,7 +166,7 @@ class ProgressRelationManager extends RelationManager
                 Tables\Actions\DeleteAction::make(),
             ])
             ->recordUrl(
-                fn (Model $record): string => route('filament.admin.resources.projects.view', ['record' => $record]),
+                fn(Model $record): string => route('filament.admin.resources.projects.view', ['record' => $record]),
             )
             ->bulkActions([
             ]);
