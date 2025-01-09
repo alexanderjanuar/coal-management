@@ -3,6 +3,7 @@
 namespace App\Filament\Resources\ProjectResource\RelationManagers;
 
 use App\Models\Client;
+use App\Models\Project;
 use Filament\Forms;
 use Filament\Forms\Form;
 use Filament\Resources\RelationManagers\RelationManager;
@@ -22,29 +23,44 @@ use Filament\Forms\Components\FileUpload;
 use Illuminate\Support\HtmlString;
 use Illuminate\Support\Facades\Blade;
 use Illuminate\Database\Eloquent\Model;
-
+use Filament\Tables\Filters\SelectFilter;
+use Guava\FilamentModalRelationManagers\Concerns\CanBeEmbeddedInModals;
 class StepsRelationManager extends RelationManager
 {
     protected static string $relationship = 'steps';
 
+    use CanBeEmbeddedInModals;
 
     public function form(Form $form): Form
     {
         return $form
             ->schema([
                 Wizard::make([
-                    Wizard\Step::make('Project Detail')
-                        ->description('Set the Project Detail')
-                        ->schema([
-
-                        ]),
                     Wizard\Step::make('Step Detail')
                         ->description('Set the Project Detail')
                         ->schema([
-                            Forms\Components\TextInput::make('name')
-                                ->columnSpanFull(),
+                            Forms\Components\TextInput::make('name'),
+                            Select::make('project_id')
+                                ->required()
+                                ->label('Project Name')
+                                ->searchable()
+                                ->options(Project::all()->pluck('name', 'id'))
+                                ->afterStateUpdated(function ($state, callable $set) {
+                                    if ($state) {
+                                        $highestOrder = \App\Models\ProjectStep::where('project_id', $state)
+                                            ->max('order') ?? 0;
+                                        $set('order', $highestOrder + 1);
+                                    }
+                                }),
+                            TextInput::make('order')
+                                ->numeric()
+                                ->readOnly(),
                             Textarea::make('description')
                                 ->columnSpanFull(),
+                        ])->columns(3),
+                    Wizard\Step::make('Task')
+                        ->description('Set the Project Detail')
+                        ->schema([
                             Repeater::make('tasks')
                                 ->label('Project Task')
                                 ->relationship('tasks')
@@ -57,7 +73,7 @@ class StepsRelationManager extends RelationManager
                                 ->columns(2),
 
                         ]),
-                    Wizard\Step::make('Project Documents')
+                    Wizard\Step::make('Documents')
                         ->description('Set the Project Detail')
                         ->schema([
                             Repeater::make('requiredDocuments')
@@ -73,7 +89,8 @@ class StepsRelationManager extends RelationManager
                                 ->columns(2)
                         ])
                 ])
-                ->columnSpanFull()
+                    ->skippable()
+                    ->columnSpanFull()
 
             ])->columns(2);
     }
@@ -111,11 +128,32 @@ class StepsRelationManager extends RelationManager
                     ->toggleable(isToggledHiddenByDefault: true),
             ])
             ->filters([
-                //
+                SelectFilter::make('project')
+                    ->options(
+                        Project::query()
+                            ->whereHas('steps')
+                            ->with('client')
+                            ->get()
+                            ->mapWithKeys(function ($project) {
+                                return [$project->id => $project->client->name . ' - ' . $project->name];
+                            })
+                    )
+                    ->query(function (Builder $query, array $data) {
+                        if (blank($data['value'])) {
+                            return $query;
+                        }
+
+                        return $query->where('project_id', $data['value']);
+                    })
+                    ->searchable()
+                    ->preload()
             ])
             ->headerActions([
                 Tables\Actions\CreateAction::make(),
             ])
+            ->recordUrl(
+                fn(Model $record): string => route('filament.admin.resources.project-steps.view', ['record' => $record]),
+            )
             ->actions([
                 Tables\Actions\EditAction::make(),
                 Tables\Actions\DeleteAction::make(),

@@ -4,6 +4,7 @@ namespace App\Filament\Resources;
 
 use App\Filament\Resources\ClientResource\Pages;
 use App\Filament\Resources\ClientResource\RelationManagers\ProgressRelationManager;
+use App\Filament\Resources\ClientResource\RelationManagers\ApplicationsRelationManager;
 use App\Filament\Resources\ProjectStepResource\RelationManagers\RequiredDocumentsRelationManager;
 use Filament\Forms\Components\Section;
 use App\Filament\Resources\ClientResource\RelationManagers;
@@ -31,15 +32,20 @@ class ClientResource extends Resource
     {
         return $form
             ->schema([
-                Section::make('Profil Client')
+                Section::make('Client Profile')
                     ->description('Detail dari Client')
                     ->icon('heroicon-o-building-office-2')
                     ->schema([
                         Forms\Components\TextInput::make('name')
                             ->required()
-                            ->label('Client Detail')
+                            ->label('Client Name')
                             ->unique()
                             ->maxLength(255),
+
+                        Forms\Components\TextInput::make('adress')
+                            ->label('Adress'),
+                        Forms\Components\TextInput::make('person_in_charge')
+                            ->label('Adress'),
                         Forms\Components\TextInput::make('email')
                             ->email()
                             ->label('Client Email')
@@ -48,8 +54,25 @@ class ClientResource extends Resource
                         FileUpload::make('logo')
                             ->label('Client Logo')
                             ->columnSpanFull()
-
-                    ])->columns(2)
+                    ])
+                    ->columns(2),
+                Section::make('Client Tax')
+                    ->description('Detail of Client Tax')
+                    ->icon('heroicon-o-building-office-2')
+                    ->schema([
+                        Forms\Components\TextInput::make('account_representative')
+                            ->label('Account Representative (AR)')
+                            ->maxLength(255),
+                        Forms\Components\TextInput::make('phone_number')
+                            ->label('AR Phone Number'),
+                        Forms\Components\TextInput::make('NPWP')
+                            ->label('NPWP')
+                            ->required(),
+                        Forms\Components\TextInput::make('EFIN')
+                            ->label('EFIN')
+                            ->required(),
+                    ])
+                    ->columns(3),
             ]);
     }
 
@@ -102,6 +125,7 @@ class ClientResource extends Resource
     {
         return [
             ProgressRelationManager::class,
+            ApplicationsRelationManager::class,
         ];
     }
 

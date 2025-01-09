@@ -28,6 +28,12 @@ use Filament\Support\Enums\FontWeight;
 use IbrahimBougaoua\FilaProgress\Infolists\Components\ProgressBarEntry;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
+use Filament\Forms\Components\Repeater;
+use Filament\Forms\Components\TextInput;
+use Filament\Forms\Components\FileUpload;
+use Guava\FilamentModalRelationManagers\Actions\Table\RelationManagerAction;
+
+
 
 class ProjectResource extends Resource
 {
@@ -54,7 +60,58 @@ class ProjectResource extends Resource
                         Textarea::make('description')
                             ->columnSpanFull()
                     ])
-                    ->columns(2)
+                    ->aside()
+                    ->columns(2),
+                FormSection::make('Project Step')
+                    ->description('Prevent abuse by limiting the number of requests per period')
+                    ->aside()
+                    ->schema([
+                        Repeater::make('steps')
+                            ->label('Project Step')
+                            ->addActionLabel('Add New Step')
+                            ->relationship()
+                            ->schema([
+                                Forms\Components\TextInput::make('name')
+                                    ->columnSpanFull(),
+                                Textarea::make('description')
+                                    ->columnSpanFull(),
+                                FormSection::make('Tasks')
+                                    ->description('Prevent abuse by limiting the number of requests per period')
+                                    ->collapsed()
+                                    ->schema([
+                                        Repeater::make('tasks')
+                                            ->label('Project Task')
+                                            ->relationship('tasks')
+                                            ->schema([
+                                                TextInput::make('title')->required(),
+                                                TextInput::make('description')->required(),
+                                            ])
+                                            ->itemLabel(fn(array $state): ?string => $state['title'] ?? null)
+                                            ->addActionLabel('Add New Task')
+                                            ->columns(2),
+                                    ]),
+                                FormSection::make('Required Documents')
+                                    ->description('Prevent abuse by limiting the number of requests per period')
+                                    ->collapsed()
+                                    ->schema([
+                                        Repeater::make('requiredDocuments')
+                                            ->label('Required Documents')
+                                            ->relationship('requiredDocuments')
+                                            ->schema([
+                                                TextInput::make('name')->required(),
+                                                TextInput::make('description')->required(),
+                                                FileUpload::make('file_path')
+                                                    ->columnSpanFull()
+                                            ])
+                                            ->itemLabel(fn(array $state): ?string => $state['name'] ?? null)
+                                            ->addActionLabel('Add New Document')
+                                            ->columns(2)
+                                    ])
+                            ])
+                            ->itemLabel(fn(array $state): ?string => $state['name'] ?? null)
+                            ->orderColumn('order')
+                            ->columnSpanFull(),
+                    ])
             ]);
     }
 
@@ -111,6 +168,12 @@ class ProjectResource extends Resource
                     ])
             ])
             ->actions([
+                RelationManagerAction::make('project-step-relation-manager')
+                    ->label('Project Step')
+                    ->slideOver()
+                    ->Icon('heroicon-o-arrow-path')
+                    ->color('warning')
+                    ->relationManager(StepsRelationManager::make()),
                 Tables\Actions\ViewAction::make(),
                 Tables\Actions\EditAction::make(),
             ])

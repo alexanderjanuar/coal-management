@@ -11,17 +11,11 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('clients', function (Blueprint $table) {
+        Schema::create('applications', function (Blueprint $table) {
             $table->id();
             $table->string('name');
-            $table->string('NPWP');
-            $table->string('EFIN');
             $table->string('logo');
-            $table->string('account_representative')->nullable();
-            $table->string('person_in_charge')->nullable();
-            $table->string('ar_phone_number')->nullable();
-            $table->string('adress')->nullable();
-            $table->string('email')->unique()->nullable();
+            $table->string('app_url');
             $table->timestamps();
         });
     }
@@ -31,6 +25,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists('clients');
+        Schema::dropIfExists('applications');
     }
 };

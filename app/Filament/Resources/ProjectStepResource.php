@@ -12,6 +12,8 @@ use Filament\Tables;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\SoftDeletingScope;
+use Illuminate\Support\Str;
+use IbrahimBougaoua\FilaProgress\Tables\Columns\ProgressBar;
 
 class ProjectStepResource extends Resource
 {
@@ -43,15 +45,39 @@ class ProjectStepResource extends Resource
     {
         return $table
             ->columns([
-                Tables\Columns\TextColumn::make('project_id')
-                    ->numeric()
-                    ->sortable(),
+                Tables\Columns\TextColumn::make('project.client.name')
+                    ->toggleable(isToggledHiddenByDefault: true)
+                    ->searchable(),
+                Tables\Columns\TextColumn::make('project.name')
+                    ->label('Project Name')
+                    ->searchable(),
                 Tables\Columns\TextColumn::make('name')
+                    ->label('Project Step Name')
                     ->searchable(),
                 Tables\Columns\TextColumn::make('order')
+                    ->badge()
                     ->numeric()
                     ->sortable(),
-                Tables\Columns\TextColumn::make('status'),
+                Tables\Columns\TextColumn::make('status')
+                    ->badge()
+                    ->color(fn(string $state): string => match ($state) {
+                        'waiting_for_documents' => 'gray',
+                        'pending' => 'gray',
+                        'in_progress' => 'warning',
+                        'completed' => 'success',
+                        'canceled' => 'danger',
+                    })
+                    ->formatStateUsing(fn(string $state): string => __(Str::title($state))),
+                ProgressBar::make('bar')
+                    ->label('Progress')
+                    ->getStateUsing(function ($record) {
+                        $total = $record->tasks()->count();
+                        $progress = $record->tasks()->where('status', 'completed')->count();
+                        return [
+                            'total' => $total,
+                            'progress' => $progress,
+                        ];
+                    }),
                 Tables\Columns\TextColumn::make('created_at')
                     ->dateTime()
                     ->sortable()

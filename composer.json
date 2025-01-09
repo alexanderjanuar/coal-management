@@ -19,7 +19,8 @@
         "laravel/framework": "^10.10",
         "laravel/sanctum": "^3.3",
         "laravel/tinker": "^2.8",
-        "solution-forest/filament-access-management": "^2.2"
+        "solution-forest/filament-access-management": "^2.2",
+        "tomatophp/filament-pwa": "^1.0"
     },
     "require-dev": {
         "fakerphp/faker": "^1.9.1",
