@@ -19,7 +19,11 @@ class ProjectStepResource extends Resource
 {
     protected static ?string $model = ProjectStep::class;
 
-    protected static ?string $navigationIcon = 'heroicon-o-rectangle-stack';
+    protected static ?string $navigationGroup = 'Project Management';
+
+
+    protected static ?string $navigationIcon = 'heroicon-o-clipboard-document-list';
+
 
     public static function form(Form $form): Form
     {

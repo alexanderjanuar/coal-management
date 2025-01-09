@@ -30,10 +30,15 @@ class AdminPanelProvider extends PanelProvider
         return $panel
             ->default()
             ->id('admin')
-            ->path('admin')
+            ->path('')
             ->login()
             ->colors([
-                'primary' => Color::Blue,
+                'primary' => Color::Amber,
+            ])
+            ->navigationGroups([
+                'Project Management',
+                'Master Data',
+                'Admin',
             ])
             ->discoverResources(in: app_path('Filament/Resources'), for: 'App\\Filament\\Resources')
             ->discoverPages(in: app_path('Filament/Pages'), for: 'App\\Filament\\Pages')
@@ -60,14 +65,14 @@ class AdminPanelProvider extends PanelProvider
                 \TomatoPHP\FilamentPWA\FilamentPWAPlugin::make(),
                 EasyFooterPlugin::make()
                     ->withFooterPosition('sidebar.footer')
-                    ->withSentence(new HtmlString('<img src="https://www.eurasia-center.eu/mt-content/uploads/2018/03/thumbnails/logop_5aabf280efee3_m_300x151.png" style="margin-right:.5rem;" alt="Laravel Logo" width="50" height="20"> Eurasia Center AG')),
+                    ->withSentence(new HtmlString('<img src="' . asset('images/JKB-Logo.png') . '" style="margin-right:.5rem;" alt="Laravel Logo" width="20" height="20"> JKB Management')),
                 GlobalSearchModalPlugin::make(),
                 FilamentAccessManagementPanel::make(),
                 AuthUIEnhancerPlugin::make()
                     ->showEmptyPanelOnMobile(false)
                     ->formPanelPosition('right')
                     ->formPanelWidth('40%')
-                    ->emptyPanelBackgroundImageOpacity('70%')
+                    ->emptyPanelBackgroundImageOpacity('80%')
                     ->emptyPanelBackgroundImageUrl('https://images.pexels.com/photos/466685/pexels-photo-466685.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=2')
             ])
             ->viteTheme('resources/css/filament/admin/theme.css')
