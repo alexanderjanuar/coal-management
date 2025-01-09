@@ -20,6 +20,7 @@ use Illuminate\Database\Eloquent\SoftDeletingScope;
 use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\Fieldset;
 use Guava\FilamentModalRelationManagers\Actions\Table\RelationManagerAction;
+use Filament\Forms\Components\Select;
 
 class ClientResource extends Resource
 {
@@ -41,16 +42,15 @@ class ClientResource extends Resource
                             ->label('Client Name')
                             ->unique()
                             ->maxLength(255),
-
-                        Forms\Components\TextInput::make('adress')
-                            ->label('Adress'),
-                        Forms\Components\TextInput::make('person_in_charge')
-                            ->label('Adress'),
                         Forms\Components\TextInput::make('email')
                             ->email()
                             ->label('Client Email')
                             ->required()
                             ->maxLength(255),
+                        Forms\Components\TextInput::make('adress')
+                            ->label('Adress'),
+                        Forms\Components\TextInput::make('person_in_charge')
+                            ->label('Person In Charge'),
                         FileUpload::make('logo')
                             ->label('Client Logo')
                             ->columnSpanFull()
@@ -60,19 +60,29 @@ class ClientResource extends Resource
                     ->description('Detail of Client Tax')
                     ->icon('heroicon-o-building-office-2')
                     ->schema([
-                        Forms\Components\TextInput::make('account_representative')
-                            ->label('Account Representative (AR)')
-                            ->maxLength(255),
-                        Forms\Components\TextInput::make('phone_number')
-                            ->label('AR Phone Number'),
                         Forms\Components\TextInput::make('NPWP')
                             ->label('NPWP')
                             ->required(),
                         Forms\Components\TextInput::make('EFIN')
                             ->label('EFIN')
                             ->required(),
+                        Forms\Components\TextInput::make('account_representative')
+                            ->label('Account Representative (AR)')
+                            ->maxLength(255),
+                        Forms\Components\TextInput::make('ar_phone_number')
+                            ->label('AR Phone Number'),
+                        Select::make('KPP')
+                            ->label('KPP')
+                            ->native(false)
+                            ->options([
+                                'SAMARINDA ULU' => 'Samarinda Ulu',
+                                'SAMARINDA ILIR' => 'Samarinda Ilir',
+                                'TENGGARONG' => 'Tenggarong',
+                            ])
+                            
+                            ->columnSpanFull(),
                     ])
-                    ->columns(3),
+                    ->columns(2),
             ]);
     }
 
@@ -83,7 +93,9 @@ class ClientResource extends Resource
                 ImageColumn::make('logo')
                     ->circular(),
                 Tables\Columns\TextColumn::make('name')
-                    ->label('Client Name')
+                    ->label('Client')
+                    ->searchable(),
+                Tables\Columns\TextColumn::make('NPWP')
                     ->searchable(),
                 Tables\Columns\TextColumn::make('email')
                     ->searchable(),
@@ -124,8 +136,8 @@ class ClientResource extends Resource
     public static function getRelations(): array
     {
         return [
-            ProgressRelationManager::class,
             ApplicationsRelationManager::class,
+            ProgressRelationManager::class,
         ];
     }
 
