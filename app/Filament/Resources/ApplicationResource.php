@@ -7,12 +7,14 @@ use App\Filament\Resources\ApplicationResource\RelationManagers;
 use App\Models\Application;
 use Filament\Forms;
 use Filament\Forms\Form;
+use Filament\Forms\Components\Section;
+
 use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\SoftDeletingScope;
-
+use Filament\Forms\Components\FileUpload;
 class ApplicationResource extends Resource
 {
     protected static ?string $model = Application::class;
@@ -25,15 +27,23 @@ class ApplicationResource extends Resource
     {
         return $form
             ->schema([
-                Forms\Components\TextInput::make('name')
-                    ->required()
-                    ->maxLength(255),
-                Forms\Components\TextInput::make('logo')
-                    ->required()
-                    ->maxLength(255),
-                Forms\Components\TextInput::make('app_url')
-                    ->required()
-                    ->maxLength(255),
+                Section::make('Application Detail')
+                    ->description('Basic information about the application')
+                    ->schema([
+                        Forms\Components\TextInput::make('name')
+                            ->label('Application Name')
+                            ->required()
+                            ->maxLength(255),
+                        Forms\Components\TextInput::make('app_url')
+                            ->label('Application URL')
+                            ->maxLength(255)
+                            ->url()
+                            ->helperText('The base URL where your application is hosted'),
+                        FileUpload::make('logo')
+                            ->label('Application Logo')
+                            ->image()
+                            ->preserveFilenames(),
+                    ]),
             ]);
     }
 
@@ -42,11 +52,9 @@ class ApplicationResource extends Resource
         return $table
             ->columns([
                 Tables\Columns\TextColumn::make('name')
+                    ->label('Application Name')
                     ->searchable(),
-                Tables\Columns\TextColumn::make('logo')
-                    ->searchable(),
-                Tables\Columns\TextColumn::make('app_url')
-                    ->searchable(),
+                Tables\Columns\ImageColumn::make('logo'),
                 Tables\Columns\TextColumn::make('created_at')
                     ->dateTime()
                     ->sortable()

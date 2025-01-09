@@ -4,6 +4,7 @@ namespace App\Filament\Resources;
 
 use App\Filament\Resources\ProjectStepResource\Pages;
 use App\Filament\Resources\ProjectStepResource\RelationManagers;
+use App\Models\Project;
 use App\Models\ProjectStep;
 use Filament\Forms;
 use Filament\Forms\Form;
@@ -14,6 +15,13 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\SoftDeletingScope;
 use Illuminate\Support\Str;
 use IbrahimBougaoua\FilaProgress\Tables\Columns\ProgressBar;
+use Filament\Forms\Components\Wizard;
+use Filament\Forms\Components\Select;
+use Filament\Forms\Components\Textarea;
+use Filament\Forms\Components\Section;
+use Filament\Forms\Components\Repeater;
+use Filament\Forms\Components\TextInput;
+use Filament\Forms\Components\FileUpload;
 
 class ProjectStepResource extends Resource
 {
@@ -29,20 +37,77 @@ class ProjectStepResource extends Resource
     {
         return $form
             ->schema([
-                Forms\Components\TextInput::make('project_id')
-                    ->required()
-                    ->numeric(),
-                Forms\Components\TextInput::make('name')
-                    ->required()
-                    ->maxLength(255),
-                Forms\Components\TextInput::make('order')
-                    ->required()
-                    ->numeric(),
-                Forms\Components\Textarea::make('description')
-                    ->columnSpanFull(),
-                Forms\Components\TextInput::make('status')
-                    ->required(),
-            ]);
+
+                Section::make('Step Information')
+                    ->description('Basic information about the project step')
+                    ->aside()
+                    ->schema([
+                        Forms\Components\TextInput::make('name')
+                            ->label('Step Name')
+                            ->required(),
+                        Select::make('project_id')
+                            ->required()
+                            ->label('Project Name')
+                            ->searchable()
+                            ->options(Project::all()->pluck('name', 'id'))
+                            ->afterStateUpdated(function ($state, callable $set) {
+                                if ($state) {
+                                    $highestOrder = \App\Models\ProjectStep::where('project_id', $state)
+                                        ->max('order') ?? 0;
+                                    $set('order', $highestOrder + 1);
+                                }
+                            }),
+                        TextInput::make('order')
+                            ->numeric()
+                            ->readOnly(),
+                        Textarea::make('description')
+                            ->label('Step Description')
+                            ->columnSpanFull(),
+                    ])->columns(3),
+
+                Section::make('Tasks')
+                    ->aside()
+                    ->description('Define the tasks required for this project step')
+                    ->schema([
+                        Repeater::make('tasks')
+                            ->label('Project Tasks')
+                            ->relationship('tasks')
+                            ->schema([
+                                TextInput::make('title')
+                                    ->required()
+                                    ->helperText('Enter the task title'),
+                                TextInput::make('description')
+                                    ->required()
+                                    ->helperText('Describe what needs to be done'),
+                            ])
+                            ->itemLabel(fn(array $state): ?string => $state['title'] ?? null)
+                            ->addActionLabel('Add New Task')
+                            ->columns(2),
+                    ]),
+
+                Section::make('Required Documents')
+                    ->description('Specify the documents needed for this project step')
+                    ->aside()
+                    ->schema([
+                        Repeater::make('requiredDocuments')
+                            ->label('Document List')
+                            ->relationship('requiredDocuments')
+                            ->schema([
+                                TextInput::make('name')
+                                    ->required()
+                                    ->helperText('Enter document name'),
+                                TextInput::make('description')
+                                    ->required()
+                                    ->helperText('Describe the document requirements'),
+                                FileUpload::make('file_path')
+                                    ->columnSpanFull()
+                                    ->helperText('Upload the document file')
+                            ])
+                            ->itemLabel(fn(array $state): ?string => $state['name'] ?? null)
+                            ->columns(2)
+                    ])
+            ])
+            ->columns(2);
     }
 
     public static function table(Table $table): Table

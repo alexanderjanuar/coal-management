@@ -12,6 +12,8 @@ use Filament\Tables;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\SoftDeletingScope;
+use Filament\Tables\Columns\SelectColumn;
+use Filament\Notifications\Notification;
 
 class TaskResource extends Resource
 {
@@ -21,6 +23,10 @@ class TaskResource extends Resource
 
     protected static ?string $navigationGroup = 'Project Management';
 
+    public static function canCreate(): bool
+    {
+        return false;
+    }
     public static function form(Form $form): Form
     {
         return $form
@@ -45,14 +51,48 @@ class TaskResource extends Resource
     {
         return $table
             ->columns([
-                Tables\Columns\TextColumn::make('project_step_id')
-                    ->numeric()
+                Tables\Columns\TextColumn::make('projectStep.name')
                     ->sortable(),
                 Tables\Columns\TextColumn::make('title')
+                    ->label('Task Title')
                     ->searchable(),
-                Tables\Columns\TextColumn::make('status'),
-                Tables\Columns\IconColumn::make('requires_document')
-                    ->boolean(),
+                SelectColumn::make('status')
+                    ->options([
+                        'pending' => 'Pending',
+                        'in_progress' => 'In Progress',
+                        'completed' => 'Completed',
+                        'blocked' => 'Blocked',
+                    ])
+                    ->beforeStateUpdated(function ($record, $state) {
+                        $currentStatus = $record->status;
+
+                        // Allow any status to be changed to blocked
+                        if ($state === 'blocked') {
+                            return true;
+                        }
+
+                        // Define the allowed status transitions
+                        $allowedTransitions = [
+                            'pending' => ['in_progress'],
+                            'in_progress' => ['completed'],
+                            'completed' => [], // Completed is final state
+                            'blocked' => ['pending', 'in_progress', 'completed'], // Can resume to any state from blocked
+                        ];
+
+                        // Check if the transition is allowed
+                        if (!in_array($state, $allowedTransitions[$currentStatus])) {
+                            Notification::make()
+                                ->danger()
+                                ->title('Invalid Status Change')
+                                ->body("Cannot change status from {$currentStatus} to {$state}")
+                                ->send();
+
+                            return false;
+                        }
+
+                        return true;
+                    })
+                    ->selectablePlaceholder(false),
                 Tables\Columns\TextColumn::make('created_at')
                     ->dateTime()
                     ->sortable()
