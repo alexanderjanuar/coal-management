@@ -1,3 +1,4 @@
+@filamentPWA
 <x-filament-panels::page class="w-full">
     {{-- Stats Overview --}}
     <div class="grid gap-4 md:grid-cols-4 mb-8">

@@ -11,10 +11,11 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('submitted_documents', function (Blueprint $table) {
+        Schema::create('applications', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('required_document_id')->constrained()->onDelete('cascade');
-            $table->foreignId('user_id')->constrained();
+            $table->string('name');
+            $table->string('logo');
+            $table->string('app_url');
             $table->timestamps();
         });
     }
@@ -24,6 +25,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists('submitted_documents');
+        Schema::dropIfExists('applications');
     }
 };

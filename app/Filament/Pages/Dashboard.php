@@ -24,7 +24,7 @@ class Dashboard extends BaseDashboard
             'total_projects' => Project::count(),
             'active_projects' => Project::where('status', 'in_progress')->count(),
             'completed_projects' => Project::where('status', 'completed')->count(),
-            'pending_documents' => DB::table('submitted_documents')
+            'pending_documents' => DB::table('required_documents')
                 ->where('status', 'pending_review')
                 ->count(),
         ];

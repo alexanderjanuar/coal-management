@@ -21,8 +21,7 @@ class SubmittedDocumentFactory extends Factory
         return [
             'required_document_id' => RequiredDocument::factory(),
             'user_id' => User::factory(),
-            'file_path' => 'documents/' . fake()->uuid() . '.pdf',
-            'status' => fake()->randomElement(['pending_review', 'approved', 'rejected']),
+
             'rejection_reason' => fake()->optional(0.3)->paragraph(),
         ];
     }

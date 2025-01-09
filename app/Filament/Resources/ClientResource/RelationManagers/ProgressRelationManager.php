@@ -26,6 +26,8 @@ use Illuminate\Database\Eloquent\Model;
 use Filament\Forms\Components\Wizard;
 use Illuminate\Support\HtmlString;
 use Illuminate\Support\Facades\Blade;
+use Filament\Forms\Components\FileUpload;
+
 class ProgressRelationManager extends RelationManager
 {
     protected static string $relationship = 'projects';
@@ -91,9 +93,11 @@ class ProgressRelationManager extends RelationManager
                                                 ->schema([
                                                     TextInput::make('name')->required(),
                                                     TextInput::make('description')->required(),
+                                                    FileUpload::make('file_path')
+                                                        ->columnSpanFull()
                                                 ])
                                                 ->itemLabel(fn(array $state): ?string => $state['name'] ?? null)
-                                                ->addActionLabel('Add New Task')
+                                                ->addActionLabel('Add New Document')
                                                 ->collapsed()
                                                 ->columns(2)
                                     ])

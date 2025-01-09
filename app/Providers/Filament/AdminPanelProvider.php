@@ -57,6 +57,7 @@ class AdminPanelProvider extends PanelProvider
                 DispatchServingFilamentEvent::class,
             ])
             ->plugins([
+                \TomatoPHP\FilamentPWA\FilamentPWAPlugin::make(),
                 EasyFooterPlugin::make()
                     ->withFooterPosition('sidebar.footer')
                     ->withSentence(new HtmlString('<img src="https://www.eurasia-center.eu/mt-content/uploads/2018/03/thumbnails/logop_5aabf280efee3_m_300x151.png" style="margin-right:.5rem;" alt="Laravel Logo" width="50" height="20"> Eurasia Center AG')),

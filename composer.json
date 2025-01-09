@@ -13,11 +13,14 @@
         "filament/filament": "^3.2",
         "guava/filament-modal-relation-managers": "^1.1",
         "guzzlehttp/guzzle": "^7.2",
+        "hugomyb/filament-media-action": "v3.1.1.5",
         "ibrahim-bougaoua/filaprogress": "^0.1.0",
+        "joaopaulolndev/filament-pdf-viewer": "^1.0",
         "laravel/framework": "^10.10",
         "laravel/sanctum": "^3.3",
         "laravel/tinker": "^2.8",
-        "solution-forest/filament-access-management": "^2.2"
+        "solution-forest/filament-access-management": "^2.2",
+        "tomatophp/filament-pwa": "^1.0"
     },
     "require-dev": {
         "fakerphp/faker": "^1.9.1",
