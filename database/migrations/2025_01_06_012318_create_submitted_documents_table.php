@@ -15,9 +15,6 @@ return new class extends Migration
             $table->id();
             $table->foreignId('required_document_id')->constrained()->onDelete('cascade');
             $table->foreignId('user_id')->constrained();
-            $table->string('file_path');
-            $table->enum('status', ['pending_review', 'approved', 'rejected'])->default('pending_review');
-            $table->text('rejection_reason')->nullable();
             $table->timestamps();
         });
     }

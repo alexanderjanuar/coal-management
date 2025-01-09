@@ -50,14 +50,7 @@ class DatabaseSeeder extends Seeder
                     // Create 1-3 required documents for each step
                     RequiredDocument::factory(fake()->numberBetween(1, 3))->create([
                         'project_step_id' => $step->id,
-                    ])->each(function ($requiredDoc) {
-                        // Maybe create submitted documents
-                        if (fake()->boolean(70)) {
-                            SubmittedDocument::factory()->create([
-                                'required_document_id' => $requiredDoc->id,
-                            ]);
-                        }
-                    });
+                    ]);
                 }
             });
         });

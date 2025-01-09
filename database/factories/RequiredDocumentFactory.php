@@ -21,6 +21,8 @@ class RequiredDocumentFactory extends Factory
             'project_step_id' => ProjectStep::factory(),
             'name' => fake()->sentence(2),
             'description' => fake()->paragraph(),
+            'file_path' => 'documents/' . fake()->uuid() . '.pdf',
+            'status' => fake()->randomElement(['pending_review', 'approved', 'rejected']),
             'is_required' => fake()->boolean(80), // 80% chance of being required
         ];
     }

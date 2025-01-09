@@ -4,7 +4,10 @@ namespace App\Filament\Resources;
 
 use App\Filament\Resources\ProjectResource\Pages;
 use App\Filament\Resources\ProjectResource\RelationManagers;
+use App\Filament\Resources\ProjectResource\RelationManagers\ClientRelationManager;
+use App\Filament\Resources\ProjectResource\RelationManagers\StepsRelationManager;
 use App\Models\Project;
+use App\Models\Client;
 use Filament\Forms;
 use Filament\Forms\Form;
 use Filament\Resources\Resource;
@@ -15,6 +18,16 @@ use Illuminate\Database\Eloquent\SoftDeletingScope;
 use Illuminate\Support\Str;
 use IbrahimBougaoua\FilaProgress\Tables\Columns\ProgressBar;
 use Filament\Tables\Filters\SelectFilter;
+use Filament\Infolists;
+use Filament\Infolists\Infolist;
+use Filament\Infolists\Components\Section;
+use Filament\Forms\Components\Section as FormSection;
+
+use Filament\Infolists\Components\TextEntry;
+use Filament\Support\Enums\FontWeight;
+use IbrahimBougaoua\FilaProgress\Infolists\Components\ProgressBarEntry;
+use Filament\Forms\Components\Select;
+use Filament\Forms\Components\Textarea;
 
 class ProjectResource extends Resource
 {
@@ -26,16 +39,22 @@ class ProjectResource extends Resource
     {
         return $form
             ->schema([
-                Forms\Components\TextInput::make('client_id')
-                    ->required()
-                    ->numeric(),
-                Forms\Components\TextInput::make('name')
-                    ->required()
-                    ->maxLength(255),
-                Forms\Components\Textarea::make('description')
-                    ->columnSpanFull(),
-                Forms\Components\TextInput::make('status')
-                    ->required(),
+                FormSection::make('Project Detail')
+                    ->description('Prevent abuse by limiting the number of requests per period')
+                    ->schema([
+                        Forms\Components\TextInput::make('name')
+                            ->required()
+                            ->label('Project Name')
+                            ->unique()
+                            ->maxLength(255),
+                        Select::make('client_id')
+                            ->required()
+                            ->label('Client')
+                            ->options(Client::all()->pluck('name', 'id')),
+                        Textarea::make('description')
+                            ->columnSpanFull()
+                    ])
+                    ->columns(2)
             ]);
     }
 
@@ -105,8 +124,50 @@ class ProjectResource extends Resource
     public static function getRelations(): array
     {
         return [
-            //
+                //
+            StepsRelationManager::class,
+            ClientRelationManager::class
         ];
+    }
+
+    public static function infolist(Infolist $infolist): Infolist
+    {
+        return $infolist
+            ->schema([
+                Section::make('Project Detail')
+                    ->description('Detail about the project for the client')
+                    ->aside()
+                    ->schema([
+                        ProgressBarEntry::make('bar')
+                            ->label('Progress')
+                            ->getStateUsing(function ($record) {
+                                $total = $record->steps()->count();
+                                $progress = $record->steps()->where('status', 'completed')->count();
+                                return [
+                                    'total' => $total,
+                                    'progress' => $progress,
+                                ];
+                            })
+                            ->columnSpanFull(),
+                        TextEntry::make('client.name'),
+                        TextEntry::make('name')
+                            ->label('Project Name'),
+
+                        TextEntry::make('status')
+                            ->label('Status')->badge()
+                            ->color(fn(string $state): string => match ($state) {
+                                'draft' => 'gray',
+                                'on_hold' => 'gray',
+                                'in_progress' => 'warning',
+                                'completed' => 'success',
+                                'canceled' => 'danger',
+                            })
+                            ->formatStateUsing(fn(string $state): string => __(Str::title($state))),
+                        TextEntry::make('description')
+
+                    ])
+                    ->columns(2)
+            ]);
     }
 
     public static function getPages(): array

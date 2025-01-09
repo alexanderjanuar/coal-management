@@ -4,6 +4,7 @@ namespace App\Filament\Resources;
 
 use App\Filament\Resources\ClientResource\Pages;
 use App\Filament\Resources\ClientResource\RelationManagers\ProgressRelationManager;
+use App\Filament\Resources\ProjectStepResource\RelationManagers\RequiredDocumentsRelationManager;
 use Filament\Forms\Components\Section;
 use App\Filament\Resources\ClientResource\RelationManagers;
 use App\Models\Client;
@@ -100,7 +101,7 @@ class ClientResource extends Resource
     public static function getRelations(): array
     {
         return [
-            ProgressRelationManager::class
+            ProgressRelationManager::class,
         ];
     }
 
