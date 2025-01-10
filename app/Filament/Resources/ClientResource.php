@@ -80,8 +80,13 @@ class ClientResource extends Resource
                                 'SAMARINDA ULU' => 'Samarinda Ulu',
                                 'SAMARINDA ILIR' => 'Samarinda Ilir',
                                 'TENGGARONG' => 'Tenggarong',
+                                'BALIKPAPAN BARAT' => 'Balikpapan Barat',
+                                'BALIKPAPAN TIMUR' => 'Balikpapan Timur',
+                                'MADYA DUA JAKARTA BARAT' => 'Madya Dua Jakarta Barat',
+                                'MADYA BALIKPAPAN' => 'Madya Balikpapan',
+                                'BONTANG' => 'Bontang',
+                                'BANJARBARU' => 'Banjarbaru',
                             ])
-                            
                             ->columnSpanFull(),
                     ])
                     ->columns(2),
