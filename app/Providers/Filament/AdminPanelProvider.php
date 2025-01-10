@@ -37,6 +37,7 @@ class AdminPanelProvider extends PanelProvider
             ])
             ->navigationGroups([
                 'Project Management',
+                'Tax',
                 'Master Data',
                 'Admin',
             ])

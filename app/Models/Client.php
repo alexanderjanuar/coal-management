@@ -20,4 +20,8 @@ class Client extends Model
     {
         return $this->hasMany(ApplicationClient::class);
     }
+
+    public function taxreports(){
+        return $this->hasMany(TaxReport::class);
+    }
 }

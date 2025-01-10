@@ -6,6 +6,7 @@ use App\Filament\Resources\TaskResource;
 use Filament\Actions;
 use Filament\Resources\Pages\ListRecords;
 
+
 class ListTasks extends ListRecords
 {
     protected static string $resource = TaskResource::class;
@@ -16,4 +17,6 @@ class ListTasks extends ListRecords
             Actions\CreateAction::make(),
         ];
     }
+
+    
 }

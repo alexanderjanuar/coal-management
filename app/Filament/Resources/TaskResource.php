@@ -14,6 +14,9 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\SoftDeletingScope;
 use Filament\Tables\Columns\SelectColumn;
 use Filament\Notifications\Notification;
+use Filament\Tables\Actions\Action;
+use Filament\Forms\Components\Select;
+use Illuminate\Support\Str;
 
 class TaskResource extends Resource
 {
@@ -55,44 +58,17 @@ class TaskResource extends Resource
                     ->sortable(),
                 Tables\Columns\TextColumn::make('title')
                     ->label('Task Title')
+                    ->limit(10)
                     ->searchable(),
-                SelectColumn::make('status')
-                    ->options([
-                        'pending' => 'Pending',
-                        'in_progress' => 'In Progress',
-                        'completed' => 'Completed',
-                        'blocked' => 'Blocked',
-                    ])
-                    ->beforeStateUpdated(function ($record, $state) {
-                        $currentStatus = $record->status;
-
-                        // Allow any status to be changed to blocked
-                        if ($state === 'blocked') {
-                            return true;
-                        }
-
-                        // Define the allowed status transitions
-                        $allowedTransitions = [
-                            'pending' => ['in_progress'],
-                            'in_progress' => ['completed'],
-                            'completed' => [], // Completed is final state
-                            'blocked' => ['pending', 'in_progress', 'completed'], // Can resume to any state from blocked
-                        ];
-
-                        // Check if the transition is allowed
-                        if (!in_array($state, $allowedTransitions[$currentStatus])) {
-                            Notification::make()
-                                ->danger()
-                                ->title('Invalid Status Change')
-                                ->body("Cannot change status from {$currentStatus} to {$state}")
-                                ->send();
-
-                            return false;
-                        }
-
-                        return true;
+                Tables\Columns\TextColumn::make('status')
+                    ->badge()
+                    ->color(fn(string $state): string => match ($state) {
+                        'pending' => 'gray',
+                        'in_progress' => 'warning',
+                        'completed' => 'success',
+                        'blocked' => 'danger',
                     })
-                    ->selectablePlaceholder(false),
+                    ->formatStateUsing(fn(string $state): string => __(Str::title($state))),
                 Tables\Columns\TextColumn::make('created_at')
                     ->dateTime()
                     ->sortable()
@@ -106,6 +82,30 @@ class TaskResource extends Resource
                 //
             ])
             ->actions([
+                Action::make('Change Status')
+                    ->form([
+                        Select::make('status')
+                            ->label('Task Status')
+                            ->options(
+                                function (Task $record) {
+                                    if ($record->status == "pending") {
+                                        return ['in_progress' => 'In Progress', 'blocked' => 'Blocked'];
+                                    } elseif ($record->status == "in_progress") {
+                                        return ['completed' => 'Completed', 'blocked' => 'Blocked'];
+                                    }
+                                }
+                            )
+                            ->native(false)
+                            ->required(),
+                    ])
+                    ->action(function (array $data, Task $record) {
+                        $record->status = $data['status'];
+                        $record->save();
+                    })
+                    ->color('info')
+                    ->icon('heroicon-o-arrow-path-rounded-square')
+                    ->requiresConfirmation(),
+
                 Tables\Actions\ViewAction::make(),
                 Tables\Actions\EditAction::make(),
             ])

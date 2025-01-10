@@ -53,7 +53,7 @@ class ProjectResource extends Resource
                         Forms\Components\TextInput::make('name')
                             ->required()
                             ->label('Project Name')
-                            ->unique()
+                            ->unique(ignoreRecord: true)
                             ->maxLength(255),
                         Select::make('client_id')
                             ->required()

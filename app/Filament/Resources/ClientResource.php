@@ -43,7 +43,7 @@ class ClientResource extends Resource
                         Forms\Components\TextInput::make('name')
                             ->required()
                             ->label('Client Name')
-                            ->unique()
+                            ->unique(ignoreRecord: true)
                             ->maxLength(255),
                         Forms\Components\TextInput::make('email')
                             ->email()
@@ -67,8 +67,7 @@ class ClientResource extends Resource
                             ->label('NPWP')
                             ->required(),
                         Forms\Components\TextInput::make('EFIN')
-                            ->label('EFIN')
-                            ->required(),
+                            ->label('EFIN'),
                         Forms\Components\TextInput::make('account_representative')
                             ->label('Account Representative (AR)')
                             ->maxLength(255),
