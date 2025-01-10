@@ -48,7 +48,6 @@ class ClientResource extends Resource
                         Forms\Components\TextInput::make('email')
                             ->email()
                             ->label('Client Email')
-                            ->required()
                             ->maxLength(255),
                         Forms\Components\TextInput::make('adress')
                             ->label('Adress'),
