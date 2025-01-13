@@ -42,28 +42,12 @@ class ClientFactory extends Factory
         [
             'name' => 'PT Golden Energy Mines',
             'email' => 'corsec@goldenenergymines.com'
-        ],
-        [
-            'name' => 'PT Resources Alam Indonesia',
-            'email' => 'info@raintbk.com'
-        ],
-        [
-            'name' => 'PT Delta Dunia Makmur',
-            'email' => 'ir@deltadunia.com'
-        ],
-        [
-            'name' => 'PT Toba Bara Sejahtra',
-            'email' => 'corsec@tobabara.com'
-        ],
-        [
-            'name' => 'PT Harum Energy',
-            'email' => 'corsec@harumenergy.com'
         ]
     ];
- 
+
     public function definition(): array
     {
-        $company = $this->faker->unique()->randomElement($this->companies);
+        $company = $this->faker->randomElement($this->companies);
         return [
             'name' => $company['name'],
             'email' => $company['email'],

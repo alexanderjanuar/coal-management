@@ -33,10 +33,11 @@ class ProjectFactory extends Factory
 
     public function definition(): array
     {
+        $index = $this->faker->numberBetween(0, count($this->projectTypes) - 1);
         return [
             'client_id' => Client::factory(),
-            'name' => $this->faker->unique()->randomElement($this->projectTypes),
-            'description' => $this->faker->unique()->randomElement($this->descriptions),
+            'name' => $this->projectTypes[$index],
+            'description' => $this->descriptions[$index],
             'status' => $this->faker->randomElement(['draft', 'in_progress', 'completed', 'on_hold', 'canceled']),
         ];
     }

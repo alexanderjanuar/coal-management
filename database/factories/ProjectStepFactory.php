@@ -40,11 +40,11 @@ class ProjectStepFactory extends Factory
 
     public function definition(): array
     {
-        $step = $this->faker->unique()->randomElement($this->steps);
+        // Remove unique() and let the order determine the step
         return [
             'project_id' => Project::factory(),
-            'name' => $step['name'],
-            'description' => $step['description'],
+            'name' => $this->steps[$this->faker->numberBetween(0, count($this->steps) - 1)]['name'],
+            'description' => $this->steps[$this->faker->numberBetween(0, count($this->steps) - 1)]['description'],
             'order' => $this->faker->numberBetween(1, 5),
             'status' => $this->faker->randomElement(['pending', 'in_progress', 'waiting_for_documents', 'completed']),
         ];
