@@ -15,14 +15,38 @@ class ProjectStepFactory extends Factory
      *
      * @return array<string, mixed>
      */
+    protected $steps = [
+        [
+            'name' => 'Commercial Documentation',
+            'description' => 'Preparation and management of all commercial and contractual documents including sales contract, LC, and export licenses.'
+        ],
+        [
+            'name' => 'Quality Control Setup',
+            'description' => 'Establishment of quality control procedures, sampling protocols, and laboratory coordination for coal analysis.'
+        ],
+        [
+            'name' => 'Vessel Nomination & Planning',
+            'description' => 'Management of vessel nomination process, schedule coordination, and berthing arrangements.'
+        ],
+        [
+            'name' => 'Loading Operations',
+            'description' => 'Supervision of loading operations including draft surveys, quality sampling, and cargo documentation.'
+        ],
+        [
+            'name' => 'Shipping Documentation',
+            'description' => 'Preparation and processing of all shipping documents including B/L, certificates, and export documentation.'
+        ]
+    ];
+
     public function definition(): array
     {
+        $step = $this->faker->unique()->randomElement($this->steps);
         return [
             'project_id' => Project::factory(),
-            'name' => fake()->sentence(2),
-            'order' => fake()->numberBetween(1, 5),
-            'description' => fake()->paragraph(),
-            'status' => fake()->randomElement(['pending', 'in_progress', 'waiting_for_documents', 'completed']),
+            'name' => $step['name'],
+            'description' => $step['description'],
+            'order' => $this->faker->numberBetween(1, 5),
+            'status' => $this->faker->randomElement(['pending', 'in_progress', 'waiting_for_documents', 'completed']),
         ];
     }
 }
