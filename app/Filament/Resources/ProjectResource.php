@@ -42,7 +42,7 @@ class ProjectResource extends Resource
     protected static ?string $navigationGroup = 'Project Management';
     protected static ?string $navigationIcon = 'heroicon-o-clipboard';
 
-
+    
     public static function form(Form $form): Form
     {
         return $form
@@ -58,7 +58,9 @@ class ProjectResource extends Resource
                         Select::make('client_id')
                             ->required()
                             ->label('Client')
-                            ->options(Client::all()->pluck('name', 'id')),
+                            ->options(Client::all()->pluck('name', 'id'))
+                            ->searchable()
+                            ->native(false),
                         Textarea::make('description')
                             ->columnSpanFull()
                     ])

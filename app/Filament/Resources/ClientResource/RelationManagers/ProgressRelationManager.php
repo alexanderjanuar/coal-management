@@ -49,6 +49,8 @@ class ProgressRelationManager extends RelationManager
                                 ->maxLength(255),
                             Select::make('client_id')
                                 ->required()
+                                ->searchable()
+                                ->native(false)
                                 ->label('Client')
                                 ->options(Client::all()->pluck('name', 'id')),
                             Textarea::make('description')
@@ -93,8 +95,6 @@ class ProgressRelationManager extends RelationManager
                                                 ->schema([
                                                     TextInput::make('name')->required(),
                                                     TextInput::make('description')->required(),
-                                                    FileUpload::make('file_path')
-                                                        ->columnSpanFull()
                                                 ])
                                                 ->itemLabel(fn(array $state): ?string => $state['name'] ?? null)
                                                 ->addActionLabel('Add New Document')
@@ -103,7 +103,7 @@ class ProgressRelationManager extends RelationManager
                                     ])
                                 ])
                                 ->itemLabel(fn(array $state): ?string => $state['name'] ?? null)
-                                ->collapsed()
+                                ->collapsible()
                                 ->orderColumn('order')
                                 ->columnSpanFull(),
 
