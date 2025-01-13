@@ -82,8 +82,6 @@ class StepsRelationManager extends RelationManager
                                 ->schema([
                                     TextInput::make('name')->required(),
                                     TextInput::make('description')->required(),
-                                    FileUpload::make('file_path')
-                                        ->columnSpanFull()
                                 ])
                                 ->itemLabel(fn(array $state): ?string => $state['name'] ?? null)
                                 ->columns(2)

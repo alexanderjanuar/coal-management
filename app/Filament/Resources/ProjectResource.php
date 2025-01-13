@@ -42,7 +42,7 @@ class ProjectResource extends Resource
     protected static ?string $navigationGroup = 'Project Management';
     protected static ?string $navigationIcon = 'heroicon-o-clipboard';
 
-    
+
     public static function form(Form $form): Form
     {
         return $form
@@ -129,7 +129,12 @@ class ProjectResource extends Resource
                     ->sortable(),
                 Tables\Columns\TextColumn::make('name')
                     ->label('Project Name')
-                    ->description(fn(Project $record): string => \Str::limit($record->description, 45, '...'))
+                    ->description(
+                        fn(Project $record): string =>
+                        $record->description
+                        ? \Str::limit($record->description, 45, '...')
+                        : '-'
+                    )
                     ->searchable(),
                 Tables\Columns\TextColumn::make('status')
                     ->badge()
