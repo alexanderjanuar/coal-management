@@ -114,19 +114,9 @@ class ProjectStepResource extends Resource
     {
         return $table
             ->columns([
-                Tables\Columns\TextColumn::make('project.client.name')
-                    ->toggleable(isToggledHiddenByDefault: true)
-                    ->searchable(),
-                Tables\Columns\TextColumn::make('project.name')
-                    ->label('Project Name')
-                    ->searchable(),
                 Tables\Columns\TextColumn::make('name')
                     ->label('Project Step Name')
                     ->searchable(),
-                Tables\Columns\TextColumn::make('order')
-                    ->badge()
-                    ->numeric()
-                    ->sortable(),
                 Tables\Columns\TextColumn::make('status')
                     ->badge()
                     ->color(fn(string $state): string => match ($state) {
@@ -156,6 +146,7 @@ class ProjectStepResource extends Resource
                     ->sortable()
                     ->toggleable(isToggledHiddenByDefault: true),
             ])
+            ->defaultGroup('project.client.name')
             ->filters([
                 //
             ])
