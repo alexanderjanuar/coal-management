@@ -58,7 +58,9 @@ class ProjectResource extends Resource
                         Select::make('client_id')
                             ->required()
                             ->label('Client')
-                            ->options(Client::all()->pluck('name', 'id')),
+                            ->options(Client::all()->pluck('name', 'id'))
+                            ->searchable()
+                            ->native(false),
                         Textarea::make('description')
                             ->columnSpanFull()
                     ])
@@ -127,7 +129,12 @@ class ProjectResource extends Resource
                     ->sortable(),
                 Tables\Columns\TextColumn::make('name')
                     ->label('Project Name')
-                    ->description(fn(Project $record): string => \Str::limit($record->description, 45, '...'))
+                    ->description(
+                        fn(Project $record): string =>
+                        $record->description
+                        ? \Str::limit($record->description, 45, '...')
+                        : '-'
+                    )
                     ->searchable(),
                 Tables\Columns\TextColumn::make('status')
                     ->badge()

@@ -23,11 +23,11 @@ class DatabaseSeeder extends Seeder
     public function run(): void
     {
         // Create admin user
-        User::factory()->create([
-            'name' => 'Admin User',
-            'email' => 'admin@example.com',
-            'password' => Hash::make('password'),
-        ]);
+        // User::factory()->create([
+        //     'name' => 'Admin User',
+        //     'email' => 'admin@gmail.com',
+        //     'password' => Hash::make('admin123'),
+        // ]);
 
         // Create clients with complete project structure
         Client::factory(5)->create()->each(function ($client) {

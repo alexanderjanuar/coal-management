@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources;
 
+use App\Filament\Exports\ClientExporter;
 use App\Filament\Resources\ClientResource\Pages;
 use App\Filament\Resources\ClientResource\RelationManagers\ProgressRelationManager;
 use App\Filament\Resources\ClientResource\RelationManagers\ApplicationsRelationManager;
@@ -21,7 +22,17 @@ use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\Fieldset;
 use Guava\FilamentModalRelationManagers\Actions\Table\RelationManagerAction;
 use Filament\Forms\Components\Select;
-
+use App\Filament\Imports\ClientImporter;
+use Filament\Tables\Actions\ImportAction;
+use Filament\Tables\Actions\ExportAction;
+use Filament\Actions\Exports\Models\Export;
+use Filament\Infolists\Components\IconEntry;
+use Filament\Infolists\Components\TextEntry;
+use Filament\Infolists\Components\ImageEntry;
+use Filament\Infolists\Components\Grid;
+use Filament\Infolists\Infolist;
+use Filament\Infolists\Components\Section as InfoSection;
+use Filament\Support\Enums\FontWeight;
 class ClientResource extends Resource
 {
     protected static ?string $model = Client::class;
@@ -117,6 +128,18 @@ class ClientResource extends Resource
             ->filters([
                 //
             ])
+            ->headerActions([
+                ImportAction::make()
+                    ->importer(ClientImporter::class)
+                    ->color('primary')
+                    ->label('Import Clients')
+                    ->icon('heroicon-o-arrow-down-tray'),
+                ExportAction::make()
+                    ->exporter(ClientExporter::class)
+                    ->label('Export Clients')
+                    ->icon('heroicon-o-arrow-up-tray')
+                    ->fileName(fn(Export $export): string => "client-{$export->getKey()}")
+            ])
             ->actions([
                 RelationManagerAction::make('progress-relation-manager')
                     ->label('Projects')
@@ -133,6 +156,8 @@ class ClientResource extends Resource
                 ]),
             ]);
     }
+
+    
 
     public static function getGloballySearchableAttributes(): array
     {

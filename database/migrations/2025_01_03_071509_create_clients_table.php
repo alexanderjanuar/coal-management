@@ -15,10 +15,10 @@ return new class extends Migration
             $table->id();
             $table->string('name');
             
-            $table->string('NPWP');
+            $table->string('NPWP')->nullable();
             $table->string('KPP')->nullable();
             $table->string('logo')->nullable();
-            $table->enum('status',['Active','Inactive'])->default('Active');
+            $table->enum('status',['Active','Inactive'])->nullable()->default('Active');
             $table->string('EFIN')->nullable();
             $table->string('account_representative')->nullable();
             $table->string('person_in_charge')->nullable();

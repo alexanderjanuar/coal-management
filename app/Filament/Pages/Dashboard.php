@@ -14,12 +14,10 @@ use Illuminate\Support\Facades\DB;
 class Dashboard extends BaseDashboard
 {
     protected static ?string $navigationIcon = 'heroicon-o-computer-desktop';
-
     protected static string $view = 'filament.pages.dashboard';
 
     public function getViewData(): array
     {
-        // Get statistics
         $stats = [
             'total_projects' => Project::count(),
             'active_projects' => Project::where('status', 'in_progress')->count(),
@@ -29,17 +27,10 @@ class Dashboard extends BaseDashboard
                 ->count(),
         ];
 
-        // Get clients with their projects and all related data
         $clients = Client::with([
             'projects' => function ($query) {
                 $query->latest();
-            },
-            'projects.steps' => function ($query) {
-                $query->orderBy('order');
-            },
-            'projects.steps.tasks',
-            'projects.steps.requiredDocuments',
-            'projects.steps.requiredDocuments.submittedDocuments'
+            }
         ])->get();
 
         return [

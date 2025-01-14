@@ -15,9 +15,7 @@ return new class extends Migration
             $table->id();
             $table->foreignId('project_step_id')->constrained('project_steps')->onDelete('cascade');
             $table->string('name');
-            $table->string('file_path');
             $table->enum('status', ['pending_review', 'approved', 'rejected'])->default('pending_review');
-            $table->text('rejection_reason')->nullable();
             $table->text('description')->nullable();
             $table->boolean('is_required')->default(true);
             $table->timestamps();
