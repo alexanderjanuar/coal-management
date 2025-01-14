@@ -104,8 +104,6 @@ class ProjectResource extends Resource
                                             ->schema([
                                                 TextInput::make('name')->required(),
                                                 TextInput::make('description')->required(),
-                                                FileUpload::make('file_path')
-                                                    ->columnSpanFull()
                                             ])
                                             ->itemLabel(fn(array $state): ?string => $state['name'] ?? null)
                                             ->addActionLabel('Add New Document')
@@ -241,6 +239,8 @@ class ProjectResource extends Resource
                     ->columns(2)
             ]);
     }
+
+    
 
     public static function getPages(): array
     {

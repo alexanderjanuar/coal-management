@@ -10,12 +10,19 @@ class ViewProject extends ViewRecord
 {
     protected static string $resource = ProjectResource::class;
 
-    protected static string $view = 'filament.resources.projects.view';
+    protected static string $view = 'filament.pages.project-details';
 
     protected function getHeaderActions(): array
     {
         return [
             Actions\EditAction::make(),
+        ];
+    }
+
+    public function getViewData(): array 
+    {
+        return [
+            'steps' => $this->record->steps,
         ];
     }
 }

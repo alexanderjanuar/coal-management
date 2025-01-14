@@ -1,4 +1,9 @@
 @filamentPWA
+
+@php
+    use App\Filament\Resources\ProjectResource;
+@endphp
+
 <x-filament-panels::page class="w-full">
     {{-- Stats Overview --}}
     <div class="grid gap-4 md:grid-cols-4 mb-8">
@@ -91,7 +96,7 @@
 
             @if($filteredProjects->isNotEmpty())
                 @foreach($filteredProjects as $project)
-                    <a href="{{ route('filament.admin.pages.project-details', ['record' => $project]) }}" 
+                    <a href="{{ ProjectResource::getUrl('view', ['record' => $project]) }}" 
                        class="block bg-white rounded-lg shadow hover:shadow-md transition-shadow">
                         <div class="p-4">
                             <div class="flex items-center justify-between">
