@@ -1,227 +1,749 @@
 <x-filament-panels::page>
-    <div class="space-y-6">
-        <!-- Header with Project Info -->
-        <div class="bg-white rounded-xl shadow-sm overflow-hidden">
-            <div class="p-6">
-                <div class="flex items-center justify-between mb-4">
-                    <div class="flex items-center gap-4">
-                        <div class="relative">
-                            @if($record->client && $record->client->logo)
-                            <img src="{{ Storage::url($record->client->logo) }}" alt="{{ $record->client->name }}"
-                                class="w-16 h-16 rounded-lg object-cover border-2 border-primary-50">
-                            @else
-                            <div class="w-16 h-16 rounded-lg bg-primary-50 flex items-center justify-center">
-                                <span class="text-primary-600 text-xl font-bold">
-                                    {{ $record->client ? substr($record->client->name, 0, 2) : 'P' }}
-                                </span>
-                            </div>
-                            @endif
-                            <div class="absolute -bottom-1 -right-1">
-                                <span
-                                    class="inline-flex items-center justify-center w-6 h-6 rounded-full bg-success-50 border-2 border-white">
-                                    <svg class="w-3 h-3 text-success-500" fill="currentColor" viewBox="0 0 20 20">
-                                        <path
-                                            d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" />
-                                    </svg>
-                                </span>
-                            </div>
-                        </div>
-                        <div>
-                            <div class="flex items-center gap-3">
-                                <h1 class="text-2xl font-bold text-gray-900">
-                                    {{ $record->name }}
-                                </h1>
-                                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium {{ match($record->status) {
-                                    'completed' => 'bg-success-50 text-success-700',
-                                    'in_progress' => 'bg-warning-50 text-warning-700',
-                                    'on_hold' => 'bg-danger-50 text-danger-700',
-                                    default => 'bg-gray-100 text-gray-700'
-                                } }}">
-                                    {{ ucwords(str_replace('_', ' ', $record->status)) }}
-                                </span>
-                            </div>
-                            <p class="text-gray-500 mt-1">{{ $record->client->name }}</p>
-                        </div>
-                    </div>
 
-                    <div class="flex items-center gap-3">
-                        <button
-                            class="inline-flex items-center justify-center px-4 py-2 text-sm font-medium text-primary-700 bg-primary-50 rounded-lg hover:bg-primary-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500">
-                            <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                    d="M12 4v16m8-8H4" />
-                            </svg>
-                            Add Step
-                        </button>
-                        <button
-                            class="inline-flex items-center justify-center px-4 py-2 text-sm font-medium text-white bg-primary-600 rounded-lg hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500">
-                            Edit Project
-                        </button>
+    <style>
+        @keyframes pulse-subtle {
+
+            0%,
+            100% {
+                opacity: 1;
+            }
+
+            50% {
+                opacity: 0.8;
+            }
+        }
+
+        @keyframes bounce-subtle {
+
+            0%,
+            100% {
+                transform: translateY(0);
+            }
+
+            50% {
+                transform: translateY(-5px);
+            }
+        }
+
+        @keyframes spin-slow {
+            from {
+                transform: rotate(0deg);
+            }
+
+            to {
+                transform: rotate(360deg);
+            }
+        }
+
+        .animate-pulse-subtle {
+            animation: pulse-subtle 2s infinite;
+        }
+
+        .animate-bounce-subtle {
+            animation: bounce-subtle 2s infinite;
+        }
+
+        .animate-spin-slow {
+            animation: spin-slow 3s linear infinite;
+        }
+
+        .tab-indicator {
+            transition: left 0.3s ease-in-out;
+        }
+
+        /* Custom scrollbar for webkit browsers */
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 5px;
+            height: 5px;
+        }
+
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: #f1f1f1;
+            border-radius: 5px;
+        }
+
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: #d1d5db;
+            border-radius: 5px;
+        }
+
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+            background: #9ca3af;
+        }
+    </style>
+
+    <div class="bg-white rounded-lg border-2 border-gray-100 shadow-sm overflow-hidden">
+        <div class="p-3 sm:p-5">
+            <div class="flex flex-col sm:flex-row gap-4">
+                <!-- Client Logo/Initial -->
+                <div class="relative flex-shrink-0 mx-auto sm:mx-0">
+                    @if($record->client && $record->client->logo)
+                    <div class="w-12 h-12 rounded-lg ring-1 ring-gray-100">
+                        <img src="{{ Storage::url($record->client->logo) }}" alt="{{ $record->client->name }}"
+                            class="w-full h-full object-cover rounded-lg">
                     </div>
+                    @else
+                    <div class="w-12 h-12 rounded-lg bg-gray-50 flex items-center justify-center">
+                        <span class="text-gray-600 text-lg font-semibold">
+                            {{ $record->client ? substr($record->client->name, 0, 2) : 'P' }}
+                        </span>
+                    </div>
+                    @endif
                 </div>
 
-                @if($record->description)
-                <p class="text-gray-600 mt-4">{{ $record->description }}</p>
-                @endif
-            </div>
-
-            <!-- Project Progress Tracker -->
-            <div class="border-t border-gray-100 px-6 py-8">
-                <div class="flex items-start justify-between relative">
-                    <!-- Progress Line -->
-                    <div class="absolute left-0 right-0 top-4 transform">
-                        <div class="h-1 bg-gray-200">
-                            <!-- Active Progress -->
-                            <div class="h-1 bg-orange-500 transition-all duration-500 ease-in-out" style="width: {{ match($record->status) {
-                                    'draft' => '0%',
-                                    'in_progress' => '33%',
-                                    'review' => '66%',
-                                    'completed' => '100%',
-                                    default => '0%'
-                                } }}">
+                <!-- Project Info -->
+                <div class="flex-1 min-w-0">
+                    <div class="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
+                        <div class="text-center sm:text-left">
+                            <h1 class="text-lg font-semibold text-gray-900 truncate">{{ $record->name }}</h1>
+                            <div
+                                class="mt-1 flex flex-col sm:flex-row items-center gap-2 sm:gap-3 text-sm text-gray-500">
+                                <span>{{ $record->client->name }}</span>
+                                @if($record->due_date)
+                                <span class="flex items-center gap-1">
+                                    <x-heroicon-m-calendar-days class="w-4 h-4" />
+                                    {{ $record->due_date->format('M d, Y') }}
+                                </span>
+                                @endif
                             </div>
+                        </div>
+
+                        <div class="flex flex-col sm:flex-row items-center gap-3">
+                            <!-- Team Members Button -->
+                            <button x-on:click="$dispatch('open-modal', { id: 'team-members-modal' })"
+                                class="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-3 py-1.5 text-sm font-medium text-gray-700 transition-colors group">
+                                <div class="flex items-center -space-x-2">
+                                    @foreach($record->userProject->take(4) as $member)
+                                    <div class="relative group/tooltip py-3">
+                                        <img src="https://ui-avatars.com/api/?name={{ urlencode($member->user->name) }}"
+                                            alt="{{ $member->user->name }}"
+                                            class="w-8 h-8 rounded-full ring-2 ring-white object-cover transition-transform hover:scale-110"
+                                            title="{{ $member->user->name }}">
+
+                                        <div class="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-2 py-1 bg-gray-900 text-white text-xs rounded-lg 
+                                                opacity-0 invisible group-hover/tooltip:opacity-100 group-hover/tooltip:visible transition-all duration-200 min-w-max z-[999]
+                                                shadow-lg ">
+                                            <span>{{ $member->user->name }}</span>
+                                            <div
+                                                class="absolute -bottom-1 left-1/2 -translate-x-1/2 w-2 h-2 bg-gray-900 rotate-45">
+                                            </div>
+                                        </div>
+                                    </div>
+                                    @endforeach
+
+                                    @if($record->userProject->count() > 4)
+                                    <div class="relative group/tooltip py-3">
+                                        <div
+                                            class="w-8 h-8 rounded-full ring-2 ring-white bg-gray-100 flex items-center justify-center transition-transform hover:scale-110">
+                                            <span class="text-xs font-medium text-gray-600">+{{
+                                                $record->userProject->count() - 4 }}</span>
+                                        </div>
+
+                                        <div class="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-2 py-1 bg-gray-900 text-white text-xs rounded-lg
+                                                opacity-0 invisible group-hover/tooltip:opacity-100 group-hover/tooltip:visible transition-all duration-200 whitespace-nowrap z-50
+                                                shadow-lg">
+                                            {{ $record->userProject->count() - 4 }} more team members
+                                            <div
+                                                class="absolute -bottom-1 left-1/2 -translate-x-1/2 w-2 h-2 bg-gray-900 rotate-45">
+                                            </div>
+                                        </div>
+                                    </div>
+                                    @endif
+                                </div>
+                            </button>
+                            <!-- Vertical Divider (hidden on mobile) -->
+                            <div class="hidden sm:block h-6 w-px bg-gray-200"></div>
+
+                            <!-- Status Badge -->
+                            <x-filament::badge :color="match($record->status) {
+                                'completed' => 'success',
+                                'in_progress' => 'warning',
+                                'on_hold' => 'danger',
+                                default => 'gray',
+                            }">
+                                {{ ucwords(str_replace('_', ' ', $record->status)) }}
+                            </x-filament::badge>
                         </div>
                     </div>
 
-                    <!-- Status Points -->
-                    @foreach(['Draft', 'In Progress', 'Review', 'Completed'] as $index => $stage)
-                    @php
-                    $isActive = match($record->status) {
-                    'draft' => $index === 0,
-                    'in_progress' => $index <= 1, 'review'=> $index <= 2, 'completed'=> $index <= 3, default=> $index
-                                === 0
-                                };
-                                $isCurrent = match($record->status) {
-                                'draft' => $index === 0,
-                                'in_progress' => $index === 1,
-                                'review' => $index === 2,
-                                'completed' => $index === 3,
-                                default => $index === 0
-                                };
-                                @endphp
-                                <div class="relative z-10 flex flex-col items-center" style="width: 120px">
-                                    <div class="flex items-center justify-center">
-                                        <div class="w-8 h-8 rounded-full border-2 {{ $isActive 
-                                ? ($isCurrent ? 'bg-orange-500 border-orange-500' : 'bg-orange-500 border-orange-500') 
-                                : 'bg-white border-gray-300' }} flex items-center justify-center">
-                                            @if($isActive)
-                                            @if($isCurrent)
-                                            <span class="text-white text-sm font-medium">{{ $index + 1 }}</span>
-                                            @else
-                                            <svg class="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 20 20">
-                                                <path
-                                                    d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" />
-                                            </svg>
-                                            @endif
-                                            @else
-                                            <span class="text-gray-400 text-sm font-medium">{{ $index + 1 }}</span>
-                                            @endif
-                                        </div>
-                                    </div>
-                                    <span
-                                        class="text-sm mt-2 {{ $isActive ? 'text-gray-900 font-medium' : 'text-gray-500' }}">
-                                        {{ $stage }}
-                                    </span>
-                                </div>
-                                @endforeach
+                    @if($record->description)
+                    <p class="mt-3 text-sm text-gray-600 line-clamp-2 text-center sm:text-left">{{ $record->description
+                        }}</p>
+                    @endif
                 </div>
             </div>
         </div>
+    </div>
 
-        <!-- Project Steps -->
-        <div class="grid grid-cols-1 gap-6">
-            @forelse($record->steps as $step)
-            <div class="bg-white rounded-xl shadow-sm overflow-hidden">
-                <div class="p-6">
-                    <div class="flex items-center justify-between mb-4">
-                        <div class="flex items-center gap-3">
-                            <div class="w-10 h-10 rounded-lg {{ match($step->status) {
-                                    'completed' => 'bg-success-50 text-success-600',
-                                    'in_progress' => 'bg-warning-50 text-warning-600',
-                                    'waiting_for_documents' => 'bg-info-50 text-info-600',
-                                    default => 'bg-gray-50 text-gray-600'
-                                } }} flex items-center justify-center">
-                                <span class="text-lg font-semibold">{{ $loop->iteration }}</span>
+
+    <div class="space-y-6">
+        <!-- Project Progress Tracker Card -->
+        <div class="bg-white rounded-xl shadow-sm overflow-hidden">
+            @php
+            $totalSteps = $record->steps->count();
+            $completedSteps = $record->steps->where('status', 'completed')->count();
+            $progressPercentage = $totalSteps > 0 ? round(($completedSteps / $totalSteps) * 100) : 0;
+            @endphp
+
+            <div class="p-4 sm:p-6 border-b border-gray-100">
+                <div class="flex flex-col sm:flex-row gap-6 sm:gap-8">
+                    <!-- Progress Circle -->
+                    <div class="relative flex-shrink-0 mx-auto sm:mx-0">
+                        <div class="w-16 sm:w-20 h-16 sm:h-20">
+                            <svg class="w-full h-full" viewBox="0 0 36 36">
+                                <!-- Background Circle -->
+                                <path d="M18 2.0845
+                                        a 15.9155 15.9155 0 0 1 0 31.831
+                                        a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke="#E5E7EB"
+                                    stroke-width="3" stroke-linecap="round" />
+
+                                <!-- Progress Circle -->
+                                <path d="M18 2.0845
+                                        a 15.9155 15.9155 0 0 1 0 31.831
+                                        a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke="#F59E0B"
+                                    stroke-width="3" stroke-linecap="round"
+                                    stroke-dasharray="{{ $progressPercentage * 1.01 }}, 100" />
+                            </svg>
+                            <div class="absolute inset-0 flex items-center justify-center">
+                                <div class="text-center">
+                                    <span class="text-base sm:text-xl font-bold text-gray-900">{{
+                                        $progressPercentage
+                                        }}%</span>
+                                </div>
                             </div>
-                            <div>
-                                <h3 class="text-lg font-semibold text-gray-900">{{ $step->name }}</h3>
-                                @if($step->description)
-                                <p class="text-sm text-gray-500">{{ $step->description }}</p>
+                        </div>
+                    </div>
+
+                    <!-- Project Info -->
+                    <div class="flex-1">
+                        <div class="flex flex-col sm:flex-row sm:items-center justify-between mb-2 gap-2">
+                            <h2 class="text-lg font-semibold text-gray-900">Project Progress</h2>
+                            <div class="flex flex-wrap items-center gap-3 sm:gap-4">
+                                <div class="flex items-center gap-2">
+                                    <div class="w-3 h-3 bg-green-500 rounded-full"></div>
+                                    <span class="text-sm text-gray-600">Completed: {{ $completedSteps }}</span>
+                                </div>
+                                <div class="flex items-center gap-2">
+                                    <div class="w-3 h-3 bg-gray-300 rounded-full"></div>
+                                    <span class="text-sm text-gray-600">Remaining: {{ $totalSteps -
+                                        $completedSteps
+                                        }}</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Progress Bar -->
+                        <div class="mt-4">
+                            <div class="h-2 w-full bg-gray-100 rounded-full overflow-hidden">
+                                <div class="h-full bg-amber-500 rounded-full transition-all duration-500"
+                                    style="width: {{ $progressPercentage }}%">
+                                </div>
+                            </div>
+                            <div class="flex flex-col sm:flex-row justify-between mt-2 gap-2">
+                                <p class="text-sm text-gray-500">
+                                    {{ $completedSteps }}/{{ $totalSteps }} steps completed
+                                </p>
+                                @if($record->due_date)
+                                <p class="text-sm text-gray-500 flex items-center gap-1">
+                                    <x-heroicon-m-calendar class="w-4 h-4" />
+                                    Due {{ $record->due_date->format('M d, Y') }}
+                                </p>
                                 @endif
                             </div>
                         </div>
-                        <span class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium {{ match($step->status) {
-                                'completed' => 'bg-success-50 text-success-700',
-                                'in_progress' => 'bg-warning-50 text-warning-700',
-                                'waiting_for_documents' => 'bg-info-50 text-info-700',
-                                default => 'bg-gray-100 text-gray-700'
-                            } }}">
-                            {{ ucwords(str_replace('_', ' ', $step->status)) }}
-                        </span>
                     </div>
+                </div>
+            </div>
 
-                    @if($step->tasks && $step->tasks->isNotEmpty())
-                    <div class="mt-4 space-y-3">
-                        @foreach($step->tasks as $task)
-                        <div class="flex items-center gap-4 p-4 bg-gray-50 rounded-lg">
-                            <div class="flex-shrink-0">
-                                <input type="checkbox"
-                                    class="h-5 w-5 text-primary-600 rounded border-gray-300 focus:ring-primary-500" {{
-                                    $task->status === 'completed' ? 'checked' : '' }}>
-                            </div>
-                            <div class="flex-grow">
-                                <h4
-                                    class="text-sm font-medium text-gray-900 {{ $task->status === 'completed' ? 'line-through text-gray-500' : '' }}">
-                                    {{ $task->title }}
-                                </h4>
-                                @if($task->description)
-                                <p class="text-sm text-gray-500 mt-1">{{ $task->description }}</p>
-                                @endif
-                            </div>
-                            <div class="flex items-center gap-2">
-                                @if($task->requires_document)
-                                <span
-                                    class="inline-flex items-center px-2 py-1 rounded-md text-xs font-medium bg-blue-50 text-blue-700">
-                                    <svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                            d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+
+            <div class="p-4 sm:p-6">
+                <div class="relative">
+                    <!-- Vertical Line -->
+                    <div class="absolute left-6 top-0 h-full w-0.5 bg-gray-200 hidden sm:block"></div>
+
+                    <!-- Steps -->
+                    <div class="space-y-6 sm:space-y-8">
+                        @foreach($record->steps->sortBy('order') as $step)
+                        @php
+                        $isCompleted = $step->status === 'completed';
+                        $isActive = $step->status === 'in_progress';
+                        $isPending = !$isCompleted && !$isActive;
+
+                        // Calculate step progress
+                        $totalTasks = $step->tasks->count();
+                        $completedTasks = $step->tasks->where('status', 'completed')->count();
+                        $stepProgress = $totalTasks > 0 ? ($completedTasks / $totalTasks) * 100 : 0;
+                        @endphp
+
+                        <div x-data="{ isOpen: false }" class="relative">
+                            <!-- Step Header -->
+                            <div class="flex items-start group">
+                                <!-- Status Circle -->
+                                <div @class([ 'relative z-10 flex items-center justify-center w-10 sm:w-12 h-10 sm:h-12 rounded-full border-2 transition-all duration-300'
+                                    , 'bg-green-500 border-green-500'=> $isCompleted,
+                                    'bg-amber-500 border-amber-500 ring-4 ring-amber-100' => $isActive,
+                                    'bg-white border-gray-300' => $isPending,
+                                    ])>
+                                    @if($isCompleted)
+                                    <svg class="w-5 sm:w-6 h-5 sm:h-6 text-white" fill="currentColor"
+                                        viewBox="0 0 20 20">
+                                        <path
+                                            d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" />
                                     </svg>
-                                    Requires Document
-                                </span>
+                                    @else
+                                    <span
+                                        class="text-base sm:text-lg font-semibold {{ $isActive ? 'text-white' : 'text-gray-500' }}">
+                                        {{ $step->order }}
+                                    </span>
+                                    @endif
+                                </div>
+
+                                <!-- Step Content -->
+                                <div class="flex-1 ml-4">
+                                    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                                        <div>
+                                            <h3 class="text-base sm:text-lg font-medium text-gray-900">{{
+                                                $step->name }}
+                                            </h3>
+                                            @if($step->description)
+                                            <p class="text-sm text-gray-500 mt-1">{{ $step->description }}</p>
+                                            @endif
+                                        </div>
+                                        <button @click="isOpen = !isOpen"
+                                            class="self-start p-2 hover:bg-gray-100 rounded-lg transition-colors">
+                                            <x-heroicon-o-chevron-down
+                                                class="w-5 h-5 text-gray-400 transition-transform duration-300" />
+                                        </button>
+                                    </div>
+
+                                    <!-- Progress Bar (if has tasks) -->
+                                    @if($totalTasks > 0)
+                                    <div class="mt-3">
+                                        <div
+                                            class="flex flex-col sm:flex-row sm:items-center justify-between text-xs text-gray-500 mb-1 gap-2">
+                                            <span>{{ $completedTasks }}/{{ $totalTasks }} tasks completed</span>
+                                            <div class="flex items-center gap-2">
+                                                <span>{{ number_format($stepProgress) }}%</span>
+                                                <span class="text-gray-300">&bull;</span>
+                                                <span class="text-gray-400 flex items-center gap-1">
+                                                    <x-heroicon-m-clock class="w-3 h-3" />
+                                                    Updated {{ $step->updated_at->format('M d, Y H:i') }}
+                                                </span>
+                                            </div>
+                                        </div>
+                                        <!-- Step Progress Bar -->
+                                        <div class="h-1.5 w-full bg-gray-100 rounded-full overflow-hidden">
+                                            <div class="h-full bg-amber-500 rounded-full transition-all duration-500"
+                                                style="width: {{ $stepProgress }}%">
+                                            </div>
+                                        </div>
+                                    </div>
+                                    @endif
+                                </div>
+                            </div>
+
+                            <!-- Expandable Content -->
+                            <div x-show="isOpen" x-transition:enter="transition ease-out duration-200"
+                                x-transition:enter-start="opacity-0 -translate-y-2"
+                                x-transition:enter-end="opacity-100 translate-y-0" class="mt-4 ml-4 sm:ml-16 space-y-4">
+
+                                <!-- Tasks Section -->
+
+                                @if($step->tasks->isNotEmpty())
+                                <div class="space-y-2">
+                                    <h4 class="text-sm font-medium text-gray-700">Tasks</h4>
+                                    <div class="space-y-2">
+                                        @foreach($step->tasks as $task)
+                                        <div x-data="{ showComments: false }"
+                                            class="flex flex-col bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
+                                            <!-- Task Main Content -->
+                                            <div class="flex flex-col sm:flex-row sm:items-center gap-3 p-3">
+                                                <input type="checkbox" wire:click="toggleTaskStatus({{ $task->id }})"
+                                                    @class([ 'w-4 h-4 rounded border-gray-300 flex-shrink-0'
+                                                    , 'text-amber-600 focus:ring-amber-500'=>
+                                                !auth()->user()->hasRole('staff'),
+                                                'text-gray-300' => auth()->user()->hasRole('staff')
+                                                ])
+                                                {{ $task->status === 'completed' ? 'checked' : '' }}
+                                                @disabled(auth()->user()->hasRole('staff'))
+                                                >
+
+                                                <div class="flex-1 min-w-0">
+                                                    <div
+                                                        class="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                                                        <p
+                                                            class="text-sm font-medium text-gray-900 
+                                                                {{ $task->status === 'completed' ? 'line-through text-gray-500' : '' }}">
+                                                            {{ $task->title }}
+                                                        </p>
+                                                        <span class="text-xs text-gray-400">
+                                                            {{ $task->updated_at->format('M d, Y H:i') }}
+                                                        </span>
+                                                    </div>
+                                                    @if($task->due_date)
+                                                    <div class="flex flex-wrap items-center gap-3 mt-0.5">
+                                                        <p class="text-xs text-gray-500 flex items-center gap-1">
+                                                            <x-heroicon-m-calendar class="w-3 h-3" />
+                                                            Due {{ $task->due_date->format('M d, Y H:i') }}
+                                                        </p>
+                                                        @if($task->status === 'completed')
+                                                        <p class="text-xs text-green-500 flex items-center gap-1">
+                                                            <x-heroicon-m-check-circle class="w-3 h-3" />
+                                                            Completed {{ $task->completed_at?->format('M d, Y
+                                                            H:i') }}
+                                                        </p>
+                                                        @endif
+                                                    </div>
+                                                    @endif
+                                                </div>
+
+                                                <div
+                                                    class="flex flex-wrap sm:flex-nowrap items-center gap-2 mt-2 sm:mt-0">
+                                                    <!-- Task Status Button & Dropdown -->
+                                                    <div x-data="{ open: false }" class="relative flex-1 sm:flex-none">
+                                                        <button @click="open = !open"
+                                                            @class([ 'w-full sm:w-auto inline-flex items-center justify-center gap-2 px-3 py-1.5 text-xs font-medium rounded-full transition-all duration-200 shadow-sm'
+                                                            , 'opacity-85'=>
+                                                            auth()->user()->hasRole('staff'),
+                                                            'bg-green-50 text-green-700 hover:bg-green-100
+                                                            ring-1
+                                                            ring-green-200' => $task->status === 'completed',
+                                                            'bg-amber-50 text-amber-700 hover:bg-amber-100
+                                                            ring-1
+                                                            ring-amber-200' => $task->status === 'in_progress',
+                                                            'bg-red-50 text-red-700 hover:bg-red-100 ring-1
+                                                            ring-red-200' => $task->status === 'blocked',
+                                                            'bg-gray-50 text-gray-700 hover:bg-gray-100 ring-1
+                                                            ring-gray-200' => $task->status === 'pending'
+                                                            ])
+                                                            @if(auth()->user()->hasRole('staff'))
+                                                            disabled
+                                                            @endif
+                                                            >
+                                                            <!-- Status Indicator Dot -->
+                                                            <span class="relative flex h-2 w-2">
+                                                                <span
+                                                                    class="animate-ping absolute inline-flex h-full w-full rounded-full opacity-75"
+                                                                    :class="{
+                                                                                'bg-green-400': '{{ $task->status }}' === 'completed',
+                                                                                'bg-amber-400': '{{ $task->status }}' === 'in_progress',
+                                                                                'bg-red-400': '{{ $task->status }}' === 'blocked',
+                                                                                'bg-gray-400': '{{ $task->status }}' === 'pending'
+                                                                            }">
+                                                                </span>
+                                                                <span class="relative inline-flex rounded-full h-2 w-2"
+                                                                    :class="{
+                                                                                'bg-green-500': '{{ $task->status }}' === 'completed',
+                                                                                'bg-amber-500': '{{ $task->status }}' === 'in_progress',
+                                                                                'bg-red-500': '{{ $task->status }}' === 'blocked',
+                                                                                'bg-gray-500': '{{ $task->status }}' === 'pending'
+                                                                            }">
+                                                                </span>
+                                                            </span>
+                                                            {{ ucfirst($task->status) }}
+                                                            @if(!auth()->user()->hasRole('staff'))
+                                                            <x-heroicon-m-chevron-down
+                                                                class="w-4 h-4 transition-transform" />
+                                                            @endif
+                                                        </button>
+
+                                                        <!-- Status Dropdown Menu - Only show if not staff -->
+                                                        @if(!auth()->user()->hasRole('staff'))
+                                                        <!-- Status Dropdown Menu -->
+                                                        <div x-show="open"
+                                                            x-transition:enter="transition ease-out duration-200"
+                                                            x-transition:enter-start="opacity-0 scale-95"
+                                                            x-transition:enter-end="opacity-100 scale-100"
+                                                            x-transition:leave="transition ease-in duration-150"
+                                                            x-transition:leave-start="opacity-100 scale-100"
+                                                            x-transition:leave-end="opacity-0 scale-95"
+                                                            @click.away="open = false"
+                                                            class="absolute right-0 z-10 mt-2 w-44 origin-top-right rounded-lg bg-white shadow-lg ring-1 ring-black ring-opacity-5 divide-y divide-gray-100">
+
+                                                            <div class="py-1">
+                                                                <button
+                                                                    x-on:click="$dispatch('open-modal', { id: 'confirm-status-modal-{{ $task->id }}' }); 
+                                                                              $wire.updateTaskStatus({{ $task->id }}, 'pending')"
+                                                                    class="group flex w-full items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-50">
+                                                                    <span
+                                                                        class="mr-3 h-2 w-2 rounded-full bg-gray-400"></span>
+                                                                    Pending
+                                                                </button>
+                                                                <button
+                                                                    x-on:click="$dispatch('open-modal', { id: 'confirm-status-modal-{{ $task->id }}' }); 
+                                                                              $wire.updateTaskStatus({{ $task->id }}, 'in_progress')"
+                                                                    class="group flex w-full items-center px-4 py-2 text-sm text-amber-700 hover:bg-amber-50">
+                                                                    <span
+                                                                        class="mr-3 h-2 w-2 rounded-full bg-amber-400 animate-pulse"></span>
+                                                                    In Progress
+                                                                </button>
+                                                                <button
+                                                                    x-on:click="$dispatch('open-modal', { id: 'confirm-status-modal-{{ $task->id }}' }); 
+                                                                              $wire.updateTaskStatus({{ $task->id }}, 'completed')"
+                                                                    class="group flex w-full items-center px-4 py-2 text-sm text-green-700 hover:bg-green-50">
+                                                                    <span
+                                                                        class="mr-3 h-2 w-2 rounded-full bg-green-400"></span>
+                                                                    Completed
+                                                                </button>
+                                                                <button
+                                                                    x-on:click="$dispatch('open-modal', { id: 'confirm-status-modal-{{ $task->id }}' }); 
+                                                                              $wire.updateTaskStatus({{ $task->id }}, 'blocked')"
+                                                                    class="group flex w-full items-center px-4 py-2 text-sm text-red-700 hover:bg-red-50">
+                                                                    <span
+                                                                        class="mr-3 h-2 w-2 rounded-full bg-red-400"></span>
+                                                                    Blocked
+                                                                </button>
+                                                            </div>
+                                                        </div>
+
+                                                        <x-filament::modal id="confirm-status-modal-{{ $task->id }}"
+                                                            width="md">
+                                                            <div class="p-2 space-y-6">
+                                                                <!-- Header -->
+                                                                <div class="flex items-center gap-4">
+                                                                    <div @class([ 'w-12 h-12 rounded-full flex items-center justify-center'
+                                                                        , 'bg-gray-100'=> $newTaskStatus === 'pending',
+                                                                        'bg-amber-100' => $newTaskStatus ===
+                                                                        'in_progress',
+                                                                        'bg-green-100' => $newTaskStatus ===
+                                                                        'completed',
+                                                                        'bg-red-100' => $newTaskStatus === 'blocked'
+                                                                        ])>
+                                                                        <x-heroicon-o-arrow-path-rounded-square
+                                                                            @class([ 'w-6 h-6' , 'text-gray-600'=>
+                                                                            $newTaskStatus === 'pending',
+                                                                            'text-amber-600' => $newTaskStatus ===
+                                                                            'in_progress',
+                                                                            'text-green-600' => $newTaskStatus ===
+                                                                            'completed',
+                                                                            'text-red-600' => $newTaskStatus ===
+                                                                            'blocked'
+                                                                            ]) />
+                                                                    </div>
+
+                                                                    <div>
+                                                                        <h2 class="text-lg font-medium text-gray-900">
+                                                                            Update Task Status</h2>
+                                                                        <p class="text-sm text-gray-500">Are you sure
+                                                                            you want to proceed?</p>
+                                                                    </div>
+                                                                </div>
+
+                                                                <!-- Content -->
+                                                                <div class="bg-gray-50 rounded-lg p-4">
+                                                                    <div class="flex items-center justify-between">
+                                                                        <span class="text-sm text-gray-600">Current
+                                                                            Status</span>
+                                                                        <x-filament::badge :color="match($task->status) {
+                                                                                'completed' => 'success',
+                                                                                'in_progress' => 'warning',
+                                                                                'blocked' => 'danger',
+                                                                                default => 'gray'
+                                                                            }">
+                                                                            {{ ucfirst($task->status) }}
+                                                                        </x-filament::badge>
+                                                                    </div>
+
+                                                                    <div class="flex items-center justify-between mt-3">
+                                                                        <span class="text-sm text-gray-600">New
+                                                                            Status</span>
+                                                                        <x-filament::badge :color="match($newTaskStatus) {
+                                                                                'completed' => 'success',
+                                                                                'in_progress' => 'warning',
+                                                                                'blocked' => 'danger',
+                                                                                default => 'gray'
+                                                                            }">
+                                                                            {{ ucfirst($newTaskStatus) }}
+                                                                        </x-filament::badge>
+                                                                    </div>
+                                                                </div>
+
+                                                                <!-- Actions -->
+                                                                <div class="flex justify-end gap-3">
+                                                                    <x-filament::button color="gray"
+                                                                        x-on:click="$dispatch('close-modal', { id: 'confirm-status-modal-{{ $task->id }}' })">
+                                                                        Cancel
+                                                                    </x-filament::button>
+                                                                    <x-filament::button wire:click="confirmStatusChange"
+                                                                        :color="match($newTaskStatus) {
+                                                                                'completed' => 'success',
+                                                                                'in_progress' => 'warning',
+                                                                                'blocked' => 'danger',
+                                                                                default => 'gray'
+                                                                            }">
+                                                                        Update Status
+                                                                    </x-filament::button>
+                                                                </div>
+                                                            </div>
+                                                        </x-filament::modal>
+                                                        @endif
+                                                    </div>
+
+                                                    <!-- Comment Button with Counter -->
+                                                    <button @click="showComments = !showComments"
+                                                        class="flex items-center gap-1 px-2 py-1 text-xs font-medium rounded-full transition-colors"
+                                                        :class="{ 
+                                                                    'bg-amber-50 text-amber-600': showComments, 
+                                                                    'bg-gray-100 text-gray-600 hover:bg-amber-50 hover:text-amber-600': !showComments 
+                                                                }">
+                                                        <x-heroicon-m-chat-bubble-left-right class="w-4 h-4" />
+                                                        <span>{{ $task->comments->count() }}</span>
+                                                    </button>
+                                                </div>
+                                            </div>
+                                            <!-- Comments Section -->
+                                            <div x-show="showComments"
+                                                x-transition:enter="transition ease-out duration-200"
+                                                x-transition:enter-start="opacity-0 transform -translate-y-2"
+                                                x-transition:enter-end="opacity-100 transform translate-y-0"
+                                                class="border-t border-gray-200">
+                                                <div class="p-3 space-y-3">
+                                                    <livewire:project-detail-comments :task="$task"
+                                                        :wire:key="'comments-'.$task->id" />
+                                                </div>
+                                            </div>
+                                        </div>
+                                        @endforeach
+                                    </div>
+                                </div>
                                 @endif
-                                <span class="inline-flex items-center px-2 py-1 rounded-md text-xs font-medium {{ match($task->status) {
-                                                'completed' => 'bg-success-50 text-success-700',
-                                                'in_progress' => 'bg-warning-50 text-warning-700',
-                                                'blocked' => 'bg-danger-50 text-danger-700',
-                                                default => 'bg-gray-100 text-gray-700'
-                                            } }}">
-                                    {{ ucwords(str_replace('_', ' ', $task->status)) }}
-                                </span>
+
+
+                                <!-- Documents Section -->
+                                @if($step->requiredDocuments->isNotEmpty())
+                                <div class="space-y-2">
+                                    <h4 class="text-sm font-medium text-gray-700">Required Documents</h4>
+                                    <div class="space-y-2">
+                                        @foreach($step->requiredDocuments as $document)
+                                        <!-- Document Item -->
+                                        <button
+                                            x-on:click="$dispatch('open-modal', { id: 'document-modal-{{ $document->id }}' })"
+                                            class="w-full group">
+                                            <div class="flex flex-col sm:flex-row items-start sm:items-center gap-3 p-3 bg-white rounded-lg transition-all duration-200
+                                                                        {{ match($document->status) {
+                                                                            'approved' => 'border-2 border-green-200 hover:border-green-300',
+                                                                            'pending_review' => 'border-2 border-amber-200 hover:border-amber-300',
+                                                                            'rejected' => 'border-2 border-red-200 hover:border-red-300',
+                                                                            default => 'border-2 border-gray-200 hover:border-gray-300'
+                                                                        } }}">
+
+                                                <!-- Left: Icon with Status -->
+                                                <div class="relative flex-shrink-0">
+                                                    <div
+                                                        class="{{ match($document->status) {
+                                                                                'approved' => 'bg-green-50 text-green-600',
+                                                                                'pending_review' => 'bg-amber-50 text-amber-600',
+                                                                                'rejected' => 'bg-red-50 text-red-600',
+                                                                                default => 'bg-gray-50 text-gray-600'
+                                                                            } }} 
+                                                                            w-10 h-10 rounded-lg flex items-center justify-center transition-colors">
+                                                        @if($document->submittedDocuments->count() > 0)
+                                                        <x-heroicon-o-document-text class="w-5 h-5" />
+                                                        @else
+                                                        <x-heroicon-o-document-plus class="w-5 h-5" />
+                                                        @endif
+                                                    </div>
+
+                                                    <!-- Status Dot -->
+                                                    <span class="absolute -bottom-1 -right-1 w-3 h-3 rounded-full ring-2 ring-white
+                                                                    {{ match($document->status) {
+                                                                        'approved' => 'bg-green-500',
+                                                                        'pending_review' => 'bg-amber-500',
+                                                                        'rejected' => 'bg-red-500',
+                                                                        default => 'bg-gray-400'
+                                                                    } }}">
+                                                    </span>
+                                                </div>
+
+                                                <!-- Center: Document Info -->
+                                                <div class="flex-1 min-w-0 text-left">
+                                                    <p class="text-sm font-medium transition-colors
+                                                                    {{ match($document->status) {
+                                                                        'approved' => 'text-green-900',
+                                                                        'pending_review' => 'text-amber-900',
+                                                                        'rejected' => 'text-red-900',
+                                                                        default => 'text-gray-900'
+                                                                    } }}">
+                                                        {{ $document->name }}
+                                                    </p>
+                                                    @if($document->description)
+                                                    <p
+                                                        class="text-xs text-gray-500 mt-0.5 line-clamp-1 sm:line-clamp-none">
+                                                        {{ $document->description }}
+                                                    </p>
+                                                    @endif
+                                                </div>
+
+                                                <!-- Right: Status Badge -->
+                                                <div class="flex items-center gap-2 w-full sm:w-auto mt-2 sm:mt-0">
+                                                    <div
+                                                        class="flex items-center gap-2 
+                                                                    {{ match($document->status) {
+                                                                        'approved' => 'bg-green-50 text-green-700',
+                                                                        'pending_review' => 'bg-amber-50 text-amber-700',
+                                                                        'rejected' => 'bg-red-50 text-red-700',
+                                                                        default => 'bg-gray-50 text-gray-700'
+                                                                    } }} 
+                                                                    px-2.5 py-1 rounded-full text-xs font-medium flex-1 sm:flex-initial justify-center">
+                                                        <span class="relative flex w-2 h-2">
+                                                            <span class="{{ $document->status === 'pending_review' ? 'animate-ping' : '' }} 
+                                                                            absolute inline-flex h-full w-full rounded-full opacity-75
+                                                                            {{ match($document->status) {
+                                                                                'approved' => 'bg-green-500',
+                                                                                'pending_review' => 'bg-amber-500',
+                                                                                'rejected' => 'bg-red-500',
+                                                                                default => 'bg-gray-500'
+                                                                            } }}">
+                                                            </span>
+                                                            <span class="relative inline-flex rounded-full h-2 w-2 
+                                                                            {{ match($document->status) {
+                                                                                'approved' => 'bg-green-500',
+                                                                                'pending_review' => 'bg-amber-500',
+                                                                                'rejected' => 'bg-red-500',
+                                                                                default => 'bg-gray-500'
+                                                                            } }}">
+                                                            </span>
+                                                        </span>
+                                                        <span class="ml-1.5">
+                                                            {{ ucwords(str_replace('_', ' ', $document->status
+                                                            ?? 'Not
+                                                            Submitted')) }}
+                                                        </span>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </button>
+
+                                        <!-- Document Modal -->
+                                        <x-filament::modal id="document-modal-{{ $document->id }}" width="4xl"
+                                            slide-over>
+                                            @livewire('project-detail-document-modal',
+                                            ['document' => $document],
+                                            key('document-modal-'.$document->id))
+                                        </x-filament::modal>
+                                        @endforeach
+                                    </div>
+                                </div>
+
+                                @endif
                             </div>
                         </div>
                         @endforeach
                     </div>
-                    @endif
                 </div>
             </div>
-            @empty
-            <div class="bg-white rounded-xl shadow-sm p-6 text-center">
-                <div class="flex flex-col items-center justify-center">
-                    <div class="w-16 h-16 rounded-full bg-primary-50 flex items-center justify-center mb-4">
-                        <svg class="w-8 h-8 text-primary-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-                        </svg>
-                    </div>
-                    <h3 class="text-lg font-medium text-gray-900">No Steps Yet</h3>
-                    <p class="text-gray-500 mt-1">Get started by adding your first project step</p>
-                    <button
-                        class="mt-4 inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-primary-600 hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500">
-                        Add First Step
-                    </button>
-                </div>
-            </div>
-            @endforelse
         </div>
+
+
     </div>
+
+
+    <x-filament::modal id="team-members-modal" width="3xl">
+        <div class="min-h-[50vh]">
+            @livewire('project-detail-user', ['project' => $record])
+        </div>
+    </x-filament::modal>
+
+
+
 </x-filament-panels::page>
