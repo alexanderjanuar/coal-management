@@ -20,4 +20,9 @@ class RequiredDocument extends Model
     {
         return $this->hasMany(SubmittedDocument::class);
     }
+
+    public function comments()
+    {
+        return $this->morphMany(Comment::class, 'commentable');
+    }
 }

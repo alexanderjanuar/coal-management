@@ -4,34 +4,50 @@ namespace App\Filament\Pages;
 
 use Filament\Pages\Page;
 use App\Models\Project;
+use App\Models\Comment;
+use Filament\Forms\Components\RichEditor;
+use Filament\Forms\Form;
+use Filament\Forms\Contracts\HasForms;
+use Filament\Forms\Concerns\InteractsWithForms;
+use Livewire\Attributes\Computed;
 
-class ProjectDetails extends Page
+
+
+class ProjectDetails extends Page implements HasForms
 {
-    public Project $project;
+    use InteractsWithForms;
+
+    public Project $record;
+    public ?array $commentData = [];
+    public ?int $selectedTaskId = null;
 
     protected static string $view = 'filament.pages.project-details';
-    
     protected static bool $shouldRegisterNavigation = false;
 
-    public function mount(Project $project): void 
-    {   
-        $this->project = $project->load([
-            'client',
-            'steps' => fn($query) => $query->orderBy('order'),
-            'steps.tasks',
-            'steps.requiredDocuments',
-            'steps.requiredDocuments.submittedDocuments'
-        ]);
 
+    public ?string $comment = '';
+    
+    public function mount(int|string $record): void 
+    {
+        parent::mount($record);
+        $this->form->fill();
     }
 
     protected function getViewData(): array
     {
         return [
-            'project' => $this->project,
-            'client' => $this->project->client,
-            'steps' => $this->project->steps,
+            'record' => $this->record,
+            'client' => $this->record->client,
+            'steps' => $this->record->steps,
+            'progressPercentage' => $this->calculateProgress(),
         ];
     }
 
+    private function calculateProgress(): int
+    {
+        $totalSteps = $this->record->steps->count();
+        $completedSteps = $this->record->steps->where('status', 'completed')->count();
+
+        return $totalSteps > 0 ? round(($completedSteps / $totalSteps) * 100) : 0;
+    }
 }

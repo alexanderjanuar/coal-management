@@ -1,5 +1,44 @@
 @filamentPWA
+
 <x-filament-panels::page class="w-full">
+
+    <style>
+        @keyframes pulse-subtle {
+
+            0%,
+            100% {
+                opacity: 1;
+            }
+
+            50% {
+                opacity: 0.8;
+            }
+        }
+
+        @keyframes bounce-subtle {
+
+            0%,
+            100% {
+                transform: translateY(0);
+            }
+
+            50% {
+                transform: translateY(-5px);
+            }
+        }
+
+        .animate-pulse-subtle {
+            animation: pulse-subtle 2s infinite;
+        }
+
+        .animate-bounce-subtle {
+            animation: bounce-subtle 2s infinite;
+        }
+
+        .animate-spin-slow {
+            animation: spin 3s linear infinite;
+        }
+    </style>
     {{-- Stats Overview --}}
     <div class="grid gap-4 md:grid-cols-4 mb-8">
         <x-filament::card>
@@ -56,233 +95,318 @@
         <div class="border-b border-gray-200">
             <nav class="-mb-px flex space-x-8">
                 @php
-                    $statuses = ['all', 'draft', 'in progress', 'completed', 'on hold', 'canceled'];
-                    $currentStatus = request()->query('status', 'all');
+                $statuses = ['all', 'draft', 'in progress', 'completed', 'on hold', 'canceled'];
+                $currentStatus = request()->query('status', 'all');
                 @endphp
 
                 @foreach ($statuses as $status)
-                    <a href="?status={{ str_replace(' ', '_', $status) }}" @class([
-                        'whitespace-nowrap pb-4 px-1 border-b-2 font-medium text-sm',
-                        'border-primary-500 text-primary-600' =>
-                            $currentStatus === str_replace(' ', '_', $status),
-                        'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300' =>
-                            $currentStatus !== str_replace(' ', '_', $status),
+                <a href="?status={{ str_replace(' ', '_', $status) }}"
+                    @class([ 'whitespace-nowrap pb-4 px-1 border-b-2 font-medium text-sm'
+                    , 'border-primary-500 text-primary-600'=>
+                    $currentStatus === str_replace(' ', '_', $status),
+                    'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300' =>
+                    $currentStatus !== str_replace(' ', '_', $status),
                     ])>
-                        {{ ucwords($status) }}
-                        @if ($status !== 'all')
-                            <span class="ml-2 py-0.5 px-2.5 rounded-full text-xs font-medium bg-gray-100">
-                                {{ $clients->flatMap->projects->where('status', str_replace(' ', '_', $status))->count() }}
-                            </span>
-                        @endif
-                    </a>
+                    {{ ucwords($status) }}
+                    @if ($status !== 'all')
+                    <span class="ml-2 py-0.5 px-2.5 rounded-full text-xs font-medium bg-gray-100">
+                        {{ $clients->flatMap->projects->where('status', str_replace(' ', '_', $status))->count() }}
+                    </span>
+                    @endif
+                </a>
                 @endforeach
             </nav>
         </div>
     </div>
     {{-- Projects List --}}
-    <div class="space-y-4"> <!-- Changed to space-y-4 for consistent spacing -->
+    <div class="space-y-4">
+        <!-- Changed to space-y-4 for consistent spacing -->
         @foreach ($clients as $client)
-            @php
-                $filteredProjects = $client->projects->when($currentStatus !== 'all', function ($projects) use (
-                    $currentStatus,
-                ) {
-                    return $projects->where('status', $currentStatus);
-                });
-            @endphp
+        @php
+        $filteredProjects = $client->projects->when($currentStatus !== 'all', function ($projects) use ($currentStatus)
+        {
+        return $projects->where('status', $currentStatus);
+        });
+        @endphp
 
-            @if ($filteredProjects->isNotEmpty())
-                @foreach ($filteredProjects as $project)
-                    <div x-data="{ open: false }" class="bg-white rounded-lg border border-gray-200">
-                        <!-- Updated styling to match the image -->
-                        {{-- Project Header --}}
-                        <div @click="open = !open"
-                            class="p-6 cursor-pointer hover:bg-gray-50 transition-colors duration-150">
-                            <div class="flex items-center justify-between mb-2">
-                                <div class="flex items-center gap-4">
-                                    @if ($client->logo)
-                                        <img src="{{ Storage::url($client->logo) }}" alt="{{ $client->name }}"
-                                            class="w-10 h-10 rounded-full object-cover">
-                                    @else
-                                        <div
-                                            class="w-10 h-10 rounded-full bg-primary-100 flex items-center justify-center">
-                                            <span
-                                                class="text-primary-700 font-semibold">{{ substr($client->name, 0, 1) }}</span>
-                                        </div>
-                                    @endif
-                                    <div>
-                                        <h3 class="text-lg font-semibold">{{ $project->name }}</h3>
-                                        <p class="text-sm text-gray-500">{{ $client->name }}</p>
-                                    </div>
-                                </div>
-                                <div class="flex items-center gap-3">
-                                    <x-filament::badge :color="match ($project->status) {
-                                        'completed' => 'success',
-                                        'in_progress' => 'warning',
-                                        'on_hold' => 'danger',
-                                        default => 'secondary',
-                                    }">
-                                        {{ ucwords(str_replace('_', ' ', $project->status)) }}
-                                    </x-filament::badge>
-                                    <x-heroicon-o-chevron-down
-                                        class="w-5 h-5 text-gray-400 transition-transform duration-200"
-                                        x-bind:class="open ? 'rotate-180' : ''" />
-                                </div>
+        @if ($filteredProjects->isNotEmpty())
+        @foreach ($filteredProjects as $project)
+        <div x-data="{ open: false }"
+            class="bg-white rounded-lg shadow-sm border border-gray-100 hover:shadow-md transition-all duration-200">
+            <div @click="open = !open" class="p-6 cursor-pointer">
+                <div class="flex items-start justify-between mb-4">
+                    {{-- Left side (Client info) --}}
+                    <div class="flex items-center gap-4">
+                        @if ($client->logo)
+                        <img src="{{ Storage::url($client->logo) }}" alt="{{ $client->name }}"
+                            class="w-12 h-12 rounded-lg object-cover">
+                        @else
+                        <div class="w-12 h-12 rounded-lg bg-primary-50 flex items-center justify-center">
+                            <span class="text-primary-600 text-lg font-semibold">{{ substr($client->name, 0, 1)
+                                }}</span>
+                        </div>
+                        @endif
+                        <div>
+                            <h3 class="text-lg font-semibold text-gray-900">{{ $project->name }}</h3>
+                            <div class="flex items-center gap-2 mt-1">
+                                <p class="text-gray-600">{{ $client->name }}</p>
+                                @if($project->due_date)
+                                <span class="text-gray-400">•</span>
+                                <p class="text-gray-600">Due {{ $project->due_date->format('M d, Y') }}</p>
+                                @endif
                             </div>
-                            @if ($project->description)
-                                <p class="text-sm text-gray-600 ml-14">{{ $project->description }}</p>
-                            @endif
+                        </div>
+                    </div>
+
+                    {{-- Right side (Status and controls) --}}
+                    <div class="flex items-center gap-3">
+                        {{-- Project Progress --}}
+                        <div class="flex items-center gap-2 mr-2">
+                            <div class="flex items-center gap-2 mr-2">
+                                <span @class([ 'text-sm font-medium' , 'text-green-600'=> $project->progress === 100,
+                                    'text-amber-600' => $project->progress < 100 && $project->progress >= 50,
+                                        'text-red-600' => $project->progress < 50, ])>
+                                            {{ $project->progress }}%
+                                </span>
+                            </div>
                         </div>
 
-                        {{-- Project Details --}}
-                        <div x-show="open" x-collapse>
-                            <div class="border-t px-4 py-5">
-                                <div class="relative">
-                                    {{-- Timeline line --}}
-                                    <div class="absolute left-5 top-0 h-full w-0.5 bg-gray-200 -z-10"></div>
+                        {{-- Status Badge --}}
+                        <x-filament::badge :color="match ($project->status) {
+                        'completed' => 'success',
+                        'in_progress' => 'warning',
+                        'on_hold' => 'danger',
+                        default => 'secondary',
+                    }">
+                            {{ ucwords(str_replace('_', ' ', $project->status)) }}
+                        </x-filament::badge>
 
-                                    <div class="space-y-6">
-                                        @foreach ($project->steps->sortBy('order') as $step)
-                                            <div x-data="{ stepOpen: false }" class="relative">
-                                                {{-- Step Header --}}
-                                                <div @click="stepOpen = !stepOpen"
-                                                    class="cursor-pointer flex items-center gap-4 mb-2">
-                                                    <div @class([
-                                                        'w-10 h-10 rounded-full flex items-center justify-center',
-                                                        'bg-success-500 text-white' => $step->status === 'completed',
-                                                        'bg-warning-500 text-white' => $step->status === 'in_progress',
-                                                        'bg-primary-100 text-primary-700' => $step->status === 'pending',
-                                                        'bg-danger-500 text-white' => $step->status === 'waiting_for_documents',
-                                                    ])>
-                                                        {{ $step->order }}
-                                                    </div>
-                                                    <div class="flex-1">
-                                                        <div class="flex items-center justify-between">
-                                                            <h4 class="font-medium">{{ $step->name }}</h4>
-                                                            <div class="flex items-center gap-2">
-                                                                <x-filament::badge :color="match ($step->status) {
+                        {{-- View Details Button --}}
+                        <a href="{{ route('filament.admin.resources.projects.view', ['record' => $project->id]) }}"
+                            class="relative inline-flex items-center justify-center w-8 h-8
+                            rounded-full bg-gray-50 hover:bg-primary-50
+                            text-gray-600 hover:text-primary-600
+                            border border-gray-100 hover:border-primary-200
+                            transition-all duration-200 group">
+                            <x-heroicon-m-eye class="w-4 h-4 transition-transform group-hover:scale-110" />
+                        </a>
+
+                        {{-- Expand/Collapse Arrow --}}
+                        <x-heroicon-o-chevron-down class="w-5 h-5 text-gray-400 transition-transform duration-200"
+                            x-bind:class="open ? 'rotate-180' : ''" />
+                    </div>
+                </div>
+
+                {{-- Progress Bar --}}
+
+                <div class="mt-4">
+                    <div class="w-full h-2 bg-gray-100 rounded-full overflow-hidden">
+                        <div class="h-full rounded-full transition-all duration-300
+            {{ (int)$project->progress === 100 ? 'bg-green-500' : '' }}
+            {{ (int)$project->progress >= 50 && (int)$project->progress < 100 ? 'bg-amber-500' : '' }}
+            {{ (int)$project->progress < 50 ? 'bg-red-500' : '' }}" style="width: {{ $project->progress }}%">
+                        </div>
+                    </div>
+                </div>
+                @if ($project->description)
+                <p class="text-sm text-gray-600 mt-4">{{ $project->description }}</p>
+                @endif
+            </div>
+
+            {{-- Project Details --}}
+            <div x-show="open" x-collapse>
+                <div class="border-t px-4 py-5">
+                    <div class="relative">
+                        {{-- Timeline line --}}
+                        <div class="absolute left-5 top-0 h-full w-0.5 bg-gray-200 -z-10"></div>
+
+                        <div class="space-y-6">
+                            @foreach ($project->steps->sortBy('order') as $step)
+                            <div x-data="{ stepOpen: false }" class="relative">
+                                {{-- Step Header --}}
+                                <div @click="stepOpen = !stepOpen" class="cursor-pointer flex items-center gap-4 mb-2">
+                                    <div @class([ 'w-10 h-10 rounded-full flex items-center justify-center'
+                                        , 'bg-success-500 text-white'=> $step->status === 'completed',
+                                        'bg-warning-500 text-white' => $step->status === 'in_progress',
+                                        'bg-primary-100 text-primary-700' => $step->status === 'pending',
+                                        'bg-danger-500 text-white' => $step->status === 'waiting_for_documents',
+                                        ])>
+                                        {{ $step->order }}
+                                    </div>
+                                    <div class="flex-1">
+                                        <div class="flex items-center justify-between">
+                                            <h4 class="font-medium">{{ $step->name }}</h4>
+                                            <div class="flex items-center gap-2">
+                                                <x-filament::badge :color="match ($step->status) {
                                                                     'completed' => 'success',
                                                                     'in_progress' => 'warning',
                                                                     'waiting_for_documents' => 'danger',
                                                                     default => 'secondary',
                                                                 }">
-                                                                    {{ ucwords(str_replace('_', ' ', $step->status)) }}
-                                                                </x-filament::badge>
-                                                                <x-heroicon-o-chevron-down
-                                                                    class="w-4 h-4 text-gray-400 transition-transform duration-200"
-                                                                    x-bind:class="stepOpen ? 'rotate-180' : ''" />
-                                                            </div>
-                                                        </div>
-                                                    </div>
+                                                    {{ ucwords(str_replace('_', ' ', $step->status)) }}
+                                                </x-filament::badge>
+                                                <x-heroicon-o-chevron-down
+                                                    class="w-4 h-4 text-gray-400 transition-transform duration-200"
+                                                    x-bind:class="stepOpen ? 'rotate-180' : ''" />
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                </div>
+
+                                {{-- Step Details --}}
+                                <div x-show="stepOpen" x-collapse class="ml-14">
+                                    @if ($step->tasks->isNotEmpty())
+                                    <div class="mb-4">
+                                        <h5 class="text-sm font-medium text-gray-900 mb-2">Tasks
+                                        </h5>
+                                        <div class="space-y-2">
+                                            @foreach ($step->tasks as $task)
+                                            <div
+                                                class="flex items-center justify-between bg-gray-50 p-3 rounded-lg hover:bg-gray-100 transition-colors duration-200">
+                                                <div class="flex-grow">
+                                                    <p class="font-medium">{{ $task->title }}</p>
+                                                    @if ($task->description)
+                                                    <p class="text-sm text-gray-500 mt-1">{{ $task->description }}</p>
+                                                    @endif
                                                 </div>
 
-                                                {{-- Step Details --}}
-                                                <div x-show="stepOpen" x-collapse class="ml-14">
-                                                    @if ($step->tasks->isNotEmpty())
-                                                        <div class="mb-4">
-                                                            <h5 class="text-sm font-medium text-gray-900 mb-2">Tasks
-                                                            </h5>
-                                                            <div class="space-y-2">
-                                                                @foreach ($step->tasks as $task)
-                                                                    <div
-                                                                        class="flex items-center justify-between bg-gray-50 p-3 rounded-lg">
-                                                                        <div>
-                                                                            <p class="font-medium">{{ $task->title }}
-                                                                            </p>
-                                                                            @if ($task->description)
-                                                                                <p class="text-sm text-gray-500 mt-1">
-                                                                                    {{ $task->description }}</p>
-                                                                            @endif
-                                                                        </div>
-                                                                        <x-filament::badge size="sm"
-                                                                            :color="match ($task->status) {
-                                                                                'completed' => 'success',
-                                                                                'in_progress' => 'warning',
-                                                                                'blocked' => 'danger',
-                                                                                default => 'secondary',
-                                                                            }">
-                                                                            {{ ucwords(str_replace('_', ' ', $task->status)) }}
-                                                                        </x-filament::badge>
-                                                                    </div>
-                                                                @endforeach
-                                                            </div>
-                                                        </div>
-                                                    @endif
+                                                <div class="flex items-center gap-3">
+                                                    <x-filament::badge size="sm" :color="match ($task->status) {
+                                                        'completed' => 'success',
+                                                        'in_progress' => 'warning',
+                                                        'blocked' => 'danger',
+                                                        default => 'secondary',
+                                                    }">
+                                                        {{ ucwords(str_replace('_', ' ', $task->status)) }}
+                                                    </x-filament::badge>
 
-                                                    @if ($step->requiredDocuments->isNotEmpty())
-                                                        <div>
-                                                            <h5 class="text-sm font-medium text-gray-900 mb-2">Required
-                                                                Documents</h5>
-                                                            <div class="space-y-2">
-                                                                @foreach ($step->requiredDocuments as $document)
-                                                                    <div
-                                                                        class="flex items-center justify-between bg-white border border-gray-200 p-3 rounded-lg">
-                                                                        <div class="flex items-center gap-2">
-                                                                            <x-heroicon-o-paper-clip
-                                                                                class="w-4 h-4 text-gray-400" />
-                                                                            <div>
-                                                                                <p class="font-medium">
-                                                                                    {{ $document->name }}</p>
-                                                                                @if ($document->description)
-                                                                                    <p class="text-sm text-gray-500">
-                                                                                        {{ $document->description }}
-                                                                                    </p>
-                                                                                @endif
-                                                                            </div>
-                                                                        </div>
-                                                                        @php
-                                                                            $submittedDoc = $document->submittedDocuments->first();
-                                                                        @endphp
-                                                                        <div class="flex items-center gap-2">
-                                                                            @if ($submittedDoc)
-                                                                                <x-filament::badge size="sm"
-                                                                                    :color="match (
+                                                    <!-- Task Details Button with Comment Count -->
+                                                    <button
+                                                        x-on:click.stop="$dispatch('open-modal', { id: 'task-modal-{{ $task->id }}' })"
+                                                        class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full font-medium 
+                                                            {{ $task->comments_count > 0 
+                                                                ? 'bg-primary-50 text-primary-700 hover:bg-primary-100' 
+                                                                : 'bg-gray-100 text-gray-600 hover:bg-gray-200' }} 
+                                                            transition-all duration-200">
+                                                        <x-heroicon-m-chat-bubble-left-right class="w-4 h-4" />
+                                                        {{ $task->comments_count ?? 0 }}
+                                                        <span class="sr-only">comments</span>
+                                                    </button>
+
+                                                    <!-- Task Modal with Comments -->
+                                                    <x-filament::modal id="task-modal-{{ $task->id }}" width="4xl"
+                                                        slide-over>
+                                                        <div class="space-y-4">
+                                                            <!-- Task Details Section -->
+                                                            <div class="bg-white p-4 rounded-lg shadow-sm">
+                                                                <!-- Task Header -->
+                                                                <div class="flex items-center justify-between">
+                                                                    <h3 class="text-lg font-semibold">{{ $task->title }}
+                                                                    </h3>
+                                                                    <x-filament::badge :color="match ($task->status) {
+                                                                        'completed' => 'success',
+                                                                        'in_progress' => 'warning',
+                                                                        'blocked' => 'danger',
+                                                                        default => 'secondary',
+                                                                    }">
+                                                                        {{ ucwords(str_replace('_', ' ', $task->status))
+                                                                        }}
+                                                                    </x-filament::badge>
+                                                                </div>
+
+                                                                @if($task->description)
+                                                                <p class="text-gray-600 mt-2">{{ $task->description }}
+                                                                </p>
+                                                                @endif
+                                                            </div>
+
+                                                            <!-- Comments Section -->
+                                                            @livewire('comments-modal', [
+                                                            'modelType' => \App\Models\Task::class,
+                                                            'modelId' => $task->id
+                                                            ])
+                                                        </div>
+                                                    </x-filament::modal>
+                                                </div>
+                                            </div>
+                                            @endforeach
+                                        </div>
+                                    </div>
+                                    @endif
+
+                                    @if ($step->requiredDocuments->isNotEmpty())
+                                    <div>
+                                        <h5 class="text-sm font-medium text-gray-900 mb-2">Required
+                                            Documents</h5>
+                                        <div class="space-y-2">
+                                            @foreach ($step->requiredDocuments as $document)
+                                            <div
+                                                class="flex items-center justify-between bg-white border border-gray-200 p-3 rounded-lg">
+                                                <div class="flex items-center gap-2">
+                                                    <x-heroicon-o-paper-clip class="w-4 h-4 text-gray-400" />
+                                                    <div>
+                                                        <p class="font-medium">
+                                                            {{ $document->name }}</p>
+                                                        @if ($document->description)
+                                                        <p class="text-sm text-gray-500">
+                                                            {{ $document->description }}
+                                                        </p>
+                                                        @endif
+                                                    </div>
+                                                </div>
+                                                @php
+                                                $submittedDoc = $document->submittedDocuments->first();
+                                                @endphp
+                                                <div class="flex items-center gap-2">
+                                                    @if ($submittedDoc)
+                                                    <x-filament::badge size="sm" :color="match (
                                                                                         $submittedDoc->status
                                                                                     ) {
                                                                                         'approved' => 'success',
                                                                                         'rejected' => 'danger',
                                                                                         default => 'warning',
                                                                                     }">
-                                                                                    {{ ucwords(str_replace('_', ' ', $submittedDoc->status)) }}
-                                                                                </x-filament::badge>
-                                                                            @else
-                                                                                <x-filament::badge size="sm"
-                                                                                    color="gray">
-                                                                                    Not Submitted
-                                                                                </x-filament::badge>
-                                                                            @endif
-                                                                        </div>
-                                                                    </div>
-                                                                @endforeach
-                                                            </div>
-                                                        </div>
+                                                        {{ ucwords(str_replace('_', ' ', $submittedDoc->status)) }}
+                                                    </x-filament::badge>
+                                                    @else
+                                                    <x-filament::badge size="sm" color="gray">
+                                                        Not Submitted
+                                                    </x-filament::badge>
                                                     @endif
                                                 </div>
                                             </div>
-                                        @endforeach
+                                            @endforeach
+                                        </div>
                                     </div>
+                                    @endif
                                 </div>
                             </div>
+                            @endforeach
                         </div>
                     </div>
-                @endforeach
-            @endif
+                </div>
+            </div>
+        </div>
+        @endforeach
+        @endif
         @endforeach
 
         {{-- No Projects Message --}}
         @if (
-            $clients->flatMap->projects->when($currentStatus !== 'all', function ($projects) use ($currentStatus) {
-                    return $projects->where('status', $currentStatus);
-                })->isEmpty())
-            <x-filament::card>
-                <div class="text-center py-6">
-                    <div class="mb-2">
-                        <x-heroicon-o-clipboard-document-list class="mx-auto h-12 w-12 text-gray-400" />
-                    </div>
-                    <h3 class="text-lg font-medium text-gray-900">No Projects Found</h3>
-                    <p class="mt-1 text-sm text-gray-500">No projects with status
-                        "{{ ucwords(str_replace('_', ' ', $currentStatus)) }}" were found.</p>
+        $clients->flatMap->projects->when($currentStatus !== 'all', function ($projects) use ($currentStatus) {
+        return $projects->where('status', $currentStatus);
+        })->isEmpty())
+        <x-filament::card>
+            <div class="text-center py-6">
+                <div class="mb-2">
+                    <x-heroicon-o-clipboard-document-list class="mx-auto h-12 w-12 text-gray-400" />
                 </div>
-            </x-filament::card>
+                <h3 class="text-lg font-medium text-gray-900">No Projects Found</h3>
+                <p class="mt-1 text-sm text-gray-500">No projects with status
+                    "{{ ucwords(str_replace('_', ' ', $currentStatus)) }}" were found.</p>
+            </div>
+        </x-filament::card>
         @endif
     </div>
 </x-filament-panels::page>

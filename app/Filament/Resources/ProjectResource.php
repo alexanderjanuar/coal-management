@@ -8,6 +8,8 @@ use App\Filament\Resources\ProjectResource\RelationManagers\ClientRelationManage
 use App\Filament\Resources\ProjectResource\RelationManagers\StepsRelationManager;
 use App\Models\Project;
 use App\Models\Client;
+use App\Models\User;
+
 use Filament\Forms;
 use Filament\Forms\Form;
 use Filament\Resources\Resource;
@@ -92,7 +94,7 @@ class ProjectResource extends Resource
                                             ])
                                             ->itemLabel(fn(array $state): ?string => $state['title'] ?? null)
                                             ->addActionLabel('Add New Task')
-                                            ->columns(2),
+                                            ,
                                     ]),
                                 FormSection::make('Required Documents')
                                     ->description('Prevent abuse by limiting the number of requests per period')
@@ -107,13 +109,33 @@ class ProjectResource extends Resource
                                             ])
                                             ->itemLabel(fn(array $state): ?string => $state['name'] ?? null)
                                             ->addActionLabel('Add New Document')
-                                            ->columns(2)
+                                            
                                     ])
                             ])
                             ->itemLabel(fn(array $state): ?string => $state['name'] ?? null)
                             ->orderColumn('order')
                             ->columnSpanFull(),
-                    ])
+                    ]),
+                FormSection::make('Project Users')
+                    ->description('Assign users to this project and set their roles')
+                    ->aside()
+                    ->schema([
+                        Repeater::make('userProject')
+                            ->relationship()
+                            ->schema([
+                                Select::make('user_id')
+                                    ->label('User')
+                                    ->options(User::all()->pluck('name', 'id'))
+                                    ->required()
+                                    ->searchable()
+                                    ->native(false),
+                            ])
+                            ->itemLabel(
+                                fn(array $state): ?string =>
+                                User::find($state['user_id'])?->name . ' (' . ucfirst($state['role'] ?? 'staff') . ')'
+                            )
+                            ->addActionLabel('Add New User'),
+                    ]),
             ]);
     }
 
@@ -240,7 +262,7 @@ class ProjectResource extends Resource
             ]);
     }
 
-    
+
 
     public static function getPages(): array
     {

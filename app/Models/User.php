@@ -53,6 +53,27 @@ class User extends Authenticatable
         return $this->hasMany(Document::class);
     }
 
+    public function comments()
+    {
+        return $this->morphMany(Comment::class, 'commentable');
+    }
+
+    public function submittedDocuments()
+    {
+        return $this->hasMany(SubmittedDocument::class);
+    }
+
+    public function userClients()
+    {
+        return $this->hasMany(UserClient::class);
+    }
+
+    public function userProjects()
+    {
+        return $this->hasMany(UserProject::class);
+    }
+
+
     public function canAccessPanel(Panel $panel): bool
     {
         return true; // Or add your custom logic here

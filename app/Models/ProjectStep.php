@@ -25,4 +25,9 @@ class ProjectStep extends Model
     {
         return $this->hasMany(RequiredDocument::class);
     }
+
+    public function comments()
+    {
+        return $this->morphMany(Comment::class, 'commentable');
+    }
 }
