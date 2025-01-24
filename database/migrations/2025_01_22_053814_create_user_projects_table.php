@@ -15,9 +15,7 @@ return new class extends Migration
             $table->id();
             $table->foreignId('user_id')->constrained()->onDelete('cascade');
             $table->foreignId('project_id')->constrained()->onDelete('cascade');
-
-            // Ensure a user can be assigned to a client only once
-            $table->unique(['user_id', 'project_id']);
+            $table->enum('role', ['direktur', 'person-in-charge', 'staff']);
             $table->timestamps();
         });
     }

@@ -61,6 +61,7 @@ class UserClientResource extends Resource
                 ->description('Assign client and role')
                 ->schema([
                     Forms\Components\Select::make('client_id')
+                        ->multiple()
                         ->relationship('client', 'name')
                         ->searchable()
                         ->preload()
