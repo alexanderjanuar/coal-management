@@ -34,7 +34,7 @@ use Filament\Forms\Components\Repeater;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\FileUpload;
 use Guava\FilamentModalRelationManagers\Actions\Table\RelationManagerAction;
-
+use Filament\Actions\CreateAction;
 
 
 class ProjectResource extends Resource
@@ -49,93 +49,164 @@ class ProjectResource extends Resource
     {
         return $form
             ->schema([
-                FormSection::make('Project Detail')
-                    ->description('Prevent abuse by limiting the number of requests per period')
-                    ->schema([
-                        Forms\Components\TextInput::make('name')
-                            ->required()
-                            ->label('Project Name')
-                            ->unique(ignoreRecord: true)
-                            ->maxLength(255),
-                        Select::make('client_id')
-                            ->required()
-                            ->label('Client')
-                            ->options(Client::all()->pluck('name', 'id'))
-                            ->searchable()
-                            ->native(false),
-                        Textarea::make('description')
-                            ->columnSpanFull()
-                    ])
-                    ->aside()
-                    ->columns(2),
-                FormSection::make('Project Step')
-                    ->description('Prevent abuse by limiting the number of requests per period')
-                    ->aside()
-                    ->schema([
-                        Repeater::make('steps')
-                            ->label('Project Step')
-                            ->addActionLabel('Add New Step')
-                            ->relationship()
-                            ->schema([
-                                Forms\Components\TextInput::make('name')
-                                    ->columnSpanFull(),
-                                Textarea::make('description')
-                                    ->columnSpanFull(),
-                                FormSection::make('Tasks')
-                                    ->description('Prevent abuse by limiting the number of requests per period')
-                                    ->collapsed()
-                                    ->schema([
-                                        Repeater::make('tasks')
-                                            ->label('Project Task')
-                                            ->relationship('tasks')
-                                            ->schema([
-                                                TextInput::make('title')->required(),
-                                                TextInput::make('description')->required(),
-                                            ])
-                                            ->itemLabel(fn(array $state): ?string => $state['title'] ?? null)
-                                            ->addActionLabel('Add New Task')
-                                            ,
-                                    ]),
-                                FormSection::make('Required Documents')
-                                    ->description('Prevent abuse by limiting the number of requests per period')
-                                    ->collapsed()
-                                    ->schema([
-                                        Repeater::make('requiredDocuments')
-                                            ->label('Required Documents')
-                                            ->relationship('requiredDocuments')
-                                            ->schema([
-                                                TextInput::make('name')->required(),
-                                                TextInput::make('description')->required(),
-                                            ])
-                                            ->itemLabel(fn(array $state): ?string => $state['name'] ?? null)
-                                            ->addActionLabel('Add New Document')
-                                            
-                                    ])
-                            ])
-                            ->itemLabel(fn(array $state): ?string => $state['name'] ?? null)
-                            ->orderColumn('order')
-                            ->columnSpanFull(),
-                    ]),
-                FormSection::make('Project Users')
-                    ->description('Assign users to this project and set their roles')
-                    ->aside()
-                    ->schema([
-                        Repeater::make('userProject')
-                            ->relationship()
-                            ->schema([
-                                Select::make('user_id')
-                                    ->label('User')
-                                    ->options(User::all()->pluck('name', 'id'))
-                                    ->required()
-                                    ->searchable()
-                                    ->native(false),
-                            ])
-                            ->itemLabel(
-                                fn(array $state): ?string =>
-                                User::find($state['user_id'])?->name . ' (' . ucfirst($state['role'] ?? 'staff') . ')'
-                            )
-                            ->addActionLabel('Add New User'),
-                    ]),
+                Forms\Components\Wizard::make([
+                    Forms\Components\Wizard\Step::make('Project Details')
+                        ->description('Basic project information')
+                        ->icon('heroicon-o-clipboard-document')
+                        ->schema([
+                            Forms\Components\TextInput::make('name')
+                                ->required()
+                                ->label('Project Name')
+                                ->unique(ignoreRecord: true)
+                                ->maxLength(255)
+                                ->columnSpanFull(),
+                            Select::make('client_id')
+                                ->required()
+                                ->label('Client')
+                                ->options(function () {
+                                    // For super-admin, show all clients
+                                    if (auth()->user()->hasRole('super-admin')) {
+                                        return Client::pluck('name', 'id');
+                                    }
+
+                                    // For other users, only show their assigned clients
+                                    return Client::whereIn(
+                                        'id',
+                                        auth()->user()->userClients()->pluck('client_id')
+                                    )->pluck('name', 'id');
+                                })
+                                ->searchable()
+                                ->live()
+                                ->native(false)
+                                ->columnSpanFull(),
+                            Forms\Components\RichEditor::make('description')
+                                ->columnSpanFull()
+                                ->toolbarButtons([
+                                    'bold',
+                                    'bulletList',
+                                    'italic',
+                                    'link',
+                                    'orderedList',
+                                    'undo',
+                                    'redo',
+                                ])
+                        ]),
+
+                    Forms\Components\Wizard\Step::make('Project Steps')
+                        ->description('Configure steps, tasks, and documents')
+                        ->icon('heroicon-o-squares-plus')
+                        ->schema([
+                            Repeater::make('steps')
+                                ->label('Project Step')
+                                ->addActionLabel('Add New Step')
+                                ->relationship()
+                                ->schema([
+                                    Forms\Components\TextInput::make('name')
+                                        ->columnSpanFull(),
+                                    Forms\Components\RichEditor::make('description')
+                                        ->toolbarButtons([
+                                            'bold',
+                                            'bulletList',
+                                            'italic',
+                                            'link',
+                                            'orderedList',
+                                            'undo',
+                                            'redo',
+                                        ])
+                                        ->columnSpanFull(),
+                                    FormSection::make('Tasks')
+                                        ->description('Add and manage tasks for this project step')
+                                        ->collapsed()
+                                        ->schema([
+                                            Repeater::make('tasks')
+                                                ->label('Project Task')
+                                                ->relationship('tasks')
+                                                ->schema([
+                                                    TextInput::make('title')
+                                                        ->required(),
+                                                    Forms\Components\RichEditor::make('description')
+                                                        ->required()
+                                                        ->toolbarButtons([
+                                                            'bold',
+                                                            'bulletList',
+                                                            'italic',
+                                                            'link',
+                                                            'orderedList',
+                                                            'undo',
+                                                            'redo',
+                                                        ]),
+                                                ])
+                                                ->itemLabel(fn(array $state): ?string => $state['title'] ?? null)
+                                                ->addActionLabel('Add New Task'),
+                                        ]),
+                                    FormSection::make('Required Documents')
+                                        ->description('Specify required documents for this project step')
+                                        ->collapsed()
+                                        ->schema([
+                                            Repeater::make('requiredDocuments')
+                                                ->label('Required Documents')
+                                                ->relationship('requiredDocuments')
+                                                ->schema([
+                                                    TextInput::make('name')
+                                                        ->required(),
+                                                    Forms\Components\RichEditor::make('description')
+                                                        ->required()
+                                                        ->toolbarButtons([
+                                                            'bold',
+                                                            'bulletList',
+                                                            'italic',
+                                                            'link',
+                                                            'orderedList',
+                                                            'undo',
+                                                            'redo',
+                                                        ]),
+                                                ])
+                                                ->itemLabel(fn(array $state): ?string => $state['name'] ?? null)
+                                                ->addActionLabel('Add New Document')
+                                        ])
+                                ])
+                                ->itemLabel(fn(array $state): ?string => $state['name'] ?? null)
+                                ->orderColumn('order')
+                                ->columnSpanFull(),
+                        ]),
+
+                    Forms\Components\Wizard\Step::make('Project Members')
+                        ->description('Assign team members to the project')
+                        ->icon('heroicon-o-users')
+                        ->schema([
+                            Repeater::make('userProject')
+                                ->relationship()
+                                ->schema([
+                                    Select::make('user_id')
+                                        ->label('Member')
+                                        ->options(function (Forms\Get $get) {
+                                            $clientId = $get('../../client_id');
+
+                                            if (!$clientId) {
+                                                return [];
+                                            }
+
+                                            return User::whereHas('userClients', function ($query) use ($clientId) {
+                                                $query->where('client_id', $clientId);
+                                            })->pluck('name', 'id');
+                                        })
+                                        ->live()
+                                        ->required()
+                                        ->searchable()
+                                        ->distinct()
+                                        ->native(false)
+                                        ->helperText(function (Forms\Get $get) {
+                                            $clientId = $get('../../client_id');
+                                            return $clientId
+                                                ? 'Select a user from this client'
+                                                : 'Please select a client first';
+                                        }),
+                                ])
+                                ->addActionLabel('Add New Member')
+                                ->columnSpanFull(),
+                        ]),
+                ])->columnSpanFull()
+                    ->skippable()
             ]);
     }
 
@@ -222,6 +293,7 @@ class ProjectResource extends Resource
         ];
     }
 
+
     public static function infolist(Infolist $infolist): Infolist
     {
         return $infolist
@@ -261,8 +333,6 @@ class ProjectResource extends Resource
                     ->columns(2)
             ]);
     }
-
-
 
     public static function getPages(): array
     {

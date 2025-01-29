@@ -16,6 +16,7 @@ return new class extends Migration
             $table->foreignId('client_id')->constrained();
             $table->string('name');
             $table->text('description')->nullable();
+            $table->enum('type', ['single','monthly'])->nullable();
             $table->enum('status', ['draft', 'in_progress', 'completed', 'on_hold', 'canceled'])->default('draft');
             $table->timestamps();
         });

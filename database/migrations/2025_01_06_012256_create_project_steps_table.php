@@ -4,8 +4,7 @@ use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 
-return new class extends Migration
-{
+return new class extends Migration {
     /**
      * Run the migrations.
      */
@@ -15,8 +14,11 @@ return new class extends Migration
             $table->id();
             $table->foreignId('project_id')->constrained()->onDelete('cascade');
             $table->string('name');
-            $table->integer('order');                                                   
+            $table->integer('order');
             $table->text('description')->nullable();
+            $table->enum('priority', ['low', 'normal', 'high', 'urgent'])->default('low');
+            $table->date('start_date')->default(now());
+            $table->date('due_date')->nullable();
             $table->enum('status', ['pending', 'in_progress', 'waiting_for_documents', 'completed'])->default('pending');
             $table->timestamps();
         });
