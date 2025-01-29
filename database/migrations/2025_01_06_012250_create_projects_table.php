@@ -17,7 +17,7 @@ return new class extends Migration
             $table->string('name');
             $table->text('description')->nullable();
             $table->enum('type', ['single','monthly'])->nullable();
-            $table->enum('status', ['draft', 'in_progress', 'completed', 'on_hold', 'canceled'])->default('draft');
+            $table->enum('status', ['draft','analysis', 'in_progress', 'completed', 'review', 'completed (Not Payed Yet)','canceled'])->default('draft');
             $table->timestamps();
         });
     }

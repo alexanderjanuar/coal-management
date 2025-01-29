@@ -81,15 +81,6 @@ class ProjectResource extends Resource
                                 ->columnSpanFull(),
                             Forms\Components\RichEditor::make('description')
                                 ->columnSpanFull()
-                                ->toolbarButtons([
-                                    'bold',
-                                    'bulletList',
-                                    'italic',
-                                    'link',
-                                    'orderedList',
-                                    'undo',
-                                    'redo',
-                                ])
                         ]),
 
                     Forms\Components\Wizard\Step::make('Project Steps')
@@ -116,7 +107,7 @@ class ProjectResource extends Resource
                                         ->columnSpanFull(),
                                     FormSection::make('Tasks')
                                         ->description('Add and manage tasks for this project step')
-                                        ->collapsed()
+                                        ->collapsible()
                                         ->schema([
                                             Repeater::make('tasks')
                                                 ->label('Project Task')
@@ -141,7 +132,7 @@ class ProjectResource extends Resource
                                         ]),
                                     FormSection::make('Required Documents')
                                         ->description('Specify required documents for this project step')
-                                        ->collapsed()
+                                        ->collapsible()
                                         ->schema([
                                             Repeater::make('requiredDocuments')
                                                 ->label('Required Documents')
@@ -150,7 +141,6 @@ class ProjectResource extends Resource
                                                     TextInput::make('name')
                                                         ->required(),
                                                     Forms\Components\RichEditor::make('description')
-                                                        ->required()
                                                         ->toolbarButtons([
                                                             'bold',
                                                             'bulletList',
@@ -175,6 +165,7 @@ class ProjectResource extends Resource
                         ->icon('heroicon-o-users')
                         ->schema([
                             Repeater::make('userProject')
+                                ->label('')
                                 ->relationship()
                                 ->schema([
                                     Select::make('user_id')
@@ -277,6 +268,7 @@ class ProjectResource extends Resource
                 Tables\Actions\ViewAction::make(),
                 Tables\Actions\EditAction::make(),
             ])
+            
             ->bulkActions([
                 Tables\Actions\BulkActionGroup::make([
                     Tables\Actions\DeleteBulkAction::make(),

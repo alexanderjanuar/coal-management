@@ -13,6 +13,8 @@ use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\SoftDeletingScope;
 use App\Models\User;
+use App\Models\Client;
+
 use Illuminate\Support\Facades\Hash;
 use Filament\Forms\Components\Section;
 use Illuminate\Database\Eloquent\Model;
@@ -124,10 +126,10 @@ class UserClientResource extends Resource
                     ->searchable()
                     ->options(function () {
                         if (auth()->user()->hasRole('super-admin')) {
-                            return \App\Models\Client::pluck('name', 'id');
+                            return Client::pluck('name', 'id');
                         }
 
-                        return \App\Models\Client::whereIn(
+                        return Client::whereIn(
                             'id',
                             auth()->user()->userClients->pluck('client_id')
                         )->pluck('name', 'id');
@@ -247,6 +249,121 @@ class UserClientResource extends Resource
                     Tables\Actions\DeleteAction::make(),
                 ])
 
+            ])
+            ->headerActions([
+                Tables\Actions\Action::make('attach_user')
+                    ->label('Attach Unassigned User')
+                    ->icon('heroicon-m-user-plus')
+                    ->color('gray')
+                    ->visible(fn() => auth()->user()->hasRole('super-admin'))
+                    ->form([
+                        Forms\Components\Select::make('user_id')
+                            ->label('User')
+                            ->options(function () {
+                                return User::whereDoesntHave('userClients')
+                                    ->pluck('name', 'id');
+                            })
+                            ->required()
+                            ->searchable()
+                            ->preload()
+                            ->helperText('Select a user who has no client assignments'),
+
+                        Forms\Components\Section::make('Select Clients')
+                            ->schema([
+                                Forms\Components\CheckboxList::make('client_ids')
+                                    ->label('Clients')
+                                    ->options(Client::pluck('name', 'id'))
+                                    ->required()
+                                    ->searchable()
+                                    ->bulkToggleable() // This adds "Select All" and "Deselect All" buttons
+                                    ->columns(2) // Display in 2 columns for better layout
+                                    ->helperText('Select clients to assign to this user')
+                            ])
+                    ])
+                    ->action(function (array $data): void {
+                        foreach ($data['client_ids'] as $clientId) {
+                            UserClient::create([
+                                'user_id' => $data['user_id'],
+                                'client_id' => $clientId
+                            ]);
+                        }
+
+                        $userName = User::find($data['user_id'])->name;
+
+                        Notification::make()
+                            ->title('User Assigned')
+                            ->success()
+                            ->body("Successfully assigned {$userName} to selected clients")
+                            ->send();
+                    })
+                    ->modalHeading('Attach User to Clients')
+                    ->modalDescription('Select an unassigned user and the clients to assign them to.')
+                    ->requiresConfirmation()
+                    ->modalButton('Attach User'),
+                Tables\Actions\Action::make('manage_user_clients')
+                    ->label('Manage User Clients')
+                    ->icon('heroicon-m-building-office-2')
+                    ->color('warning')
+                    ->visible(fn() => auth()->user()->hasRole('super-admin'))
+                    ->form([
+                        Forms\Components\Select::make('user_id')
+                            ->label('Select User')
+                            ->options(User::pluck('name', 'id'))
+                            ->required()
+                            ->searchable()
+                            ->preload()
+                            ->live()
+                            ->afterStateUpdated(fn($state, Forms\Set $set) =>
+                                $set('client_ids', [])),
+
+                        Forms\Components\Section::make('Select Clients')
+                            ->schema([
+                                Forms\Components\CheckboxList::make('client_ids')
+                                    ->label('Available Clients')
+                                    ->options(function (Forms\Get $get) {
+                                        $userId = $get('user_id');
+                                        if (!$userId)
+                                            return [];
+
+                                        // Get assigned client IDs for this user
+                                        $assignedClientIds = UserClient::where('user_id', $userId)
+                                            ->pluck('client_id')
+                                            ->toArray();
+
+                                        // Return only unassigned clients
+                                        return Client::whereNotIn('id', $assignedClientIds)
+                                            ->pluck('name', 'id');
+                                    })
+                                    ->required()
+                                    ->searchable()
+                                    ->bulkToggleable()
+                                    ->columns(2)
+                                    ->helperText('Select clients to assign to this user')
+                            ])
+                    ])
+                    ->action(function (array $data): void {
+                        $user = User::find($data['user_id']);
+
+                        // Create new assignments
+                        foreach ($data['client_ids'] as $clientId) {
+                            UserClient::create([
+                                'user_id' => $data['user_id'],
+                                'client_id' => $clientId
+                            ]);
+                        }
+
+                        $assignedCount = count($data['client_ids']);
+
+                        Notification::make()
+                            ->title('Clients Assigned')
+                            ->success()
+                            ->body("Successfully assigned {$assignedCount} client(s) to {$user->name}")
+                            ->send();
+                    })
+                    ->modalHeading('Assign New Clients')
+                    ->modalDescription('Select a user and choose from available unassigned clients.')
+                    ->requiresConfirmation()
+                    ->modalButton('Assign Clients'),
             ])
             ->bulkActions([
                 Tables\Actions\BulkActionGroup::make([

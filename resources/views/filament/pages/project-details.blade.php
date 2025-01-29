@@ -167,8 +167,8 @@
                     </div>
 
                     @if($record->description)
-                    <p class="mt-3 text-sm text-gray-600 line-clamp-2 text-center sm:text-left">{{ $record->description
-                        }}</p>
+                    <p class="mt-3 text-sm text-gray-600 line-clamp-2 text-center sm:text-left">{!! $record->description
+                        !!}</p>
                     @endif
                 </div>
             </div>

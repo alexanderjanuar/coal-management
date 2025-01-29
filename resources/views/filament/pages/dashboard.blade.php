@@ -209,7 +209,7 @@
                     </div>
                 </div>
                 @if ($project->description)
-                <p class="text-sm text-gray-600 mt-4">{{ $project->description }}</p>
+                <p class="text-sm text-gray-600 mt-4">{!! $project->description !!}</p>
                 @endif
             </div>
 
