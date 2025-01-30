@@ -42,6 +42,13 @@
                     @endif
                 </div>
             </div>
+
+            {{-- Close Button --}}
+            <button x-on:click="$dispatch('close-modal', { id: 'document-modal-{{ $document->id }}' })" type="button"
+                class="flex-shrink-0 rounded-lg p-2 text-gray-400 hover:text-gray-500 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-primary-500 transition-colors duration-200">
+                <span class="sr-only">Close</span>
+                <x-heroicon-m-x-mark class="w-5 h-5" />
+            </button>
         </div>
 
         <div class="flex-1 p-4 sm:p-6 space-y-4 sm:space-y-6 overflow-y-auto">
@@ -60,31 +67,37 @@
                             @if(!auth()->user()->hasRole('staff'))
                             <x-filament::dropdown placement="bottom-end" class="w-full">
                                 <x-slot name="trigger">
-                                    <button type="button" class="w-full sm:w-auto inline-flex items-center justify-between px-3 py-2 text-sm font-medium rounded-lg 
-                                        @class([
-                                            'bg-primary-600 text-white hover:bg-primary-700' => $document->status === 'pending_review',
-                                            'bg-primary-600 text-white hover:bg-primary-700' => $document->status === 'approved',
-                                            'bg-primary-600 text-white hover:bg-primary-700' => $document->status === 'rejected',
-                                            'bg-gray-500 text-white hover:bg-gray-600' => !$document->status,
-                                        ])">
-                                        <div class="flex items-center flex-1">
-                                            <div class="relative flex h-5 items-center">
-                                                <div class="relative w-2 h-2">
-                                                    <span class="absolute w-2 h-2 rounded-full @class([
-                                                        'animate-ping bg-white/60' => in_array($document->status, ['pending_review', 'approved', 'rejected']),
-                                                        'animate-ping bg-gray-300/60' => !$document->status,
-                                                    ])"></span>
-                                                    <span class="absolute w-2 h-2 rounded-full @class([
-                                                        'bg-white' => in_array($document->status, ['pending_review', 'approved', 'rejected']),
-                                                        'bg-gray-300' => !$document->status,
-                                                    ])"></span>
-                                                </div>
-                                                <span class="ml-3">{{ ucwords(str_replace('_', ' ', $document->status ??
-                                                    'Not Set')) }}</span>
-                                            </div>
-                                            <x-heroicon-m-chevron-down class="w-4 h-4 ml-auto sm:ml-2" />
+                                    <x-filament::button size="sm" :color="match($document->status) {
+                                            'pending_review' => 'warning',
+                                            'approved' => 'success',
+                                            'rejected' => 'danger',
+                                            default => 'gray'
+                                        }" class="w-full sm:w-auto">
+                                        <div class="flex items-center gap-2">
+                                            {{-- Status Icon --}}
+                                            @switch($document->status)
+                                            @case('pending_review')
+                                            <x-heroicon-m-clock class="w-4 h-4" />
+                                            @break
+                                            @case('approved')
+                                            <x-heroicon-m-check-circle class="w-4 h-4" />
+                                            @break
+                                            @case('rejected')
+                                            <x-heroicon-m-x-circle class="w-4 h-4" />
+                                            @break
+                                            @default
+                                            <x-heroicon-m-question-mark-circle class="w-4 h-4" />
+                                            @endswitch
+
+                                            {{-- Status Text --}}
+                                            <span>
+                                                {{ ucwords(str_replace('_', ' ', $document->status ?? 'Not Set')) }}
+                                            </span>
+
+                                            {{-- Dropdown Indicator --}}
+                                            <x-heroicon-m-chevron-down class="w-4 h-4" />
                                         </div>
-                                    </button>
+                                    </x-filament::button>
                                 </x-slot>
 
                                 <x-filament::dropdown.list class="w-full sm:w-auto">
@@ -146,52 +159,56 @@
             <!-- Document History -->
             @if($document->submittedDocuments->count() > 0)
             <div x-data="{ showMore: false }" class="bg-white rounded-xl shadow-sm ring-1 ring-gray-100">
-                <div class="px-4 sm:px-6 py-4 sm:py-5">
+                <div class="px-3 sm:px-6 py-3 sm:py-5">
                     <!-- Header -->
-                    <div class="flex items-center justify-between gap-3 mb-4">
-                        <div class="flex items-center gap-3">
-                            <div class="w-8 h-8 rounded-lg bg-gray-50 flex items-center justify-center">
-                                <x-heroicon-m-clock class="w-4 h-4 text-gray-600" />
+                    <div class="flex items-center justify-between gap-2 sm:gap-3 mb-3 sm:mb-4">
+                        <div class="flex items-center gap-2 sm:gap-3">
+                            <div class="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-gray-50 flex items-center justify-center">
+                                <x-heroicon-m-clock class="w-3.5 h-3.5 sm:w-4 sm:h-4 text-gray-600" />
                             </div>
                             <h4 class="text-sm font-medium text-gray-900">Document History</h4>
                         </div>
                     </div>
 
                     <!-- Document List -->
-                    <div class="space-y-3">
-                        <div :class="{ 'max-h-[300px] overflow-hidden': !showMore && window.innerWidth < 1024 }"
-                            class="space-y-3">
+                    <div class="space-y-2 sm:space-y-3">
+                        <div :class="{ 'max-h-[250px] sm:max-h-[300px] overflow-hidden': !showMore && window.innerWidth < 1024 }"
+                            class="space-y-2 sm:space-y-3">
                             @foreach($document->submittedDocuments->sortByDesc('created_at') as $submission)
                             <!-- Document Item -->
                             <div
-                                class="group flex items-center gap-4 p-3 bg-gray-50/50 rounded-lg hover:bg-gray-50 transition-all">
+                                class="group flex items-center gap-2 sm:gap-4 p-2 sm:p-3 bg-gray-50/50 rounded-lg hover:bg-gray-50 transition-all">
+                                <!-- Document Icon -->
                                 <div class="flex-shrink-0">
                                     <div
-                                        class="w-10 h-10 rounded-lg bg-white ring-1 ring-gray-100 flex items-center justify-center">
-                                        <x-heroicon-o-document-text class="w-5 h-5 text-gray-400" />
+                                        class="w-8 h-8 sm:w-10 sm:h-10 rounded-lg bg-white ring-1 ring-gray-100 flex items-center justify-center">
+                                        <x-heroicon-o-document-text class="w-4 h-4 sm:w-5 sm:h-5 text-gray-400" />
                                     </div>
                                 </div>
 
+                                <!-- Document Info -->
                                 <div class="flex-1 min-w-0">
-                                    <p class="text-sm font-medium text-gray-900 truncate">
+                                    <p class="text-xs sm:text-sm font-medium text-gray-900 truncate">
                                         {{ basename($submission->file_path) }}
                                     </p>
-                                    <div class="flex items-center gap-2 mt-0.5">
-                                        <span class="text-xs text-gray-500">{{ $submission->user->name }}</span>
-                                        <span class="text-xs text-gray-300">&bull;</span>
-                                        <span class="text-xs text-gray-500">{{ $submission->created_at->diffForHumans()
+                                    <div class="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2 mt-0.5">
+                                        <span class="text-[11px] sm:text-xs text-gray-500">{{ $submission->user->name
                                             }}</span>
+                                        <span class="hidden sm:inline text-xs text-gray-300">&bull;</span>
+                                        <span class="text-[11px] sm:text-xs text-gray-500">{{
+                                            $submission->created_at->diffForHumans() }}</span>
                                     </div>
                                 </div>
 
-                                <div class="flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
+                                <!-- View Button -->
+                                <div class="flex-shrink-0">
                                     <x-filament::button wire:click="viewDocument({{ $submission->id }})"
                                         x-on:click="$dispatch('open-modal', { id: 'preview-document' })" color="gray"
-                                        size="sm"
-                                        class="inline-flex items-center justify-center min-w-[70px] hover:bg-gray-100">
-                                        <div class="inline-flex items-center gap-2">
-                                            <x-heroicon-m-eye class="w-4 h-4" />
-                                            <span class="font-medium">View</span>
+                                        size="xs" sm:size="sm"
+                                        class="opacity-0 group-hover:opacity-100 transition-opacity hover:bg-gray-100">
+                                        <div class="inline-flex items-center gap-1 sm:gap-2">
+                                            <x-heroicon-m-eye class="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                                            <span class="hidden sm:inline font-medium">View</span>
                                         </div>
                                     </x-filament::button>
                                 </div>
@@ -199,15 +216,15 @@
                             @endforeach
                         </div>
 
-                        <!-- Show More/Less button - Only visible on mobile -->
+                        <!-- Show More/Less button -->
                         @if($document->submittedDocuments->count() > 3)
                         <div class="lg:hidden text-center">
                             <button x-show="!showMore" x-on:click="showMore = true"
-                                class="w-full py-2 text-sm text-primary-600 hover:text-primary-700">
+                                class="w-full py-1.5 sm:py-2 text-xs sm:text-sm text-primary-600 hover:text-primary-700 font-medium">
                                 Show More History
                             </button>
                             <button x-show="showMore" x-on:click="showMore = false"
-                                class="w-full py-2 text-sm text-primary-600 hover:text-primary-700">
+                                class="w-full py-1.5 sm:py-2 text-xs sm:text-sm text-primary-600 hover:text-primary-700 font-medium">
                                 Show Less
                             </button>
                         </div>

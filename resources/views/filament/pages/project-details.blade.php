@@ -167,8 +167,35 @@
                     </div>
 
                     @if($record->description)
-                    <p class="mt-3 text-sm text-gray-600 line-clamp-2 text-center sm:text-left">{!! $record->description
-                        !!}</p>
+                    <div x-data="{ expanded: false }" class="mt-3">
+                        <div class="text-sm text-gray-600 text-center sm:text-left">
+                            <!-- Truncated version -->
+                            <template x-if="!expanded">
+                                <div>
+                                    {!! Str::limit(strip_tags($record->description), 100) !!}
+                                    @if (strlen(strip_tags($record->description)) > 100)
+                                    <button @click="expanded = true" type="button"
+                                        class="inline-flex items-center text-primary-600 hover:text-primary-700 ml-1">
+                                        <span class="text-sm font-medium">Read more</span>
+                                        <x-heroicon-m-chevron-down class="w-3 h-3 ml-0.5" />
+                                    </button>
+                                    @endif
+                                </div>
+                            </template>
+
+                            <!-- Full version -->
+                            <template x-if="expanded">
+                                <div>
+                                    {!! str($record->description)->sanitizeHtml() !!}
+                                    <button @click="expanded = false" type="button"
+                                        class="inline-flex items-center text-primary-600 hover:text-primary-700 ml-1">
+                                        <span class="text-sm font-medium">Show less</span>
+                                        <x-heroicon-m-chevron-up class="w-3 h-3 ml-0.5" />
+                                    </button>
+                                </div>
+                            </template>
+                        </div>
+                    </div>
                     @endif
                 </div>
             </div>
@@ -181,8 +208,28 @@
         <div class="bg-white rounded-xl shadow-sm overflow-hidden">
             @php
             $totalSteps = $record->steps->count();
-            $completedSteps = $record->steps->where('status', 'completed')->count();
-            $progressPercentage = $totalSteps > 0 ? round(($completedSteps / $totalSteps) * 100) : 0;
+            $totalProgress = 0;
+            $totalItems = 0;
+            $completedItems = 0;
+
+            foreach ($record->steps as $step) {
+            // Count tasks
+            $tasks = $step->tasks;
+            if ($tasks->count() > 0) {
+            $totalItems += $tasks->count();
+            $completedItems += $tasks->where('status', 'completed')->count();
+            }
+
+            // Count documents
+            $documents = $step->requiredDocuments;
+            if ($documents->count() > 0) {
+            $totalItems += $documents->count();
+            $completedItems += $documents->where('status', 'approved')->count();
+            }
+            }
+
+            // Calculate overall progress percentage
+            $progressPercentage = $totalItems > 0 ? round(($completedItems / $totalItems) * 100) : 0;
             @endphp
 
             <div class="p-4 sm:p-6 border-b border-gray-100">
@@ -206,8 +253,7 @@
                             </svg>
                             <div class="absolute inset-0 flex items-center justify-center">
                                 <div class="text-center">
-                                    <span class="text-base sm:text-xl font-bold text-gray-900">{{
-                                        $progressPercentage
+                                    <span class="text-base sm:text-xl font-bold text-gray-900">{{ $progressPercentage
                                         }}%</span>
                                 </div>
                             </div>
@@ -221,12 +267,11 @@
                             <div class="flex flex-wrap items-center gap-3 sm:gap-4">
                                 <div class="flex items-center gap-2">
                                     <div class="w-3 h-3 bg-green-500 rounded-full"></div>
-                                    <span class="text-sm text-gray-600">Completed: {{ $completedSteps }}</span>
+                                    <span class="text-sm text-gray-600">Completed: {{ $completedItems }}</span>
                                 </div>
                                 <div class="flex items-center gap-2">
                                     <div class="w-3 h-3 bg-gray-300 rounded-full"></div>
-                                    <span class="text-sm text-gray-600">Remaining: {{ $totalSteps -
-                                        $completedSteps
+                                    <span class="text-sm text-gray-600">Remaining: {{ $totalItems - $completedItems
                                         }}</span>
                                 </div>
                             </div>
@@ -241,7 +286,7 @@
                             </div>
                             <div class="flex flex-col sm:flex-row justify-between mt-2 gap-2">
                                 <p class="text-sm text-gray-500">
-                                    {{ $completedSteps }}/{{ $totalSteps }} steps completed
+                                    {{ $completedItems }}/{{ $totalItems }} items completed
                                 </p>
                                 @if($record->due_date)
                                 <p class="text-sm text-gray-500 flex items-center gap-1">
@@ -316,12 +361,44 @@
                                         </button>
                                     </div>
 
+                                    @php
+                                    // Calculate step progress including tasks and documents
+                                    $totalItems = 0;
+                                    $completedItems = 0;
+
+                                    // Count tasks
+                                    $totalTasks = $step->tasks->count();
+                                    $completedTasks = $step->tasks->where('status', 'completed')->count();
+                                    $totalItems += $totalTasks;
+                                    $completedItems += $completedTasks;
+
+                                    // Count required documents
+                                    $totalDocs = $step->requiredDocuments->count();
+                                    $completedDocs = $step->requiredDocuments->where('status', 'approved')->count();
+                                    $totalItems += $totalDocs;
+                                    $completedItems += $completedDocs;
+
+                                    // Calculate overall step progress
+                                    $stepProgress = $totalItems > 0 ? ($completedItems / $totalItems) * 100 : 0;
+                                    @endphp
+
                                     <!-- Progress Bar (if has tasks) -->
-                                    @if($totalTasks > 0)
+                                    @if($totalItems > 0)
                                     <div class="mt-3">
                                         <div
                                             class="flex flex-col sm:flex-row sm:items-center justify-between text-xs text-gray-500 mb-1 gap-2">
-                                            <span>{{ $completedTasks }}/{{ $totalTasks }} tasks completed</span>
+                                            <span>
+                                                @if($totalTasks > 0)
+                                                {{ $completedTasks }}/{{ $totalTasks }} Tasks
+                                                @endif
+                                                @if($totalTasks > 0 && $totalDocs > 0)
+                                                •
+                                                @endif
+                                                @if($totalDocs > 0)
+                                                {{ $completedDocs }}/{{ $totalDocs }} Documents
+                                                @endif
+                                                Completed
+                                            </span>
                                             <div class="flex items-center gap-2">
                                                 <span>{{ number_format($stepProgress) }}%</span>
                                                 <span class="text-gray-300">&bull;</span>

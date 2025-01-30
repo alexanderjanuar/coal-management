@@ -17,6 +17,14 @@ class Dashboard extends BaseDashboard
     protected static ?string $navigationIcon = 'heroicon-o-computer-desktop';
     protected static string $view = 'filament.pages.dashboard';
 
+    // Add this property
+    public $activeStatus = 'all';
+
+    // Add this method
+    public function changeStatus($status)
+    {
+        $this->activeStatus = $status;
+    }
     public function getViewData(): array
     {
         // User instance
@@ -28,14 +36,12 @@ class Dashboard extends BaseDashboard
                 'projects' => function ($query) {
                     $query->latest();
                 },
-                'projects.steps.tasks' => function ($query) {
-                    $query->withCount('comments');
-                }
+                'projects.steps.tasks',
+                'projects.steps.requiredDocuments' // Add this to eager load documents
             ]);
 
         // Filter clients based on user role and associations
         if (!$user->hasRole('super-admin')) {
-            // Get client IDs associated with the user
             $clientIds = $user->userClients()->pluck('client_id');
             $clientsQuery->whereIn('id', $clientIds);
         }
@@ -43,7 +49,7 @@ class Dashboard extends BaseDashboard
         // Get filtered clients
         $clients = $clientsQuery->get();
 
-        // Calculate stats based on accessible projects
+        // Calculate stats and progress
         $accessibleProjectIds = $clients->pluck('projects')->flatten()->pluck('id');
 
         $stats = [
@@ -71,16 +77,30 @@ class Dashboard extends BaseDashboard
                 ->count(),
         ];
 
-        // Calculate progress for each project
+        // Calculate progress for each project including tasks and documents
         $clients->each(function ($client) {
             $client->projects->each(function ($project) {
-                $totalSteps = $project->steps->count();
-                if ($totalSteps > 0) {
-                    $completedSteps = $project->steps->where('status', 'completed')->count();
-                    $project->progress = round(($completedSteps / $totalSteps) * 100);
-                } else {
-                    $project->progress = 0;
+                $totalItems = 0;
+                $completedItems = 0;
+
+                foreach ($project->steps as $step) {
+                    // Count tasks
+                    $tasks = $step->tasks;
+                    if ($tasks->count() > 0) {
+                        $totalItems += $tasks->count();
+                        $completedItems += $tasks->where('status', 'completed')->count();
+                    }
+
+                    // Count documents
+                    $documents = $step->requiredDocuments;
+                    if ($documents->count() > 0) {
+                        $totalItems += $documents->count();
+                        $completedItems += $documents->where('status', 'approved')->count();
+                    }
                 }
+
+                // Calculate progress percentage
+                $project->progress = $totalItems > 0 ? round(($completedItems / $totalItems) * 100) : 0;
             });
         });
 

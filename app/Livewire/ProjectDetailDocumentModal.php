@@ -12,6 +12,7 @@ use Filament\Forms\Form;
 use Filament\Notifications\Notification;
 use Illuminate\Support\Facades\Storage;
 use Livewire\Component;
+use Illuminate\Support\Str;
 
 class ProjectDetailDocumentModal extends Component implements HasForms
 {
@@ -67,7 +68,14 @@ class ProjectDetailDocumentModal extends Component implements HasForms
                     ->maxSize(10240)
                     ->preserveFilenames()
                     ->disk('public')
-                    ->directory('documents')
+                    ->directory(function () {
+                        // Get client name and project name
+                        $clientName = Str::slug($this->document->projectStep->project->client->name);
+                        $projectName = Str::slug($this->document->projectStep->project->name);
+                        
+                        // Create the directory path
+                        return "documents/{$clientName}/{$projectName}";
+                    })
                     ->downloadable()
                     ->openable()
             ])

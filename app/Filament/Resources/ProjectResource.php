@@ -48,6 +48,7 @@ class ProjectResource extends Resource
     public static function form(Form $form): Form
     {
         return $form
+
             ->schema([
                 Forms\Components\Wizard::make([
                     Forms\Components\Wizard\Step::make('Project Details')
@@ -205,39 +206,92 @@ class ProjectResource extends Resource
     {
         return $table
             ->columns([
+                // Client Information
                 Tables\Columns\TextColumn::make('client.name')
                     ->label('Client Name')
+                    ->badge()
+                    ->color('gray')
                     ->numeric()
                     ->sortable(),
+
+                // Project Information
                 Tables\Columns\TextColumn::make('name')
                     ->label('Project Name')
-                    ->description(
-                        fn(Project $record): string =>
-                        $record->description
-                        ? \Str::limit($record->description, 45, '...')
-                        : '-'
-                    )
+                    ->weight(FontWeight::Bold)
                     ->searchable(),
+
+                // Project Status
                 Tables\Columns\TextColumn::make('status')
                     ->badge()
                     ->color(fn(string $state): string => match ($state) {
-                        'draft' => 'gray',
-                        'on_hold' => 'gray',
+                        'draft', 'on_hold' => 'gray',
                         'in_progress' => 'warning',
                         'completed' => 'success',
                         'canceled' => 'danger',
                     })
-                    ->formatStateUsing(fn(string $state): string => __(Str::title($state))),
+                    ->formatStateUsing(
+                        fn(string $state): string =>
+                        __(Str::title(str_replace('_', ' ', $state)))
+                    ),
+
+                // Progress Bar
                 ProgressBar::make('bar')
                     ->label('Progress')
                     ->getStateUsing(function ($record) {
-                        $total = $record->steps()->count();
-                        $progress = $record->steps()->where('status', 'completed')->count();
+                        // Get all steps for the project
+                        $steps = $record->steps;
+
+                        // Initialize counters for total and completed items
+                        $totalItems = 0;
+                        $completedItems = 0;
+
+                        foreach ($steps as $step) {
+                            // Count step itself
+                            $totalItems++;
+                            if ($step->status === 'completed') {
+                                $completedItems++;
+                            }
+
+                            // Count and check tasks
+                            $tasks = $step->tasks;
+                            $totalItems += $tasks->count();
+                            $completedItems += $tasks->where('status', 'completed')->count();
+
+                            // Count and check required documents
+                            $documents = $step->requiredDocuments;
+                            $totalItems += $documents->count();
+                            $completedItems += $documents->where('status', 'approved')->count();
+                        }
+
                         return [
-                            'total' => $total,
-                            'progress' => $progress,
+                            'total' => $totalItems ?: 1, // Prevent division by zero
+                            'progress' => $completedItems,
                         ];
+                    })
+                    ->tooltip(function ($record) {
+                        // Add tooltip to show detailed progress
+                        $steps = $record->steps;
+
+                        $totalItems = 0;
+                        $completedItems = 0;
+
+                        foreach ($steps as $step) {
+                            $totalItems++;
+                            if ($step->status === 'completed') {
+                                $completedItems++;
+                            }
+
+                            $totalItems += $step->tasks->count();
+                            $completedItems += $step->tasks->where('status', 'completed')->count();
+
+                            $totalItems += $step->requiredDocuments->count();
+                            $completedItems += $step->requiredDocuments->where('status', 'approved')->count();
+                        }
+
+                        return "Completed: {$completedItems} / {$totalItems} items";
                     }),
+
+                // Timestamps
                 Tables\Columns\TextColumn::make('created_at')
                     ->dateTime()
                     ->sortable()
@@ -247,6 +301,7 @@ class ProjectResource extends Resource
                     ->sortable()
                     ->toggleable(isToggledHiddenByDefault: true),
             ])
+            // Filters
             ->filters([
                 SelectFilter::make('status')
                     ->multiple()
@@ -258,17 +313,29 @@ class ProjectResource extends Resource
                         'canceled' => 'Canceled',
                     ])
             ])
+            // Row Actions
             ->actions([
-                RelationManagerAction::make('project-step-relation-manager')
-                    ->label('Project Step')
-                    ->slideOver()
-                    ->Icon('heroicon-o-arrow-path')
-                    ->color('warning')
-                    ->relationManager(StepsRelationManager::make()),
-                Tables\Actions\ViewAction::make(),
-                Tables\Actions\EditAction::make(),
+                Tables\Actions\ActionGroup::make([
+                    RelationManagerAction::make('project-step-relation-manager')
+                        ->label('Project Step')
+                        ->slideOver()
+                        ->icon('heroicon-o-arrow-path')
+                        ->color('warning')
+                        ->relationManager(StepsRelationManager::make()),
+                    Tables\Actions\ViewAction::make()
+                        ->icon('heroicon-o-eye'),
+                    Tables\Actions\EditAction::make()
+                        ->icon('heroicon-o-pencil'),
+                ])
+                    ->icon('heroicon-m-ellipsis-vertical')
+                    ->color('gray')
+                    ->label('Actions')
             ])
-            
+            ->recordUrl(
+                fn(Project $record): string =>
+                static::getUrl('view', ['record' => $record])
+            )
+            // Bulk Actions
             ->bulkActions([
                 Tables\Actions\BulkActionGroup::make([
                     Tables\Actions\DeleteBulkAction::make(),

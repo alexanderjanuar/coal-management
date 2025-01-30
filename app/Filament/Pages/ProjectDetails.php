@@ -26,8 +26,8 @@ class ProjectDetails extends Page implements HasForms
 
 
     public ?string $comment = '';
-    
-    public function mount(int|string $record): void 
+
+    public function mount(int|string $record): void
     {
         parent::mount($record);
         $this->form->fill();
@@ -45,9 +45,50 @@ class ProjectDetails extends Page implements HasForms
 
     private function calculateProgress(): int
     {
-        $totalSteps = $this->record->steps->count();
-        $completedSteps = $this->record->steps->where('status', 'completed')->count();
+        $steps = $this->record->steps;
 
-        return $totalSteps > 0 ? round(($completedSteps / $totalSteps) * 100) : 0;
+        if ($steps->isEmpty()) {
+            return 0;
+        }
+
+        $totalProgress = 0;
+
+        foreach ($steps as $step) {
+            // Add the step's progress percentage to total
+            $totalProgress += $this->calculateStepProgress($step);
+        }
+
+        // Calculate average progress across all steps
+        return round($totalProgress / $steps->count());
+    }
+
+    private function calculateStepProgress($step): float
+    {
+        $totalWeight = 0;
+        $completedWeight = 0;
+
+        // Calculate tasks progress
+        $tasks = $step->tasks;
+        if ($tasks->count() > 0) {
+            $totalWeight += 1; // Tasks represent 50% of step weight
+            $taskProgress = $tasks->where('status', 'completed')->count() / $tasks->count();
+            $completedWeight += $taskProgress;
+        }
+
+        // Calculate documents progress
+        $documents = $step->requiredDocuments;
+        if ($documents->count() > 0) {
+            $totalWeight += 1; // Documents represent 50% of step weight
+            $docProgress = $documents->where('status', 'approved')->count() / $documents->count();
+            $completedWeight += $docProgress;
+        }
+
+        // If no items, step progress is 0
+        if ($totalWeight === 0) {
+            return 0;
+        }
+
+        // Calculate percentage (average of tasks and documents progress)
+        return ($completedWeight / $totalWeight) * 100;
     }
 }
