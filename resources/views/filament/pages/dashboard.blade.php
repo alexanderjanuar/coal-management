@@ -258,17 +258,6 @@
                             </div>
                         </div>
                     </div>
-
-                    <!-- Mobile Due Date (Only visible on smaller screens) -->
-                    @if($project->due_date)
-                    <div class="sm:hidden flex items-center space-x-1.5 text-sm">
-                        <x-heroicon-m-calendar-days
-                            class="w-4 h-4 {{ $project->due_date->isPast() ? 'text-red-500' : 'text-gray-500' }}" />
-                        <span class="{{ $project->due_date->isPast() ? 'text-red-600' : 'text-gray-600' }}">
-                            Due {{ $project->due_date->format('M d, Y') }}
-                        </span>
-                    </div>
-                    @endif
                 </div>
             </div>
 
