@@ -3,6 +3,48 @@
 <x-filament-panels::page class="w-full">
 
     <style>
+        .logo-container {
+            width: 3rem;
+            /* w-12 */
+            height: 3rem;
+            /* h-12 */
+            border-radius: 0.75rem;
+            /* rounded-xl */
+            overflow: hidden;
+            border: 2px solid rgb(var(--primary-50));
+            /* ring-2 ring-primary-50 */
+            transition: border-color 0.3s ease;
+        }
+
+        .logo-container:hover {
+            border-color: rgb(var(--primary-100));
+            /* hover:ring-primary-100 */
+        }
+
+        .logo-container img {
+            width: 100%;
+            /* w-full */
+            height: 100%;
+            /* h-full */
+            object-fit: cover;
+            transform: scale(1);
+            transition: transform 0.3s ease;
+        }
+
+        .logo-container img:hover {
+            transform: scale(1.05);
+            /* hover:scale-105 */
+        }
+
+        @media (min-width: 768px) {
+            .logo-container {
+                width: 4rem;
+                /* md:w-16 */
+                height: 4rem;
+                /* md:h-16 */
+            }
+        }
+
         @keyframes pulse-subtle {
 
             0%,
@@ -192,10 +234,8 @@
                             <!-- Logo/Initial -->
                             @if ($client->logo)
                             <div class="relative">
-                                <div
-                                    class="w-12 h-12 md:w-16 md:h-16 rounded-xl overflow-hidden ring-2 ring-primary-50 hover:ring-primary-100">
-                                    <img src="{{ Storage::url($client->logo) }}" alt="{{ $client->name }}"
-                                        class="w-full h-full object-cover transform hover:scale-105 transition-all duration-300" />
+                                <div class="logo-container">
+                                    <img src="{{ Storage::url($client->logo) }}" alt="{{ $client->name }}" />
                                 </div>
                             </div>
                             @else
