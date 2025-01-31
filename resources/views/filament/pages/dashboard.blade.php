@@ -72,6 +72,7 @@
                 /* removes space-y on larger screens */
             }
         }
+        
     </style>
     {{-- Stats Overview --}}
     <div class="grid gap-4 md:grid-cols-4 mb-8">
@@ -169,7 +170,7 @@
             class="bg-white rounded-lg shadow-sm border border-gray-100 hover:shadow-md transition-all duration-200">
             <!-- Project Header -->
             <div @click="open = !open"
-                class="group bg-white rounded-2xl border border-gray-100 shadow-sm hover:shadow-md transition-all duration-300">
+                class=" bg-white border border-gray-100 shadow-sm hover:shadow-md transition-all duration-300">
 
                 <!-- Main Content Container -->
                 <div class="relative p-4 md:p-6 pb-8">
@@ -178,11 +179,11 @@
                         <div class="flex items-start space-x-4">
                             <!-- Logo/Initial -->
                             @if ($client->logo)
-                            <div class="relative group/logo">
+                            <div class="relative">
                                 <div
-                                    class="w-12 h-12 md:w-16 md:h-16 rounded-xl overflow-hidden ring-2 ring-primary-50 group-hover:ring-primary-100">
+                                    class="w-12 h-12 md:w-16 md:h-16 rounded-xl overflow-hidden ring-2 ring-primary-50 hover:ring-primary-100">
                                     <img src="{{ Storage::url($client->logo) }}" alt="{{ $client->name }}"
-                                        class="w-full h-full object-cover transform group-hover:scale-105 transition-all duration-300" />
+                                        class="w-full h-full object-cover transform hover:scale-105 transition-all duration-300" />
                                 </div>
                             </div>
                             @else
@@ -197,7 +198,7 @@
                             <!-- Project & Client Details -->
                             <div class="space-y-1 min-w-0">
                                 <h3
-                                    class="text-lg md:text-xl font-semibold text-gray-900 group-hover:text-primary-600 transition-colors truncate">
+                                    class="text-lg md:text-xl font-semibold text-gray-900 hover:text-primary-600 transition-colors truncate">
                                     {{ $project->name }}
                                 </h3>
                                 <div
