@@ -53,6 +53,25 @@
         .animate-shimmer {
             animation: shimmer 6s infinite linear;
         }
+
+        .header-container {
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+            /* equivalent to space-y-4 */
+        }
+
+        @media (min-width: 768px) {
+
+            /* md breakpoint */
+            .header-container {
+                flex-direction: row;
+                justify-content: space-between;
+                align-items: flex-start;
+                gap: 0;
+                /* removes space-y on larger screens */
+            }
+        }
     </style>
     {{-- Stats Overview --}}
     <div class="grid gap-4 md:grid-cols-4 mb-8">
@@ -154,7 +173,7 @@
 
                 <!-- Main Content Container -->
                 <div class="relative p-4 md:p-6 pb-8">
-                    <div class="flex flex-col md:flex-row md:justify-between md:items-start space-y-4 md:space-y-0">
+                    <div class="header-container">
                         <!-- Left: Client Info -->
                         <div class="flex items-start space-x-4">
                             <!-- Logo/Initial -->
