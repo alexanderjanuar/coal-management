@@ -137,24 +137,24 @@
             <div @click="open = !open"
                 class="group bg-white rounded-2xl border border-gray-100 shadow-sm hover:shadow-md transition-all duration-300">
                 <!-- Main Content Container -->
-                <div class="p-4 sm:p-6 flex flex-col space-y-4">
+                <div class="p-4 md:p-6 flex flex-col space-y-4">
                     <!-- Top Section: Client Info and Actions -->
-                    <div class="flex flex-col lg:flex-row lg:justify-between lg:items-start space-y-4 lg:space-y-0">
+                    <div class="flex flex-col md:flex-row md:justify-between md:items-start space-y-4 md:space-y-0">
                         <!-- Left: Client Info -->
-                        <div class="flex items-start space-x-3 sm:space-x-4">
+                        <div class="flex items-start space-x-4">
                             <!-- Logo/Initial -->
                             @if ($client->logo)
                             <div class="relative group/logo">
                                 <div
-                                    class="w-12 h-12 sm:w-16 sm:h-16 rounded-xl overflow-hidden ring-2 ring-primary-50 group-hover:ring-primary-100">
+                                    class="w-12 h-12 md:w-16 md:h-16 rounded-xl overflow-hidden ring-2 ring-primary-50 group-hover:ring-primary-100">
                                     <img src="{{ Storage::url($client->logo) }}" alt="{{ $client->name }}"
                                         class="w-full h-full object-cover transform group-hover:scale-105 transition-all duration-300" />
                                 </div>
                             </div>
                             @else
                             <div
-                                class="w-12 h-12 sm:w-16 sm:h-16 rounded-xl bg-gradient-to-br from-primary-50 to-primary-100 flex items-center justify-center">
-                                <span class="text-xl sm:text-2xl font-bold text-primary-600">
+                                class="w-12 h-12 md:w-16 md:h-16 rounded-xl bg-gradient-to-br from-primary-50 to-primary-100 flex items-center justify-center">
+                                <span class="text-xl md:text-2xl font-bold text-primary-600">
                                     {{ substr($client->name, 0, 1) }}
                                 </span>
                             </div>
@@ -163,14 +163,14 @@
                             <!-- Project & Client Details -->
                             <div class="space-y-1 min-w-0">
                                 <h3
-                                    class="text-lg sm:text-xl font-semibold text-gray-900 group-hover:text-primary-600 transition-colors truncate">
+                                    class="text-lg md:text-xl font-semibold text-gray-900 group-hover:text-primary-600 transition-colors truncate">
                                     {{ $project->name }}
                                 </h3>
                                 <div
-                                    class="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-3 text-sm text-gray-600">
+                                    class="flex flex-col sm:flex-row sm:items-center space-y-1 sm:space-y-0 sm:space-x-3 text-sm text-gray-600">
                                     <span class="truncate">{{ $client->name }}</span>
                                     @if($project->due_date)
-                                    <div class="hidden sm:flex items-center space-x-1.5">
+                                    <div class="hidden sm:flex items-center space-x-1">
                                         <span class="text-gray-300">•</span>
                                         <div class="flex items-center space-x-1.5">
                                             <x-heroicon-m-calendar-days
@@ -187,24 +187,25 @@
                         </div>
 
                         <!-- Right: Status and Actions -->
-                        <div class="flex flex-col sm:flex-row items-start sm:items-center gap-4 w-full lg:w-auto">
+                        <div
+                            class="flex flex-col sm:flex-row items-start sm:items-center space-y-3 sm:space-y-0 sm:space-x-4">
                             <!-- Progress Bar -->
                             <div class="group/progress relative w-full sm:w-auto">
-                                <div class="bg-gray-50 rounded-lg p-3 border border-gray-100 w-full sm:w-auto">
-                                    <div class="flex items-center justify-between sm:justify-start space-x-3">
-                                        <div class="w-full sm:w-32 h-2 bg-gray-200 rounded-full overflow-hidden">
+                                <div class="bg-gray-50 rounded-lg p-2 md:p-3 border border-gray-100 w-full sm:w-auto">
+                                    <div class="flex items-center space-x-3">
+                                        <div
+                                            class="flex-grow sm:w-24 md:w-32 h-2 bg-gray-200 rounded-full overflow-hidden">
                                             <div class="h-full transition-all duration-300 rounded-full {{ match(true) {
-                                        $project->progress === 100 => 'bg-green-500',
-                                        $project->progress >= 50 => 'bg-amber-500',
-                                        default => 'bg-red-500'
-                                    } }}" style="width: {{ $project->progress }}%">
-                                            </div>
+                                                    $project->progress === 100 => 'bg-green-500',
+                                                    $project->progress >= 50 => 'bg-amber-500',
+                                                    default => 'bg-red-500'
+                                                } }}" style="width: {{ $project->progress }}%"></div>
                                         </div>
                                         <span class="text-sm font-medium whitespace-nowrap {{ match(true) {
-                                    $project->progress === 100 => 'text-green-600',
-                                    $project->progress >= 50 => 'text-amber-600',
-                                    default => 'text-red-600'
-                                } }}">
+                                            $project->progress === 100 => 'text-green-600',
+                                            $project->progress >= 50 => 'text-amber-600',
+                                            default => 'text-red-600'
+                                        } }}">
                                             {{ $project->progress }}%
                                         </span>
                                     </div>
@@ -213,9 +214,10 @@
                                 <!-- Hover Tooltip -->
                                 <div
                                     class="absolute -top-24 left-1/2 -translate-x-1/2 opacity-0 invisible group-hover/progress:opacity-100 group-hover/progress:visible transition-all duration-200 z-10">
-                                    <div class="bg-gray-900 text-white p-3 rounded-lg shadow-lg text-sm">
+                                    <div
+                                        class="bg-gray-900 text-white p-3 rounded-lg shadow-lg text-sm whitespace-nowrap">
                                         <div class="space-y-2">
-                                            <div class="flex justify-between items-center gap-4">
+                                            <div class="flex justify-between items-center space-x-8">
                                                 <span>Progress Status</span>
                                                 <span class="font-medium">{{ $project->progress }}%</span>
                                             </div>
@@ -229,15 +231,15 @@
                                 </div>
                             </div>
 
-                            <!-- Status and Actions Container -->
-                            <div class="flex items-center justify-between sm:justify-start gap-4 w-full sm:w-auto">
+                            <!-- Status and Action Buttons -->
+                            <div class="flex items-center justify-between sm:justify-start w-full sm:w-auto space-x-3">
                                 <!-- Status Badge -->
                                 <x-filament::badge :color="match ($project->status) {
-                            'completed' => 'success',
-                            'in_progress' => 'warning',
-                            'on_hold' => 'danger',
-                            default => 'secondary',
-                        }" class="px-3 py-1.5">
+                                        'completed' => 'success',
+                                        'in_progress' => 'warning',
+                                        'on_hold' => 'danger',
+                                        default => 'secondary',
+                                    }" class="px-3 py-1.5">
                                     {{ ucwords(str_replace('_', ' ', $project->status)) }}
                                 </x-filament::badge>
 
@@ -257,9 +259,9 @@
                         </div>
                     </div>
 
-                    <!-- Mobile Due Date -->
+                    <!-- Mobile Due Date (Only visible on smaller screens) -->
                     @if($project->due_date)
-                    <div class="flex sm:hidden items-center space-x-1.5 text-sm">
+                    <div class="sm:hidden flex items-center space-x-1.5 text-sm">
                         <x-heroicon-m-calendar-days
                             class="w-4 h-4 {{ $project->due_date->isPast() ? 'text-red-500' : 'text-gray-500' }}" />
                         <span class="{{ $project->due_date->isPast() ? 'text-red-600' : 'text-gray-600' }}">
