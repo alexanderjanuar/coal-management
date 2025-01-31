@@ -15,7 +15,7 @@ return new class extends Migration
             $table->id();
             $table->foreignId('project_step_id')->constrained('project_steps')->onDelete('cascade');
             $table->string('title');
-            $table->text('description');
+            $table->text('description')->nullable();
             $table->enum('status', ['pending', 'in_progress', 'completed', 'blocked'])->default('pending');
             $table->boolean('requires_document')->default(false);
             $table->timestamps();

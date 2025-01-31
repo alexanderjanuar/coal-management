@@ -399,15 +399,12 @@
                                                 class="relative group rounded-lg hover:bg-gray-100 transition-colors duration-200">
                                                 <div class="p-4 space-y-3">
                                                     <!-- Task Header -->
-                                                    <div class="flex flex-col sm:flex-row sm:items-center gap-3">
-                                                        <!-- Title and Status -->
-                                                        <div class="flex-grow min-w-0">
-                                                            <h4 class="font-medium text-gray-900 truncate">{{
-                                                                $task->title }}</h4>
-                                                        </div>
-
+                                                    <div class="flex sm:flex-row items-center justify-between gap-3">
+                                                        <!-- Title -->
+                                                        <h4 class="font-medium text-gray-900 truncate">{{ $task->title }}</h4>
+                                                    
                                                         <!-- Status and Comments -->
-                                                        <div class="flex items-center gap-2 flex-shrink-0">
+                                                        <div class="flex items-center gap-2">
                                                             <x-filament::badge size="sm" :color="match ($task->status) {
                                                                 'completed' => 'success',
                                                                 'in_progress' => 'warning',
@@ -416,11 +413,10 @@
                                                             }">
                                                                 {{ ucwords(str_replace('_', ' ', $task->status)) }}
                                                             </x-filament::badge>
-
+                                                    
                                                             <!-- Comments Counter -->
-                                                            <button
-                                                                x-on:click.stop="$dispatch('open-modal', { id: 'task-modal-{{ $task->id }}' })"
-                                                                class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-sm font-medium 
+                                                            <button x-on:click.stop="$dispatch('open-modal', { id: 'task-modal-{{ $task->id }}' })"
+                                                                class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-sm font-medium 
                                                                     {{ $task->comments_count > 0 
                                                                         ? 'bg-primary-50 text-primary-700 hover:bg-primary-100' 
                                                                         : 'bg-gray-100 text-gray-600 hover:bg-gray-200' }} 
@@ -430,13 +426,7 @@
                                                             </button>
                                                         </div>
                                                     </div>
-
-                                                    <!-- Task Description -->
-                                                    @if ($task->description)
-                                                    <div class="text-sm text-gray-600 prose prose-sm max-w-none">
-                                                        {!! str($task->description)->sanitizeHtml() !!}
-                                                    </div>
-                                                    @endif
+                                                                               
                                                 </div>
 
                                                 <!-- Task Modal -->
