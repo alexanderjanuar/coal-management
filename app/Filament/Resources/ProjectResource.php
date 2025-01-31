@@ -115,9 +115,9 @@ class ProjectResource extends Resource
                                                 ->relationship('tasks')
                                                 ->schema([
                                                     TextInput::make('title')
+                                                        ->label('Task Title')
                                                         ->required(),
                                                     Forms\Components\RichEditor::make('description')
-                                                        ->required()
                                                         ->toolbarButtons([
                                                             'bold',
                                                             'bulletList',
@@ -140,6 +140,7 @@ class ProjectResource extends Resource
                                                 ->relationship('requiredDocuments')
                                                 ->schema([
                                                     TextInput::make('name')
+                                                        ->label('Documents Name')
                                                         ->required(),
                                                     Forms\Components\RichEditor::make('description')
                                                         ->toolbarButtons([
