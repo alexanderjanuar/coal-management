@@ -135,161 +135,119 @@
             class="bg-white rounded-lg shadow-sm border border-gray-100 hover:shadow-md transition-all duration-200">
             <!-- Project Header -->
             <div @click="open = !open"
-                class="p-4 md:p-6 cursor-pointer group/card bg-white hover:bg-gray-50/50 rounded-xl border border-gray-100 hover:border-primary-100 transition-all duration-200 relative overflow-hidden">
-                <!-- Background Pattern (subtle) -->
-                <div
-                    class="absolute inset-0 opacity-[0.03] bg-gradient-to-r from-primary-600 to-transparent pointer-events-none">
-                </div>
-
-                <div class="flex flex-col md:flex-row md:items-start justify-between gap-4 mb-4 relative">
-                    <!-- Left side (Client info) -->
-                    <div class="flex items-start gap-3 md:gap-4">
-                        <!-- Enhanced Logo/Initial Container -->
-                        @if ($client->logo)
-                        <div class="relative group/logo">
-                            <div
-                                class="w-12 h-12 md:w-14 md:h-14 rounded-xl overflow-hidden ring-2 ring-gray-100 group-hover/card:ring-primary-100 transition-all duration-200">
-                                <img src="{{ Storage::url($client->logo) }}" alt="{{ $client->name }}"
-                                    class="w-full h-full object-cover transform group-hover/logo:scale-110 transition-transform duration-300" />
+                class="group bg-white rounded-2xl border border-gray-100 shadow-sm hover:shadow-md transition-all duration-300">
+                <!-- Main Content Container -->
+                <div class="p-6 flex flex-col space-y-4">
+                    <!-- Top Section: Client Info and Actions -->
+                    <div class="flex justify-between items-start">
+                        <!-- Left: Client Info -->
+                        <div class="flex items-center space-x-4">
+                            <!-- Logo/Initial -->
+                            @if ($client->logo)
+                            <div class="relative group/logo">
+                                <div
+                                    class="w-16 h-16 rounded-xl overflow-hidden ring-2 ring-primary-50 group-hover:ring-primary-100">
+                                    <img src="{{ Storage::url($client->logo) }}" alt="{{ $client->name }}"
+                                        class="w-full h-full object-cover transform group-hover:scale-105 transition-all duration-300" />
+                                </div>
                             </div>
+                            @else
                             <div
-                                class="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent opacity-0 group-hover/logo:opacity-100 transition-opacity duration-200 rounded-xl">
-                            </div>
-                        </div>
-                        @else
-                        <div class="relative group/logo">
-                            <div
-                                class="w-12 h-12 md:w-14 md:h-14 rounded-xl bg-gradient-to-br from-primary-50 to-primary-100/50 flex items-center justify-center ring-2 ring-primary-100/50 group-hover/card:ring-primary-200 transition-all duration-200">
-                                <span
-                                    class="text-primary-600 text-lg md:text-xl font-bold transform group-hover/logo:scale-110 transition-transform duration-200">
+                                class="w-16 h-16 rounded-xl bg-gradient-to-br from-primary-50 to-primary-100 flex items-center justify-center">
+                                <span class="text-2xl font-bold text-primary-600">
                                     {{ substr($client->name, 0, 1) }}
                                 </span>
                             </div>
-                        </div>
-                        @endif
+                            @endif
 
-                        <!-- Project Info with Enhanced Typography -->
-                        <div class="min-w-0 group/info">
-                            <h3
-                                class="text-base md:text-lg font-semibold text-gray-900 truncate group-hover/info:text-primary-600 transition-colors duration-200">
-                                {{ $project->name }}
-                            </h3>
-                            <div class="flex flex-col md:flex-row md:items-center gap-1 md:gap-3 mt-1">
-                                <p class="text-sm text-gray-600 truncate">{{ $client->name }}</p>
-                                @if($project->due_date)
-                                <div class="hidden md:flex items-center gap-3">
+                            <!-- Project & Client Details -->
+                            <div class="space-y-1">
+                                <h3
+                                    class="text-xl font-semibold text-gray-900 group-hover:text-primary-600 transition-colors">
+                                    {{ $project->name }}
+                                </h3>
+                                <div class="flex items-center space-x-3 text-sm text-gray-600">
+                                    <span>{{ $client->name }}</span>
+                                    @if($project->due_date)
                                     <span class="text-gray-300">•</span>
-                                    <div
-                                        class="flex items-center gap-1.5 {{ $project->due_date->isPast() ? 'text-red-600' : 'text-gray-600' }}">
-                                        <x-heroicon-m-calendar-days class="w-4 h-4" />
-                                        <p class="text-sm">
-                                            Due {{ $project->due_date->format('M d, Y') }}
-                                            <span class="text-xs ml-1">({{ $project->due_date->diffForHumans()
-                                                }})</span>
-                                        </p>
+                                    <div class="flex items-center space-x-1.5">
+                                        <x-heroicon-m-calendar-days
+                                            class="w-4 h-4 {{ $project->due_date->isPast() ? 'text-red-500' : 'text-gray-500' }}" />
+                                        <span
+                                            class="{{ $project->due_date->isPast() ? 'text-red-600' : 'text-gray-600' }}">
+                                            {{ $project->due_date->format('M d, Y') }}
+                                        </span>
                                     </div>
+                                    @endif
                                 </div>
-                                @endif
                             </div>
                         </div>
-                    </div>
 
-                    <!-- Right side (Status and controls) -->
-                    <div class="flex flex-wrap items-center gap-3 md:gap-4">
-                        <!-- Enhanced Progress Indicator -->
-                        <div class="group/progress relative">
-                            <div
-                                class="flex items-center gap-3 bg-white rounded-xl px-4 py-2 shadow-sm border border-gray-100 group-hover/progress:border-primary-100 transition-all duration-200">
-                                <!-- Progress Visualization -->
-                                <div class="flex items-center gap-0.5 w-20">
-                                    @foreach(range(1, 10) as $step)
-                                    <div class="h-6 flex-1 rounded-sm bg-gray-100 overflow-hidden relative">
-                                        @if($project->progress >= $step * 10)
-                                        <div class="absolute inset-0 {{ match(true) {
+                        <!-- Right: Status and Actions -->
+                        <div class="flex items-center space-x-4">
+                            <!-- Progress Bar -->
+                            <div class="group/progress relative">
+                                <div class="bg-gray-50 rounded-lg p-3 border border-gray-100">
+                                    <div class="flex items-center space-x-3">
+                                        <div class="w-32 h-2 bg-gray-200 rounded-full overflow-hidden">
+                                            <div class="h-full transition-all duration-300 rounded-full {{ match(true) {
                                                     $project->progress === 100 => 'bg-green-500',
                                                     $project->progress >= 50 => 'bg-amber-500',
                                                     default => 'bg-red-500'
-                                                } }} transform -skew-x-12"></div>
-                                        @endif
+                                                } }}" style="width: {{ $project->progress }}%"></div>
+                                        </div>
+                                        <span class="text-sm font-medium {{ match(true) {
+                                            $project->progress === 100 => 'text-green-600',
+                                            $project->progress >= 50 => 'text-amber-600',
+                                            default => 'text-red-600'
+                                        } }}">
+                                            {{ $project->progress }}%
+                                        </span>
                                     </div>
-                                    @endforeach
                                 </div>
 
-                                <!-- Percentage -->
-                                <div class="relative">
-                                    <span class="text-sm font-bold {{ match(true) {
-                                        $project->progress === 100 => 'text-green-600',
-                                        $project->progress >= 50 => 'text-amber-600',
-                                        default => 'text-red-600'
-                                    } }}">
-                                        {{ $project->progress }}%
-                                    </span>
-                                </div>
-                            </div>
-
-                            <!-- Enhanced Tooltip -->
-                            <div
-                                class="absolute -top-24 left-1/2 -translate-x-1/2 opacity-0 invisible group-hover/progress:opacity-100 group-hover/progress:visible transition-all duration-200 z-50">
+                                <!-- Hover Tooltip -->
                                 <div
-                                    class="bg-gray-900 backdrop-blur-sm bg-opacity-90 text-white p-3 rounded-lg shadow-lg">
-                                    <div class="flex flex-col gap-2">
-                                        <div class="flex items-center justify-between gap-3">
-                                            <div class="flex items-center gap-2">
-                                                <div class="w-2 h-2 rounded-full {{ match(true) {
-                                                    $project->progress === 100 => 'bg-green-400',
-                                                    $project->progress >= 50 => 'bg-amber-400',
-                                                    default => 'bg-red-400'
-                                                } }}"></div>
-                                                <span class="text-sm font-medium">Progress Status</span>
+                                    class="absolute -top-24 left-1/2 -translate-x-1/2 opacity-0 invisible group-hover/progress:opacity-100 group-hover/progress:visible transition-all duration-200 z-10">
+                                    <div class="bg-gray-900 text-white p-3 rounded-lg shadow-lg text-sm">
+                                        <div class="space-y-2">
+                                            <div class="flex justify-between items-center">
+                                                <span>Progress Status</span>
+                                                <span class="font-medium">{{ $project->progress }}%</span>
                                             </div>
-                                            <span class="text-sm font-bold">{{ $project->progress }}%</span>
+                                            @if($project->progress < 100) <span class="text-xs text-gray-400">{{ 100 -
+                                                $project->progress }}% remaining</span>
+                                                @else
+                                                <span class="text-xs text-green-400">Complete!</span>
+                                                @endif
                                         </div>
-                                        <div class="h-1.5 w-full bg-gray-800 rounded-full overflow-hidden">
-                                            <div class="h-full transition-all duration-500 ease-out {{ match(true) {
-                                                $project->progress === 100 => 'bg-green-500',
-                                                $project->progress >= 50 => 'bg-amber-500',
-                                                default => 'bg-red-500'
-                                            } }}" style="width: {{ $project->progress }}%"></div>
-                                        </div>
-                                        @if($project->progress < 100) <span class="text-xs text-gray-400">{{ 100 -
-                                            $project->progress }}% remaining</span>
-                                            @else
-                                            <span class="text-xs text-green-400">Project completed!</span>
-                                            @endif
                                     </div>
                                 </div>
-                                <div class="absolute -bottom-1 left-1/2 -translate-x-1/2 w-2 h-2 bg-gray-900 rotate-45">
-                                </div>
                             </div>
-                        </div>
 
-                        <!-- Enhanced Status Badge -->
-                        <div class="group/status relative">
+                            <!-- Status Badge -->
                             <x-filament::badge :color="match ($project->status) {
                                     'completed' => 'success',
                                     'in_progress' => 'warning',
                                     'on_hold' => 'danger',
                                     default => 'secondary',
-                                }"
-                                class="whitespace-nowrap transform group-hover/status:scale-105 transition-transform duration-200">
+                                }" class="px-4 py-2">
                                 {{ ucwords(str_replace('_', ' ', $project->status)) }}
                             </x-filament::badge>
+
+                            <!-- Action Buttons -->
+                            <div class="flex items-center space-x-2">
+                                <a href="{{ route('filament.admin.resources.projects.view', ['record' => $project->id]) }}"
+                                    class="p-2 rounded-lg text-gray-600 hover:text-primary-600 hover:bg-primary-50 transition-colors">
+                                    <x-heroicon-m-eye class="w-5 h-5" />
+                                </a>
+                                <button
+                                    class="p-2 rounded-lg text-gray-600 hover:text-primary-600 hover:bg-primary-50 transition-colors">
+                                    <x-heroicon-o-chevron-down class="w-5 h-5 transition-transform duration-300"
+                                        x-bind:class="open ? 'rotate-180' : ''" />
+                                </button>
+                            </div>
                         </div>
-
-                        <!-- Enhanced View Details Button -->
-                        <a href="{{ route('filament.admin.resources.projects.view', ['record' => $project->id]) }}"
-                            class="relative inline-flex items-center justify-center w-9 h-9 rounded-xl bg-gray-50 hover:bg-primary-50 text-gray-600 hover:text-primary-600 border border-gray-100 hover:border-primary-200 transition-all duration-200 group/view transform hover:scale-105">
-                            <x-heroicon-m-eye class="w-4 h-4 transition-transform group-hover/view:scale-110" />
-                            <span class="sr-only">View Details</span>
-                        </a>
-
-                        <!-- Enhanced Expand/Collapse Button -->
-                        <button
-                            class="relative inline-flex items-center justify-center w-9 h-9 rounded-xl bg-gray-50 hover:bg-primary-50 text-gray-400 hover:text-primary-600 border border-gray-100 hover:border-primary-200 transition-all duration-200 group/expand">
-                            <x-heroicon-o-chevron-down class="w-5 h-5 transition-transform duration-300"
-                                x-bind:class="open ? 'rotate-180' : ''" />
-                            <span class="sr-only">Toggle Details</span>
-                        </button>
                     </div>
                 </div>
             </div>
@@ -346,7 +304,8 @@
                                                 <div class="flex-grow">
                                                     <p class="font-medium">{{ $task->title }}</p>
                                                     @if ($task->description)
-                                                    <p class="text-sm text-gray-500 mt-1">{!! str(string: $task->description)->sanitizeHtml() !!}</p>
+                                                    <p class="text-sm text-gray-500 mt-1">{!! str(string:
+                                                        $task->description)->sanitizeHtml() !!}</p>
                                                     @endif
                                                 </div>
 
