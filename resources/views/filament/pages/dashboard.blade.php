@@ -72,7 +72,19 @@
                 /* removes space-y on larger screens */
             }
         }
-        
+
+        .content-container {
+            position: relative;
+            padding: 1rem;
+            padding-bottom: 2rem;
+        }
+
+        @media (min-width: 768px) {
+            .content-container {
+                padding: 1.5rem;
+                padding-bottom: 2rem;
+            }
+        }
     </style>
     {{-- Stats Overview --}}
     <div class="grid gap-4 md:grid-cols-4 mb-8">
@@ -173,7 +185,7 @@
                 class=" bg-white border border-gray-100 shadow-sm hover:shadow-md transition-all duration-300">
 
                 <!-- Main Content Container -->
-                <div class="relative p-4 md:p-6 pb-8">
+                <div class="content-container">
                     <div class="header-container">
                         <!-- Left: Client Info -->
                         <div class="flex items-start space-x-4">
