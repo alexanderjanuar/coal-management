@@ -38,6 +38,21 @@
         .animate-spin-slow {
             animation: spin 3s linear infinite;
         }
+
+
+        @keyframes shimmer {
+            0% {
+                background-position: 200% 0;
+            }
+
+            100% {
+                background-position: -200% 0;
+            }
+        }
+
+        .animate-shimmer {
+            animation: shimmer 6s infinite linear;
+        }
     </style>
     {{-- Stats Overview --}}
     <div class="grid gap-4 md:grid-cols-4 mb-8">
@@ -136,9 +151,9 @@
             <!-- Project Header -->
             <div @click="open = !open"
                 class="group bg-white rounded-2xl border border-gray-100 shadow-sm hover:shadow-md transition-all duration-300">
+
                 <!-- Main Content Container -->
-                <div class="p-4 md:p-6 flex flex-col space-y-4">
-                    <!-- Top Section: Client Info and Actions -->
+                <div class="relative p-4 md:p-6 pb-8">
                     <div class="flex flex-col md:flex-row md:justify-between md:items-start space-y-4 md:space-y-0">
                         <!-- Left: Client Info -->
                         <div class="flex items-start space-x-4">
@@ -187,79 +202,63 @@
                         </div>
 
                         <!-- Right: Status and Actions -->
-                        <div
-                            class="flex flex-col sm:flex-row items-start sm:items-center space-y-3 sm:space-y-0 sm:space-x-4">
-                            <!-- Progress Bar -->
-                            <div class="group/progress relative w-full sm:w-auto">
-                                <div class="bg-gray-50 rounded-lg p-2 md:p-3 border border-gray-100 w-full sm:w-auto">
-                                    <div class="flex items-center space-x-3">
-                                        <div
-                                            class="flex-grow sm:w-24 md:w-32 h-2 bg-gray-200 rounded-full overflow-hidden">
-                                            <div class="h-full transition-all duration-300 rounded-full {{ match(true) {
-                                                    $project->progress === 100 => 'bg-green-500',
-                                                    $project->progress >= 50 => 'bg-amber-500',
-                                                    default => 'bg-red-500'
-                                                } }}" style="width: {{ $project->progress }}%"></div>
-                                        </div>
-                                        <span class="text-sm font-medium whitespace-nowrap {{ match(true) {
-                                            $project->progress === 100 => 'text-green-600',
-                                            $project->progress >= 50 => 'text-amber-600',
-                                            default => 'text-red-600'
-                                        } }}">
-                                            {{ $project->progress }}%
-                                        </span>
-                                    </div>
+                        <div class="flex items-center gap-3">
+                            <!-- Progress Indicator -->
+                            <div
+                                class="group/progress relative flex items-center gap-2 bg-gray-50 px-3 py-1.5 rounded-lg">
+                                <div class="w-16 h-1.5 bg-gray-200 rounded-full overflow-hidden">
+                                    <div class="h-full transition-all duration-300 {{ match(true) {
+                            $project->progress === 100 => 'bg-green-500',
+                            $project->progress >= 50 => 'bg-amber-500',
+                            default => 'bg-red-500'
+                        } }}" style="width: {{ $project->progress }}%"></div>
                                 </div>
+                                <span class="text-xs font-medium {{ match(true) {
+                        $project->progress === 100 => 'text-green-600',
+                        $project->progress >= 50 => 'text-amber-600',
+                        default => 'text-red-600'
+                    } }}">{{ $project->progress }}%</span>
 
                                 <!-- Hover Tooltip -->
-                                <div
-                                    class="absolute -top-24 left-1/2 -translate-x-1/2 opacity-0 invisible group-hover/progress:opacity-100 group-hover/progress:visible transition-all duration-200 z-10">
-                                    <div
-                                        class="bg-gray-900 text-white p-3 rounded-lg shadow-lg text-sm whitespace-nowrap">
-                                        <div class="space-y-2">
-                                            <div class="flex justify-between items-center space-x-8">
-                                                <span>Progress Status</span>
-                                                <span class="font-medium">{{ $project->progress }}%</span>
-                                            </div>
-                                            @if($project->progress < 100) <span class="text-xs text-gray-400">{{ 100 -
-                                                $project->progress }}% remaining</span>
-                                                @else
-                                                <span class="text-xs text-green-400">Complete!</span>
-                                                @endif
-                                        </div>
+                                <div class="absolute -top-12 left-1/2 -translate-x-1/2 opacity-0 invisible 
+                        group-hover/progress:opacity-100 group-hover/progress:visible transition-all duration-200">
+                                    <div class="bg-gray-900 text-white px-2 py-1 rounded-lg text-xs whitespace-nowrap">
+                                        @if($project->progress < 100) {{ 100 - $project->progress }}% remaining
+                                            @else
+                                            Project completed
+                                            @endif
                                     </div>
                                 </div>
                             </div>
 
-                            <!-- Status and Action Buttons -->
-                            <div class="flex items-center justify-between sm:justify-start w-full sm:w-auto space-x-3">
-                                <!-- Status Badge -->
-                                <x-filament::badge :color="match ($project->status) {
-                                        'completed' => 'success',
-                                        'in_progress' => 'warning',
-                                        'on_hold' => 'danger',
-                                        default => 'secondary',
-                                    }" class="px-3 py-1.5">
-                                    {{ ucwords(str_replace('_', ' ', $project->status)) }}
-                                </x-filament::badge>
+                            <!-- Status Badge -->
+                            <x-filament::badge :color="match ($project->status) {
+                                    'completed' => 'success',
+                                    'in_progress' => 'warning',
+                                    'on_hold' => 'danger',
+                                    default => 'secondary',
+                                }" class="px-3 py-1.5">
+                                {{ ucwords(str_replace('_', ' ', $project->status)) }}
+                            </x-filament::badge>
 
-                                <!-- Action Buttons -->
-                                <div class="flex items-center space-x-2">
-                                    <a href="{{ route('filament.admin.resources.projects.view', ['record' => $project->id]) }}"
-                                        class="p-2 rounded-lg text-gray-600 hover:text-primary-600 hover:bg-primary-50 transition-colors">
-                                        <x-heroicon-m-eye class="w-5 h-5" />
-                                    </a>
-                                    <button
-                                        class="p-2 rounded-lg text-gray-600 hover:text-primary-600 hover:bg-primary-50 transition-colors">
-                                        <x-heroicon-o-chevron-down class="w-5 h-5 transition-transform duration-300"
-                                            x-bind:class="open ? 'rotate-180' : ''" />
-                                    </button>
-                                </div>
+                            <!-- Action Buttons -->
+                            <div class="flex items-center space-x-2">
+                                <a href="{{ route('filament.admin.resources.projects.view', ['record' => $project->id]) }}"
+                                    class="p-2 rounded-lg text-gray-600 hover:text-primary-600 hover:bg-primary-50 transition-colors">
+                                    <x-heroicon-m-eye class="w-5 h-5" />
+                                </a>
+                                <button
+                                    class="p-2 rounded-lg text-gray-600 hover:text-primary-600 hover:bg-primary-50 transition-colors">
+                                    <x-heroicon-o-chevron-down class="w-5 h-5 transition-transform duration-300"
+                                        x-bind:class="open ? 'rotate-180' : ''" />
+                                </button>
                             </div>
                         </div>
                     </div>
                 </div>
             </div>
+
+
 
             {{-- Project Details --}}
             <div x-show="open" x-collapse>
