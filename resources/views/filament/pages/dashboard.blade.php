@@ -1,7 +1,6 @@
 @filamentPWA
 
 <x-filament-panels::page class="w-full">
-
     <style>
         .logo-container {
             width: 3rem;
@@ -274,26 +273,39 @@
                         </div>
 
                         <!-- Right: Status and Actions -->
-                        <div class="flex items-center gap-3">
+                        <div class="flex flex-wrap items-center gap-3">
+                            <!-- Status Badge -->
+                            <div class="order-first sm:order-none">
+                                <x-filament::badge :color="match ($project->status) {
+                                        'completed' => 'success',
+                                        'in_progress' => 'warning',
+                                        'on_hold' => 'danger',
+                                        default => 'secondary',
+                                    }" class="px-3 py-1.5">
+                                    {{ ucwords(str_replace('_', ' ', $project->status)) }}
+                                </x-filament::badge>
+                            </div>
+
                             <!-- Progress Indicator -->
                             <div
                                 class="group/progress relative flex items-center gap-2 bg-gray-50 px-3 py-1.5 rounded-lg">
                                 <div class="w-16 h-1.5 bg-gray-200 rounded-full overflow-hidden">
                                     <div class="h-full transition-all duration-300 {{ match(true) {
-                            $project->progress === 100 => 'bg-green-500',
-                            $project->progress >= 50 => 'bg-amber-500',
-                            default => 'bg-red-500'
-                        } }}" style="width: {{ $project->progress }}%"></div>
+                                            $project->progress === 100 => 'bg-green-500',
+                                            $project->progress >= 50 => 'bg-amber-500',
+                                            default => 'bg-red-500'
+                                        } }}" style="width: {{ $project->progress }}%"></div>
                                 </div>
                                 <span class="text-xs font-medium {{ match(true) {
-                        $project->progress === 100 => 'text-green-600',
-                        $project->progress >= 50 => 'text-amber-600',
-                        default => 'text-red-600'
-                    } }}">{{ $project->progress }}%</span>
+                                        $project->progress === 100 => 'text-green-600',
+                                        $project->progress >= 50 => 'text-amber-600',
+                                        default => 'text-red-600'
+                                    } }}">{{ $project->progress }}%</span>
 
                                 <!-- Hover Tooltip -->
-                                <div class="absolute -top-12 left-1/2 -translate-x-1/2 opacity-0 invisible 
-                        group-hover/progress:opacity-100 group-hover/progress:visible transition-all duration-200">
+                                <div
+                                    class="absolute -top-12 left-1/2 -translate-x-1/2 opacity-0 invisible 
+                                            group-hover/progress:opacity-100 group-hover/progress:visible transition-all duration-200">
                                     <div class="bg-gray-900 text-white px-2 py-1 rounded-lg text-xs whitespace-nowrap">
                                         @if($project->progress < 100) {{ 100 - $project->progress }}% remaining
                                             @else
@@ -303,25 +315,15 @@
                                 </div>
                             </div>
 
-                            <!-- Status Badge -->
-                            <x-filament::badge :color="match ($project->status) {
-                                    'completed' => 'success',
-                                    'in_progress' => 'warning',
-                                    'on_hold' => 'danger',
-                                    default => 'secondary',
-                                }" class="px-3 py-1.5">
-                                {{ ucwords(str_replace('_', ' ', $project->status)) }}
-                            </x-filament::badge>
-
-                            <!-- Action Buttons -->
-                            <div class="flex items-center space-x-2">
+                            <!-- Action Buttons - Now positioned after progress indicator -->
+                            <div class="flex items-center">
                                 <a href="{{ route('filament.admin.resources.projects.view', ['record' => $project->id]) }}"
-                                    class="p-2 rounded-lg text-gray-600 hover:text-primary-600 hover:bg-primary-50 transition-colors">
-                                    <x-heroicon-m-eye class="w-5 h-5" />
+                                    class="p-1.5 rounded-lg text-gray-500 hover:text-primary-500 hover:bg-primary-50/50 transition-colors">
+                                    <x-heroicon-m-eye class="w-4 h-4" />
                                 </a>
                                 <button
-                                    class="p-2 rounded-lg text-gray-600 hover:text-primary-600 hover:bg-primary-50 transition-colors">
-                                    <x-heroicon-o-chevron-down class="w-5 h-5 transition-transform duration-300"
+                                    class="p-1.5 rounded-lg text-gray-500 hover:text-primary-500 hover:bg-primary-50/50 transition-colors">
+                                    <x-heroicon-o-chevron-down class="w-4 h-4 transition-transform duration-300"
                                         x-bind:class="open ? 'rotate-180' : ''" />
                                 </button>
                             </div>
@@ -342,33 +344,47 @@
                             @foreach ($project->steps->sortBy('order') as $step)
                             <div x-data="{ stepOpen: false }" class="relative">
                                 <!-- Step Header -->
-                                <div @click="stepOpen = !stepOpen"
-                                    class="cursor-pointer flex items-center gap-3 md:gap-4 mb-2">
-                                    <div @class([ 'w-8 h-8 md:w-10 md:h-10 rounded-full flex items-center justify-center text-sm md:text-base'
-                                        , 'bg-success-500 text-white'=> $step->status === 'completed',
-                                        'bg-warning-500 text-white' => $step->status === 'in_progress',
-                                        'bg-primary-100 text-primary-700' => $step->status === 'pending',
-                                        'bg-danger-500 text-white' => $step->status === 'waiting_for_documents',
-                                        ])>{{ $step->order }}</div>
-                                    <div class="flex-1">
-                                        <div class="flex items-center justify-between">
-                                            <h4 class="font-medium">{{ $step->name }}</h4>
-                                            <div class="flex items-center gap-2">
-                                                <x-filament::badge :color="match ($step->status) {
-                                                                    'completed' => 'success',
-                                                                    'in_progress' => 'warning',
-                                                                    'waiting_for_documents' => 'danger',
-                                                                    default => 'secondary',
-                                                                }">
-                                                    {{ ucwords(str_replace('_', ' ', $step->status)) }}
-                                                </x-filament::badge>
-                                                <x-heroicon-o-chevron-down
-                                                    class="w-4 h-4 text-gray-400 transition-transform duration-200"
-                                                    x-bind:class="stepOpen ? 'rotate-180' : ''" />
+                                <div @click="stepOpen = !stepOpen" class="cursor-pointer">
+                                    <!-- Main container with better mobile layout -->
+                                    <div class="flex items-start gap-3 md:gap-4 mb-2 md:items-center">
+                                        <!-- Step Number Circle -->
+                                        <div @class([ 'flex-shrink-0 w-8 h-8 md:w-10 md:h-10 rounded-full flex items-center justify-center text-sm md:text-base'
+                                            , 'bg-success-500 text-white'=> $step->status === 'completed',
+                                            'bg-warning-500 text-white' => $step->status === 'in_progress',
+                                            'bg-primary-100 text-primary-700' => $step->status === 'pending',
+                                            'bg-danger-500 text-white' => $step->status === 'waiting_for_documents',
+                                            ])>
+                                            {{ $step->order }}
+                                        </div>
+
+                                        <!-- Content Container -->
+                                        <div class="flex-1 min-w-0">
+                                            <!-- Title and Status Container -->
+                                            <div
+                                                class="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                                                <!-- Title - with text wrap -->
+                                                <h4 class="font-medium text-sm sm:text-base truncate">
+                                                    {{ $step->name }}
+                                                </h4>
+
+                                                <!-- Badge and Arrow Container -->
+                                                <div class="flex items-center gap-2 flex-shrink-0">
+                                                    <x-filament::badge size="sm" :color="match ($step->status) {
+                                                        'completed' => 'success',
+                                                        'in_progress' => 'warning',
+                                                        'waiting_for_documents' => 'danger',
+                                                        default => 'secondary',
+                                                    }">
+                                                        {{ ucwords(str_replace('_', ' ', $step->status)) }}
+                                                    </x-filament::badge>
+
+                                                    <x-heroicon-o-chevron-down
+                                                        class="w-4 h-4 text-gray-400 transition-transform duration-200"
+                                                        x-bind:class="stepOpen ? 'rotate-180' : ''" />
+                                                </div>
                                             </div>
                                         </div>
                                     </div>
-
                                 </div>
 
                                 {{-- Step Details --}}
@@ -380,103 +396,67 @@
                                         <div class="space-y-2">
                                             @foreach ($step->tasks as $task)
                                             <div
-                                                class="flex items-center justify-between bg-gray-50 p-3 rounded-lg hover:bg-gray-100 transition-colors duration-200">
-                                                <div class="flex-grow">
-                                                    <p class="font-medium">{{ $task->title }}</p>
-                                                    @if ($task->description)
-                                                    <p class="text-sm text-gray-500 mt-1">{!! str(string:
-                                                        $task->description)->sanitizeHtml() !!}</p>
-                                                    @endif
-                                                </div>
-
-                                                <div class="flex items-center gap-3">
-                                                    <x-filament::badge size="sm" :color="match ($task->status) {
-                                                        'completed' => 'success',
-                                                        'in_progress' => 'warning',
-                                                        'blocked' => 'danger',
-                                                        default => 'secondary',
-                                                    }">
-                                                        {{ ucwords(str_replace('_', ' ', $task->status)) }}
-                                                    </x-filament::badge>
-
-                                                    <!-- Task Details Button with Comment Count -->
-                                                    <button
-                                                        x-on:click.stop="$dispatch('open-modal', { id: 'task-modal-{{ $task->id }}' })"
-                                                        class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full font-medium 
-                                                            {{ $task->comments_count > 0 
-                                                                ? 'bg-primary-50 text-primary-700 hover:bg-primary-100' 
-                                                                : 'bg-gray-100 text-gray-600 hover:bg-gray-200' }} 
-                                                            transition-all duration-200">
-                                                        <x-heroicon-m-chat-bubble-left-right class="w-4 h-4" />
-                                                        {{ $task->comments->count() }}
-                                                        <span class="sr-only">comments</span>
-                                                    </button>
-
-                                                    <!-- Task Modal with Comments -->
-                                                    <x-filament::modal id="task-modal-{{ $task->id }}" width="4xl"
-                                                        slide-over>
-                                                        <div class="space-y-4">
-
-
-                                                            <!-- Comments Section -->
-                                                            @livewire('comments-modal', [
-                                                            'modelType' => \App\Models\Task::class,
-                                                            'modelId' => $task->id
-                                                            ])
+                                                class="relative group rounded-lg hover:bg-gray-100 transition-colors duration-200">
+                                                <div class="p-4 space-y-3">
+                                                    <!-- Task Header -->
+                                                    <div class="flex flex-col sm:flex-row sm:items-center gap-3">
+                                                        <!-- Title and Status -->
+                                                        <div class="flex-grow min-w-0">
+                                                            <h4 class="font-medium text-gray-900 truncate">{{
+                                                                $task->title }}</h4>
                                                         </div>
-                                                    </x-filament::modal>
+
+                                                        <!-- Status and Comments -->
+                                                        <div class="flex items-center gap-2 flex-shrink-0">
+                                                            <x-filament::badge size="sm" :color="match ($task->status) {
+                                                                'completed' => 'success',
+                                                                'in_progress' => 'warning',
+                                                                'blocked' => 'danger',
+                                                                default => 'secondary',
+                                                            }">
+                                                                {{ ucwords(str_replace('_', ' ', $task->status)) }}
+                                                            </x-filament::badge>
+
+                                                            <!-- Comments Counter -->
+                                                            <button
+                                                                x-on:click.stop="$dispatch('open-modal', { id: 'task-modal-{{ $task->id }}' })"
+                                                                class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-sm font-medium 
+                                                                    {{ $task->comments_count > 0 
+                                                                        ? 'bg-primary-50 text-primary-700 hover:bg-primary-100' 
+                                                                        : 'bg-gray-100 text-gray-600 hover:bg-gray-200' }} 
+                                                                    transition-all duration-200">
+                                                                <x-heroicon-m-chat-bubble-left-right class="w-4 h-4" />
+                                                                <span>{{ $task->comments->count() }}</span>
+                                                            </button>
+                                                        </div>
+                                                    </div>
+
+                                                    <!-- Task Description -->
+                                                    @if ($task->description)
+                                                    <div class="text-sm text-gray-600 prose prose-sm max-w-none">
+                                                        {!! str($task->description)->sanitizeHtml() !!}
+                                                    </div>
+                                                    @endif
                                                 </div>
+
+                                                <!-- Task Modal -->
+                                                <x-filament::modal id="task-modal-{{ $task->id }}" width="4xl"
+                                                    slide-over>
+                                                    <div class="space-y-4">
+                                                        <!-- Comments Section -->
+                                                        @livewire('comments-modal', [
+                                                        'modelType' => \App\Models\Task::class,
+                                                        'modelId' => $task->id
+                                                        ])
+                                                    </div>
+                                                </x-filament::modal>
                                             </div>
                                             @endforeach
                                         </div>
                                     </div>
                                     @endif
 
-                                    @if ($step->requiredDocuments->isNotEmpty())
-                                    <div>
-                                        <h5 class="text-sm font-medium text-gray-900 mb-2">Required
-                                            Documents</h5>
-                                        <div class="space-y-2">
-                                            @foreach ($step->requiredDocuments as $document)
-                                            <div
-                                                class="flex items-center justify-between bg-white border border-gray-200 p-3 rounded-lg">
-                                                <div class="flex items-center gap-2">
-                                                    <x-heroicon-o-paper-clip class="w-4 h-4 text-gray-400" />
-                                                    <div>
-                                                        <p class="font-medium">
-                                                            {{ $document->name }}</p>
-                                                        @if ($document->description)
-                                                        <p class="text-sm text-gray-500">
-                                                            {{ $document->description }}
-                                                        </p>
-                                                        @endif
-                                                    </div>
-                                                </div>
-                                                @php
-                                                $submittedDoc = $document->submittedDocuments->first();
-                                                @endphp
-                                                <div class="flex items-center gap-2">
-                                                    @if ($submittedDoc)
-                                                    <x-filament::badge size="sm" :color="match (
-                                                                                        $submittedDoc->status
-                                                                                    ) {
-                                                                                        'approved' => 'success',
-                                                                                        'rejected' => 'danger',
-                                                                                        default => 'warning',
-                                                                                    }">
-                                                        {{ ucwords(str_replace('_', ' ', $submittedDoc->status)) }}
-                                                    </x-filament::badge>
-                                                    @else
-                                                    <x-filament::badge size="sm" color="gray">
-                                                        Not Submitted
-                                                    </x-filament::badge>
-                                                    @endif
-                                                </div>
-                                            </div>
-                                            @endforeach
-                                        </div>
-                                    </div>
-                                    @endif
+                                    @livewire('dashboard.project-documents',['step' => $step])
                                 </div>
                             </div>
                             @endforeach
@@ -505,5 +485,8 @@
             </div>
         </x-filament::card>
         @endif
+
+
+
     </div>
 </x-filament-panels::page>

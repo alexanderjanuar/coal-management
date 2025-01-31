@@ -4,6 +4,7 @@ namespace App\Filament\Pages;
 
 use App\Filament\Widgets\DocumentsOverview;
 use App\Models\Client;
+use App\Models\SubmittedDocument;
 use App\Models\Progress;
 use App\Models\Project;
 use App\Models\Task;
@@ -11,11 +12,16 @@ use Filament\Pages\Page;
 use Filament\Pages\Dashboard as BaseDashboard;
 use Illuminate\Support\Facades\DB;
 use Filament\Actions\Action;
+use Illuminate\Support\Facades\Storage;
 
 class Dashboard extends BaseDashboard
 {
     protected static ?string $navigationIcon = 'heroicon-o-computer-desktop';
     protected static string $view = 'filament.pages.dashboard';
+
+    public $previewingDocument = null;
+    public $previewUrl = null;
+    public $fileType = null;
 
     // Add this property
     public $activeStatus = 'all';
@@ -25,6 +31,7 @@ class Dashboard extends BaseDashboard
     {
         $this->activeStatus = $status;
     }
+
     public function getViewData(): array
     {
         // User instance
