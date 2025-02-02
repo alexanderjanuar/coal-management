@@ -169,45 +169,43 @@
                             <h4 class="text-sm font-medium text-gray-900">Document History</h4>
                         </div>
                     </div>
-            
+
                     <!-- Document List -->
                     <div class="space-y-2 sm:space-y-3">
-                        <div 
-                            :class="{ 'max-h-[250px] sm:max-h-[300px] overflow-hidden': !showMore && window.innerWidth < 1024 }"
-                            class="space-y-2 sm:space-y-3"
-                        >
+                        <div :class="{ 'max-h-[250px] sm:max-h-[300px] overflow-hidden': !showMore && window.innerWidth < 1024 }"
+                            class="space-y-2 sm:space-y-3">
                             @foreach($document->submittedDocuments->sortByDesc('created_at') as $submission)
                             <!-- Document Item -->
-                            <div class="group flex items-center gap-2 sm:gap-4 p-2 sm:p-3 bg-gray-50/50 rounded-lg hover:bg-gray-50 transition-all">
+                            <div
+                                class="group flex items-center gap-2 sm:gap-4 p-2 sm:p-3 bg-gray-50/50 rounded-lg hover:bg-gray-50 transition-all">
                                 <!-- Document Icon -->
                                 <div class="flex-shrink-0">
-                                    <div class="w-8 h-8 sm:w-10 sm:h-10 rounded-lg bg-white ring-1 ring-gray-100 flex items-center justify-center">
+                                    <div
+                                        class="w-8 h-8 sm:w-10 sm:h-10 rounded-lg bg-white ring-1 ring-gray-100 flex items-center justify-center">
                                         <x-heroicon-o-document-text class="w-4 h-4 sm:w-5 sm:h-5 text-gray-400" />
                                     </div>
                                 </div>
-            
+
                                 <!-- Document Info -->
                                 <div class="flex-1 min-w-0">
                                     <p class="text-xs sm:text-sm font-medium text-gray-900 truncate">
                                         {{ basename($submission->file_path) }}
                                     </p>
                                     <div class="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2 mt-0.5">
-                                        <span class="text-[11px] sm:text-xs text-gray-500">{{ $submission->user->name }}</span>
+                                        <span class="text-[11px] sm:text-xs text-gray-500">{{ $submission->user->name
+                                            }}</span>
                                         <span class="hidden sm:inline text-xs text-gray-300">&bull;</span>
-                                        <span class="text-[11px] sm:text-xs text-gray-500">{{ $submission->created_at->diffForHumans() }}</span>
+                                        <span class="text-[11px] sm:text-xs text-gray-500">{{
+                                            $submission->created_at->diffForHumans() }}</span>
                                     </div>
                                 </div>
-            
+
                                 <!-- View Button -->
                                 <div class="flex-shrink-0">
-                                    <x-filament::button
-                                        wire:click="viewDocument({{ $submission->id }})"
-                                        x-on:click="$dispatch('open-modal', { id: 'preview-document' })"
-                                        color="gray"
-                                        size="xs"
-                                        sm:size="sm"
-                                        class="opacity-0 group-hover:opacity-100 transition-opacity hover:bg-gray-100"
-                                    >
+                                    <x-filament::button wire:click="viewDocument({{ $submission->id }})"
+                                        x-on:click="$dispatch('open-modal', { id: 'preview-document' })" color="gray"
+                                        size="xs" sm:size="sm"
+                                        class="opacity-0 group-hover:opacity-100 transition-opacity hover:bg-gray-100">
                                         <div class="inline-flex items-center gap-1 sm:gap-2">
                                             <x-heroicon-m-eye class="w-3.5 h-3.5 sm:w-4 sm:h-4" />
                                             <span class="hidden sm:inline font-medium">View</span>
@@ -217,22 +215,16 @@
                             </div>
                             @endforeach
                         </div>
-            
+
                         <!-- Show More/Less button -->
                         @if($document->submittedDocuments->count() > 3)
                         <div class="lg:hidden text-center">
-                            <button 
-                                x-show="!showMore" 
-                                x-on:click="showMore = true"
-                                class="w-full py-1.5 sm:py-2 text-xs sm:text-sm text-primary-600 hover:text-primary-700 font-medium"
-                            >
+                            <button x-show="!showMore" x-on:click="showMore = true"
+                                class="w-full py-1.5 sm:py-2 text-xs sm:text-sm text-primary-600 hover:text-primary-700 font-medium">
                                 Show More History
                             </button>
-                            <button 
-                                x-show="showMore" 
-                                x-on:click="showMore = false"
-                                class="w-full py-1.5 sm:py-2 text-xs sm:text-sm text-primary-600 hover:text-primary-700 font-medium"
-                            >
+                            <button x-show="showMore" x-on:click="showMore = false"
+                                class="w-full py-1.5 sm:py-2 text-xs sm:text-sm text-primary-600 hover:text-primary-700 font-medium">
                                 Show Less
                             </button>
                         </div>
@@ -380,13 +372,68 @@
                 </div>
 
                 @if($previewingDocument)
-                <div class="flex-shrink-0 mr-8">
-                    <!-- Added margin-right to avoid stacking with close button -->
+                <div class="flex items-center gap-3 flex-shrink-0 mr-8">
+                    <!-- Status Dropdown -->
+                    @if(!auth()->user()->hasRole('staff'))
+                    <x-filament::dropdown placement="bottom-end">
+                        <x-slot name="trigger">
+                            <x-filament::button size="sm" :color="match($document->status) {
+                                'pending_review' => 'warning',
+                                'approved' => 'success',
+                                'rejected' => 'danger',
+                                default => 'gray'
+                            }">
+                                <div class="flex items-center gap-2">
+                                    {{-- Status Icon --}}
+                                    @switch($document->status)
+                                    @case('pending_review')
+                                    <x-heroicon-m-clock class="w-4 h-4" />
+                                    @break
+                                    @case('approved')
+                                    <x-heroicon-m-check-circle class="w-4 h-4" />
+                                    @break
+                                    @case('rejected')
+                                    <x-heroicon-m-x-circle class="w-4 h-4" />
+                                    @break
+                                    @default
+                                    <x-heroicon-m-question-mark-circle class="w-4 h-4" />
+                                    @endswitch
+
+                                    {{-- Status Text --}}
+                                    <span>{{ ucwords(str_replace('_', ' ', $document->status ?? 'Not Set')) }}</span>
+                                    <x-heroicon-m-chevron-down class="w-4 h-4" />
+                                </div>
+                            </x-filament::button>
+                        </x-slot>
+
+                        <x-filament::dropdown.list>
+                            <x-filament::dropdown.list.item wire:click="updateStatus('pending_review')"
+                                icon="heroicon-m-clock"
+                                :color="$document->status === 'pending_review' ? 'warning' : 'gray'">
+                                Pending Review
+                            </x-filament::dropdown.list.item>
+
+                            <x-filament::dropdown.list.item wire:click="updateStatus('approved')"
+                                icon="heroicon-m-check-circle"
+                                :color="$document->status === 'approved' ? 'success' : 'gray'">
+                                Approved
+                            </x-filament::dropdown.list.item>
+
+                            <x-filament::dropdown.list.item wire:click="updateStatus('rejected')"
+                                icon="heroicon-m-x-circle"
+                                :color="$document->status === 'rejected' ? 'danger' : 'gray'">
+                                Rejected
+                            </x-filament::dropdown.list.item>
+                        </x-filament::dropdown.list>
+                    </x-filament::dropdown>
+                    @endif
+
+                    <!-- Download Button -->
                     <x-filament::button wire:click="downloadDocument({{ $previewingDocument->id }})" color="gray"
                         size="sm">
                         <div class="inline-flex items-center gap-2">
-                            <x-heroicon-m-arrow-down-tray class="h-4 w-4" /> <!-- Adjusted icon alignment -->
-                            <span class="ml-2">Download</span>
+                            <x-heroicon-m-arrow-down-tray class="h-4 w-4" />
+                            <span>Download</span>
                         </div>
                     </x-filament::button>
                 </div>

@@ -72,7 +72,7 @@
         }
     </style>
 
-    <div class="bg-white rounded-lg border-2 border-gray-100 shadow-sm overflow-hidden">
+    <div class="bg-white rounded-lg border-2 border-gray-100 shadow-sm">
         <div class="p-3 sm:p-5">
             <div class="flex flex-col sm:flex-row gap-4">
                 <!-- Client Logo/Initial -->
@@ -205,7 +205,7 @@
 
     <div class="space-y-6">
         <!-- Project Progress Tracker Card -->
-        <div class="bg-white rounded-xl shadow-sm overflow-hidden">
+        <div class="bg-white rounded-xl shadow-sm">
             @php
             $totalSteps = $record->steps->count();
             $totalProgress = 0;
