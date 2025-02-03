@@ -68,14 +68,6 @@ class ProjectDetailDocumentModal extends Component implements HasForms
                     ->maxSize(10240)
                     ->preserveFilenames()
                     ->disk('public')
-                    ->directory(function () {
-                        // Get client name and project name
-                        $clientName = Str::slug($this->document->projectStep->project->client->name);
-                        $projectName = Str::slug($this->document->projectStep->project->name);
-                        
-                        // Create the directory path
-                        return "documents/{$clientName}/{$projectName}";
-                    })
                     ->downloadable()
                     ->openable()
             ])
