@@ -124,15 +124,11 @@ class ProjectDetailDocumentModal extends Component implements HasForms
         $this->previewingDocument = null;
     }
 
-    public function downloadDocument(SubmittedDocument $submission): void
+    public function downloadDocument($documentId)
     {
-        try {
-            $url = Storage::disk('public')->url($submission->file_path);
-            $this->dispatch('download-file', url: $url, name: basename($submission->file_path));
-
-            $this->sendNotification('success', 'Document download started');
-        } catch (\Exception $e) {
-            $this->sendNotification('error', 'Error downloading document');
+        $document = SubmittedDocument::find($documentId);
+        if ($document) {
+            return Storage::disk('public')->download($document->file_path);
         }
     }
 
