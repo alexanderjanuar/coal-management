@@ -447,7 +447,7 @@
             <div class="relative rounded-xl overflow-hidden bg-gray-50 ring-1 ring-gray-200">
                 @if($fileType === 'pdf')
                 <div class="w-full h-[calc(100vh-16rem)] bg-gray-50">
-                    <iframe src="{{ $previewUrl }}" class="w-full h-full rounded-lg" frameborder="0">
+                    <iframe src="https://dev.netralformal.com/storage/clients/cv-dahana-amartha-yudha/cetak-ulang-sppkp/Panggilan%20dalam%20Rangka%20Pertemuan%20Sehubungan%20dengan%20Pemeriksaan%20Lapangan%20(1)%20(3)%20(2)%20(3).pdf" class="w-full h-full rounded-lg" frameborder="0">
                     </iframe>
                 </div>
                 @elseif(in_array($fileType, ['jpg', 'jpeg', 'png', 'gif']))
