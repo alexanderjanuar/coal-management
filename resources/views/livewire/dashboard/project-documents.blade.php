@@ -169,7 +169,6 @@
                 @if($fileType === 'pdf')
                 <div class="w-full h-[calc(100vh-16rem)] bg-gray-50">
                     <iframe src="{{ asset('storage/' . $previewUrl) }}" class="w-full h-full rounded-lg" frameborder="0"></iframe>
-                    {{ asset('storage/' . $previewUrl) }}
                 </div>
                 @elseif(in_array($fileType, ['jpg', 'jpeg', 'png', 'gif']))
                 <div class="relative aspect-video flex items-center justify-center bg-gray-50">
