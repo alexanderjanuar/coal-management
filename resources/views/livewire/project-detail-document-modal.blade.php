@@ -447,7 +447,7 @@
             <div class="relative rounded-xl overflow-hidden bg-gray-50 ring-1 ring-gray-200">
                 @if($fileType === 'pdf')
                 <div class="w-full h-[calc(100vh-16rem)] bg-gray-50">
-                    <iframe src="{{ 'storage/' . $previewUrl }}" class="w-full h-full rounded-lg" frameborder="0">
+                    <iframe src="{{ $previewUrl }}" class="w-full h-full rounded-lg" frameborder="0">
                     </iframe>
                 </div>
                 @elseif(in_array($fileType, ['jpg', 'jpeg', 'png', 'gif']))
