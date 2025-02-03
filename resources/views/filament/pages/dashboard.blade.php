@@ -219,10 +219,10 @@
 
         @if ($filteredProjects->isNotEmpty())
         @foreach ($filteredProjects as $project)
-        <div x-data="{ open: false }"
+        <div x-data="{ isOpen: false }"
             class="bg-white rounded-lg shadow-sm border border-gray-100 hover:shadow-md transition-all duration-200">
             <!-- Project Header -->
-            <div @click="open = !open"
+            <div
                 class=" bg-white border rounded-t-lg border-gray-100 shadow-sm hover:shadow-md transition-all duration-300">
 
                 <!-- Main Content Container -->
@@ -321,10 +321,12 @@
                                     class="p-1.5 rounded-lg text-gray-500 hover:text-primary-500 hover:bg-primary-50/50 transition-colors">
                                     <x-heroicon-m-eye class="w-4 h-4" />
                                 </a>
-                                <button
+                                <!-- Toggle Button -->
+                                <button @click="isOpen = !isOpen"
                                     class="p-1.5 rounded-lg text-gray-500 hover:text-primary-500 hover:bg-primary-50/50 transition-colors">
-                                    <x-heroicon-o-chevron-down class="w-4 h-4 transition-transform duration-300"
-                                        x-bind:class="open ? 'rotate-180' : ''" />
+                                    <x-heroicon-o-chevron-down
+                                        class="w-4 h-4 transform transition-transform duration-200"
+                                        x-bind:class="isOpen ? 'rotate-180' : ''" />
                                 </button>
                             </div>
                         </div>
@@ -335,7 +337,9 @@
 
 
             {{-- Project Details --}}
-            <livewire:dashboard.project-details :project="$project" />
+            <div x-show="isOpen" x-collapse x-cloak class="border-t">
+                <livewire:dashboard.project-details :project="$project" />
+            </div>
         </div>
         @endforeach
         @endif
