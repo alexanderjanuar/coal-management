@@ -134,7 +134,7 @@
             <nav class="-mb-px flex space-x-8">
                 @php
                 $statuses = ['all', 'draft', 'in progress', 'completed', 'on hold', 'canceled'];
-                $currentStatus = request()->query('status', 'all');
+                $currentStatus = request()->query('status', 'in_progress');
                 @endphp
 
                 @foreach ($statuses as $status)

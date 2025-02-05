@@ -11,23 +11,20 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('projects', function (Blueprint $table) {
+        Schema::create('sop_steps', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('client_id')->constrained();
             $table->foreignId('sop_id')->constrained()->onDelete('cascade');
             $table->string('name');
-            $table->text('description')->nullable();
-            $table->enum('type', ['single','monthly','yearly']);
-            $table->date('due_date');
-            $table->enum('status', ['draft','analysis', 'in_progress', 'completed', 'review', 'completed (Not Payed Yet)','canceled'])->default('draft');
+            $table->integer('order');
             $table->timestamps();
         });
     }
+
     /**
      * Reverse the migrations.
      */
     public function down(): void
     {
-        Schema::dropIfExists('projects');
+        Schema::dropIfExists('sop_steps');
     }
 };

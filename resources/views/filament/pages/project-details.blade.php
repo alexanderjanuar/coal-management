@@ -822,5 +822,21 @@
     </x-filament::modal>
 
 
+    {{-- Add this to your project view page --}}
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+        const urlParams = new URLSearchParams(window.location.search);
+        const documentId = urlParams.get('openDocument');
+        
+        if (documentId) {
+            window.dispatchEvent(
+                new CustomEvent('open-modal', {
+                    detail: { id: `document-modal-${documentId}` }
+                })
+            );
+        }
+    });
+    </script>
+
 
 </x-filament-panels::page>

@@ -97,7 +97,8 @@ class ProjectDetailDocumentModal extends Component implements HasForms
                     ->button()
                     ->label($action)
                     ->url(route('filament.admin.resources.projects.view', [
-                        'record' => $this->document->projectStep->project->id
+                        'record' => $this->document->projectStep->project->id,
+                        'openDocument' => $this->document->id  // Add document ID as parameter
                     ]))
             ]);
         }

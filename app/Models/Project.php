@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class Project extends Model
 {
@@ -29,5 +30,10 @@ class Project extends Model
     public function userProject(): HasMany
     {
         return $this->hasMany(UserProject::class);
+    }
+
+    public function sop(): BelongsTo
+    {
+        return $this->belongsTo(SOP::class);
     }
 }

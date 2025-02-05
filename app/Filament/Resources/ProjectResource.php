@@ -9,6 +9,8 @@ use App\Filament\Resources\ProjectResource\RelationManagers\StepsRelationManager
 use App\Models\Project;
 use App\Models\Client;
 use App\Models\User;
+use App\Models\Sop;
+
 
 use Filament\Forms;
 use Filament\Forms\Form;
@@ -82,15 +84,6 @@ class ProjectResource extends Resource
                                 ->live()
                                 ->native(false)
                                 ->columnSpanFull(),
-                            Select::make('project_type')
-                                ->label('Project Task')
-                                ->options([
-                                    'Pengukuhan PKP' => 'Pengukuhan PKP',
-                                    'SP2DK' => 'Reviewing',
-                                    'NPWP' => 'NPWP',
-                                ])
-                                ->required()
-                                ->native(false),
                             Select::make('type')
                                 ->label('Type')
                                 ->options([
@@ -99,6 +92,48 @@ class ProjectResource extends Resource
                                     'yearly' => 'Yearly',
                                 ])
                                 ->required()
+                                ->native(false),
+                            Select::make('sop_id')
+                                ->label('Standard Operating Procedure')
+                                ->options(Sop::query()->pluck('name', 'id'))
+                                ->searchable()
+                                ->live()
+                                ->afterStateUpdated(function ($state, Forms\Set $set) {
+                                    if (!$state) {
+                                        $set('steps', []);
+                                        return;
+                                    }
+
+                                    $sop = Sop::with(['steps.tasks', 'steps.requiredDocuments'])->find($state);
+                                    if (!$sop)
+                                        return;
+
+                                    // Set project type and type from SOP
+                                    $set('type', $sop->type);
+                                    $set('project_type', $sop->project_type);
+
+                                    // Prepare steps data
+                                    $stepsData = $sop->steps->map(function ($step) {
+                                        return [
+                                            'name' => $step->name,
+                                            'description' => $step->description,
+                                            'order' => $step->order,
+                                            'priority' => $step->priority,
+                                            'tasks' => $step->tasks->map(fn($task) => [
+                                                'title' => $task->title,
+                                                'description' => $task->description,
+                                                'requires_document' => $task->requires_document,
+                                            ])->toArray(),
+                                            'requiredDocuments' => $step->requiredDocuments->map(fn($doc) => [
+                                                'name' => $doc->name,
+                                                'description' => $doc->description,
+                                                'is_required' => $doc->is_required,
+                                            ])->toArray(),
+                                        ];
+                                    })->toArray();
+
+                                    $set('steps', $stepsData);
+                                })
                                 ->native(false),
                             DatePicker::make('due_date')
                                 ->required()
