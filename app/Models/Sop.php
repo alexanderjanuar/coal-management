@@ -16,6 +16,6 @@ class Sop extends Model
 
     public function steps(): HasMany
     {
-        return $this->hasMany(SOPStep::class, 'sop_id')->orderBy('order');
+        return $this->hasMany(SopStep::class, 'sop_id')->orderBy('order');
     }
 }
