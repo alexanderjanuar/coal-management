@@ -12,16 +12,16 @@ class SopStep extends Model
 
     public function sop()
     {
-        return $this->belongsTo(SOP::class);
+        return $this->belongsTo(Sop::class);
     }
 
     public function tasks(): HasMany
     {
-        return $this->hasMany(SOPTask::class, 'sop_step_id');
+        return $this->hasMany(SopTask::class, 'sop_step_id');
     }
 
     public function requiredDocuments(): HasMany
     {
-        return $this->hasMany(SOPRequiredDocument::class, 'sop_step_id');
+        return $this->hasMany(SopRequiredDocument::class, 'sop_step_id');
     }
 }

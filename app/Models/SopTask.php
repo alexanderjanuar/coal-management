@@ -8,4 +8,9 @@ use Illuminate\Database\Eloquent\Model;
 class SopTask extends Model
 {
     use HasFactory;
+
+    public function sopStep()
+    {
+        return $this->belongsTo(Sop::class);
+    }
 }
