@@ -16,7 +16,9 @@ return new class extends Migration
             $table->foreignId('client_id')->constrained();
             $table->string('name');
             $table->text('description')->nullable();
-            $table->enum('type', ['single','monthly'])->nullable();
+            $table->enum('type', ['single','monthly','yearly']);
+            $table->enum('project_type', ['Pengukuhan PKP','SP2DK','NPWP']);
+            $table->date('due_date');
             $table->enum('status', ['draft','analysis', 'in_progress', 'completed', 'review', 'completed (Not Payed Yet)','canceled'])->default('draft');
             $table->timestamps();
         });

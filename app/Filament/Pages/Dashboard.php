@@ -56,34 +56,6 @@ class Dashboard extends BaseDashboard
         // Get filtered clients
         $clients = $clientsQuery->get();
 
-        // Calculate stats and progress
-        $accessibleProjectIds = $clients->pluck('projects')->flatten()->pluck('id');
-
-        $stats = [
-            'total_projects' => Project::when(!$user->hasRole('super-admin'), function ($query) use ($accessibleProjectIds) {
-                $query->whereIn('id', $accessibleProjectIds);
-            })->count(),
-
-            'active_projects' => Project::when(!$user->hasRole('super-admin'), function ($query) use ($accessibleProjectIds) {
-                $query->whereIn('id', $accessibleProjectIds);
-            })->where('status', 'in_progress')->count(),
-
-            'completed_projects' => Project::when(!$user->hasRole('super-admin'), function ($query) use ($accessibleProjectIds) {
-                $query->whereIn('id', $accessibleProjectIds);
-            })->where('status', 'completed')->count(),
-
-            'pending_documents' => DB::table('required_documents')
-                ->when(!$user->hasRole('super-admin'), function ($query) use ($accessibleProjectIds) {
-                    $query->whereIn('project_step_id', function ($subQuery) use ($accessibleProjectIds) {
-                        $subQuery->select('id')
-                            ->from('project_steps')
-                            ->whereIn('project_id', $accessibleProjectIds);
-                    });
-                })
-                ->where('status', 'pending_review')
-                ->count(),
-        ];
-
         // Calculate progress for each project including tasks and documents
         $clients->each(function ($client) {
             $client->projects->each(function ($project) {
@@ -113,7 +85,6 @@ class Dashboard extends BaseDashboard
 
         return [
             'clients' => $clients,
-            'stats' => $stats,
         ];
     }
 }

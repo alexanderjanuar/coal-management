@@ -15,6 +15,7 @@ use Filament\Forms\Form;
 use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
+use Filament\Forms\Components\DatePicker;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\SoftDeletingScope;
 use Illuminate\Support\Str;
@@ -35,7 +36,7 @@ use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\FileUpload;
 use Guava\FilamentModalRelationManagers\Actions\Table\RelationManagerAction;
 use Filament\Actions\CreateAction;
-
+use Carbon\Carbon;
 
 class ProjectResource extends Resource
 {
@@ -81,9 +82,39 @@ class ProjectResource extends Resource
                                 ->live()
                                 ->native(false)
                                 ->columnSpanFull(),
+                            Select::make('project_type')
+                                ->label('Project Task')
+                                ->options([
+                                    'Pengukuhan PKP' => 'Pengukuhan PKP',
+                                    'SP2DK' => 'Reviewing',
+                                    'NPWP' => 'NPWP',
+                                ])
+                                ->required()
+                                ->native(false),
+                            Select::make('type')
+                                ->label('Type')
+                                ->options([
+                                    'single' => 'On Spot',
+                                    'monthly' => 'Monthly',
+                                    'yearly' => 'Yearly',
+                                ])
+                                ->required()
+                                ->native(false),
+                            DatePicker::make('due_date')
+                                ->required()
+                                ->date()
+                                ->afterStateHydrated(function ($state) {
+                                    return $state ? Carbon::parse($state)->format('d M Y') : '-';
+                                })
+                                ->beforeStateDehydrated(function ($state) {
+                                    return $state ? Carbon::parse($state)->format('Y-m-d') : null;
+                                })
+                                ->native(false),
+
                             Forms\Components\RichEditor::make('description')
-                                ->columnSpanFull()
-                        ]),
+                                ->columnSpanFull(),
+
+                        ])->columns(3),
 
                     Forms\Components\Wizard\Step::make('Project Steps')
                         ->description('Configure steps, tasks, and documents')
@@ -231,6 +262,7 @@ class ProjectResource extends Resource
                         'completed' => 'success',
                         'canceled' => 'danger',
                     })
+                    ->sortable()
                     ->formatStateUsing(
                         fn(string $state): string =>
                         __(Str::title(str_replace('_', ' ', $state)))
@@ -270,6 +302,7 @@ class ProjectResource extends Resource
                             'progress' => $completedItems,
                         ];
                     })
+
                     ->tooltip(function ($record) {
                         // Add tooltip to show detailed progress
                         $steps = $record->steps;
@@ -337,6 +370,7 @@ class ProjectResource extends Resource
                 fn(Project $record): string =>
                 static::getUrl('view', ['record' => $record])
             )
+            ->defaultSort('status', 'asc')
             // Bulk Actions
             ->bulkActions([
                 Tables\Actions\BulkActionGroup::make([

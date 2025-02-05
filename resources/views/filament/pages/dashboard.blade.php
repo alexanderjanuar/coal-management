@@ -1,5 +1,3 @@
-@filamentPWA
-
 <x-filament-panels::page class="w-full">
     <style>
         .logo-container {
@@ -128,55 +126,7 @@
         }
     </style>
     {{-- Stats Overview --}}
-    <div class="grid gap-4 md:grid-cols-4 mb-8">
-        <x-filament::card>
-            <div class="flex items-center gap-4">
-                <div class="p-2 bg-blue-50 rounded-lg">
-                    <x-heroicon-o-clipboard-document-list class="w-6 h-6 text-blue-500" />
-                </div>
-                <div>
-                    <p class="text-sm text-gray-500">Total Projects</p>
-                    <p class="text-2xl font-semibold">{{ $stats['total_projects'] }}</p>
-                </div>
-            </div>
-        </x-filament::card>
-
-        <x-filament::card>
-            <div class="flex items-center gap-4">
-                <div class="p-2 bg-green-50 rounded-lg">
-                    <x-heroicon-o-play class="w-6 h-6 text-green-500" />
-                </div>
-                <div>
-                    <p class="text-sm text-gray-500">Active Projects</p>
-                    <p class="text-2xl font-semibold">{{ $stats['active_projects'] }}</p>
-                </div>
-            </div>
-        </x-filament::card>
-
-        <x-filament::card>
-            <div class="flex items-center gap-4">
-                <div class="p-2 bg-purple-50 rounded-lg">
-                    <x-heroicon-o-check-circle class="w-6 h-6 text-purple-500" />
-                </div>
-                <div>
-                    <p class="text-sm text-gray-500">Completed</p>
-                    <p class="text-2xl font-semibold">{{ $stats['completed_projects'] }}</p>
-                </div>
-            </div>
-        </x-filament::card>
-
-        <x-filament::card>
-            <div class="flex items-center gap-4">
-                <div class="p-2 bg-yellow-50 rounded-lg">
-                    <x-heroicon-o-document class="w-6 h-6 text-yellow-500" />
-                </div>
-                <div>
-                    <p class="text-sm text-gray-500">Pending Documents</p>
-                    <p class="text-2xl font-semibold">{{ $stats['pending_documents'] }}</p>
-                </div>
-            </div>
-        </x-filament::card>
-    </div>
+    @livewire('dashboard.project-stats')
 
     {{-- Status Tabs --}}
     <div class="mb-6">
@@ -206,6 +156,7 @@
             </nav>
         </div>
     </div>
+
     {{-- Projects List --}}
     <div class="space-y-4">
         <!-- Changed to space-y-4 for consistent spacing -->

@@ -12,6 +12,10 @@ class Project extends Model
 
     protected $fillable = ['client_id', 'name', 'description', 'status'];
 
+    protected $casts = [
+        'due_date' => 'date'
+    ];
+
     public function client()
     {
         return $this->belongsTo(Client::class);

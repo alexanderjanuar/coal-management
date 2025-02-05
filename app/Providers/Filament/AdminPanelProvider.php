@@ -22,7 +22,9 @@ use DiogoGPinto\AuthUIEnhancer\AuthUIEnhancerPlugin;
 use SolutionForest\FilamentAccessManagement\FilamentAccessManagementPanel;
 use CharrafiMed\GlobalSearchModal\GlobalSearchModalPlugin;
 use Devonab\FilamentEasyFooter\EasyFooterPlugin;
+use Cmsmaxinc\FilamentErrorPages\FilamentErrorPagesPlugin;
 use Illuminate\Support\HtmlString;
+use Filament\Navigation\NavigationGroup;
 class AdminPanelProvider extends PanelProvider
 {
     public function panel(Panel $panel): Panel
@@ -71,6 +73,7 @@ class AdminPanelProvider extends PanelProvider
                     ->withSentence(new HtmlString('<img src="' . asset('images/JKB-Logo.png') . '" style="margin-right:.5rem;" alt="Laravel Logo" width="20" height="20"> JKB Management')),
                 GlobalSearchModalPlugin::make(),
                 FilamentAccessManagementPanel::make(),
+                FilamentErrorPagesPlugin::make(),
                 AuthUIEnhancerPlugin::make()
                     ->showEmptyPanelOnMobile(false)
                     ->formPanelPosition('right')

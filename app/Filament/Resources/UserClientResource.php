@@ -25,7 +25,6 @@ class UserClientResource extends Resource
 {
     protected static ?string $model = UserClient::class;
     protected static ?string $navigationIcon = 'heroicon-o-user-circle';
-
     protected static ?string $navigationLabel = 'Employees';
     protected static ?string $modelLabel = 'Employee';
     protected static ?string $pluralModelLabel = 'Employees';
