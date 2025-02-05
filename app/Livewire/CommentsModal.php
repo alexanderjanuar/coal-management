@@ -154,7 +154,7 @@ class CommentsModal extends Component implements HasForms
 
     protected function sendNotifications(Comment $comment, string $successMessage): void
     {
-        // UI Notification
+        // UI Notification for current user
         Notification::make()
             ->title($successMessage)
             ->success()
@@ -168,8 +168,8 @@ class CommentsModal extends Component implements HasForms
         $notificationType = $comment->parent_id ? 'Reply' : 'New Comment';
         $targetType = $this->modelType === Task::class ? 'Task' : 'Item';
 
-        // Database Notification
-        Notification::make()
+        // Create the notification content
+        $notification = Notification::make()
             ->title($notificationType . ' on ' . $targetType . ': ' . $this->task->title)
             ->body($truncatedContent)
             ->icon('heroicon-o-chat-bubble-left-right')
@@ -178,8 +178,23 @@ class CommentsModal extends Component implements HasForms
                     ->button()
                     ->label('View ' . $notificationType)
                     ->url(route('filament.admin.pages.dashboard', ['task' => $this->task->id]))
-            ])
-            ->sendToDatabase(auth()->user());
+            ]);
+
+        // Get all users related to the project
+        $projectUsers = $this->task->projectStep->project->userProject()
+            ->with('user')
+            ->get()
+            ->pluck('user')
+            ->filter()  // Remove any null users
+            ->unique('id')
+            ->reject(function ($user) use ($comment) {
+                return $user->id === $comment->user_id;
+            });
+
+        // Send notifications to all project users
+        foreach ($projectUsers as $user) {
+            $notification->sendToDatabase($user);
+        }
     }
 
     public function getCommentCountProperty()

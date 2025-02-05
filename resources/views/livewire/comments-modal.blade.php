@@ -76,7 +76,7 @@
     <div class="space-y-4 sm:space-y-6">
         <!-- Comment Form -->
         <div class="bg-white rounded-lg shadow-sm border border-gray-100">
-            <form wire:submit="addComment" class="p-3 sm:p-4 space-y-3">
+            <form wire:submit="createComment" class="p-3 sm:p-4 space-y-3">
                 {{ $this->commentForm }}
                 <div class="flex justify-end">
                     <x-filament::button type="submit" size="sm" class="w-full sm:w-auto">

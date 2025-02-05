@@ -284,9 +284,7 @@
                     </div>
                 </div>
             </div>
-
-
-
+            
             {{-- Project Details --}}
             <div x-show="isOpen" x-collapse x-cloak class="border-t">
                 <livewire:dashboard.project-details :project="$project" />
@@ -312,8 +310,5 @@
             </div>
         </x-filament::card>
         @endif
-
-
-
     </div>
 </x-filament-panels::page>

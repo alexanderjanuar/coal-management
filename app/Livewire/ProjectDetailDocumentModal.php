@@ -69,11 +69,8 @@ class ProjectDetailDocumentModal extends Component implements HasForms
                     ->preserveFilenames()
                     ->disk('public')
                     ->directory(function () {
-                        // Get client name and project name
                         $clientName = Str::slug($this->document->projectStep->project->client->name);
                         $projectName = Str::slug($this->document->projectStep->project->name);
-                        
-                        // Create the directory path
                         return "clients/{$clientName}/{$projectName}";
                     })
                     ->downloadable()
@@ -83,31 +80,96 @@ class ProjectDetailDocumentModal extends Component implements HasForms
     }
 
     /**
+     * Enhanced notification system for project members
+     */
+    protected function sendProjectNotifications(string $title, string $body, string $type = 'info', ?string $action = null): void
+    {
+        // Create the notification
+        $notification = Notification::make()
+            ->title($title)
+            ->body($body)
+            ->icon($this->getNotificationIcon($type));
+
+        // Add action if provided
+        if ($action) {
+            $notification->actions([
+                \Filament\Notifications\Actions\Action::make('view')
+                    ->button()
+                    ->label($action)
+                    ->url(route('filament.admin.resources.projects.view', [
+                        'record' => $this->document->projectStep->project->id
+                    ]))
+            ]);
+        }
+
+        // Get all users related to the project
+        $projectUsers = $this->document->projectStep->project->userProject()
+            ->with('user')
+            ->get()
+            ->pluck('user')
+            ->filter()
+            ->unique('id')
+            ->reject(function ($user) {
+                return $user->id === auth()->id(); // Exclude current user
+            });
+
+        // Send notifications to all project users
+        foreach ($projectUsers as $user) {
+            $notification->sendToDatabase($user);
+        }
+
+        // Send UI notification to current user
+        Notification::make()
+                    ->title($title)
+                    ->body($body)
+            ->{$type}()
+                ->send();
+    }
+
+    protected function getNotificationIcon(string $type): string
+    {
+        return match ($type) {
+            'success' => 'heroicon-o-check-circle',
+            'error' => 'heroicon-o-x-circle',
+            'warning' => 'heroicon-o-exclamation-triangle',
+            default => 'heroicon-o-information-circle',
+        };
+    }
+
+    /**
      * Document Management Methods
      */
     public function uploadDocument(): void
     {
-        try {
-            $data = $this->form->getState();
 
-            $submission = SubmittedDocument::create([
-                'required_document_id' => $this->document->id,
-                'user_id' => auth()->id(),
-                'file_path' => $data['document'],
-            ]);
+        $data = $this->form->getState();
 
-            $this->document->status = 'pending_review';
-            $this->document->save();
+        $submission = SubmittedDocument::create([
+            'required_document_id' => $this->document->id,
+            'user_id' => auth()->id(),
+            'file_path' => $data['document'],
+        ]);
 
-            $this->form->fill();
+        $this->document->status = 'pending_review';
+        $this->document->save();
 
-            $this->dispatch('refresh');
-            $this->dispatch('documentUploaded', documentId: $submission->id);
+        $this->form->fill();
 
-            $this->sendNotification('success', 'Document uploaded successfully');
-        } catch (\Exception $e) {
-            $this->sendNotification('error', 'Error uploading document', 'Please try again or contact support.');
-        }
+        $this->dispatch('refresh');
+        $this->dispatch('documentUploaded', documentId: $submission->id);
+
+        // Send notifications
+        $this->sendProjectNotifications(
+            "New Document Uploaded",
+            sprintf(
+                "%s uploaded a new document '%s' for review",
+                auth()->user()->name,
+                $this->document->name
+            ),
+            'success',
+            'View Document'
+        );
+
     }
 
     public function viewDocument(SubmittedDocument $submission): void
@@ -146,9 +208,18 @@ class ProjectDetailDocumentModal extends Component implements HasForms
 
             $this->dispatch('refresh');
 
-            $this->sendNotification(
+            // Send notifications
+            $this->sendProjectNotifications(
+                "Document Status Updated",
+                sprintf(
+                    "Document '%s' status changed from %s to %s by %s",
+                    $this->document->name,
+                    ucwords(str_replace('_', ' ', $oldStatus)),
+                    ucwords(str_replace('_', ' ', $status)),
+                    auth()->user()->name
+                ),
                 'success',
-                "Document status updated to " . str_replace('_', ' ', ucfirst($status))
+                'View Document'
             );
         } catch (\Exception $e) {
             $this->sendNotification('error', 'Error updating status', 'Please try again.');
@@ -165,7 +236,7 @@ class ProjectDetailDocumentModal extends Component implements HasForms
         ]);
 
         try {
-            Comment::create([
+            $comment = Comment::create([
                 'user_id' => auth()->id(),
                 'commentable_type' => RequiredDocument::class,
                 'commentable_id' => $this->document->id,
@@ -176,7 +247,21 @@ class ProjectDetailDocumentModal extends Component implements HasForms
             $this->newComment = '';
             $this->dispatch('refresh');
 
-            $this->sendNotification('success', 'Comment added successfully');
+            // Send notifications
+            $plainContent = strip_tags($comment->content);
+            $truncatedContent = Str::limit($plainContent, 100);
+
+            $this->sendProjectNotifications(
+                "New Comment on Document",
+                sprintf(
+                    "%s commented on document '%s': %s",
+                    auth()->user()->name,
+                    $this->document->name,
+                    $truncatedContent
+                ),
+                'info',
+                'View Comment'
+            );
         } catch (\Exception $e) {
             $this->sendNotification('error', 'Error adding comment', 'Please try again.');
         }
