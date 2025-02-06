@@ -98,6 +98,9 @@ class UserClientResource extends Resource
                     ->label('Email')
                     ->searchable()
                     ->sortable(),
+                Tables\Columns\TextColumn::make('client.name')
+                    ->searchable()
+                    ->visible(false),
                 Tables\Columns\TextColumn::make('user.roles.name')
                     ->label('Role')
                     ->badge()
@@ -114,9 +117,11 @@ class UserClientResource extends Resource
                         default => $state,
                     }),
             ])
+            
             ->defaultGroup(
                 'client.name',
             )
+
             ->filters([
                 Tables\Filters\SelectFilter::make('client_id')
                     ->label('Client')
@@ -253,7 +258,7 @@ class UserClientResource extends Resource
                     ->label('Attach Unassigned User')
                     ->icon('heroicon-m-user-plus')
                     ->color('gray')
-                    ->visible(fn () => auth()->user()->hasRole('super-admin'))
+                    ->visible(fn() => auth()->user()->hasRole('super-admin'))
                     ->form([
                         Forms\Components\Select::make('user_id')
                             ->label('User')
@@ -265,7 +270,7 @@ class UserClientResource extends Resource
                             ->searchable()
                             ->preload()
                             ->helperText('Select a user who has no client assignments'),
-                            
+
                         Forms\Components\Section::make('Select Clients')
                             ->schema([
                                 Forms\Components\CheckboxList::make('client_ids')
@@ -285,9 +290,9 @@ class UserClientResource extends Resource
                                 'client_id' => $clientId
                             ]);
                         }
-            
+
                         $userName = User::find($data['user_id'])->name;
-                        
+
                         Notification::make()
                             ->title('User Assigned')
                             ->success()
@@ -298,7 +303,7 @@ class UserClientResource extends Resource
                     ->modalDescription('Select an unassigned user and the clients to assign them to.')
                     ->requiresConfirmation()
                     ->modalButton('Attach User'),
-                    
+
             ])
             ->bulkActions([
                 Tables\Actions\BulkActionGroup::make([
@@ -398,15 +403,7 @@ class UserClientResource extends Resource
         ];
     }
 
-    protected function mutateFormDataBeforeCreate(array $data): array
-    {
-        $user = User::create([
-            'name' => $data['name'],
-            'email' => $data['email'],
-            'password' => Hash::make($data['password'])
-        ]);
-        return $data;
-    }
+
     public static function getPages(): array
     {
         return [

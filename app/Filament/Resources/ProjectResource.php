@@ -195,6 +195,7 @@ class ProjectResource extends Resource
                                                             'redo',
                                                         ]),
                                                 ])
+                                                ->collapsed()
                                                 ->itemLabel(fn(array $state): ?string => $state['title'] ?? null)
                                                 ->addActionLabel('Add New Task'),
                                         ]),
@@ -220,12 +221,15 @@ class ProjectResource extends Resource
                                                             'redo',
                                                         ]),
                                                 ])
+                                                ->collapsed()
                                                 ->itemLabel(fn(array $state): ?string => $state['name'] ?? null)
                                                 ->addActionLabel('Add New Document')
                                         ])
                                 ])
                                 ->itemLabel(fn(array $state): ?string => $state['name'] ?? null)
                                 ->orderColumn('order')
+                                ->collapsed()
+                                ->reorderable(false)
                                 ->columnSpanFull(),
                         ]),
 
@@ -260,7 +264,8 @@ class ProjectResource extends Resource
                                             return $clientId
                                                 ? 'Select a user from this client'
                                                 : 'Please select a client first';
-                                        }),
+                                        })
+                                        ->disableOptionsWhenSelectedInSiblingRepeaterItems(),
                                 ])
                                 ->addActionLabel('Add New Member')
                                 ->columnSpanFull(),
@@ -279,6 +284,7 @@ class ProjectResource extends Resource
                     ->label('Client Name')
                     ->badge()
                     ->color('gray')
+                    ->searchable()
                     ->numeric()
                     ->sortable(),
 
@@ -406,6 +412,9 @@ class ProjectResource extends Resource
                 static::getUrl('view', ['record' => $record])
             )
             ->defaultSort('status', 'asc')
+            ->groups([
+                'client.name',
+            ])
             // Bulk Actions
             ->bulkActions([
                 Tables\Actions\BulkActionGroup::make([

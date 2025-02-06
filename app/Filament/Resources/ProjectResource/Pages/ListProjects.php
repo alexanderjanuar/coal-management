@@ -15,15 +15,16 @@ class ListProjects extends ListRecords
     public function getTabs(): array
     {
         return [
-            'all' => Tab::make('All'),
+            'all' => Tab::make('All')
+                ->icon('heroicon-m-squares-2x2'),  // Grid icon representing all items
             'On Spot' => Tab::make('On Spot')
-                ->icon('heroicon-m-user-group')
+                ->icon('heroicon-m-bolt')  // Lightning bolt representing immediate/on-spot tasks
                 ->modifyQueryUsing(fn(Builder $query) => $query->where('type', 'single')),
             'Monthly' => Tab::make('Monthly')
-                ->icon('heroicon-m-user-group')
+                ->icon('heroicon-m-calendar')  // Calendar icon for monthly tasks
                 ->modifyQueryUsing(fn(Builder $query) => $query->where('type', 'monthly')),
             'Yearly' => Tab::make('Yearly')
-                ->icon('heroicon-m-user-group')
+                ->icon('heroicon-m-calendar-days')  // Calendar with days for yearly tasks
                 ->modifyQueryUsing(fn(Builder $query) => $query->where('type', 'yearly')),
         ];
     }

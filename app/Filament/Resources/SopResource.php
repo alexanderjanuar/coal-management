@@ -33,7 +33,7 @@ class SopResource extends Resource
                 Forms\Components\Section::make('SOP Details')
                     ->schema([
                         Forms\Components\TextInput::make('name')
-                            ->unique()
+                            ->unique(ignoreRecord:True)
                             ->columnSpanFull()
                             ->required(),
                     ])->columns(2),
