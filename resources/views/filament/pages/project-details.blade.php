@@ -425,7 +425,6 @@
                                 x-transition:enter-end="opacity-100 translate-y-0" class="mt-4 ml-4 sm:ml-16 space-y-4">
 
                                 <!-- Tasks Section -->
-
                                 @if($step->tasks->isNotEmpty())
                                 <div class="space-y-2">
                                     <h4 class="text-sm font-medium text-gray-700">Tasks</h4>
@@ -801,7 +800,6 @@
                                         @endforeach
                                     </div>
                                 </div>
-
                                 @endif
                             </div>
                         </div>

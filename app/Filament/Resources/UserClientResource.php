@@ -20,6 +20,7 @@ use Filament\Forms\Components\Section;
 use Illuminate\Database\Eloquent\Model;
 use Filament\Notifications\Notification;
 use Illuminate\Support\Collection;
+use Filament\Tables\Columns\TextColumn;
 
 class UserClientResource extends Resource
 {
@@ -80,28 +81,25 @@ class UserClientResource extends Resource
     public static function table(Table $table): Table
     {
         return $table
-            ->modifyQueryUsing(function (Builder $query) {
-                if (auth()->user()->hasRole('super-admin')) {
-                    return $query;
-                } else {
-                    $query->whereHas('client', function ($q) {
-                        $q->whereIn('id', auth()->user()->userClients->pluck('client_id'));
-                    });
-                }
-            })
+            ->query(
+                User::query()
+                    ->whereIn('id', function ($query) {
+                        $query->select('user_id')
+                            ->from('user_clients')
+                            ->distinct();
+                    })
+                    ->withCount('userClients')
+            )
             ->columns([
-                Tables\Columns\TextColumn::make('user.name')
+                TextColumn::make('name')
                     ->label('Name')
                     ->searchable()
                     ->sortable(),
-                Tables\Columns\TextColumn::make('user.email')
+                TextColumn::make('email')
                     ->label('Email')
                     ->searchable()
                     ->sortable(),
-                Tables\Columns\TextColumn::make('client.name')
-                    ->searchable()
-                    ->visible(false),
-                Tables\Columns\TextColumn::make('user.roles.name')
+                TextColumn::make('roles.name')
                     ->label('Role')
                     ->badge()
                     ->color(fn(string $state): string => match ($state) {
@@ -116,16 +114,20 @@ class UserClientResource extends Resource
                         'staff' => 'Staff',
                         default => $state,
                     }),
+                TextColumn::make('user_clients_count')  // Note the snake_case here
+                    ->label('Assigned Clients')
+                    ->badge()
+                    ->alignCenter()
+                    ->color(fn($state) => $state > 0 ? 'success' : 'danger')
             ])
-            
-            ->defaultGroup(
-                'client.name',
-            )
-
+            // ->defaultGroup(
+            //     'client.name',
+            // )
             ->filters([
                 Tables\Filters\SelectFilter::make('client_id')
                     ->label('Client')
                     ->native(false)
+                    ->multiple()
                     ->searchable()
                     ->options(function () {
                         if (auth()->user()->hasRole('super-admin')) {
@@ -137,25 +139,39 @@ class UserClientResource extends Resource
                             auth()->user()->userClients->pluck('client_id')
                         )->pluck('name', 'id');
                     })
+                    ->query(function (Builder $query, array $data) {
+                        if (!empty($data['value'])) {
+                            $query->whereHas('userClients', function ($query) use ($data) {
+                                $query->where('client_id', $data['value']);
+                            });
+                        }
+                    })
                     ->visible(fn() => !auth()->user()->hasRole('staff')),
-                Tables\Filters\SelectFilter::make('role')
+
+                Tables\Filters\SelectFilter::make('roles')
                     ->label('Role')
                     ->native(false)
                     ->options(fn() => \Spatie\Permission\Models\Role::whereNot('name', 'super-admin')
                         ->pluck('name', 'name'))
+                    ->query(function (Builder $query, array $data) {
+                        if (!empty($data['value'])) {
+                            $query->whereHas('roles', function ($query) use ($data) {
+                                $query->where('name', $data['value']);
+                            });
+                        }
+                    })
                     ->visible(fn() => !auth()->user()->hasRole('staff'))
             ])
             ->actions([
-
                 Tables\Actions\ActionGroup::make([
                     Tables\Actions\Action::make('assign_client')
                         ->label('Assign Client')
                         ->icon('heroicon-m-building-office')
                         ->color('warning')
                         ->visible(fn() => auth()->user()->hasRole('super-admin'))
-                        ->modalHeading(fn($record) => "Assign Client to {$record->user->name}")
+                        ->modalHeading(fn($record) => "Assign Client to {$record->name}")
                         ->form(function ($record) {
-                            $assignedClientIds = $record->user->userClients()
+                            $assignedClientIds = $record->userClients()
                                 ->pluck('client_id')
                                 ->toArray();
 
@@ -174,10 +190,10 @@ class UserClientResource extends Resource
                                     ->helperText('Select clients to assign to this user.')
                             ];
                         })
-                        ->action(function (array $data, UserClient $record): void {
+                        ->action(function (array $data, User $record): void {
                             foreach ($data['client_id'] as $clientId) {
                                 UserClient::create([
-                                    'user_id' => $record->user_id,
+                                    'user_id' => $record->id,
                                     'client_id' => $clientId
                                 ]);
                             }
@@ -185,17 +201,15 @@ class UserClientResource extends Resource
                             Notification::make()
                                 ->title('Clients Assigned')
                                 ->success()
-                                ->body("Successfully assigned clients to {$record->user->name}")
+                                ->body("Successfully assigned clients to {$record->name}")
                                 ->send();
-                        })
-                        ->requiresConfirmation()
-                        ->modalButton('Assign Clients'),
+                        }),
 
                     Tables\Actions\Action::make('assign_role')
                         ->label('Assign Role')
                         ->icon('heroicon-m-user-group')
                         ->color('success')
-                        ->modalHeading(fn($record) => "Assign Role to {$record->user->name}")
+                        ->modalHeading(fn($record) => "Assign Role to {$record->name}")
                         ->modalIcon('heroicon-o-user-circle')
                         ->modalDescription('Select a role to assign to this employee.')
                         ->form([
@@ -217,7 +231,6 @@ class UserClientResource extends Resource
                                         ->mapWithKeys(fn($role, $key) => [
                                             $key => match ($key) {
                                                 'project-manager' => 'Project Manager',
-                                                'admin' => 'Admin',
                                                 'direktur' => 'Director',
                                                 'staff' => 'Staff',
                                                 default => $key
@@ -227,31 +240,20 @@ class UserClientResource extends Resource
                                 ->required()
                                 ->searchable()
                                 ->placeholder('Select a role')
-                                ->helperText(function () {
-                                    $user = auth()->user();
-                                    if ($user->hasRole('super-admin')) {
-                                        return 'As super admin, you can assign any role.';
-                                    } elseif ($user->hasRole('direktur')) {
-                                        return 'As director, you can only assign Project Manager or Staff roles.';
-                                    }
-                                    return 'You do not have permission to assign roles.';
-                                })
                                 ->disabled(fn() => !auth()->user()->hasRole(['super-admin', 'direktur']))
                         ])
-                        ->requiresConfirmation()
-                        ->action(function (array $data, UserClient $record): void {
-                            $record->user->syncRoles([$data['role']]);
+                        ->action(function (array $data, User $record): void {
+                            $record->syncRoles([$data['role']]);
                             Notification::make()
                                 ->title('Role Assigned')
                                 ->success()
-                                ->body("Successfully assigned role to {$record->user->name}")
+                                ->body("Successfully assigned role to {$record->name}")
                                 ->send();
                         }),
                     Tables\Actions\ViewAction::make(),
                     Tables\Actions\EditAction::make(),
                     Tables\Actions\DeleteAction::make(),
                 ])
-
             ])
             ->headerActions([
                 Tables\Actions\Action::make('attach_user')
@@ -319,16 +321,12 @@ class UserClientResource extends Resource
                                 ->label('Role')
                                 ->options(function () {
                                     $user = auth()->user();
-
-                                    // Get base roles excluding super-admin
                                     $roles = \Spatie\Permission\Models\Role::whereNot('name', 'super-admin');
 
-                                    // If user is not super-admin and not director, don't show any options
                                     if (!$user->hasRole('super-admin') && !$user->hasRole('direktur')) {
                                         return [];
                                     }
 
-                                    // If user is director, only show project-manager and staff
                                     if ($user->hasRole('direktur')) {
                                         $roles->whereIn('name', ['project-manager', 'staff']);
                                     }
@@ -345,24 +343,9 @@ class UserClientResource extends Resource
                                 })
                                 ->required()
                                 ->searchable()
-                                ->placeholder('Select a role')
-                                ->helperText(function () {
-                                    $user = auth()->user();
-                                    if ($user->hasRole('super-admin')) {
-                                        return 'As super admin, you can assign any role.';
-                                    } elseif ($user->hasRole('direktur')) {
-                                        return 'As director, you can only assign Project Manager or Staff roles.';
-                                    }
-                                    return 'You do not have permission to assign roles.';
-                                })
-                                ->disabled(fn() => !auth()->user()->hasRole(['super-admin', 'direktur']))
                         ])
-                        ->requiresConfirmation()
-                        ->deselectRecordsAfterCompletion()
                         ->action(function (Collection $records, array $data) {
-                            $records->each(function ($record) use ($data) {
-                                $record->user->syncRoles([$data['role']]);
-                            });
+                            $records->each(fn($record) => $record->syncRoles([$data['role']]));
 
                             Notification::make()
                                 ->title('Roles Assigned')
