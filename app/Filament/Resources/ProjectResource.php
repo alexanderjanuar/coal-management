@@ -10,7 +10,7 @@ use App\Models\Project;
 use App\Models\Client;
 use App\Models\User;
 use App\Models\Sop;
-
+use Malzariey\FilamentDaterangepickerFilter\Filters\DateRangeFilter;
 
 use Filament\Forms;
 use Filament\Forms\Form;
@@ -387,7 +387,8 @@ class ProjectResource extends Resource
                         'in_progress' => 'In Progress',
                         'completed' => 'Completed',
                         'canceled' => 'Canceled',
-                    ])
+                    ]),
+                DateRangeFilter::make('due_date'),
             ])
             // Row Actions
             ->actions([

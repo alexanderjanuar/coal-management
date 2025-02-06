@@ -158,8 +158,7 @@
     </div>
 
     {{-- Projects List --}}
-    <div class="space-y-4">
-        <!-- Changed to space-y-4 for consistent spacing -->
+    <div class="space-y-6">
         @foreach ($clients as $client)
         @php
         $filteredProjects = $client->projects->when($currentStatus !== 'all', function ($projects) use ($currentStatus)
@@ -169,146 +168,166 @@
         @endphp
 
         @if ($filteredProjects->isNotEmpty())
-        @foreach ($filteredProjects as $project)
-        <div x-data="{ isOpen: false }"
-            class="bg-white rounded-lg shadow-sm border border-gray-100 hover:shadow-md transition-all duration-200">
-            <!-- Project Header -->
-            <div
-                class=" bg-white border rounded-t-lg border-gray-100 shadow-sm hover:shadow-md transition-all duration-300">
+        <div x-data="{ isClientOpen: false }"
+            class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden hover:border-primary-100 transition-all duration-300">
+            {{-- Client Header --}}
+            <div class="group cursor-pointer" @click="isClientOpen = !isClientOpen">
+                <div
+                    class="p-4 sm:p-6 flex items-center justify-between hover:bg-gray-50/50 transition-colors duration-200">
+                    <div class="flex items-center gap-4">
+                        {{-- Client Logo/Initial with Dynamic Color --}}
+                        @if ($client->logo)
+                        <div class="logo-container">
+                            <img src="{{ Storage::url($client->logo) }}" alt="{{ $client->name }}" />
+                        </div>
+                        @else
+                        @php
+                        $hasInProgress = $filteredProjects->contains(function ($project) {
+                        return $project->status === 'in_progress' || $project->progress < 100; });
+                            $allCompleted=$filteredProjects->every(function ($project) {
+                            return $project->status === 'completed' || $project->progress === 100;
+                            });
+                            @endphp
 
-                <!-- Main Content Container -->
-                <div class="content-container">
-                    <div class="header-container">
-                        <!-- Left: Client Info -->
-                        <div class="flex items-start space-x-4">
-                            <!-- Logo/Initial -->
-                            @if ($client->logo)
-                            <div class="relative">
-                                <div class="logo-container">
-                                    <img src="{{ Storage::url($client->logo) }}" alt="{{ $client->name }}" />
-                                </div>
-                            </div>
-                            @else
-                            <div
-                                class="w-12 h-12 md:w-16 md:h-16 rounded-xl bg-gradient-to-br from-primary-50 to-primary-100 flex items-center justify-center">
-                                <span class="text-xl md:text-2xl font-bold text-primary-600">
+                            <div class="w-12 h-12 rounded-xl flex items-center justify-center
+                                @if ($allCompleted)
+                                    bg-gradient-to-br from-green-50 to-green-100
+                                @elseif ($hasInProgress)
+                                    bg-gradient-to-br from-amber-50 to-amber-100
+                                @else
+                                    bg-gradient-to-br from-gray-50 to-gray-100
+                                @endif">
+                                <span class="text-xl font-bold
+                                    @if ($allCompleted)
+                                        text-green-600
+                                    @elseif ($hasInProgress)
+                                        text-amber-600
+                                    @else
+                                        text-gray-600
+                                    @endif">
                                     {{ substr($client->name, 0, 1) }}
                                 </span>
                             </div>
                             @endif
 
-                            <!-- Project & Client Details -->
-                            <div class="space-y-1 min-w-0">
+                            {{-- Client Info --}}
+                            <div>
                                 <h3
-                                    class="text-lg md:text-xl font-semibold text-gray-900 hover:text-primary-600 transition-colors truncate">
-                                    {{ $project->name }}
+                                    class="text-lg font-semibold text-gray-900 group-hover:text-primary-600 transition-colors">
+                                    {{ $client->name }}
                                 </h3>
-                                <div
-                                    class="flex flex-col sm:flex-row sm:items-center space-y-1 sm:space-y-0 sm:space-x-3 text-sm text-gray-600">
-                                    <span class="truncate">{{ $client->name }}</span>
-                                    @if($project->due_date)
-                                    <div class="hidden sm:flex items-center space-x-1">
-                                        <span class="text-gray-300">•</span>
-                                        <div class="flex items-center space-x-1.5">
-                                            <x-heroicon-m-calendar-days
-                                                class="w-4 h-4 {{ $project->due_date->isPast() ? 'text-red-500' : 'text-gray-500' }}" />
-                                            <span
-                                                class="{{ $project->due_date->isPast() ? 'text-red-600' : 'text-gray-600' }}">
-                                                {{ $project->due_date->format('M d, Y') }}
-                                            </span>
-                                        </div>
-                                    </div>
-                                    @endif
+                                <div class="flex items-center gap-2 mt-1">
+                                    <span class="text-sm font-medium text-gray-600">
+                                        {{ $filteredProjects->count() }} {{ Str::plural('Project',
+                                        $filteredProjects->count()) }}
+                                    </span>
+                                    <span class="text-gray-300">•</span>
+                                    <span class="text-sm text-gray-500">
+                                        Last updated {{ $client->updated_at->diffForHumans() }}
+                                    </span>
                                 </div>
                             </div>
+                    </div>
+
+                    {{-- Toggle Icon --}}
+                    <div class="flex items-center gap-3">
+                        <div
+                            class="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-lg bg-gray-50 text-sm text-gray-600">
+                            <x-heroicon-m-chart-bar class="w-4 h-4 text-gray-500" />
+                            <span>{{ $filteredProjects->where('status', 'completed')->count() }}/{{
+                                $filteredProjects->count() }} Completed</span>
                         </div>
-
-                        <!-- Right: Status and Actions -->
-                        <div class="flex flex-wrap items-center gap-3">
-                            <!-- Status Badge -->
-                            <div class="order-first sm:order-none">
-                                <x-filament::badge :color="match ($project->status) {
-                                        'completed' => 'success',
-                                        'in_progress' => 'warning',
-                                        'on_hold' => 'danger',
-                                        default => 'secondary',
-                                    }" class="px-3 py-1.5">
-                                    {{ ucwords(str_replace('_', ' ', $project->status)) }}
-                                </x-filament::badge>
-                            </div>
-
-                            <!-- Progress Indicator -->
-                            <div
-                                class="group/progress relative flex items-center gap-2 bg-gray-50 px-3 py-1.5 rounded-lg">
-                                <div class="w-16 h-1.5 bg-gray-200 rounded-full overflow-hidden">
-                                    <div class="h-full transition-all duration-300 {{ match(true) {
-                                            $project->progress === 100 => 'bg-green-500',
-                                            $project->progress >= 50 => 'bg-amber-500',
-                                            default => 'bg-red-500'
-                                        } }}" style="width: {{ $project->progress }}%"></div>
-                                </div>
-                                <span class="text-xs font-medium {{ match(true) {
-                                        $project->progress === 100 => 'text-green-600',
-                                        $project->progress >= 50 => 'text-amber-600',
-                                        default => 'text-red-600'
-                                    } }}">{{ $project->progress }}%</span>
-
-                                <!-- Hover Tooltip -->
-                                <div
-                                    class="absolute -top-12 left-1/2 -translate-x-1/2 opacity-0 invisible 
-                                            group-hover/progress:opacity-100 group-hover/progress:visible transition-all duration-200">
-                                    <div class="bg-gray-900 text-white px-2 py-1 rounded-lg text-xs whitespace-nowrap">
-                                        @if($project->progress < 100) {{ 100 - $project->progress }}% remaining
-                                            @else
-                                            Project completed
-                                            @endif
-                                    </div>
-                                </div>
-                            </div>
-
-                            <!-- Action Buttons - Now positioned after progress indicator -->
-                            <div class="flex items-center">
-                                <a href="{{ route('filament.admin.resources.projects.view', ['record' => $project->id]) }}"
-                                    class="p-1.5 rounded-lg text-gray-500 hover:text-primary-500 hover:bg-primary-50/50 transition-colors">
-                                    <x-heroicon-m-eye class="w-4 h-4" />
-                                </a>
-                                <!-- Toggle Button -->
-                                <button @click="isOpen = !isOpen"
-                                    class="p-1.5 rounded-lg text-gray-500 hover:text-primary-500 hover:bg-primary-50/50 transition-colors">
-                                    <x-heroicon-o-chevron-down
-                                        class="w-4 h-4 transform transition-transform duration-200"
-                                        x-bind:class="isOpen ? 'rotate-180' : ''" />
-                                </button>
-                            </div>
+                        <div
+                            class="h-8 w-8 rounded-lg flex items-center justify-center text-gray-400 group-hover:bg-primary-50 group-hover:text-primary-500 transition-all duration-200">
+                            <x-heroicon-o-chevron-down class="w-5 h-5 transform transition-transform duration-200"
+                                x-bind:class="isClientOpen ? 'rotate-180' : ''" />
                         </div>
                     </div>
                 </div>
             </div>
-            
-            {{-- Project Details --}}
-            <div x-show="isOpen" x-collapse x-cloak class="border-t">
-                <livewire:dashboard.project-details :project="$project" />
+
+            {{-- Projects List --}}
+            <div x-show="isClientOpen" x-collapse x-cloak>
+                <div class="border-t divide-y divide-gray-100">
+                    @foreach ($filteredProjects as $project)
+                    <div x-data="{ isProjectOpen: false }" class="group/project">
+                        <div class="p-4 sm:p-6 hover:bg-gray-50/50 transition-all duration-200">
+                            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                                {{-- Project Info --}}
+                                <div class="flex-1 min-w-0">
+                                    <div class="flex items-center gap-3">
+                                        <h4
+                                            class="text-base font-medium text-gray-900 group-hover/project:text-primary-600 transition-colors">
+                                            {{ $project->name }}
+                                        </h4>
+                                        <x-filament::badge size="sm" :color="match ($project->status) {
+                                                        'completed' => 'success',
+                                                        'in_progress' => 'warning',
+                                                        'on_hold' => 'danger',
+                                                        default => 'secondary',
+                                                    }">
+                                            {{ ucwords(str_replace('_', ' ', $project->status)) }}
+                                        </x-filament::badge>
+                                    </div>
+
+                                    @if($project->due_date)
+                                    <div class="mt-1 flex items-center gap-2 text-sm">
+                                        <x-heroicon-m-calendar-days
+                                            class="w-4 h-4 {{ $project->due_date->isPast() ? 'text-red-400' : 'text-gray-400' }}" />
+                                        <span
+                                            class="{{ $project->due_date->isPast() ? 'text-red-600' : 'text-gray-600' }}">
+                                            Due {{ $project->due_date->format('M d, Y') }}
+                                        </span>
+                                    </div>
+                                    @endif
+                                </div>
+
+                                {{-- Project Actions --}}
+                                <div class="flex items-center gap-4">
+                                    {{-- Progress Bar --}}
+                                    <div
+                                        class="group/progress relative flex items-center gap-3 bg-white px-4 py-2 rounded-lg border border-gray-100">
+                                        <div class="w-24 h-2 bg-gray-100 rounded-full overflow-hidden">
+                                            <div class="h-full transition-all duration-300 {{ match(true) {
+                                                            $project->progress === 100 => 'bg-green-500',
+                                                            $project->progress >= 50 => 'bg-amber-500',
+                                                            default => 'bg-red-500'
+                                                        } }}" style="width: {{ $project->progress }}%"></div>
+                                        </div>
+                                        <span class="text-sm font-medium {{ match(true) {
+                                                        $project->progress === 100 => 'text-green-600',
+                                                        $project->progress >= 50 => 'text-amber-600',
+                                                        default => 'text-red-600'
+                                                    } }}">{{ $project->progress }}%</span>
+                                    </div>
+
+                                    {{-- Action Buttons --}}
+                                    <div class="flex items-center gap-2">
+                                        <a href="{{ route('filament.admin.resources.projects.view', ['record' => $project->id]) }}"
+                                            class="h-8 w-8 rounded-lg flex items-center justify-center text-gray-400 hover:bg-primary-50 hover:text-primary-500 transition-all duration-200">
+                                            <x-heroicon-m-eye class="w-4 h-4" />
+                                        </a>
+                                        <button @click="isProjectOpen = !isProjectOpen"
+                                            class="h-8 w-8 rounded-lg flex items-center justify-center text-gray-400 hover:bg-primary-50 hover:text-primary-500 transition-all duration-200">
+                                            <x-heroicon-o-chevron-down
+                                                class="w-4 h-4 transform transition-transform duration-200"
+                                                x-bind:class="isProjectOpen ? 'rotate-180' : ''" />
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        {{-- Project Details --}}
+                        <div x-show="isProjectOpen" x-collapse x-cloak class="border-t bg-gray-50/50">
+                            <livewire:dashboard.project-details :project="$project" />
+                        </div>
+                    </div>
+                    @endforeach
+                </div>
             </div>
         </div>
-        @endforeach
         @endif
         @endforeach
-
-        {{-- No Projects Message --}}
-        @if (
-        $clients->flatMap->projects->when($currentStatus !== 'all', function ($projects) use ($currentStatus) {
-        return $projects->where('status', $currentStatus);
-        })->isEmpty())
-        <x-filament::card>
-            <div class="text-center py-6">
-                <div class="mb-2">
-                    <x-heroicon-o-clipboard-document-list class="mx-auto h-12 w-12 text-gray-400" />
-                </div>
-                <h3 class="text-lg font-medium text-gray-900">No Projects Found</h3>
-                <p class="mt-1 text-sm text-gray-500">No projects with status
-                    "{{ ucwords(str_replace('_', ' ', $currentStatus)) }}" were found.</p>
-            </div>
-        </x-filament::card>
-        @endif
     </div>
 </x-filament-panels::page>
