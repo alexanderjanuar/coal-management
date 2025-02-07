@@ -1,5 +1,4 @@
 <x-filament-panels::page>
-
     <style>
         @keyframes pulse-subtle {
 
@@ -121,8 +120,8 @@
                                             title="{{ $member->user->name }}">
 
                                         <div class="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-2 py-1 bg-gray-900 text-white text-xs rounded-lg 
-                                                opacity-0 invisible group-hover/tooltip:opacity-100 group-hover/tooltip:visible transition-all duration-200 min-w-max z-[999]
-                                                shadow-lg ">
+                                            opacity-0 invisible group-hover/tooltip:opacity-100 group-hover/tooltip:visible transition-all duration-200 min-w-max z-[999]
+                                            shadow-lg ">
                                             <span>{{ $member->user->name }}</span>
                                             <div
                                                 class="absolute -bottom-1 left-1/2 -translate-x-1/2 w-2 h-2 bg-gray-900 rotate-45">
@@ -140,8 +139,8 @@
                                         </div>
 
                                         <div class="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-2 py-1 bg-gray-900 text-white text-xs rounded-lg
-                                                opacity-0 invisible group-hover/tooltip:opacity-100 group-hover/tooltip:visible transition-all duration-200 whitespace-nowrap z-50
-                                                shadow-lg">
+                                            opacity-0 invisible group-hover/tooltip:opacity-100 group-hover/tooltip:visible transition-all duration-200 whitespace-nowrap z-50
+                                            shadow-lg">
                                             {{ $record->userProject->count() - 4 }} more team members
                                             <div
                                                 class="absolute -bottom-1 left-1/2 -translate-x-1/2 w-2 h-2 bg-gray-900 rotate-45">
@@ -151,16 +150,38 @@
                                     @endif
                                 </div>
                             </button>
+
+                            <div class="hidden sm:block h-6 w-px bg-gray-200"></div>
+
+                            <!-- Documents Button -->
+                            <button x-on:click="$dispatch('open-modal', { id: 'all-documents-modal' })"
+                                class="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-4 py-2 text-sm font-medium text-gray-700 bg-gray-50 hover:bg-gray-100 rounded-lg transition-all duration-200 group">
+                                <div class="relative">
+                                    <x-heroicon-m-document-text
+                                        class="w-5 h-5 text-gray-600 group-hover:text-primary-600 transition-colors" />
+                                    <!-- Document count badge -->
+                                    <span class="absolute -top-1 -right-1 flex h-4 w-4">
+                                        <span
+                                            class="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary-400 opacity-75"></span>
+                                        <span
+                                            class="relative inline-flex rounded-full h-4 w-4 bg-primary-500 text-[10px] text-white items-center justify-center font-bold">
+                                            {{ $record->steps->flatMap->requiredDocuments->count() }}
+                                        </span>
+                                    </span>
+                                </div>
+                                <span class="group-hover:text-primary-600 transition-colors">Documents</span>
+                            </button>
+
                             <!-- Vertical Divider (hidden on mobile) -->
                             <div class="hidden sm:block h-6 w-px bg-gray-200"></div>
 
                             <!-- Status Badge -->
                             <x-filament::badge :color="match($record->status) {
-                                'completed' => 'success',
-                                'in_progress' => 'warning',
-                                'on_hold' => 'danger',
-                                default => 'gray',
-                            }">
+                            'completed' => 'success',
+                            'in_progress' => 'warning',
+                            'on_hold' => 'danger',
+                            default => 'gray',
+                        }">
                                 {{ ucwords(str_replace('_', ' ', $record->status)) }}
                             </x-filament::badge>
                         </div>
@@ -240,16 +261,15 @@
                             <svg class="w-full h-full" viewBox="0 0 36 36">
                                 <!-- Background Circle -->
                                 <path d="M18 2.0845
-                                        a 15.9155 15.9155 0 0 1 0 31.831
-                                        a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke="#E5E7EB"
-                                    stroke-width="3" stroke-linecap="round" />
+                                    a 15.9155 15.9155 0 0 1 0 31.831
+                                    a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke="#E5E7EB" stroke-width="3"
+                                    stroke-linecap="round" />
 
                                 <!-- Progress Circle -->
                                 <path d="M18 2.0845
-                                        a 15.9155 15.9155 0 0 1 0 31.831
-                                        a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke="#F59E0B"
-                                    stroke-width="3" stroke-linecap="round"
-                                    stroke-dasharray="{{ $progressPercentage * 1.01 }}, 100" />
+                                    a 15.9155 15.9155 0 0 1 0 31.831
+                                    a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke="#F59E0B" stroke-width="3"
+                                    stroke-linecap="round" stroke-dasharray="{{ $progressPercentage * 1.01 }}, 100" />
                             </svg>
                             <div class="absolute inset-0 flex items-center justify-center">
                                 <div class="text-center">
@@ -449,7 +469,7 @@
                                                         class="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                                                         <p
                                                             class="text-sm font-medium text-gray-900 
-                                                                {{ $task->status === 'completed' ? 'line-through text-gray-500' : '' }}">
+                                                            {{ $task->status === 'completed' ? 'line-through text-gray-500' : '' }}">
                                                             {{ $task->title }}
                                                         </p>
                                                         <span class="text-xs text-gray-400">
@@ -501,19 +521,19 @@
                                                                 <span
                                                                     class="animate-ping absolute inline-flex h-full w-full rounded-full opacity-75"
                                                                     :class="{
-                                                                                'bg-green-400': '{{ $task->status }}' === 'completed',
-                                                                                'bg-amber-400': '{{ $task->status }}' === 'in_progress',
-                                                                                'bg-red-400': '{{ $task->status }}' === 'blocked',
-                                                                                'bg-gray-400': '{{ $task->status }}' === 'pending'
-                                                                            }">
+                                                                            'bg-green-400': '{{ $task->status }}' === 'completed',
+                                                                            'bg-amber-400': '{{ $task->status }}' === 'in_progress',
+                                                                            'bg-red-400': '{{ $task->status }}' === 'blocked',
+                                                                            'bg-gray-400': '{{ $task->status }}' === 'pending'
+                                                                        }">
                                                                 </span>
                                                                 <span class="relative inline-flex rounded-full h-2 w-2"
                                                                     :class="{
-                                                                                'bg-green-500': '{{ $task->status }}' === 'completed',
-                                                                                'bg-amber-500': '{{ $task->status }}' === 'in_progress',
-                                                                                'bg-red-500': '{{ $task->status }}' === 'blocked',
-                                                                                'bg-gray-500': '{{ $task->status }}' === 'pending'
-                                                                            }">
+                                                                            'bg-green-500': '{{ $task->status }}' === 'completed',
+                                                                            'bg-amber-500': '{{ $task->status }}' === 'in_progress',
+                                                                            'bg-red-500': '{{ $task->status }}' === 'blocked',
+                                                                            'bg-gray-500': '{{ $task->status }}' === 'pending'
+                                                                        }">
                                                                 </span>
                                                             </span>
                                                             {{ ucfirst($task->status) }}
@@ -539,7 +559,7 @@
                                                             <div class="py-1">
                                                                 <button
                                                                     x-on:click="$dispatch('open-modal', { id: 'confirm-status-modal-{{ $task->id }}' }); 
-                                                                              $wire.updateTaskStatus({{ $task->id }}, 'pending')"
+                                                                            $wire.updateTaskStatus({{ $task->id }}, 'pending')"
                                                                     class="group flex w-full items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-50">
                                                                     <span
                                                                         class="mr-3 h-2 w-2 rounded-full bg-gray-400"></span>
@@ -547,7 +567,7 @@
                                                                 </button>
                                                                 <button
                                                                     x-on:click="$dispatch('open-modal', { id: 'confirm-status-modal-{{ $task->id }}' }); 
-                                                                              $wire.updateTaskStatus({{ $task->id }}, 'in_progress')"
+                                                                            $wire.updateTaskStatus({{ $task->id }}, 'in_progress')"
                                                                     class="group flex w-full items-center px-4 py-2 text-sm text-amber-700 hover:bg-amber-50">
                                                                     <span
                                                                         class="mr-3 h-2 w-2 rounded-full bg-amber-400 animate-pulse"></span>
@@ -555,7 +575,7 @@
                                                                 </button>
                                                                 <button
                                                                     x-on:click="$dispatch('open-modal', { id: 'confirm-status-modal-{{ $task->id }}' }); 
-                                                                              $wire.updateTaskStatus({{ $task->id }}, 'completed')"
+                                                                            $wire.updateTaskStatus({{ $task->id }}, 'completed')"
                                                                     class="group flex w-full items-center px-4 py-2 text-sm text-green-700 hover:bg-green-50">
                                                                     <span
                                                                         class="mr-3 h-2 w-2 rounded-full bg-green-400"></span>
@@ -563,7 +583,7 @@
                                                                 </button>
                                                                 <button
                                                                     x-on:click="$dispatch('open-modal', { id: 'confirm-status-modal-{{ $task->id }}' }); 
-                                                                              $wire.updateTaskStatus({{ $task->id }}, 'blocked')"
+                                                                            $wire.updateTaskStatus({{ $task->id }}, 'blocked')"
                                                                     class="group flex w-full items-center px-4 py-2 text-sm text-red-700 hover:bg-red-50">
                                                                     <span
                                                                         class="mr-3 h-2 w-2 rounded-full bg-red-400"></span>
@@ -611,11 +631,11 @@
                                                                         <span class="text-sm text-gray-600">Current
                                                                             Status</span>
                                                                         <x-filament::badge :color="match($task->status) {
-                                                                                'completed' => 'success',
-                                                                                'in_progress' => 'warning',
-                                                                                'blocked' => 'danger',
-                                                                                default => 'gray'
-                                                                            }">
+                                                                            'completed' => 'success',
+                                                                            'in_progress' => 'warning',
+                                                                            'blocked' => 'danger',
+                                                                            default => 'gray'
+                                                                        }">
                                                                             {{ ucfirst($task->status) }}
                                                                         </x-filament::badge>
                                                                     </div>
@@ -624,11 +644,11 @@
                                                                         <span class="text-sm text-gray-600">New
                                                                             Status</span>
                                                                         <x-filament::badge :color="match($newTaskStatus) {
-                                                                                'completed' => 'success',
-                                                                                'in_progress' => 'warning',
-                                                                                'blocked' => 'danger',
-                                                                                default => 'gray'
-                                                                            }">
+                                                                            'completed' => 'success',
+                                                                            'in_progress' => 'warning',
+                                                                            'blocked' => 'danger',
+                                                                            default => 'gray'
+                                                                        }">
                                                                             {{ ucfirst($newTaskStatus) }}
                                                                         </x-filament::badge>
                                                                     </div>
@@ -642,11 +662,11 @@
                                                                     </x-filament::button>
                                                                     <x-filament::button wire:click="confirmStatusChange"
                                                                         :color="match($newTaskStatus) {
-                                                                                'completed' => 'success',
-                                                                                'in_progress' => 'warning',
-                                                                                'blocked' => 'danger',
-                                                                                default => 'gray'
-                                                                            }">
+                                                                            'completed' => 'success',
+                                                                            'in_progress' => 'warning',
+                                                                            'blocked' => 'danger',
+                                                                            default => 'gray'
+                                                                        }">
                                                                         Update Status
                                                                     </x-filament::button>
                                                                 </div>
@@ -659,9 +679,9 @@
                                                     <button @click="showComments = !showComments"
                                                         class="flex items-center gap-1 px-2 py-1 text-xs font-medium rounded-full transition-colors"
                                                         :class="{ 
-                                                                    'bg-amber-50 text-amber-600': showComments, 
-                                                                    'bg-gray-100 text-gray-600 hover:bg-amber-50 hover:text-amber-600': !showComments 
-                                                                }">
+                                                                'bg-amber-50 text-amber-600': showComments, 
+                                                                'bg-gray-100 text-gray-600 hover:bg-amber-50 hover:text-amber-600': !showComments 
+                                                            }">
                                                         <x-heroicon-m-chat-bubble-left-right class="w-4 h-4" />
                                                         <span>{{ $task->comments->count() }}</span>
                                                     </button>
@@ -696,23 +716,23 @@
                                             x-on:click="$dispatch('open-modal', { id: 'document-modal-{{ $document->id }}' })"
                                             class="w-full group">
                                             <div class="flex flex-col sm:flex-row items-start sm:items-center gap-3 p-3 bg-white rounded-lg transition-all duration-200
-                                                                        {{ match($document->status) {
-                                                                            'approved' => 'border-2 border-green-200 hover:border-green-300',
-                                                                            'pending_review' => 'border-2 border-amber-200 hover:border-amber-300',
-                                                                            'rejected' => 'border-2 border-red-200 hover:border-red-300',
-                                                                            default => 'border-2 border-gray-200 hover:border-gray-300'
-                                                                        } }}">
+                                                                    {{ match($document->status) {
+                                                                        'approved' => 'border-2 border-green-200 hover:border-green-300',
+                                                                        'pending_review' => 'border-2 border-amber-200 hover:border-amber-300',
+                                                                        'rejected' => 'border-2 border-red-200 hover:border-red-300',
+                                                                        default => 'border-2 border-gray-200 hover:border-gray-300'
+                                                                    } }}">
 
                                                 <!-- Left: Icon with Status -->
                                                 <div class="relative flex-shrink-0">
                                                     <div
                                                         class="{{ match($document->status) {
-                                                                                'approved' => 'bg-green-50 text-green-600',
-                                                                                'pending_review' => 'bg-amber-50 text-amber-600',
-                                                                                'rejected' => 'bg-red-50 text-red-600',
-                                                                                default => 'bg-gray-50 text-gray-600'
-                                                                            } }} 
-                                                                            w-10 h-10 rounded-lg flex items-center justify-center transition-colors">
+                                                                            'approved' => 'bg-green-50 text-green-600',
+                                                                            'pending_review' => 'bg-amber-50 text-amber-600',
+                                                                            'rejected' => 'bg-red-50 text-red-600',
+                                                                            default => 'bg-gray-50 text-gray-600'
+                                                                        } }} 
+                                                                        w-10 h-10 rounded-lg flex items-center justify-center transition-colors">
                                                         @if($document->submittedDocuments->count() > 0)
                                                         <x-heroicon-o-document-text class="w-5 h-5" />
                                                         @else
@@ -722,24 +742,24 @@
 
                                                     <!-- Status Dot -->
                                                     <span class="absolute -bottom-1 -right-1 w-3 h-3 rounded-full ring-2 ring-white
-                                                                    {{ match($document->status) {
-                                                                        'approved' => 'bg-green-500',
-                                                                        'pending_review' => 'bg-amber-500',
-                                                                        'rejected' => 'bg-red-500',
-                                                                        default => 'bg-gray-400'
-                                                                    } }}">
+                                                                {{ match($document->status) {
+                                                                    'approved' => 'bg-green-500',
+                                                                    'pending_review' => 'bg-amber-500',
+                                                                    'rejected' => 'bg-red-500',
+                                                                    default => 'bg-gray-400'
+                                                                } }}">
                                                     </span>
                                                 </div>
 
                                                 <!-- Center: Document Info -->
                                                 <div class="flex-1 min-w-0 text-left">
                                                     <p class="text-sm font-medium transition-colors
-                                                                    {{ match($document->status) {
-                                                                        'approved' => 'text-green-900',
-                                                                        'pending_review' => 'text-amber-900',
-                                                                        'rejected' => 'text-red-900',
-                                                                        default => 'text-gray-900'
-                                                                    } }}">
+                                                                {{ match($document->status) {
+                                                                    'approved' => 'text-green-900',
+                                                                    'pending_review' => 'text-amber-900',
+                                                                    'rejected' => 'text-red-900',
+                                                                    default => 'text-gray-900'
+                                                                } }}">
                                                         {{ $document->name }}
                                                     </p>
                                                     @if($document->description)
@@ -754,30 +774,30 @@
                                                 <div class="flex items-center gap-2 w-full sm:w-auto mt-2 sm:mt-0">
                                                     <div
                                                         class="flex items-center gap-2 
-                                                                    {{ match($document->status) {
-                                                                        'approved' => 'bg-green-50 text-green-700',
-                                                                        'pending_review' => 'bg-amber-50 text-amber-700',
-                                                                        'rejected' => 'bg-red-50 text-red-700',
-                                                                        default => 'bg-gray-50 text-gray-700'
-                                                                    } }} 
-                                                                    px-2.5 py-1 rounded-full text-xs font-medium flex-1 sm:flex-initial justify-center">
+                                                                {{ match($document->status) {
+                                                                    'approved' => 'bg-green-50 text-green-700',
+                                                                    'pending_review' => 'bg-amber-50 text-amber-700',
+                                                                    'rejected' => 'bg-red-50 text-red-700',
+                                                                    default => 'bg-gray-50 text-gray-700'
+                                                                } }} 
+                                                                px-2.5 py-1 rounded-full text-xs font-medium flex-1 sm:flex-initial justify-center">
                                                         <span class="relative flex w-2 h-2">
                                                             <span class="{{ $document->status === 'pending_review' ? 'animate-ping' : '' }} 
-                                                                            absolute inline-flex h-full w-full rounded-full opacity-75
-                                                                            {{ match($document->status) {
-                                                                                'approved' => 'bg-green-500',
-                                                                                'pending_review' => 'bg-amber-500',
-                                                                                'rejected' => 'bg-red-500',
-                                                                                default => 'bg-gray-500'
-                                                                            } }}">
+                                                                        absolute inline-flex h-full w-full rounded-full opacity-75
+                                                                        {{ match($document->status) {
+                                                                            'approved' => 'bg-green-500',
+                                                                            'pending_review' => 'bg-amber-500',
+                                                                            'rejected' => 'bg-red-500',
+                                                                            default => 'bg-gray-500'
+                                                                        } }}">
                                                             </span>
                                                             <span class="relative inline-flex rounded-full h-2 w-2 
-                                                                            {{ match($document->status) {
-                                                                                'approved' => 'bg-green-500',
-                                                                                'pending_review' => 'bg-amber-500',
-                                                                                'rejected' => 'bg-red-500',
-                                                                                default => 'bg-gray-500'
-                                                                            } }}">
+                                                                        {{ match($document->status) {
+                                                                            'approved' => 'bg-green-500',
+                                                                            'pending_review' => 'bg-amber-500',
+                                                                            'rejected' => 'bg-red-500',
+                                                                            default => 'bg-gray-500'
+                                                                        } }}">
                                                             </span>
                                                         </span>
                                                         <span class="ml-1.5">
@@ -819,21 +839,25 @@
         </div>
     </x-filament::modal>
 
+    <x-filament::modal id="all-documents-modal" width="4xl" slide-over>
+        @livewire('project-detail.project-detail-all-document', ['project' => $record])
+    </x-filament::modal>
+
 
     {{-- Add this to your project view page --}}
     <script>
         document.addEventListener('DOMContentLoaded', function() {
-        const urlParams = new URLSearchParams(window.location.search);
-        const documentId = urlParams.get('openDocument');
-        
-        if (documentId) {
-            window.dispatchEvent(
-                new CustomEvent('open-modal', {
-                    detail: { id: `document-modal-${documentId}` }
-                })
-            );
-        }
-    });
+    const urlParams = new URLSearchParams(window.location.search);
+    const documentId = urlParams.get('openDocument');
+    
+    if (documentId) {
+        window.dispatchEvent(
+            new CustomEvent('open-modal', {
+                detail: { id: `document-modal-${documentId}` }
+            })
+        );
+    }
+});
     </script>
 
 

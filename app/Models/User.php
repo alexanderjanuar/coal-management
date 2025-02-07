@@ -12,6 +12,7 @@ use SolutionForest\FilamentAccessManagement\Concerns\FilamentUserHelpers;
 use Filament\Models\Contracts\FilamentUser;
 use Filament\Panel;
 use League\CommonMark\Node\Block\Document;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class User extends Authenticatable
 {
@@ -51,6 +52,11 @@ class User extends Authenticatable
     public function documents()
     {
         return $this->hasMany(Document::class);
+    }
+
+    public function clientDocuments(): HasMany
+    {
+        return $this->hasMany(ClientDocument::class);
     }
 
     public function comments()

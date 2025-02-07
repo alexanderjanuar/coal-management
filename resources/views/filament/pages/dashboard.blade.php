@@ -237,6 +237,12 @@
                             <span>{{ $filteredProjects->where('status', 'completed')->count() }}/{{
                                 $filteredProjects->count() }} Completed</span>
                         </div>
+                        {{-- Upload Document Button --}}
+                        <button  x-on:click="$dispatch('open-modal', { id: 'document-client-modal' })"
+                            class="inline-flex items-center gap-2 px-3 py-1.5 text-sm font-medium rounded-lg text-primary-600 bg-primary-50 hover:bg-primary-100 transition-colors duration-200">
+                            <x-heroicon-m-document-plus class="w-4 h-4" />
+                            <span>Upload</span>
+                        </button>
                         <div
                             class="h-8 w-8 rounded-lg flex items-center justify-center text-gray-400 group-hover:bg-primary-50 group-hover:text-primary-500 transition-all duration-200">
                             <x-heroicon-o-chevron-down class="w-5 h-5 transform transition-transform duration-200"
@@ -261,11 +267,11 @@
                                             {{ $project->name }}
                                         </h4>
                                         <x-filament::badge size="sm" :color="match ($project->status) {
-                                                        'completed' => 'success',
-                                                        'in_progress' => 'warning',
-                                                        'on_hold' => 'danger',
-                                                        default => 'secondary',
-                                                    }">
+                                            'completed' => 'success',
+                                            'in_progress' => 'warning',
+                                            'on_hold' => 'danger',
+                                            default => 'secondary',
+                                        }">
                                             {{ ucwords(str_replace('_', ' ', $project->status)) }}
                                         </x-filament::badge>
                                     </div>
@@ -289,16 +295,16 @@
                                         class="group/progress relative flex items-center gap-3 bg-white px-4 py-2 rounded-lg border border-gray-100">
                                         <div class="w-24 h-2 bg-gray-100 rounded-full overflow-hidden">
                                             <div class="h-full transition-all duration-300 {{ match(true) {
-                                                            $project->progress === 100 => 'bg-green-500',
-                                                            $project->progress >= 50 => 'bg-amber-500',
-                                                            default => 'bg-red-500'
-                                                        } }}" style="width: {{ $project->progress }}%"></div>
+                                                $project->progress === 100 => 'bg-green-500',
+                                                $project->progress >= 50 => 'bg-amber-500',
+                                                default => 'bg-red-500'
+                                            } }}" style="width: {{ $project->progress }}%"></div>
                                         </div>
                                         <span class="text-sm font-medium {{ match(true) {
-                                                        $project->progress === 100 => 'text-green-600',
-                                                        $project->progress >= 50 => 'text-amber-600',
-                                                        default => 'text-red-600'
-                                                    } }}">{{ $project->progress }}%</span>
+                                            $project->progress === 100 => 'text-green-600',
+                                            $project->progress >= 50 => 'text-amber-600',
+                                            default => 'text-red-600'
+                                        } }}">{{ $project->progress }}%</span>
                                     </div>
 
                                     {{-- Action Buttons --}}
@@ -329,5 +335,10 @@
         </div>
         @endif
         @endforeach
+
+        <x-filament::modal id="document-client-modal" width="3xl" slide-over>
+            @livewire('dashboard.document-client-modal')
+        </x-filament::modal>
+
     </div>
 </x-filament-panels::page>

@@ -221,7 +221,7 @@ class CommentsModal extends Component implements HasForms
 
     public function render()
     {
-        return view('livewire.comments-modal', [
+        return view('livewire.dashboard.comments-modal', [
             'commentCount' => $this->commentCount,
             'participantCount' => $this->participantCount,
             'latestActivity' => $this->latestActivity,

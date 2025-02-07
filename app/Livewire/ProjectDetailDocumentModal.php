@@ -317,7 +317,7 @@ class ProjectDetailDocumentModal extends Component implements HasForms
      */
     public function render()
     {
-        return view('livewire.project-detail-document-modal', [
+        return view('livewire.project-detail.project-detail-document-modal', [
             'comments' => $this->document->comments()
                 ->with('user')
                 ->latest()

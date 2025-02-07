@@ -66,7 +66,7 @@ class AdminPanelProvider extends PanelProvider
                 DispatchServingFilamentEvent::class,
             ])
             ->databaseNotifications()
-            ->databaseNotificationsPolling('10s')
+            ->databaseNotificationsPolling('30s')
             ->plugins([
                 \TomatoPHP\FilamentPWA\FilamentPWAPlugin::make(),
                 EasyFooterPlugin::make()

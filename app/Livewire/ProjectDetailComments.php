@@ -171,7 +171,7 @@ class ProjectDetailComments extends Component implements HasForms
 
     public function render()
     {
-        return view('livewire.project-detail-comments', [
+        return view('livewire.project-detail.project-detail-comments', [
             'comments' => $this->task->comments()
                 ->with(['user', 'replies.user'])
                 ->whereNull('parent_id')

@@ -115,7 +115,7 @@
     </div>
 
     <!-- Preview Modal - Made more responsive -->
-    <x-filament::modal id="preview-documents" width="7xl">
+    <x-filament::modal id="preview-document" width="7xl">
         <div class="flex items-center justify-between w-full gap-4">
             <!-- Left side - Document info -->
             <div class="flex items-center gap-4 min-w-0">

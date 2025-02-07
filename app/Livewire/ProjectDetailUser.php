@@ -127,7 +127,7 @@ class ProjectDetailUser extends Component
 
     public function render()
     {
-        return view('livewire.project-detail-user', [
+        return view('livewire.project-detail.project-detail-user', [
             'users' => $this->users,
             'availableUsers' => $this->availableUsers
         ]);

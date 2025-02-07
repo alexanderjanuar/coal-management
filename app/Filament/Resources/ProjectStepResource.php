@@ -26,12 +26,7 @@ use Filament\Forms\Components\FileUpload;
 class ProjectStepResource extends Resource
 {
     protected static ?string $model = ProjectStep::class;
-
     protected static ?string $navigationGroup = 'Project Management';
-
-    
-
-
     protected static ?string $navigationIcon = 'heroicon-o-clipboard-document-list';
 
 

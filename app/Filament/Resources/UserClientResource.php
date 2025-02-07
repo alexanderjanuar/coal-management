@@ -168,7 +168,7 @@ class UserClientResource extends Resource
                         ->label('Assign Client')
                         ->icon('heroicon-m-building-office')
                         ->color('warning')
-                        ->visible(fn() => auth()->user()->hasRole('super-admin'))
+                        ->visible(fn() => auth()->user()->hasRole(['super-admin', 'direktur', 'project-manager']))
                         ->modalHeading(fn($record) => "Assign Client to {$record->name}")
                         ->form(function ($record) {
                             $assignedClientIds = $record->userClients()
@@ -250,9 +250,43 @@ class UserClientResource extends Resource
                                 ->body("Successfully assigned role to {$record->name}")
                                 ->send();
                         }),
-                    Tables\Actions\ViewAction::make(),
-                    Tables\Actions\EditAction::make(),
-                    Tables\Actions\DeleteAction::make(),
+
+                    Tables\Actions\Action::make('unassign_client')
+                        ->label('Unassign Client')
+                        ->icon('heroicon-m-building-office-2')
+                        ->color('danger')
+                        ->visible(fn() => auth()->user()->hasRole(['super-admin', 'direktur', 'project-manager']))
+                        ->modalHeading(fn($record) => "Unassign Client from {$record->name}")
+                        ->form(function ($record) {
+                            $assignedClients = $record->userClients()
+                                ->join('clients', 'user_clients.client_id', '=', 'clients.id')
+                                ->pluck('clients.name', 'user_clients.id')
+                                ->toArray();
+
+                            return [
+                                Forms\Components\Select::make('user_client_ids')
+                                    ->label('Assigned Clients')
+                                    ->multiple()
+                                    ->options($assignedClients)
+                                    ->preload()
+                                    ->searchable()
+                                    ->required()
+                                    ->loadingMessage('Loading assigned clients...')
+                                    ->helperText('Select clients to unassign from this user.')
+                            ];
+                        })
+                        ->action(function (array $data, User $record): void {
+                            // Delete the selected user_client relationships
+                            UserClient::whereIn('id', $data['user_client_ids'])->delete();
+
+                            Notification::make()
+                                ->title('Clients Unassigned')
+                                ->success()
+                                ->body("Successfully unassigned clients from {$record->name}")
+                                ->send();
+                        })
+                        ->requiresConfirmation()
+                        ->modalButton('Unassign Selected Clients'),
                 ])
             ])
             ->headerActions([
