@@ -117,7 +117,7 @@ class ProjectDetailDocumentModal extends Component implements HasForms
 
         // Send notifications to all project users
         foreach ($projectUsers as $user) {
-            $notification->sendToDatabase($user);
+            $notification->sendToDatabase($user)->broadcast($user);
         }
 
         // Send UI notification to current user

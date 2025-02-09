@@ -402,15 +402,6 @@ class ProjectResource extends Resource
                         ->icon('heroicon-o-eye'),
                     Tables\Actions\EditAction::make()
                         ->icon('heroicon-o-pencil'),
-                    Action::make('edit')
-                        ->action(function (array $data) {
-                            $user = User::find(2);
-
-                            Notification::make()
-                                ->persistent()
-                                ->title('Saved')
-                                ->broadcast($user);
-                        })
                 ])
                     ->icon('heroicon-m-ellipsis-vertical')
                     ->color('gray')
