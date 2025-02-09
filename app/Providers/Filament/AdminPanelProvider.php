@@ -25,6 +25,8 @@ use Devonab\FilamentEasyFooter\EasyFooterPlugin;
 use Cmsmaxinc\FilamentErrorPages\FilamentErrorPagesPlugin;
 use Illuminate\Support\HtmlString;
 use Filament\Navigation\NavigationGroup;
+use Filament\Support\Enums\MaxWidth;
+
 class AdminPanelProvider extends PanelProvider
 {
     public function panel(Panel $panel): Panel
@@ -65,8 +67,9 @@ class AdminPanelProvider extends PanelProvider
                 DisableBladeIconComponents::class,
                 DispatchServingFilamentEvent::class,
             ])
+            ->maxContentWidth(MaxWidth::Full)
             ->databaseNotifications()
-            ->databaseNotificationsPolling('30s')
+            ->databaseNotificationsPolling('5s')
             ->plugins([
                 \TomatoPHP\FilamentPWA\FilamentPWAPlugin::make(),
                 EasyFooterPlugin::make()

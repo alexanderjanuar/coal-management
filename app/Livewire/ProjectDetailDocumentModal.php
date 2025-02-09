@@ -5,6 +5,7 @@ namespace App\Livewire;
 use App\Models\Comment;
 use App\Models\RequiredDocument;
 use App\Models\SubmittedDocument;
+use App\Models\ClientDocument;
 use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Concerns\InteractsWithForms;
 use Filament\Forms\Contracts\HasForms;

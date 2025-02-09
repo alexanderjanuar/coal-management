@@ -27,7 +27,7 @@ use Filament\Infolists;
 use Filament\Infolists\Infolist;
 use Filament\Infolists\Components\Section;
 use Filament\Forms\Components\Section as FormSection;
-
+use Filament\Tables\Actions\Action;
 use Filament\Infolists\Components\TextEntry;
 use Filament\Support\Enums\FontWeight;
 use IbrahimBougaoua\FilaProgress\Infolists\Components\ProgressBarEntry;
@@ -39,7 +39,7 @@ use Filament\Forms\Components\FileUpload;
 use Guava\FilamentModalRelationManagers\Actions\Table\RelationManagerAction;
 use Filament\Actions\CreateAction;
 use Carbon\Carbon;
-
+use Filament\Notifications\Notification;
 class ProjectResource extends Resource
 {
     protected static ?string $model = Project::class;
@@ -402,6 +402,15 @@ class ProjectResource extends Resource
                         ->icon('heroicon-o-eye'),
                     Tables\Actions\EditAction::make()
                         ->icon('heroicon-o-pencil'),
+                    Action::make('edit')
+                        ->action(function (array $data) {
+                            $user = User::find(2);
+
+                            Notification::make()
+                                ->persistent()
+                                ->title('Saved')
+                                ->broadcast($user);
+                        })
                 ])
                     ->icon('heroicon-m-ellipsis-vertical')
                     ->color('gray')

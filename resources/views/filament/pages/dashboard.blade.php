@@ -238,11 +238,7 @@
                                 $filteredProjects->count() }} Completed</span>
                         </div>
                         {{-- Upload Document Button --}}
-                        <button  x-on:click="$dispatch('open-modal', { id: 'document-client-modal' })"
-                            class="inline-flex items-center gap-2 px-3 py-1.5 text-sm font-medium rounded-lg text-primary-600 bg-primary-50 hover:bg-primary-100 transition-colors duration-200">
-                            <x-heroicon-m-document-plus class="w-4 h-4" />
-                            <span>Upload</span>
-                        </button>
+                        <livewire:dashboard.document-client-modal :client="$client" :wire:key="'upload-'.$client->id" />
                         <div
                             class="h-8 w-8 rounded-lg flex items-center justify-center text-gray-400 group-hover:bg-primary-50 group-hover:text-primary-500 transition-all duration-200">
                             <x-heroicon-o-chevron-down class="w-5 h-5 transform transition-transform duration-200"
@@ -334,11 +330,11 @@
             </div>
         </div>
         @endif
+        
         @endforeach
 
         <x-filament::modal id="document-client-modal" width="3xl" slide-over>
             @livewire('dashboard.document-client-modal')
         </x-filament::modal>
-
     </div>
 </x-filament-panels::page>

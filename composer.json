@@ -20,10 +20,12 @@
         "ibrahim-bougaoua/filaprogress": "^0.1.0",
         "joaopaulolndev/filament-pdf-viewer": "^1.0",
         "laravel/framework": "^10.10",
+        "laravel/reverb": "^1.4",
         "laravel/sanctum": "^3.3",
         "laravel/tinker": "^2.8",
         "malzariey/filament-daterangepicker-filter": "^3.2",
         "mokhosh/filament-kanban": "^2.9",
+        "pusher/pusher-php-server": "^7.2",
         "solution-forest/filament-access-management": "^2.2",
         "tomatophp/filament-pwa": "^1.0"
     },

@@ -13,7 +13,7 @@ use App\Filament\Pages\ProjectDetails;
 |
 */
 
-// Route::get('/', function () {
-//     return view('welcome');
-// });
+Route::get('/welcome', function () {
+    return view('welcome');
+});
 // Route::get('/admin/projects/{record}', ProjectDetails::class)->name('filament.pages.project_details');
