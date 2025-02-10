@@ -258,6 +258,7 @@ class ProjectResource extends Resource
                                         ->searchable()
                                         ->distinct()
                                         ->native(false)
+                                        
                                         ->helperText(function (Forms\Get $get) {
                                             $clientId = $get('../../client_id');
                                             return $clientId
@@ -266,10 +267,33 @@ class ProjectResource extends Resource
                                         })
                                         ->disableOptionsWhenSelectedInSiblingRepeaterItems(),
                                 ])
+                                ->default(function () {
+                                    $defaultMembers = [];
+
+                                    // Get all directors
+                                    $directors = User::role('direktur')->get();
+                                    foreach ($directors as $director) {
+                                        $defaultMembers[] = [
+                                            'user_id' => $director->id,
+                                        ];
+                                    }
+
+                                    // Add current user if they're a project manager
+                                    $currentUser = auth()->user();
+                                    if ($currentUser->hasRole('project-manager')) {
+                                        $defaultMembers[] = [
+                                            'user_id' => $currentUser->id,
+
+                                        ];
+                                    }
+
+                                    return $defaultMembers;
+                                })
                                 ->addActionLabel('Add New Member')
                                 ->columnSpanFull(),
                         ]),
-                ])->columnSpanFull()
+                ])
+                    ->columnSpanFull()
                     ->skippable()
             ]);
     }
