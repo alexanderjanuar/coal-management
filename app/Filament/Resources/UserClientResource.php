@@ -238,6 +238,7 @@ class UserClientResource extends Resource
                                                 'project-manager' => 'Project Manager',
                                                 'direktur' => 'Director',
                                                 'staff' => 'Staff',
+                                                'client' => 'Client',
                                                 default => $key
                                             }
                                         ]);

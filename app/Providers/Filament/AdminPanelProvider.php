@@ -69,7 +69,7 @@ class AdminPanelProvider extends PanelProvider
             ])
             ->maxContentWidth(MaxWidth::Full)
             ->databaseNotifications()
-
+            ->darkMode(false)
             ->plugins([
                 \TomatoPHP\FilamentPWA\FilamentPWAPlugin::make(),
                 EasyFooterPlugin::make()

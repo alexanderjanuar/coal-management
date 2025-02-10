@@ -11,7 +11,8 @@ use App\Models\Client;
 use App\Models\User;
 use App\Models\Sop;
 use Malzariey\FilamentDaterangepickerFilter\Filters\DateRangeFilter;
-
+use Filament\Tables\Columns\TextColumn\TextColumnSize;
+use Filament\Support\Enums\Alignment;
 use Filament\Forms;
 use Filament\Forms\Form;
 use Filament\Resources\Resource;
@@ -315,6 +316,10 @@ class ProjectResource extends Resource
     {
         return $table
             ->columns([
+                Tables\Columns\TextColumn::make('index')
+                    ->label('No. ')
+                    ->rowIndex()
+                    ->sortable(false),
                 // Client Information
                 Tables\Columns\TextColumn::make('client.name')
                     ->label('Client Name')
@@ -511,7 +516,7 @@ class ProjectResource extends Resource
     }
 
 
-    public  static function sendProjectNotifications(string $title, string $body, $project, string $type = 'info', ?string $action = null): void
+    public static function sendProjectNotifications(string $title, string $body, $project, string $type = 'info', ?string $action = null): void
     {
         // Create the notification
         $notification = Notification::make()
