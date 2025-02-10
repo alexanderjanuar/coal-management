@@ -128,8 +128,7 @@ class ProgressRelationManager extends RelationManager
             ->recordTitleAttribute('status')
             ->columns([
                 TextColumn::make('name')
-                    ->label('Project Name')
-                    ->description(fn(Project $record): string => \Str::limit($record->description, 30, '...')),
+                    ->label('Project Name'),
                 TextColumn::make('status')
                     ->badge()
                     ->color(fn(string $state): string => match ($state) {
