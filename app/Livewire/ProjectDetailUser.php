@@ -6,6 +6,7 @@ use Livewire\Component;
 use App\Models\Project;
 use App\Models\User;
 use Filament\Notifications\Notification;
+use Illuminate\Support\Facades\Route;
 
 class ProjectDetailUser extends Component
 {
@@ -83,6 +84,31 @@ class ProjectDetailUser extends Component
                 'user_id' => $userId
             ]);
 
+            // Get user and project details
+            $addedUser = User::find($userId);
+            $client = $this->project->client;
+
+            // Create notification for added user
+            $notification = Notification::make()
+                ->title('Project Assignment')
+                ->body(sprintf(
+                    "<strong>Client:</strong> %s<br><strong>Project:</strong> %s<br><strong>Assigned by:</strong> %s",
+                    $client->name,
+                    $this->project->name,
+                    auth()->user()->name
+                ))
+                ->actions([
+                    \Filament\Notifications\Actions\Action::make('view')
+                        ->button()
+                        ->label('View Project')
+                        ->url(route('filament.admin.resources.projects.view', ['record' => $this->project->id]))
+                ])
+                ->success();
+
+            // Send to the newly added user
+            $notification->sendToDatabase($addedUser)->broadcast($addedUser)->persistent();
+
+            // UI notification for current user
             Notification::make()
                 ->title('Member added successfully')
                 ->success()
@@ -106,10 +132,30 @@ class ProjectDetailUser extends Component
         }
 
         try {
+            // Get user details before removing
+            $removedUser = User::find($userId);
+            $client = $this->project->client;
+
             $this->project->userProject()
                 ->where('user_id', $userId)
                 ->delete();
 
+            // Create notification for removed user
+            $notification = Notification::make()
+                ->title('Project Removal')
+                ->body(sprintf(
+                    "<strong>Client:</strong> %s<br><strong>Project:</strong> %s<br><strong>Removed by:</strong> %s<br><strong>Removal Date:</strong> %s",
+                    $client->name,
+                    $this->project->name,
+                    auth()->user()->name,
+                    now()->format('d M Y H:i')
+                ))
+                ->warning();
+
+            // Send to the removed user
+            $notification->sendToDatabase($removedUser)->broadcast($removedUser)->persistent();
+
+            // UI notification for current user
             Notification::make()
                 ->title('Member removed successfully')
                 ->success()
@@ -124,6 +170,7 @@ class ProjectDetailUser extends Component
                 ->send();
         }
     }
+
 
     public function render()
     {

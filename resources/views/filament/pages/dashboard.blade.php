@@ -237,8 +237,12 @@
                             <span>{{ $filteredProjects->where('status', 'completed')->count() }}/{{
                                 $filteredProjects->count() }} Completed</span>
                         </div>
+                        
+                        @if(!auth()->user()->hasRole('staff'))
                         {{-- Upload Document Button --}}
                         <livewire:dashboard.document-client-modal :client="$client" :wire:key="'upload-'.$client->id" />
+                        @endif
+
                         <div
                             class="h-8 w-8 rounded-lg flex items-center justify-center text-gray-400 group-hover:bg-primary-50 group-hover:text-primary-500 transition-all duration-200">
                             <x-heroicon-o-chevron-down class="w-5 h-5 transform transition-transform duration-200"
@@ -330,7 +334,7 @@
             </div>
         </div>
         @endif
-        
+
         @endforeach
 
         <x-filament::modal id="document-client-modal" width="3xl" slide-over>

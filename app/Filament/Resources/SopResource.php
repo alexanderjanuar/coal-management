@@ -25,7 +25,11 @@ class SopResource extends Resource
     protected static ?string $modelLabel = 'Standard Operating Procedure';
     protected static ?string $pluralModelLabel = 'Standard Operating Procedures';
 
-
+    public static function shouldRegisterNavigation(): bool
+    {
+        return !auth()->user()->hasRole(['client','staff']);
+    }
+    
     public static function form(Form $form): Form
     {
         return $form

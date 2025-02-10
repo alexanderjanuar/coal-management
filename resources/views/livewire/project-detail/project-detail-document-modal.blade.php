@@ -64,7 +64,7 @@
                         </div>
 
                         <div class="w-full sm:w-auto">
-                            @if(!auth()->user()->hasRole('staff'))
+                            @if(!auth()->user()->hasRole(['staff', 'client']))
                             <x-filament::dropdown placement="bottom-end" class="w-full">
                                 <x-slot name="trigger">
                                     <x-filament::button size="sm" :color="match($document->status) {
@@ -306,7 +306,7 @@
                                 </div>
                             </div>
                             <div class="prose prose-sm max-w-none mt-1 text-gray-600">
-                                {!! nl2br(e($comment->content)) !!}
+                                {!! $comment->content !!}
                             </div>
                         </div>
                     </div>
@@ -374,7 +374,7 @@
                 @if($previewingDocument)
                 <div class="flex items-center gap-3 flex-shrink-0 mr-8">
                     <!-- Status Dropdown -->
-                    @if(!auth()->user()->hasRole('staff'))
+                    @if(!auth()->user()->hasRole(['staff', 'client']))
                     <x-filament::dropdown placement="bottom-end">
                         <x-slot name="trigger">
                             <x-filament::button size="sm" :color="match($document->status) {

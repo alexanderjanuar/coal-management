@@ -9,7 +9,7 @@ use Illuminate\Database\Eloquent\Model;
 use App\Models\User;
 use App\Models\UserClient;
 use Illuminate\Support\Facades\Hash;
-
+use Filament\Notifications\Notification;
 
 class CreateUserClient extends CreateRecord
 {
@@ -40,4 +40,6 @@ class CreateUserClient extends CreateRecord
 
         return $firstUserClient;
     }
+
+
 }

@@ -110,7 +110,11 @@
                         <div class="flex flex-col sm:flex-row items-center gap-3">
                             <!-- Team Members Button -->
                             <button x-on:click="$dispatch('open-modal', { id: 'team-members-modal' })"
-                                class="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-3 py-1.5 text-sm font-medium text-gray-700 transition-colors group">
+                                @if(auth()->user()->hasRole(['staff', 'client']))
+                                disabled
+                                @endif
+                                class="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-3 py-1.5
+                                text-sm font-medium text-gray-700 transition-colors group">
                                 <div class="flex items-center -space-x-2">
                                     @foreach($record->userProject->take(4) as $member)
                                     <div class="relative group/tooltip py-3">
@@ -457,12 +461,12 @@
                                                 <input type="checkbox" wire:click="toggleTaskStatus({{ $task->id }})"
                                                     @class([ 'w-4 h-4 rounded border-gray-300 flex-shrink-0'
                                                     , 'text-amber-600 focus:ring-amber-500'=>
-                                                !auth()->user()->hasRole('staff'),
-                                                'text-gray-300' => auth()->user()->hasRole('staff')
+                                                !auth()->user()->hasRole(['staff', 'client']),
+                                                'text-gray-300 cursor-not-allowed' => auth()->user()->hasRole(['staff',
+                                                'client'])
                                                 ])
                                                 {{ $task->status === 'completed' ? 'checked' : '' }}
-                                                @disabled(auth()->user()->hasRole('staff'))
-                                                >
+                                                @disabled(auth()->user()->hasRole(['staff', 'client']))>
 
                                                 <div class="flex-1 min-w-0">
                                                     <div
@@ -500,7 +504,7 @@
                                                         <button @click="open = !open"
                                                             @class([ 'w-full sm:w-auto inline-flex items-center justify-center gap-2 px-3 py-1.5 text-xs font-medium rounded-full transition-all duration-200 shadow-sm'
                                                             , 'opacity-85'=>
-                                                            auth()->user()->hasRole('staff'),
+                                                            auth()->user()->hasRole(['staff', 'client']),
                                                             'bg-green-50 text-green-700 hover:bg-green-100
                                                             ring-1
                                                             ring-green-200' => $task->status === 'completed',
@@ -512,7 +516,7 @@
                                                             'bg-gray-50 text-gray-700 hover:bg-gray-100 ring-1
                                                             ring-gray-200' => $task->status === 'pending'
                                                             ])
-                                                            @if(auth()->user()->hasRole('staff'))
+                                                            @if(auth()->user()->hasRole(['staff', 'client']))
                                                             disabled
                                                             @endif
                                                             >
@@ -537,14 +541,14 @@
                                                                 </span>
                                                             </span>
                                                             {{ ucfirst($task->status) }}
-                                                            @if(!auth()->user()->hasRole('staff'))
+                                                            @if(!auth()->user()->hasRole(['staff', 'client']))
                                                             <x-heroicon-m-chevron-down
                                                                 class="w-4 h-4 transition-transform" />
                                                             @endif
                                                         </button>
 
                                                         <!-- Status Dropdown Menu - Only show if not staff -->
-                                                        @if(!auth()->user()->hasRole('staff'))
+                                                        @if(!auth()->user()->hasRole(['staff', 'client']))
                                                         <!-- Status Dropdown Menu -->
                                                         <div x-show="open"
                                                             x-transition:enter="transition ease-out duration-200"

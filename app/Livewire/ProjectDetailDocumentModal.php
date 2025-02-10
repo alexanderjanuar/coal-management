@@ -76,6 +76,13 @@ class ProjectDetailDocumentModal extends Component implements HasForms
                     })
                     ->downloadable()
                     ->openable()
+                    ->disabled(auth()->user()->hasRole('client'))
+                    ->helperText(function () {
+                        if (auth()->user()->hasRole('client')) {
+                            return 'You do not have permission to upload documents';
+                        }
+                        return null;
+                    })
             ])
             ->statePath('data');
     }
@@ -128,22 +135,11 @@ class ProjectDetailDocumentModal extends Component implements HasForms
                 ->send();
     }
 
-    protected function getNotificationIcon(string $type): string
-    {
-        return match ($type) {
-            'success' => 'heroicon-o-check-circle',
-            'error' => 'heroicon-o-x-circle',
-            'warning' => 'heroicon-o-exclamation-triangle',
-            default => 'heroicon-o-information-circle',
-        };
-    }
-
     /**
      * Document Management Methods
      */
     public function uploadDocument(): void
     {
-
         $data = $this->form->getState();
 
         $submission = SubmittedDocument::create([
@@ -160,18 +156,25 @@ class ProjectDetailDocumentModal extends Component implements HasForms
         $this->dispatch('refresh');
         $this->dispatch('documentUploaded', documentId: $submission->id);
 
-        // Send notifications
+        // Get related project information
+        $projectStep = $this->document->projectStep;
+        $project = $projectStep->project;
+        $client = $project->client;
+
+        // Send notifications with HTML line breaks
         $this->sendProjectNotifications(
             "New Document Uploaded",
             sprintf(
-                "%s uploaded a new document '%s' for review",
-                auth()->user()->name,
-                $this->document->name
+                "<strong>Client:</strong> %s<br><strong>Project:</strong> %s<br><strong>Step:</strong> %s<br><strong>Document:</strong> %s<br><strong>Uploaded by:</strong> %s",
+                $client->name,
+                $project->name,
+                $projectStep->name,
+                $this->document->name,
+                auth()->user()->name
             ),
             'success',
             'View Document'
         );
-
     }
 
     public function viewDocument(SubmittedDocument $submission): void
@@ -210,11 +213,19 @@ class ProjectDetailDocumentModal extends Component implements HasForms
 
             $this->dispatch('refresh');
 
-            // Send notifications
+            // Get related project information
+            $projectStep = $this->document->projectStep;
+            $project = $projectStep->project;
+            $client = $project->client;
+
+            // Send notifications with HTML formatting
             $this->sendProjectNotifications(
                 "Document Status Updated",
                 sprintf(
-                    "Document '%s' status changed from %s to %s by %s",
+                    "<strong>Client:</strong> %s<br><strong>Project:</strong> %s<br><strong>Step:</strong> %s<br><strong>Document:</strong> %s<br><strong>Status Change:</strong> %s to %s<br><strong>Updated by:</strong> %s",
+                    $client->name,
+                    $project->name,
+                    $projectStep->name,
                     $this->document->name,
                     ucwords(str_replace('_', ' ', $oldStatus)),
                     ucwords(str_replace('_', ' ', $status)),
@@ -226,6 +237,18 @@ class ProjectDetailDocumentModal extends Component implements HasForms
         } catch (\Exception $e) {
             $this->sendNotification('error', 'Error updating status', 'Please try again.');
         }
+    }
+
+    // Update the notification icon method to include more specific icons
+    protected function getNotificationIcon(string $type): string
+    {
+        return match ($type) {
+            'success' => 'heroicon-o-check-circle',
+            'danger' => 'heroicon-o-x-circle',
+            'warning' => 'heroicon-o-exclamation-triangle',
+            'info' => 'heroicon-o-information-circle',
+            default => 'heroicon-o-information-circle',
+        };
     }
 
     /**
@@ -249,16 +272,24 @@ class ProjectDetailDocumentModal extends Component implements HasForms
             $this->newComment = '';
             $this->dispatch('refresh');
 
-            // Send notifications
+            // Get related project information
+            $projectStep = $this->document->projectStep;
+            $project = $projectStep->project;
+            $client = $project->client;
+
             $plainContent = strip_tags($comment->content);
             $truncatedContent = Str::limit($plainContent, 100);
 
+            // Send notifications with HTML formatting
             $this->sendProjectNotifications(
                 "New Comment on Document",
                 sprintf(
-                    "%s commented on document '%s': %s",
-                    auth()->user()->name,
+                    "<strong>Client:</strong> %s<br><strong>Project:</strong> %s<br><strong>Step:</strong> %s<br><strong>Document:</strong> %s<br><strong>Comment by:</strong> %s<br><strong>Message:</strong> %s",
+                    $client->name,
+                    $project->name,
+                    $projectStep->name,
                     $this->document->name,
+                    auth()->user()->name,
                     $truncatedContent
                 ),
                 'info',
@@ -283,12 +314,16 @@ class ProjectDetailDocumentModal extends Component implements HasForms
 
     protected function createStatusChangeComment(string $oldStatus, string $newStatus): void
     {
+        $projectStep = $this->document->projectStep;
+        $project = $projectStep->project;
+        $client = $project->client;
+
         Comment::create([
             'user_id' => auth()->id(),
             'commentable_type' => RequiredDocument::class,
             'commentable_id' => $this->document->id,
             'content' => sprintf(
-                "Status changed from %s to %s",
+                "Status changed from <strong class='text-gray-700'>%s</strong> to <strong class='text-gray-700'>%s</strong>",
                 ucwords(str_replace('_', ' ', $oldStatus)),
                 ucwords(str_replace('_', ' ', $newStatus))
             ),
@@ -299,13 +334,24 @@ class ProjectDetailDocumentModal extends Component implements HasForms
     protected function sendNotification(string $type, string $title, ?string $body = null): void
     {
         $notification = Notification::make()
-            ->title($title);
+            ->title($title)
+            ->icon($this->getNotificationIcon($type));
 
         if ($body) {
             $notification->body($body);
         }
 
-        $notification->{$type}()->send();
+        // Map status to notification type
+        $notificationMethod = match ($type) {
+            'danger' => 'danger',
+            'success' => 'success',
+            'warning' => 'warning',
+            'info' => 'info',
+            'error' => 'danger',
+            default => 'info'
+        };
+
+        $notification->{$notificationMethod}()->send();
     }
 
     public function handleDocumentUploaded(int $documentId): void

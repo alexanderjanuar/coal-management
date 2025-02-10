@@ -37,11 +37,15 @@ class TaxReportResource extends Resource
 
     protected static ?string $navigationGroup = 'Tax';
 
+    public static function shouldRegisterNavigation(): bool
+    {
+        return !auth()->user()->hasRole('client');
+    }
 
     public static function form(Form $form): Form
     {
         return $form
-        
+
             ->schema([
                 Split::make([
                     Section::make([

@@ -52,7 +52,6 @@ class ProjectResource extends Resource
     public static function form(Form $form): Form
     {
         return $form
-
             ->schema([
                 Forms\Components\Wizard::make([
                     Forms\Components\Wizard\Step::make('Project Details')
@@ -81,6 +80,42 @@ class ProjectResource extends Resource
                                 })
                                 ->searchable()
                                 ->live()
+                                ->afterStateUpdated(function ($state, Forms\Set $set) {
+                                    if (!$state) {
+                                        $set('userProject', []);
+                                        return;
+                                    }
+
+                                    $defaultMembers = [];
+
+                                    // Get directors assigned to this client
+                                    $directors = User::role('direktur')
+                                        ->whereHas('userClients', function ($query) use ($state) {
+                                        $query->where('client_id', $state);
+                                    })
+                                        ->get();
+
+                                    foreach ($directors as $director) {
+                                        $defaultMembers[] = [
+                                            'user_id' => $director->id
+                                        ];
+                                    }
+
+                                    // Get project managers assigned to this client
+                                    $projectManagers = User::role('project-manager')
+                                        ->whereHas('userClients', function ($query) use ($state) {
+                                        $query->where('client_id', $state);
+                                    })
+                                        ->get();
+
+                                    foreach ($projectManagers as $pm) {
+                                        $defaultMembers[] = [
+                                            'user_id' => $pm->id
+                                        ];
+                                    }
+
+                                    $set('userProject', $defaultMembers);
+                                })
                                 ->native(false)
                                 ->columnSpanFull(),
                             Select::make('type')
@@ -258,7 +293,7 @@ class ProjectResource extends Resource
                                         ->searchable()
                                         ->distinct()
                                         ->native(false)
-                                        
+
                                         ->helperText(function (Forms\Get $get) {
                                             $clientId = $get('../../client_id');
                                             return $clientId
@@ -267,28 +302,6 @@ class ProjectResource extends Resource
                                         })
                                         ->disableOptionsWhenSelectedInSiblingRepeaterItems(),
                                 ])
-                                ->default(function () {
-                                    $defaultMembers = [];
-
-                                    // Get all directors
-                                    $directors = User::role('direktur')->get();
-                                    foreach ($directors as $director) {
-                                        $defaultMembers[] = [
-                                            'user_id' => $director->id,
-                                        ];
-                                    }
-
-                                    // Add current user if they're a project manager
-                                    $currentUser = auth()->user();
-                                    if ($currentUser->hasRole('project-manager')) {
-                                        $defaultMembers[] = [
-                                            'user_id' => $currentUser->id,
-
-                                        ];
-                                    }
-
-                                    return $defaultMembers;
-                                })
                                 ->addActionLabel('Add New Member')
                                 ->columnSpanFull(),
                         ]),
@@ -496,6 +509,55 @@ class ProjectResource extends Resource
                     ->columns(2)
             ]);
     }
+
+
+    public  static function sendProjectNotifications(string $title, string $body, $project, string $type = 'info', ?string $action = null): void
+    {
+        // Create the notification
+        $notification = Notification::make()
+            ->title($title)
+            ->body($body)
+            ->icon(match ($type) {
+                'success' => 'heroicon-o-check-circle',
+                'danger' => 'heroicon-o-x-circle',
+                'warning' => 'heroicon-o-exclamation-triangle',
+                default => 'heroicon-o-information-circle',
+            });
+
+        // Add action if provided
+        if ($action) {
+            $notification->actions([
+                \Filament\Notifications\Actions\Action::make('view')
+                    ->button()
+                    ->label($action)
+                    ->url(static::getUrl('view', ['record' => $project->id]))
+            ]);
+        }
+
+        // Get all users assigned to the project
+        $projectUsers = $project->userProject()
+            ->with('user')
+            ->get()
+            ->pluck('user')
+            ->filter()
+            ->unique('id')
+            ->reject(function ($user) {
+                return $user->id === auth()->id(); // Exclude current user
+            });
+
+        // Send notifications to all project users
+        foreach ($projectUsers as $user) {
+            $notification->sendToDatabase($user)->broadcast($user)->persistent();
+        }
+
+        // Send UI notification to current user
+        Notification::make()
+                    ->title($title)
+                    ->body($body)
+            ->{$type}()
+                ->send();
+    }
+
 
     public static function getPages(): array
     {
