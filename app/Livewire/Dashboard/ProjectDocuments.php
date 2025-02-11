@@ -21,48 +21,6 @@ class ProjectDocuments extends Component
         $this->step = $step;
     }
 
-    public function viewDocument(SubmittedDocument $submission): void
-    {
-        $requiredDocument = $submission->requiredDocument;
-        $allSubmissions = $requiredDocument->submittedDocuments;
-        
-        $this->totalDocuments = $allSubmissions->count();
-        $this->currentIndex = $allSubmissions->search(function($doc) use ($submission) {
-            return $doc->id === $submission->id;
-        });
-        
-        $this->updatePreviewDocument($submission);
-    }
-
-    public function nextDocument()
-    {
-        $requiredDocument = $this->previewingDocument->requiredDocument;
-        $allSubmissions = $requiredDocument->submittedDocuments;
-        
-        $this->currentIndex = ($this->currentIndex + 1) % $this->totalDocuments;
-        $nextDoc = $allSubmissions[$this->currentIndex];
-        
-        $this->updatePreviewDocument($nextDoc);
-    }
-
-    public function previousDocument()
-    {
-        $requiredDocument = $this->previewingDocument->requiredDocument;
-        $allSubmissions = $requiredDocument->submittedDocuments;
-        
-        $this->currentIndex = ($this->currentIndex - 1 + $this->totalDocuments) % $this->totalDocuments;
-        $prevDoc = $allSubmissions[$this->currentIndex];
-        
-        $this->updatePreviewDocument($prevDoc);
-    }
-
-    protected function updatePreviewDocument(SubmittedDocument $document)
-    {
-        $this->previewingDocument = $document;
-        $this->previewUrl = Storage::disk('public')->url($document->file_path);
-        $this->fileType = strtolower(pathinfo($document->file_path, PATHINFO_EXTENSION));
-    }
-
     public function downloadDocument($documentId)
     {
         $document = SubmittedDocument::find($documentId);

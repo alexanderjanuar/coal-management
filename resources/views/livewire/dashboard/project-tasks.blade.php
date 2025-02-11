@@ -63,30 +63,12 @@
                             {{ str_replace('_', ' ', \Str::title($task->status)) }}
                         </x-filament::badge>
             
-                        <!-- Comments Button -->
-                        <button 
-                            x-on:click.stop="$dispatch('open-modal', { id: 'task-modal-{{ $task->id }}' })" 
-                            class="inline-flex items-center gap-1.5 px-2 sm:px-2.5 py-1 sm:py-1.5 rounded-full text-xs sm:text-sm transition-all duration-200
-                                {{ $task->comments()->count() > 0 
-                                    ? 'bg-primary-50 text-primary-700 hover:bg-primary-100' 
-                                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200' }}"
-                        >
-                            <x-heroicon-m-chat-bubble-left-right class="w-3.5 h-3.5 sm:w-4 sm:h-4" />
-                            <span>{{ $task->comments()->count() }}</span>
-                        </button>
+                        
                     </div>
                 </div>
             </div>
 
-            <!-- Task Modal -->
-            <x-filament::modal id="task-modal-{{ $task->id }}" width="4xl" slide-over>
-                <div class="space-y-4">
-                    @livewire('comments-modal', [
-                    'modelType' => \App\Models\Task::class,
-                    'modelId' => $task->id
-                    ])
-                </div>
-            </x-filament::modal>
+            
         </div>
         @endforeach
     </div>

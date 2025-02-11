@@ -374,9 +374,35 @@
                                             <h3 class="text-base sm:text-lg font-medium text-gray-900">{{
                                                 $step->name }}
                                             </h3>
-                                            @if($step->description)
-                                            <p class="text-sm text-gray-500 mt-1">{{ $step->description }}</p>
-                                            @endif
+                                            <div x-data="{ expanded: false }" class="mt-3">
+                                                <div class="text-sm text-gray-600 text-center sm:text-left">
+                                                    <!-- Truncated version -->
+                                                    <template x-if="!expanded">
+                                                        <div>
+                                                            {!! Str::limit(strip_tags($step->description), 100) !!}
+                                                            @if (strlen(strip_tags($step->description)) > 100)
+                                                            <button @click="expanded = true" type="button"
+                                                                class="inline-flex items-center text-primary-600 hover:text-primary-700 ml-1">
+                                                                <span class="text-sm font-medium">Read more</span>
+                                                                <x-heroicon-m-chevron-down class="w-3 h-3 ml-0.5" />
+                                                            </button>
+                                                            @endif
+                                                        </div>
+                                                    </template>
+
+                                                    <!-- Full version -->
+                                                    <template x-if="expanded">
+                                                        <div>
+                                                            {!! str($step->description)->sanitizeHtml() !!}
+                                                            <button @click="expanded = false" type="button"
+                                                                class="inline-flex items-center text-primary-600 hover:text-primary-700 ml-1">
+                                                                <span class="text-sm font-medium">Show less</span>
+                                                                <x-heroicon-m-chevron-up class="w-3 h-3 ml-0.5" />
+                                                            </button>
+                                                        </div>
+                                                    </template>
+                                                </div>
+                                            </div>
                                         </div>
                                         <button @click="isOpen = !isOpen"
                                             class="self-start p-2 hover:bg-gray-100 rounded-lg transition-colors">
@@ -766,12 +792,42 @@
                                                                 } }}">
                                                         {{ $document->name }}
                                                     </p>
-                                                    @if($document->description)
-                                                    <p
-                                                        class="text-xs text-gray-500 mt-0.5 line-clamp-1 sm:line-clamp-none">
-                                                        {{ $document->description }}
-                                                    </p>
-                                                    @endif
+                                                    <div x-data="{ expanded: false }" class="mt-3">
+                                                        <div class="text-sm text-gray-600 text-center sm:text-left">
+                                                            <!-- Truncated version -->
+                                                            <template x-if="!expanded">
+                                                                <div>
+                                                                    {!! Str::limit(strip_tags($document->description),
+                                                                    100)
+                                                                    !!}
+                                                                    @if (strlen(strip_tags($document->description)) >
+                                                                    100)
+                                                                    <button @click="expanded = true" type="button"
+                                                                        class="inline-flex items-center text-primary-600 hover:text-primary-700 ml-1">
+                                                                        <span class="text-sm font-medium">Read
+                                                                            more</span>
+                                                                        <x-heroicon-m-chevron-down
+                                                                            class="w-3 h-3 ml-0.5" />
+                                                                    </button>
+                                                                    @endif
+                                                                </div>
+                                                            </template>
+
+                                                            <!-- Full version -->
+                                                            <template x-if="expanded">
+                                                                <div>
+                                                                    {!! str($document->description)->sanitizeHtml() !!}
+                                                                    <button @click="expanded = false" type="button"
+                                                                        class="inline-flex items-center text-primary-600 hover:text-primary-700 ml-1">
+                                                                        <span class="text-sm font-medium">Show
+                                                                            less</span>
+                                                                        <x-heroicon-m-chevron-up
+                                                                            class="w-3 h-3 ml-0.5" />
+                                                                    </button>
+                                                                </div>
+                                                            </template>
+                                                        </div>
+                                                    </div>
                                                 </div>
 
                                                 <!-- Right: Status Badge -->

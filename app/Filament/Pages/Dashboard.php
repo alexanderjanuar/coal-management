@@ -34,17 +34,25 @@ class Dashboard extends BaseDashboard
 
     public function getViewData(): array
     {
-        // User instance
         $user = auth()->user();
+        $currentStatus = request()->query('status', 'in_progress');
 
-        // Initialize clients query
+        // Initialize clients query with projects that match the current status
         $clientsQuery = Client::query()
+            ->whereHas('projects', function ($query) use ($currentStatus) {
+                if ($currentStatus !== 'all') {
+                    $query->where('status', $currentStatus);
+                }
+            })
             ->with([
-                'projects' => function ($query) {
+                'projects' => function ($query) use ($currentStatus) {
                     $query->latest();
+                    if ($currentStatus !== 'all') {
+                        $query->where('status', $currentStatus);
+                    }
                 },
                 'projects.steps.tasks',
-                'projects.steps.requiredDocuments' // Add this to eager load documents
+                'projects.steps.requiredDocuments'
             ]);
 
         // Filter clients based on user role and associations
@@ -53,10 +61,13 @@ class Dashboard extends BaseDashboard
             $clientsQuery->whereIn('id', $clientIds);
         }
 
-        // Get filtered clients
-        $clients = $clientsQuery->get();
+        // Get total count before limiting
+        $totalClients = $clientsQuery->count();
 
-        // Calculate progress for each project including tasks and documents
+        // Get only 5 clients
+        $clients = $clientsQuery->take(5)->get();
+
+        // Calculate progress for each project
         $clients->each(function ($client) {
             $client->projects->each(function ($project) {
                 $totalItems = 0;
@@ -78,13 +89,14 @@ class Dashboard extends BaseDashboard
                     }
                 }
 
-                // Calculate progress percentage
                 $project->progress = $totalItems > 0 ? round(($completedItems / $totalItems) * 100) : 0;
             });
         });
 
         return [
             'clients' => $clients,
+            'hasMoreClients' => $totalClients > 5,
+            'totalClients' => $totalClients,
         ];
     }
 }

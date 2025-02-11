@@ -237,7 +237,7 @@
                             <span>{{ $filteredProjects->where('status', 'completed')->count() }}/{{
                                 $filteredProjects->count() }} Completed</span>
                         </div>
-                        
+
                         @if(!auth()->user()->hasRole('staff'))
                         {{-- Upload Document Button --}}
                         <livewire:dashboard.document-client-modal :client="$client" :wire:key="'upload-'.$client->id" />
@@ -336,6 +336,21 @@
         @endif
 
         @endforeach
+
+        @if ($hasMoreClients)
+        <div class="relative">
+            <div class="absolute inset-0 flex items-center" aria-hidden="true">
+                <div class="w-full border-t border-gray-200"></div>
+            </div>
+            <div class="relative flex justify-center">
+                <a href="{{ route('filament.admin.resources.projects.index') }}"
+                    class="inline-flex items-center gap-2 px-4 py-2 bg-white rounded-lg text-primary-600 hover:text-primary-500 hover:bg-primary-50 font-medium transition-colors duration-200 border border-gray-200 shadow-sm">
+                    <span>See {{ $totalClients - 5 }} More {{ Str::plural('Projects', $totalClients - 5) }}</span>
+                    <x-heroicon-m-arrow-long-right class="w-5 h-5" />
+                </a>
+            </div>
+        </div>
+        @endif
 
         <x-filament::modal id="document-client-modal" width="3xl" slide-over>
             @livewire('dashboard.document-client-modal')

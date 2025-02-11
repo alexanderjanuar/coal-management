@@ -35,11 +35,6 @@
                     <h3 class="text-base sm:text-xl font-semibold text-gray-900 leading-tight truncate">
                         {{ $document->name }}
                     </h3>
-                    @if($document->description)
-                    <p class="text-xs sm:text-sm text-gray-500 mt-0.5 line-clamp-1">
-                        {{ $document->description }}
-                    </p>
-                    @endif
                 </div>
             </div>
 
@@ -378,11 +373,11 @@
                     <x-filament::dropdown placement="bottom-end">
                         <x-slot name="trigger">
                             <x-filament::button size="sm" :color="match($document->status) {
-                                'pending_review' => 'warning',
-                                'approved' => 'success',
-                                'rejected' => 'danger',
-                                default => 'gray'
-                            }">
+                                    'pending_review' => 'warning',
+                                    'approved' => 'success',
+                                    'rejected' => 'danger',
+                                    default => 'gray'
+                                }">
                                 <div class="flex items-center gap-2">
                                     {{-- Status Icon --}}
                                     @switch($document->status)
@@ -447,8 +442,34 @@
             <div class="relative rounded-xl overflow-hidden bg-gray-50 ring-1 ring-gray-200">
                 @if($fileType === 'pdf')
                 <div class="w-full h-[calc(100vh-16rem)] bg-gray-50">
-                    <iframe src="{{ $previewUrl }}" class="w-full h-full rounded-lg" frameborder="0">
-                    </iframe>
+                    <object data="{{ $previewUrl }}" type="application/pdf" class="w-full h-full rounded-lg">
+                        <div class="flex flex-col items-center justify-center p-8">
+                            <div class="w-16 h-16 rounded-full bg-primary-50 flex items-center justify-center mb-4">
+                                <x-heroicon-o-document-text class="w-8 h-8 text-primary-600" />
+                            </div>
+                            <h3 class="text-lg font-medium text-gray-900 mb-2 text-center">
+                                Unable to display PDF
+                            </h3>
+                            <p class="text-sm text-gray-500 mb-4 text-center">
+                                The PDF viewer is not supported on this device
+                            </p>
+                            <div class="flex flex-col sm:flex-row gap-2">
+                                <x-filament::button tag="a" href="{{ $previewUrl }}" target="_blank" color="primary"
+                                    size="sm">
+                                    <x-heroicon-m-eye class="w-4 h-4 mr-2" />
+                                    Open in New Tab
+                                </x-filament::button>
+
+                                @if($previewingDocument)
+                                <x-filament::button wire:click="downloadDocument({{ $previewingDocument->id }})"
+                                    color="gray" size="sm">
+                                    <x-heroicon-m-arrow-down-tray class="w-4 h-4 mr-2" />
+                                    Download
+                                </x-filament::button>
+                                @endif
+                            </div>
+                        </div>
+                    </object>
                 </div>
                 @elseif(in_array($fileType, ['jpg', 'jpeg', 'png', 'gif']))
                 <div class="relative aspect-video flex items-center justify-center bg-gray-50">

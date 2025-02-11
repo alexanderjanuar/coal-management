@@ -170,7 +170,7 @@ class ClientResource extends Resource
 
     public static function getGloballySearchableAttributes(): array
     {
-        return ['name', 'email', 'projects.name'];
+        return ['name', 'email'];
     }
 
     public static function getRelations(): array

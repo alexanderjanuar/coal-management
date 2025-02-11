@@ -40,7 +40,9 @@ use Filament\Forms\Components\FileUpload;
 use Guava\FilamentModalRelationManagers\Actions\Table\RelationManagerAction;
 use Filament\Actions\CreateAction;
 use Carbon\Carbon;
+use Illuminate\Contracts\Support\Htmlable;
 use Filament\Notifications\Notification;
+use Illuminate\Database\Eloquent\Model;
 class ProjectResource extends Resource
 {
     protected static ?string $model = Project::class;
@@ -48,6 +50,7 @@ class ProjectResource extends Resource
     protected static ?string $navigationGroup = 'Project Management';
     protected static ?string $navigationIcon = 'heroicon-o-clipboard';
 
+    protected static ?string $recordTitleAttribute = 'name';
 
 
     public static function form(Form $form): Form
@@ -81,42 +84,7 @@ class ProjectResource extends Resource
                                 })
                                 ->searchable()
                                 ->live()
-                                ->afterStateUpdated(function ($state, Forms\Set $set) {
-                                    if (!$state) {
-                                        $set('userProject', []);
-                                        return;
-                                    }
 
-                                    $defaultMembers = [];
-
-                                    // Get directors assigned to this client
-                                    $directors = User::role('direktur')
-                                        ->whereHas('userClients', function ($query) use ($state) {
-                                        $query->where('client_id', $state);
-                                    })
-                                        ->get();
-
-                                    foreach ($directors as $director) {
-                                        $defaultMembers[] = [
-                                            'user_id' => $director->id
-                                        ];
-                                    }
-
-                                    // Get project managers assigned to this client
-                                    $projectManagers = User::role('project-manager')
-                                        ->whereHas('userClients', function ($query) use ($state) {
-                                        $query->where('client_id', $state);
-                                    })
-                                        ->get();
-
-                                    foreach ($projectManagers as $pm) {
-                                        $defaultMembers[] = [
-                                            'user_id' => $pm->id
-                                        ];
-                                    }
-
-                                    $set('userProject', $defaultMembers);
-                                })
                                 ->native(false)
                                 ->columnSpanFull(),
                             Select::make('type')
@@ -287,21 +255,24 @@ class ProjectResource extends Resource
 
                                             return User::whereHas('userClients', function ($query) use ($clientId) {
                                                 $query->where('client_id', $clientId);
-                                            })->pluck('name', 'id');
+                                            })
+                                                ->whereDoesntHave('roles', function ($query) {
+                                                    $query->where('name', 'direktur');
+                                                })
+                                                ->pluck('name', 'id');
                                         })
                                         ->live()
                                         ->required()
                                         ->searchable()
                                         ->distinct()
                                         ->native(false)
-
                                         ->helperText(function (Forms\Get $get) {
                                             $clientId = $get('../../client_id');
                                             return $clientId
                                                 ? 'Select a user from this client'
                                                 : 'Please select a client first';
                                         })
-                                        ->disableOptionsWhenSelectedInSiblingRepeaterItems(),
+                                        ->disableOptionsWhenSelectedInSiblingRepeaterItems()
                                 ])
                                 ->addActionLabel('Add New Member')
                                 ->columnSpanFull(),
@@ -474,6 +445,29 @@ class ProjectResource extends Resource
         ];
     }
 
+    public static function getGlobalSearchResultTitle(Model $record): string|Htmlable
+    {
+        return $record->name;
+    }
+
+    public static function getGlobalSearchResultDetails(Model $record): array
+    {
+        return [
+            'Client' => $record->client->name,
+            'Status' => $record->status,
+        ];
+    }
+
+    public static function getGloballySearchableAttributes(): array
+    {
+        return ['name'];
+    }
+
+    public static function getGlobalSearchResultUrl(Model $record): string
+    {
+        return ProjectResource::getUrl('view', ['record' => $record]);
+    }
+
 
     public static function infolist(Infolist $infolist): Infolist
     {
@@ -527,7 +521,8 @@ class ProjectResource extends Resource
                 'danger' => 'heroicon-o-x-circle',
                 'warning' => 'heroicon-o-exclamation-triangle',
                 default => 'heroicon-o-information-circle',
-            });
+            })
+            ->persistent();
 
         // Add action if provided
         if ($action) {
@@ -552,7 +547,7 @@ class ProjectResource extends Resource
 
         // Send notifications to all project users
         foreach ($projectUsers as $user) {
-            $notification->sendToDatabase($user)->broadcast($user)->persistent();
+            $notification->sendToDatabase($user)->broadcast($user);
         }
 
         // Send UI notification to current user
