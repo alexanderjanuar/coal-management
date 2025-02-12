@@ -103,6 +103,7 @@ class UserClientResource extends Resource
                 TextColumn::make('email')
                     ->label('Email')
                     ->searchable()
+                    ->copyable()
                     ->sortable(),
                 TextColumn::make('roles.name')
                     ->label('Role')

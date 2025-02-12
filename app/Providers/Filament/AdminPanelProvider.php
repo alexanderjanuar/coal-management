@@ -27,6 +27,7 @@ use Illuminate\Support\HtmlString;
 use Filament\Navigation\NavigationGroup;
 use Filament\Support\Enums\MaxWidth;
 
+
 class AdminPanelProvider extends PanelProvider
 {
     public function panel(Panel $panel): Panel

@@ -8,7 +8,8 @@ export default {
         './vendor/diogogpinto/filament-auth-ui-enhancer/resources/**/*.blade.php',
         './app/Filament/**/*.php',
         './resources/views/**/*.blade.php',
-         './vendor/guava/filament-modal-relation-managers/resources/**/*.blade.php',
-         './vendor/cmsmaxinc/filament-error-pages/resources/**/*.blade.php'
+        './vendor/guava/filament-modal-relation-managers/resources/**/*.blade.php',
+        './vendor/cmsmaxinc/filament-error-pages/resources/**/*.blade.php',
+        './vendor/livewire-filemanager/filemanager/resources/views/**/*.blade.php'
     ],
 }
