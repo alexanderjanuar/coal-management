@@ -324,6 +324,7 @@ class ProjectResource extends Resource
                 // Progress Bar
                 ProgressBar::make('bar')
                     ->label('Progress')
+                    ->sortable()
                     ->getStateUsing(function ($record) {
                         // Get all steps for the project
                         $steps = $record->steps;
@@ -428,6 +429,14 @@ class ProjectResource extends Resource
             ->groups([
                 'client.name',
             ])
+            ->modifyQueryUsing(function (Builder $query) {
+                if (auth()->user()->hasRole('super-admin')) {
+                    return $query;
+                } else {
+                    $query->whereIn('id', auth()->user()->userClients->pluck('client_id'));
+                    return $query;
+                }
+            })
             // Bulk Actions
             ->bulkActions([
                 Tables\Actions\BulkActionGroup::make([
@@ -528,9 +537,10 @@ class ProjectResource extends Resource
         if ($action) {
             $notification->actions([
                 \Filament\Notifications\Actions\Action::make('view')
-                    ->button()
                     ->label($action)
-                    ->url(static::getUrl('view', ['record' => $project->id]))
+                    ->url(static::getUrl('view', ['record' => $project->id])),
+                \Filament\Notifications\Actions\Action::make('Mark As Read')
+                    ->markAsRead(),
             ]);
         }
 

@@ -247,18 +247,20 @@ class ProjectDetailDocumentModal extends Component implements HasForms
         $this->previewUrl = Storage::disk('public')->url($submission->file_path);
         $this->isPreviewModalOpen = true;
 
-        $this->sendProjectNotifications(
-            "Document Viewed",
-            sprintf(
-                "<span style='color: #f59e0b; font-weight: 500;'>%s</span>'s document '%s' viewed by %s",
-                $this->document->projectStep->project->client->name,
-                $this->document->name,
-                auth()->user()->name
-            ),
-            'info',
-            null,
-            'document_preview'
-        );
+        if (auth()->user()->hasRole(['direktur', 'project-manager'])) {
+            $this->sendProjectNotifications(
+                "Document Viewed",
+                sprintf(
+                    "<span style='color: #f59e0b; font-weight: 500;'>%s</span>'s document '%s' viewed by %s",
+                    $this->document->projectStep->project->client->name,
+                    $this->document->name,
+                    auth()->user()->name
+                ),
+                'info',
+                null,
+                'document_preview'
+            );
+        }
     }
     public function closePreview(): void
     {
@@ -271,13 +273,6 @@ class ProjectDetailDocumentModal extends Component implements HasForms
     {
         $document = SubmittedDocument::find($documentId);
         if ($document) {
-            $this->sendProjectNotifications(
-                "Document Downloaded",
-                "Document {$this->document->name} was downloaded by " . auth()->user()->name,
-                'info',
-                null,
-                'document_download'
-            );
             return Storage::disk('public')->download($document->file_path);
         }
     }
