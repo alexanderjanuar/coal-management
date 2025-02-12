@@ -37,7 +37,7 @@ class Dashboard extends BaseDashboard
         $user = auth()->user();
         $currentStatus = request()->query('status', 'in_progress');
 
-        // Initialize clients query with projects that match the current status
+        // Initialize clients query with projects ordered by latest update
         $clientsQuery = Client::query()
             ->whereHas('projects', function ($query) use ($currentStatus) {
                 if ($currentStatus !== 'all') {
@@ -46,14 +46,23 @@ class Dashboard extends BaseDashboard
             })
             ->with([
                 'projects' => function ($query) use ($currentStatus) {
-                    $query->latest();
+                    // Order projects by last update
+                    $query->orderBy('updated_at', 'desc');
                     if ($currentStatus !== 'all') {
                         $query->where('status', $currentStatus);
                     }
                 },
                 'projects.steps.tasks',
                 'projects.steps.requiredDocuments'
-            ]);
+            ])
+            // Order clients based on their latest project update
+            ->addSelect([
+                'latest_project_update' => Project::select('updated_at')
+                    ->whereColumn('client_id', 'clients.id')
+                    ->latest()
+                    ->limit(1)
+            ])
+            ->orderBy('latest_project_update', 'desc');
 
         // Filter clients based on user role and associations
         if (!$user->hasRole('super-admin')) {

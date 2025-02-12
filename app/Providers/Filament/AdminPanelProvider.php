@@ -69,7 +69,10 @@ class AdminPanelProvider extends PanelProvider
                 DispatchServingFilamentEvent::class,
             ])
             ->maxContentWidth(MaxWidth::Full)
-            ->databaseNotifications()
+            ->databaseNotifications(
+                fn() =>
+                preg_match('/(android|iphone|ipad|mobile)/i', request()->header('User-Agent'))
+            )
             ->darkMode(false)
             ->plugins([
                 \TomatoPHP\FilamentPWA\FilamentPWAPlugin::make(),

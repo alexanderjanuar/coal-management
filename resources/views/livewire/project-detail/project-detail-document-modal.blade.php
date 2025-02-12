@@ -153,79 +153,119 @@
 
             <!-- Document History -->
             @if($document->submittedDocuments->count() > 0)
-            <div x-data="{ showMore: false }" class="bg-white rounded-xl shadow-sm ring-1 ring-gray-100">
-                <div class="px-3 sm:px-6 py-3 sm:py-5">
-                    <!-- Header -->
-                    <div class="flex items-center justify-between gap-2 sm:gap-3 mb-3 sm:mb-4">
-                        <div class="flex items-center gap-2 sm:gap-3">
-                            <div class="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-gray-50 flex items-center justify-center">
-                                <x-heroicon-m-clock class="w-3.5 h-3.5 sm:w-4 sm:h-4 text-gray-600" />
-                            </div>
-                            <h4 class="text-sm font-medium text-gray-900">Document History</h4>
-                        </div>
-                    </div>
-
-                    <!-- Document List -->
-                    <div class="space-y-2 sm:space-y-3">
-                        <div :class="{ 'max-h-[250px] sm:max-h-[300px] overflow-hidden': !showMore && window.innerWidth < 1024 }"
-                            class="space-y-2 sm:space-y-3">
-                            @foreach($document->submittedDocuments->sortByDesc('created_at') as $submission)
-                            <!-- Document Item -->
+            <!-- Document List with better responsiveness -->
+            <div class="space-y-2 sm:space-y-3">
+                <div :class="{ 'max-h-[250px] sm:max-h-[300px] overflow-hidden': !showMore && window.innerWidth < 1024 }"
+                    class="space-y-2 sm:space-y-3">
+                    @foreach($document->submittedDocuments->sortByDesc('created_at') as $submission)
+                    <!-- Document Item -->
+                    <div
+                        class="group flex items-center gap-2 sm:gap-4 p-2 sm:p-3 bg-gray-50/50 rounded-lg hover:bg-gray-50 transition-all">
+                        <!-- Document Icon -->
+                        <div class="flex-shrink-0">
                             <div
-                                class="group flex items-center gap-2 sm:gap-4 p-2 sm:p-3 bg-gray-50/50 rounded-lg hover:bg-gray-50 transition-all">
-                                <!-- Document Icon -->
-                                <div class="flex-shrink-0">
-                                    <div
-                                        class="w-8 h-8 sm:w-10 sm:h-10 rounded-lg bg-white ring-1 ring-gray-100 flex items-center justify-center">
-                                        <x-heroicon-o-document-text class="w-4 h-4 sm:w-5 sm:h-5 text-gray-400" />
-                                    </div>
-                                </div>
+                                class="w-8 h-8 sm:w-10 sm:h-10 rounded-lg bg-white ring-1 ring-gray-100 flex items-center justify-center">
+                                <x-heroicon-o-document-text class="w-4 h-4 sm:w-5 sm:h-5 text-gray-400" />
+                            </div>
+                        </div>
 
-                                <!-- Document Info -->
-                                <div class="flex-1 min-w-0">
-                                    <p class="text-xs sm:text-sm font-medium text-gray-900 truncate">
+                        <!-- Document Info -->
+                        <div class="flex-1 min-w-0">
+                            <p class="text-xs sm:text-sm font-medium text-gray-900 truncate">
+                                {{ basename($submission->file_path) }}
+                            </p>
+                            <div class="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2 mt-0.5">
+                                <span class="text-[11px] sm:text-xs text-gray-500">{{ $submission->user->name }}</span>
+                                <span class="hidden sm:inline text-xs text-gray-300">&bull;</span>
+                                <span class="text-[11px] sm:text-xs text-gray-500">{{
+                                    $submission->created_at->diffForHumans() }}</span>
+                            </div>
+                        </div>
+
+                        <!-- Action Buttons -->
+                        <div class="flex-shrink-0 flex items-center gap-1.5 sm:gap-2">
+                            <!-- View Button -->
+                            <x-filament::button wire:click="viewDocument({{ $submission->id }})"
+                                x-on:click="$dispatch('open-modal', { id: 'preview-document' })" color="gray" size="xs"
+                                class="opacity-0 group-hover:opacity-100 transition-opacity hover:bg-gray-100">
+                                <div class="inline-flex items-center gap-1 sm:gap-2">
+                                    <x-heroicon-m-eye class="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                                    <span class="hidden sm:inline font-medium">View</span>
+                                </div>
+                            </x-filament::button>
+
+                            <!-- Remove Button with Filament Modal -->
+                            @if(!auth()->user()->hasRole(['client']))
+                            <x-filament::button
+                                x-on:click="$dispatch('open-modal', { id: 'delete-document-{{ $submission->id }}' })"
+                                color="danger" size="xs"
+                                class="opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-100">
+                                <div class="inline-flex items-center gap-1 sm:gap-2">
+                                    <x-heroicon-m-trash class="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                                    <span class="hidden sm:inline font-medium">Remove</span>
+                                </div>
+                            </x-filament::button>
+
+                            <!-- Delete Confirmation Modal -->
+                            <x-filament::modal id="delete-document-{{ $submission->id }}" alignment="center" width="sm">
+                                <x-slot name="header">
+                                    <div class="flex items-center gap-3">
+                                        <div
+                                            class="flex-shrink-0 w-10 h-10 rounded-full bg-red-50 flex items-center justify-center">
+                                            <x-heroicon-o-exclamation-triangle class="w-5 h-5 text-red-500" />
+                                        </div>
+                                        <h3 class="text-lg font-medium text-gray-900">
+                                            Delete Document
+                                        </h3>
+                                    </div>
+                                </x-slot>
+
+                                <div class="space-y-3">
+                                    <p class="text-sm text-gray-500">
+                                        Are you sure you want to delete this document? This action cannot be undone.
+                                    </p>
+                                    <p class="text-sm font-medium text-gray-700">
                                         {{ basename($submission->file_path) }}
                                     </p>
-                                    <div class="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2 mt-0.5">
-                                        <span class="text-[11px] sm:text-xs text-gray-500">{{ $submission->user->name
-                                            }}</span>
-                                        <span class="hidden sm:inline text-xs text-gray-300">&bull;</span>
-                                        <span class="text-[11px] sm:text-xs text-gray-500">{{
-                                            $submission->created_at->diffForHumans() }}</span>
+                                </div>
+
+                                <x-slot name="footer">
+                                    <div class="flex justify-end gap-2">
+                                        <x-filament::button
+                                            x-on:click="$dispatch('close-modal', { id: 'delete-document-{{ $submission->id }}' })"
+                                            color="gray" size="sm">
+                                            Cancel
+                                        </x-filament::button>
+
+                                        <x-filament::button wire:click="removeDocument({{ $submission->id }})"
+                                            color="danger" size="sm">
+                                            <div class="flex items-center gap-1">
+                                                <x-heroicon-m-trash class="w-4 h-4" />
+                                                <span>Delete Document</span>
+                                            </div>
+                                        </x-filament::button>
                                     </div>
-                                </div>
-
-                                <!-- View Button -->
-                                <div class="flex-shrink-0">
-                                    <x-filament::button wire:click="viewDocument({{ $submission->id }})"
-                                        x-on:click="$dispatch('open-modal', { id: 'preview-document' })" color="gray"
-                                        size="xs" sm:size="sm"
-                                        class="opacity-0 group-hover:opacity-100 transition-opacity hover:bg-gray-100">
-                                        <div class="inline-flex items-center gap-1 sm:gap-2">
-                                            <x-heroicon-m-eye class="w-3.5 h-3.5 sm:w-4 sm:h-4" />
-                                            <span class="hidden sm:inline font-medium">View</span>
-                                        </div>
-                                    </x-filament::button>
-                                </div>
-                            </div>
-                            @endforeach
+                                </x-slot>
+                            </x-filament::modal>
+                            @endif
                         </div>
-
-                        <!-- Show More/Less button -->
-                        @if($document->submittedDocuments->count() > 3)
-                        <div class="lg:hidden text-center">
-                            <button x-show="!showMore" x-on:click="showMore = true"
-                                class="w-full py-1.5 sm:py-2 text-xs sm:text-sm text-primary-600 hover:text-primary-700 font-medium">
-                                Show More History
-                            </button>
-                            <button x-show="showMore" x-on:click="showMore = false"
-                                class="w-full py-1.5 sm:py-2 text-xs sm:text-sm text-primary-600 hover:text-primary-700 font-medium">
-                                Show Less
-                            </button>
-                        </div>
-                        @endif
                     </div>
+                    @endforeach
                 </div>
+
+                <!-- Show More/Less button with improved responsiveness -->
+                @if($document->submittedDocuments->count() > 3)
+                <div class="lg:hidden text-center mt-2">
+                    <button x-show="!showMore" x-on:click="showMore = true"
+                        class="w-full py-1.5 sm:py-2 text-xs sm:text-sm text-primary-600 hover:text-primary-700 font-medium rounded-lg hover:bg-gray-50 transition-colors">
+                        Show More History
+                    </button>
+                    <button x-show="showMore" x-on:click="showMore = false"
+                        class="w-full py-1.5 sm:py-2 text-xs sm:text-sm text-primary-600 hover:text-primary-700 font-medium rounded-lg hover:bg-gray-50 transition-colors">
+                        Show Less
+                    </button>
+                </div>
+                @endif
             </div>
             @endif
         </div>

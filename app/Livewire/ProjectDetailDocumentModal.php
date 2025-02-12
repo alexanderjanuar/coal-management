@@ -375,6 +375,52 @@ class ProjectDetailDocumentModal extends Component implements HasForms
             $this->sendNotification('error', 'Error adding comment', 'Please try again.');
         }
     }
+    public function removeDocument(int $documentId): void
+    {
+        try {
+            $submission = SubmittedDocument::findOrFail($documentId);
+
+            // Store document info for notification
+            $documentName = basename($submission->file_path);
+            $clientName = $this->document->projectStep->project->client->name;
+            $projectName = $this->document->projectStep->project->name;
+
+            // Delete the file from storage
+            Storage::disk('public')->delete($submission->file_path);
+
+            // Delete the record
+            $submission->delete();
+
+            // Send notification
+            $this->sendProjectNotifications(
+                "Document Removed",
+                sprintf(
+                    "<span style='color: #f59e0b; font-weight: 500;'>%s</span><br><strong>Project:</strong> %s<br><strong>Document:</strong> %s<br><strong>Removed by:</strong> %s",
+                    $clientName,
+                    $projectName,
+                    $documentName,
+                    auth()->user()->name
+                ),
+                'danger',
+                null,
+                'document_delete'
+            );
+
+            // Show success notification
+            Notification::make()
+                ->title('Document Removed')
+                ->success()
+                ->send();
+
+            $this->dispatch('refresh');
+        } catch (\Exception $e) {
+            Notification::make()
+                ->title('Error')
+                ->body('Failed to remove document. Please try again.')
+                ->danger()
+                ->send();
+        }
+    }
 
     /**
      * Helper Methods
