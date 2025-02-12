@@ -27,6 +27,7 @@ use Illuminate\Support\HtmlString;
 use Filament\Navigation\NavigationGroup;
 use Filament\Support\Enums\MaxWidth;
 use Kenepa\Banner\BannerPlugin;
+use Njxqlus\FilamentProgressbar\FilamentProgressbarPlugin;
 
 class AdminPanelProvider extends PanelProvider
 {
@@ -82,6 +83,7 @@ class AdminPanelProvider extends PanelProvider
                 GlobalSearchModalPlugin::make(),
                 BannerPlugin::make()
                     ->persistsBannersInDatabase(),
+                FilamentProgressbarPlugin::make()->color('#f59e0b'),
                 FilamentAccessManagementPanel::make(),
                 FilamentErrorPagesPlugin::make(),
                 AuthUIEnhancerPlugin::make()

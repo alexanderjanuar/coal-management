@@ -324,7 +324,6 @@ class ProjectResource extends Resource
                 // Progress Bar
                 ProgressBar::make('bar')
                     ->label('Progress')
-                    ->sortable()
                     ->getStateUsing(function ($record) {
                         // Get all steps for the project
                         $steps = $record->steps;
