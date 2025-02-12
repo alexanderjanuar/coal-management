@@ -10,6 +10,6 @@ export default {
         './resources/views/**/*.blade.php',
         './vendor/guava/filament-modal-relation-managers/resources/**/*.blade.php',
         './vendor/cmsmaxinc/filament-error-pages/resources/**/*.blade.php',
-        './vendor/livewire-filemanager/filemanager/resources/views/**/*.blade.php'
+        './vendor/kenepa/banner/resources/**/*.php',
     ],
 }

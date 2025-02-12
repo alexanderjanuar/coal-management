@@ -26,7 +26,7 @@ use Cmsmaxinc\FilamentErrorPages\FilamentErrorPagesPlugin;
 use Illuminate\Support\HtmlString;
 use Filament\Navigation\NavigationGroup;
 use Filament\Support\Enums\MaxWidth;
-
+use Kenepa\Banner\BannerPlugin;
 
 class AdminPanelProvider extends PanelProvider
 {
@@ -80,6 +80,8 @@ class AdminPanelProvider extends PanelProvider
                     ->withFooterPosition('sidebar.footer')
                     ->withSentence(new HtmlString('<img src="' . asset('images/JKB-Logo.png') . '" style="margin-right:.5rem;" alt="Laravel Logo" width="20" height="20"> JKB Management')),
                 GlobalSearchModalPlugin::make(),
+                BannerPlugin::make()
+                    ->persistsBannersInDatabase(),
                 FilamentAccessManagementPanel::make(),
                 FilamentErrorPagesPlugin::make(),
                 AuthUIEnhancerPlugin::make()
@@ -89,6 +91,7 @@ class AdminPanelProvider extends PanelProvider
                     ->emptyPanelBackgroundImageOpacity('80%')
                     ->emptyPanelBackgroundImageUrl('https://images.pexels.com/photos/466685/pexels-photo-466685.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=2')
             ])
+
             ->viteTheme('resources/css/filament/admin/theme.css')
             ->authMiddleware([
                 Authenticate::class,
