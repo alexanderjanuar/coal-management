@@ -96,7 +96,8 @@ class ProjectDetailDocumentModal extends Component implements HasForms
         $notification = Notification::make()
             ->title($title)
             ->body($body)
-            ->icon($this->getNotificationIcon($type));
+            ->icon($this->getNotificationIcon($type))
+            ->persistent();
 
         // Add action if provided
         if ($action) {
@@ -124,7 +125,7 @@ class ProjectDetailDocumentModal extends Component implements HasForms
 
         // Send notifications to all project users
         foreach ($projectUsers as $user) {
-            $notification->sendToDatabase($user)->broadcast($user)->persistent();
+            $notification->sendToDatabase($user)->broadcast($user);
         }
 
         // Send UI notification to current user
