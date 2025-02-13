@@ -141,12 +141,6 @@ class ClientResource extends Resource
                     ->fileName(fn(Export $export): string => "client-{$export->getKey()}")
             ])
             ->actions([
-                RelationManagerAction::make('progress-relation-manager')
-                    ->label('Legal Documents')
-                    ->icon('heroicon-o-folder')
-                    ->color('warning')
-                    ->modalWidth('7xl') // This makes it wider
-                    ->relationManager(ClientDocumentsRelationManager::make()),
                 Tables\Actions\ViewAction::make(),
                 Tables\Actions\EditAction::make(),
             ])
@@ -167,7 +161,6 @@ class ClientResource extends Resource
     public static function getRelations(): array
     {
         return [
-            ClientDocumentsRelationManager::class,
             ProgressRelationManager::class,
             ApplicationsRelationManager::class,
         ];
