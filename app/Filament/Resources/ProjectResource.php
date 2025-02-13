@@ -428,14 +428,6 @@ class ProjectResource extends Resource
             ->groups([
                 'client.name',
             ])
-            ->modifyQueryUsing(function (Builder $query) {
-                if (auth()->user()->hasRole('super-admin')) {
-                    return $query;
-                } else {
-                    $query->whereIn('id', auth()->user()->userClients->pluck('client_id'));
-                    return $query;
-                }
-            })
             // Bulk Actions
             ->bulkActions([
                 Tables\Actions\BulkActionGroup::make([

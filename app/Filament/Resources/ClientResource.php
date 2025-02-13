@@ -4,6 +4,7 @@ namespace App\Filament\Resources;
 
 use App\Filament\Exports\ClientExporter;
 use App\Filament\Resources\ClientResource\Pages;
+use App\Filament\Resources\ClientResource\RelationManagers\ClientDocumentsRelationManager;
 use App\Filament\Resources\ClientResource\RelationManagers\ProgressRelationManager;
 use App\Filament\Resources\ClientResource\RelationManagers\ApplicationsRelationManager;
 use App\Filament\Resources\ProjectStepResource\RelationManagers\RequiredDocumentsRelationManager;
@@ -115,8 +116,6 @@ class ClientResource extends Resource
                     ->searchable(),
                 Tables\Columns\TextColumn::make('NPWP')
                     ->searchable(),
-                Tables\Columns\TextColumn::make('email')
-                    ->searchable(),
                 Tables\Columns\TextColumn::make('created_at')
                     ->dateTime()
                     ->sortable()
@@ -143,11 +142,11 @@ class ClientResource extends Resource
             ])
             ->actions([
                 RelationManagerAction::make('progress-relation-manager')
-                    ->label('Projects')
-                    ->slideOver()
-                    ->Icon('heroicon-o-folder')
+                    ->label('Legal Documents')
+                    ->icon('heroicon-o-folder')
                     ->color('warning')
-                    ->relationManager(ProgressRelationManager::make()),
+                    ->modalWidth('7xl') // This makes it wider
+                    ->relationManager(ClientDocumentsRelationManager::make()),
                 Tables\Actions\ViewAction::make(),
                 Tables\Actions\EditAction::make(),
             ])
@@ -176,6 +175,7 @@ class ClientResource extends Resource
     public static function getRelations(): array
     {
         return [
+            ClientDocumentsRelationManager::class,
             ProgressRelationManager::class,
             ApplicationsRelationManager::class,
         ];

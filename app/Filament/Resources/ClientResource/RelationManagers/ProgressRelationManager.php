@@ -32,7 +32,7 @@ class ProgressRelationManager extends RelationManager
 {
     protected static string $relationship = 'projects';
 
-    use CanBeEmbeddedInModals;
+
 
     public function form(Form $form): Form
     {
