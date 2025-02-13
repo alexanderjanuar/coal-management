@@ -24,55 +24,14 @@ class ClientDocumentsRelationManager extends RelationManager
     {
         return $form
             ->schema([
-                Forms\Components\FileUpload::make('file_path')
-                    ->required()
-                    ->label('Document')
-                    ->preserveFilenames()
-                    ->directory(function ($livewire) {
-                        $clientName = Str::slug($livewire->getOwnerRecord()->name);
-                        return "clients/{$clientName}/legal";
-                    })
-                    ->afterStateUpdated(function ($state, Forms\Set $set) {
-                        if ($state) {
-                            $filename = basename($state);
-                            $set('name', $filename);
-                        }
-                    })
-                    ->columnSpanFull(),
-                Forms\Components\Hidden::make('name'),
-                Forms\Components\Hidden::make('user_id')
-                    ->default(auth()->id())
             ]);
     }
 
     public function table(Table $table): Table
     {
         return $table
-            ->recordTitleAttribute('name')
             ->columns([
-                Tables\Columns\TextColumn::make('file_path')
-                    ->label('Document Name')
-                    ->searchable()
-                    ->sortable()
-                    ->badge()
-                    ->formatStateUsing(fn(string $state) => basename($state))
-                    ->color(function (string $state) {
-                        $extension = strtolower(pathinfo($state, PATHINFO_EXTENSION));
-
-                        return match ($extension) {
-                            'pdf' => 'danger',
-                            'xlsx', 'xls' => 'success',
-                            'doc', 'docx' => 'info',
-                            'jpg', 'jpeg', 'png' => 'warning',
-                            default => 'gray'
-                        };
-                    }),
-                Tables\Columns\TextColumn::make('user.name')
-                    ->label('Uploaded By')
-                    ->sortable(),
-                Tables\Columns\TextColumn::make('created_at')
-                    ->dateTime()
-                    ->sortable(),
+                
             ])
             ->filters([
                 //
