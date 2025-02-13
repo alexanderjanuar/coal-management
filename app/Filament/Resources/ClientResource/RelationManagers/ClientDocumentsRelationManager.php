@@ -15,7 +15,6 @@ use Guava\FilamentModalRelationManagers\Concerns\CanBeEmbeddedInModals;
 
 class ClientDocumentsRelationManager extends RelationManager
 {
-
     use CanBeEmbeddedInModals;
     protected static string $relationship = 'clientDocuments';
 

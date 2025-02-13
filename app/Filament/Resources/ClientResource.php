@@ -154,15 +154,7 @@ class ClientResource extends Resource
                 Tables\Actions\BulkActionGroup::make([
                     Tables\Actions\DeleteBulkAction::make(),
                 ]),
-            ])
-            ->modifyQueryUsing(function (Builder $query) {
-                if (auth()->user()->hasRole('super-admin')) {
-                    return $query;
-                } else {
-                    $query->whereIn('id', auth()->user()->userClients->pluck('client_id'));
-                    return $query;
-                }
-            });
+            ]);
     }
 
 
