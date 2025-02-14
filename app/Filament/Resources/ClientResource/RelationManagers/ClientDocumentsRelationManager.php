@@ -16,6 +16,7 @@ use Guava\FilamentModalRelationManagers\Concerns\CanBeEmbeddedInModals;
 class ClientDocumentsRelationManager extends RelationManager
 {
     use CanBeEmbeddedInModals;
+
     protected static string $relationship = 'clientDocuments';
 
     protected static ?string $title = 'Legal';
@@ -24,6 +25,18 @@ class ClientDocumentsRelationManager extends RelationManager
     {
         return $form
             ->schema([
+                Forms\Components\FileUpload::make('file_path')
+                    ->label('Document')
+                    ->required()
+                    ->disk('public')
+                    ->directory('client-documents')
+                    ->acceptedFileTypes(['application/pdf', 'image/*'])
+                    ->maxSize(10240)
+                    ->downloadable(),
+
+                Forms\Components\Hidden::make('user_id')
+                    ->default(auth()->id())
+                    ->required(),
             ]);
     }
 
@@ -31,13 +44,51 @@ class ClientDocumentsRelationManager extends RelationManager
     {
         return $table
             ->columns([
-                
+                Tables\Columns\TextColumn::make('user.name')
+                    ->label('Uploaded By')
+                    ->searchable()
+                    ->sortable(),
+
+                Tables\Columns\TextColumn::make('file_path')
+                    ->label('Document')
+                    ->searchable()
+                    ->sortable(),
+
+                Tables\Columns\TextColumn::make('created_at')
+                    ->label('Upload Date')
+                    ->dateTime()
+                    ->sortable(),
             ])
             ->filters([
-                //
+                Tables\Filters\SelectFilter::make('user')
+                    ->relationship('user', 'name')
+                    ->label('Filter by Uploader'),
+
+                Tables\Filters\Filter::make('created_at')
+                    ->form([
+                        Forms\Components\DatePicker::make('created_from')
+                            ->label('From'),
+                        Forms\Components\DatePicker::make('created_until')
+                            ->label('Until'),
+                    ])
+                    ->query(function (Builder $query, array $data): Builder {
+                        return $query
+                            ->when(
+                                $data['created_from'],
+                                fn(Builder $query, $date): Builder => $query->whereDate('created_at', '>=', $date),
+                            )
+                            ->when(
+                                $data['created_until'],
+                                fn(Builder $query, $date): Builder => $query->whereDate('created_at', '<=', $date),
+                            );
+                    })
             ])
             ->headerActions([
-                Tables\Actions\CreateAction::make(),
+                Tables\Actions\CreateAction::make()
+                    ->mutateFormDataUsing(function (array $data): array {
+                        $data['user_id'] = auth()->id();
+                        return $data;
+                    }),
             ])
             ->actions([
                 Tables\Actions\EditAction::make(),
