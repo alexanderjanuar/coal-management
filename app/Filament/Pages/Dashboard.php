@@ -46,8 +46,22 @@ class Dashboard extends BaseDashboard
             })
             ->with([
                 'projects' => function ($query) use ($currentStatus) {
-                    // Order projects by last update
-                    $query->orderBy('updated_at', 'desc');
+                    // Get the latest activity timestamp for each project
+                    $query->select('projects.*')
+                        ->addSelect([
+                            'latest_activity' => DB::query()
+                                ->select(DB::raw('GREATEST(
+                                COALESCE(MAX(tasks.updated_at), "1970-01-01"),
+                                COALESCE(MAX(required_documents.updated_at), "1970-01-01")
+                            )'))
+                                ->from('project_steps')
+                                ->leftJoin('tasks', 'project_steps.id', '=', 'tasks.project_step_id')
+                                ->leftJoin('required_documents', 'project_steps.id', '=', 'required_documents.project_step_id')
+                                ->whereColumn('project_steps.project_id', 'projects.id')
+                                ->limit(1)
+                        ])
+                        ->orderByRaw('COALESCE(latest_activity, updated_at) DESC');
+
                     if ($currentStatus !== 'all') {
                         $query->where('status', $currentStatus);
                     }
@@ -55,14 +69,22 @@ class Dashboard extends BaseDashboard
                 'projects.steps.tasks',
                 'projects.steps.requiredDocuments'
             ])
-            // Order clients based on their latest project update
+            // Order clients based on their latest project activity
             ->addSelect([
-                'latest_project_update' => Project::select('updated_at')
-                    ->whereColumn('client_id', 'clients.id')
-                    ->latest()
+                'latest_project_activity' => Project::select(DB::raw('
+                GREATEST(
+                    COALESCE(MAX(tasks.updated_at), "1970-01-01"),
+                    COALESCE(MAX(required_documents.updated_at), "1970-01-01"),
+                    COALESCE(MAX(projects.updated_at), "1970-01-01")
+                )
+            '))
+                    ->join('project_steps', 'projects.id', '=', 'project_steps.project_id')
+                    ->leftJoin('tasks', 'project_steps.id', '=', 'tasks.project_step_id')
+                    ->leftJoin('required_documents', 'project_steps.id', '=', 'required_documents.project_step_id')
+                    ->whereColumn('projects.client_id', 'clients.id')
                     ->limit(1)
             ])
-            ->orderBy('latest_project_update', 'desc');
+            ->orderByRaw('COALESCE(latest_project_activity, updated_at) DESC');
 
         // Filter clients based on user role and associations
         if (!$user->hasRole('super-admin')) {

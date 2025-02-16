@@ -200,7 +200,7 @@
             @if($document->submittedDocuments->count() > 0)
             <!-- Document List with better responsiveness -->
             <div class="space-y-2 sm:space-y-3">
-                <div :class="{ 'max-h-[250px] sm:max-h-[300px] overflow-hidden': !showMore && window.innerWidth < 1024 }"
+                <div :class="{ 'max-h-[250px] sm:max-h-[300px] overflow-hidden': window.innerWidth < 1024 }"
                     class="space-y-2 sm:space-y-3">
                     @foreach($document->submittedDocuments->sortByDesc('created_at') as $submission)
                     <!-- Document Item -->
@@ -377,10 +377,38 @@
                                         {{ $comment->created_at->diffForHumans() }}
                                     </span>
                                     @if($comment->user_id === auth()->id())
-                                    <button
-                                        class="opacity-0 group-hover:opacity-100 transition-opacity text-gray-400 hover:text-gray-600">
-                                        <x-heroicon-m-ellipsis-vertical class="w-4 h-4" />
-                                    </button>
+                                        <div class="relative" x-data="{ isOpen: false }">
+                                            <!-- Menu Button -->
+                                            <button @click="isOpen = !isOpen" @click.away="isOpen = false"
+                                                class="opacity-0 group-hover:opacity-100 transition-opacity text-gray-400 hover:text-gray-600">
+                                                <x-heroicon-m-ellipsis-vertical class="w-4 h-4" />
+                                            </button>
+
+                                            <!-- Dropdown Menu -->
+                                            <div x-show="isOpen" x-transition:enter="transition ease-out duration-100"
+                                                x-transition:enter-start="transform opacity-0 scale-95"
+                                                x-transition:enter-end="transform opacity-100 scale-100"
+                                                x-transition:leave="transition ease-in duration-75"
+                                                x-transition:leave-start="transform opacity-100 scale-100"
+                                                x-transition:leave-end="transform opacity-0 scale-95"
+                                                class="absolute right-0 z-10 mt-1 w-36 origin-top-right rounded-lg bg-white shadow-lg ring-1 ring-gray-200 focus:outline-none">
+                                                <div class="py-1">
+                                                    <!-- Edit Button -->
+                                                    <button wire:click="editComment({{ $comment->id }})"
+                                                        class="flex w-full items-center gap-2 px-4 py-2 text-sm text-gray-600 hover:bg-gray-50 hover:text-gray-900">
+                                                        <x-heroicon-m-pencil-square class="w-4 h-4" />
+                                                        Edit
+                                                    </button>
+
+                                                    <!-- Delete Button -->
+                                                    <button wire:click="deleteComment({{ $comment->id }})"
+                                                        class="flex w-full items-center gap-2 px-4 py-2 text-sm text-red-600 hover:bg-red-50">
+                                                        <x-heroicon-m-trash class="w-4 h-4" />
+                                                        Delete
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        </div>
                                     @endif
                                 </div>
                             </div>
@@ -403,18 +431,56 @@
         </div>
 
         <!-- Comment Input -->
-        <div class="sticky bottom-0 p-4 bg-white border-t border-gray-100">
-            <form wire:submit="addComment">
-                {{ $this->createCommentForm }}
+        <div class="sticky bottom-0 bg-white border-t border-gray-100" x-data="{ showCommentForm: false }">
+            <!-- Comment Toggle Button -->
+            <div class="px-4 py-2 border-b border-gray-100">
+                <button @click="showCommentForm = !showCommentForm"
+                    class="w-full flex items-center justify-center gap-2 py-1.5 text-sm font-medium text-gray-700 hover:text-gray-900 transition-colors">
+                    <div class="flex items-center gap-2" x-show="!showCommentForm">
+                        <x-heroicon-m-chat-bubble-left-right class="w-4 h-4" />
+                        <span>Add Comment</span>
+                    </div>
+                    <div class="flex items-center gap-2" x-show="showCommentForm">
+                        <x-heroicon-m-x-mark class="w-4 h-4" />
+                        <span>Close</span>
+                    </div>
+                </button>
+            </div>
 
-                <div class="flex items-center justify-end gap-2 mt-2">
-                    <x-filament::button type="submit" size="sm"
-                        class="gap-2 bg-gradient-to-r from-amber-600 to-amber-500 hover:from-amber-700 hover:to-amber-600">
-                        <x-heroicon-m-paper-airplane class="w-4 h-4 transition-transform group-hover:translate-x-1" />
-                        <span>Comment</span>
-                    </x-filament::button>
-                </div>
-            </form>
+            <!-- Comment Form -->
+            <div x-show="showCommentForm" x-transition:enter="transition ease-out duration-200"
+                x-transition:enter-start="opacity-0 transform translate-y-2"
+                x-transition:enter-end="opacity-100 transform translate-y-0"
+                x-transition:leave="transition ease-in duration-150"
+                x-transition:leave-start="opacity-100 transform translate-y-0"
+                x-transition:leave-end="opacity-0 transform translate-y-2" class="p-4">
+                <form wire:submit="addComment">
+                    <!-- RichEditor Container with custom styling -->
+                    <div class="bg-white rounded-lg ring-1 ring-gray-200">
+                        <div
+                            class="[&_.filament-forms-rich-editor-component]:overflow-y-auto [&_.tiptap]:!p-2 [&_.tiptap]:text-sm">
+                            {{ $this->createCommentForm }}
+                        </div>
+
+                        <!-- Button Container -->
+                        <div class="px-3 py-2 border-t border-gray-100 bg-gray-50/50 rounded-b-lg">
+                            <div class="flex items-center justify-end gap-2">
+                                <!-- Clear button -->
+                                <x-filament::button wire:click="$set('commentData.newComment', '')" type="button"
+                                    color="gray" size="sm">
+                                    Clear
+                                </x-filament::button>
+
+                                <!-- Submit button -->
+                                <x-filament::button type="submit" size="sm" icon="heroicon-m-paper-airplane"
+                                    class="inline-flex items-center bg-gradient-to-r from-amber-600 to-amber-500 hover:from-amber-700 hover:to-amber-600">
+                                    <span class="mr-2">Send</span>
+                                </x-filament::button>
+                            </div>
+                        </div>
+                    </div>
+                </form>
+            </div>
         </div>
     </div>
 

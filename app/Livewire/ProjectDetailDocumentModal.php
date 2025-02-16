@@ -27,7 +27,7 @@ class ProjectDetailDocumentModal extends Component implements HasForms
     public ?array $data = [];
     public ?array $commentData = [];
     public ?string $newComment = '';
-
+    public ?int $editingCommentId = null;
     /**
      * Document Preview Properties
      */
@@ -107,20 +107,14 @@ class ProjectDetailDocumentModal extends Component implements HasForms
                     ->id('comment-editor-' . $this->document->id)
                     ->toolbarButtons([
                         'attachFiles',
-                        'blockquote',
                         'bold',
                         'bulletList',
-                        'codeBlock',
                         'h2',
-                        'h3',
-                        'italic',
                         'link',
                         'orderedList',
-                        'redo',
-                        'strike',
                         'underline',
-                        'undo',
                     ])
+                    ->extraInputAttributes(['style' => 'font-size:14px'])
                     ->placeholder('Write your comment here...')
                     ->required()
             ])
@@ -385,7 +379,6 @@ class ProjectDetailDocumentModal extends Component implements HasForms
      */
     public function addComment(): void
     {
-        // Get the state from the form
         $data = $this->createCommentForm->getState();
 
         $this->validate([
@@ -393,33 +386,43 @@ class ProjectDetailDocumentModal extends Component implements HasForms
         ]);
 
         try {
-            $comment = Comment::create([
-                'user_id' => auth()->id(),
-                'commentable_type' => RequiredDocument::class,
-                'commentable_id' => $this->document->id,
-                'content' => $data['newComment'],
-                'status' => 'approved'
-            ]);
+            if ($this->editingCommentId) {
+                // Update existing comment
+                $comment = Comment::findOrFail($this->editingCommentId);
 
-            // Reset the form
+                if ($comment->user_id !== auth()->id()) {
+                    throw new \Exception('Unauthorized action.');
+                }
+
+                $comment->update([
+                    'content' => $data['newComment']
+                ]);
+
+                $this->editingCommentId = null; // Reset editing state
+            } else {
+                // Create new comment
+                $comment = Comment::create([
+                    'user_id' => auth()->id(),
+                    'commentable_type' => RequiredDocument::class,
+                    'commentable_id' => $this->document->id,
+                    'content' => $data['newComment'],
+                    'status' => 'approved'
+                ]);
+            }
+
+            // Reset form and refresh
             $this->createCommentForm->fill();
-
             $this->dispatch('refresh');
 
-            // Get related project information
-            $projectStep = $this->document->projectStep;
-            $project = $projectStep->project;
-            $client = $project->client;
-
+            // Send notification
             $plainContent = strip_tags($comment->content);
             $truncatedContent = Str::limit($plainContent, 100);
 
-            // Send notifications with HTML formatting
             $this->sendProjectNotifications(
-                "New Comment",
+                $this->editingCommentId ? "Comment Updated" : "New Comment",
                 sprintf(
                     "<span style='color: #f59e0b; font-weight: 500;'>%s</span><br><strong>Document:</strong> %s<br><strong>Comment:</strong> %s<br><strong>By:</strong> %s",
-                    $client->name,
+                    $this->document->projectStep->project->client->name,
                     $this->document->name,
                     $truncatedContent,
                     auth()->user()->name
@@ -428,10 +431,76 @@ class ProjectDetailDocumentModal extends Component implements HasForms
                 'View Comment',
                 'comment'
             );
+
         } catch (\Exception $e) {
-            $this->sendNotification('error', 'Error adding comment', 'Please try again.');
+            $this->sendNotification('error', 'Error', 'Unable to save comment.');
         }
     }
+
+    public function editComment(int $commentId): void
+    {
+        try {
+            $comment = Comment::findOrFail($commentId);
+
+            // Ensure user can only edit their own comments
+            if ($comment->user_id !== auth()->id()) {
+                throw new \Exception('Unauthorized action.');
+            }
+
+            // Set the form data for editing
+            $this->createCommentForm->fill([
+                'newComment' => $comment->content
+            ]);
+
+            // You might want to set a state to track which comment is being edited
+            $this->editingCommentId = $commentId;
+
+            // Show the comment form if it's hidden
+            $this->dispatch('showCommentForm');
+
+        } catch (\Exception $e) {
+            $this->sendNotification('error', 'Error', 'Unable to edit comment.');
+        }
+    }
+
+    public function deleteComment(int $commentId): void
+    {
+        try {
+            $comment = Comment::findOrFail($commentId);
+
+            // Ensure user can only delete their own comments
+            if ($comment->user_id !== auth()->id()) {
+                throw new \Exception('Unauthorized action.');
+            }
+
+            // Store comment info for notification
+            $commentContent = strip_tags($comment->content);
+            $truncatedContent = Str::limit($commentContent, 50);
+
+            // Delete the comment
+            $comment->delete();
+
+            // Send notification
+            $this->sendProjectNotifications(
+                "Comment Deleted",
+                sprintf(
+                    "<span style='color: #f59e0b; font-weight: 500;'>%s</span><br><strong>Document:</strong> %s<br><strong>Comment:</strong> %s",
+                    $this->document->projectStep->project->client->name,
+                    $this->document->name,
+                    $truncatedContent
+                ),
+                'info',
+                null,
+                'comment'
+            );
+
+            $this->dispatch('refresh');
+
+        } catch (\Exception $e) {
+            $this->sendNotification('error', 'Error', 'Unable to delete comment.');
+        }
+    }
+
     public function removeDocument(int $documentId): void
     {
         try {

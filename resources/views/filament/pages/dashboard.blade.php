@@ -212,10 +212,33 @@
 
                             {{-- Client Info --}}
                             <div>
-                                <h3
-                                    class="text-lg font-semibold text-gray-900 group-hover:text-primary-600 transition-colors">
-                                    {{ $client->name }}
-                                </h3>
+                                <div class="flex items-center gap-3">
+                                    <h3
+                                        class="text-lg font-semibold text-gray-900 group-hover:text-primary-600 transition-colors">
+                                        {{ $client->name }}
+                                    </h3>
+
+                                    @php
+                                    $hasUploadedDocs = $filteredProjects->flatMap(function ($project) {
+                                    return $project->steps->flatMap(function ($step) {
+                                    return $step->requiredDocuments->where('status', 'uploaded');
+                                    });
+                                    })->isNotEmpty();
+                                    @endphp
+
+                                    @if($hasUploadedDocs)
+                                    <div class="relative inline-flex">
+                                        <!-- Badge with pulsing effect -->
+                                        <div
+                                            class="inline-flex items-center gap-1 px-2 py-1 rounded-md bg-blue-500 text-white text-xs font-medium">
+                                            <div
+                                                class="animate-ping absolute inline-flex h-full w-full rounded-md bg-blue-400 opacity-50">
+                                            </div>
+                                            <span class="relative">New Document</span>
+                                        </div>
+                                    </div>
+                                    @endif
+                                </div>
                                 <div class="flex items-center gap-2 mt-1">
                                     <span class="text-sm font-medium text-gray-600">
                                         {{ $filteredProjects->count() }} {{ Str::plural('Project',
@@ -223,7 +246,8 @@
                                     </span>
                                     <span class="text-gray-300">•</span>
                                     <span class="text-sm text-gray-500">
-                                        Last updated {{ $client->updated_at->diffForHumans() }}
+                                        Last updated {{
+                                        Carbon\Carbon::parse($client->latest_project_activity)->diffForHumans() }}
                                     </span>
                                 </div>
                             </div>
@@ -274,6 +298,20 @@
                                         }">
                                             {{ ucwords(str_replace('_', ' ', $project->status)) }}
                                         </x-filament::badge>
+
+                                        @php
+                                        $uploadedDocsCount = $project->steps->flatMap(function ($step) {
+                                        return $step->requiredDocuments->where('status', 'uploaded');
+                                        })->count();
+                                        @endphp
+
+                                        @if($uploadedDocsCount > 0)
+                                        <div
+                                            class="relative inline-flex items-center gap-1 px-2 py-1 rounded-md bg-blue-500 text-xs font-medium text-white">
+                                            <x-heroicon-m-document class="relative w-3 h-3" />
+                                            <span class="relative">{{ $uploadedDocsCount }} new</span>
+                                        </div>
+                                        @endif
                                     </div>
 
                                     @if($project->due_date)
