@@ -25,4 +25,9 @@ class RequiredDocument extends Model
     {
         return $this->morphMany(Comment::class, 'commentable');
     }
+
+    public function reviewer()
+    {
+        return $this->belongsTo(User::class, 'reviewer_id');
+    }
 }

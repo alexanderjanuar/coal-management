@@ -334,6 +334,7 @@
                     <div class="space-y-6 sm:space-y-8">
                         @foreach($record->steps->sortBy('order') as $step)
                         @php
+                        $hasUploadedDocs = $step->requiredDocuments()->where('status', 'uploaded')->exists();
                         $isCompleted = $step->status === 'completed';
                         $isActive = $step->status === 'in_progress';
                         $isPending = !$isCompleted && !$isActive;
@@ -349,11 +350,13 @@
                             <div class="flex items-start group">
                                 <!-- Status Circle -->
                                 <div @class([ 'relative z-10 flex items-center justify-center w-10 sm:w-12 h-10 sm:h-12 rounded-full border-2 transition-all duration-300'
-                                    , 'bg-green-500 border-green-500'=> $isCompleted,
-                                    'bg-amber-500 border-amber-500 ring-4 ring-amber-100' => $isActive,
-                                    'bg-white border-gray-300' => $isPending,
+                                    , 'bg-green-500 border-green-500'=> $isCompleted && !$hasUploadedDocs,
+                                    'bg-blue-500 border-blue-500 ring-4 ring-blue-100' => $hasUploadedDocs,
+                                    'bg-amber-500 border-amber-500 ring-4 ring-amber-100' => $isActive &&
+                                    !$hasUploadedDocs,
+                                    'bg-white border-gray-300' => $isPending && !$hasUploadedDocs,
                                     ])>
-                                    @if($isCompleted)
+                                    @if($isCompleted && !$hasUploadedDocs)
                                     <svg class="w-5 sm:w-6 h-5 sm:h-6 text-white" fill="currentColor"
                                         viewBox="0 0 20 20">
                                         <path
@@ -361,7 +364,7 @@
                                     </svg>
                                     @else
                                     <span
-                                        class="text-base sm:text-lg font-semibold {{ $isActive ? 'text-white' : 'text-gray-500' }}">
+                                        class="text-base sm:text-lg font-semibold {{ ($isActive || $hasUploadedDocs) ? 'text-white' : 'text-gray-500' }}">
                                         {{ $step->order }}
                                     </span>
                                     @endif
@@ -371,9 +374,31 @@
                                 <div class="flex-1 ml-4">
                                     <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                                         <div>
-                                            <h3 class="text-base sm:text-lg font-medium text-gray-900">{{
-                                                $step->name }}
-                                            </h3>
+                                            <div class="flex items-center gap-2">
+                                                <h3 class="text-base sm:text-lg font-medium text-gray-900">
+                                                    {{ $step->name }}
+                                                </h3>
+
+                                                @php
+                                                $uploadedDocsCount = $step->requiredDocuments()
+                                                ->where('status', 'uploaded')
+                                                ->count();
+                                                @endphp
+
+                                                @if($uploadedDocsCount > 0)
+                                                <div
+                                                    class="relative inline-flex items-center gap-1 px-2 py-1 rounded-md bg-blue-500 transition-all duration-300 ease-in-out shadow-sm">
+                                                    <!-- Pulse effect overlay -->
+                                                    <div
+                                                        class="animate-[ping_3s_cubic-bezier(0,0,0.2,1)_infinite] absolute inline-flex h-full w-full rounded-md bg-blue-400/40 opacity-50">
+                                                    </div>
+                                                    <!-- Badge content -->
+                                                    <span class="relative text-xs font-medium text-white">
+                                                        {{ $uploadedDocsCount }} Document Uploaded
+                                                    </span>
+                                                </div>
+                                                @endif
+                                            </div>
                                             <div x-data="{ expanded: false }" class="mt-3">
                                                 <div class="text-sm text-gray-600 text-center sm:text-left">
                                                     <!-- Truncated version -->
@@ -750,6 +775,7 @@
                                                                         'approved' => 'border-2 border-green-200 hover:border-green-300',
                                                                         'pending_review' => 'border-2 border-amber-200 hover:border-amber-300',
                                                                         'rejected' => 'border-2 border-red-200 hover:border-red-300',
+                                                                        'uploaded' => 'border-2 border-blue-200 hover:border-blue-300',
                                                                         default => 'border-2 border-gray-200 hover:border-gray-300'
                                                                     } }}">
 
@@ -760,6 +786,7 @@
                                                                             'approved' => 'bg-green-50 text-green-600',
                                                                             'pending_review' => 'bg-amber-50 text-amber-600',
                                                                             'rejected' => 'bg-red-50 text-red-600',
+                                                                            'uploaded' => 'bg-blue-50 text-blue-600',
                                                                             default => 'bg-gray-50 text-gray-600'
                                                                         } }} 
                                                                         w-10 h-10 rounded-lg flex items-center justify-center transition-colors">
@@ -776,6 +803,7 @@
                                                                     'approved' => 'bg-green-500',
                                                                     'pending_review' => 'bg-amber-500',
                                                                     'rejected' => 'bg-red-500',
+                                                                    'uploaded' => 'bg-blue-500',
                                                                     default => 'bg-gray-400'
                                                                 } }}">
                                                     </span>
@@ -838,6 +866,7 @@
                                                                     'approved' => 'bg-green-50 text-green-700',
                                                                     'pending_review' => 'bg-amber-50 text-amber-700',
                                                                     'rejected' => 'bg-red-50 text-red-700',
+                                                                    'uploaded' => 'bg-blue-50 text-blue-700',
                                                                     default => 'bg-gray-50 text-gray-700'
                                                                 } }} 
                                                                 px-2.5 py-1 rounded-full text-xs font-medium flex-1 sm:flex-initial justify-center">
@@ -848,6 +877,7 @@
                                                                             'approved' => 'bg-green-500',
                                                                             'pending_review' => 'bg-amber-500',
                                                                             'rejected' => 'bg-red-500',
+                                                                            'uploaded' => 'bg-blue-500',
                                                                             default => 'bg-gray-500'
                                                                         } }}">
                                                             </span>
@@ -856,6 +886,7 @@
                                                                             'approved' => 'bg-green-500',
                                                                             'pending_review' => 'bg-amber-500',
                                                                             'rejected' => 'bg-red-500',
+                                                                            'uploaded' => 'bg-blue-500',
                                                                             default => 'bg-gray-500'
                                                                         } }}">
                                                             </span>

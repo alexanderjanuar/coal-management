@@ -49,6 +49,7 @@
         <div class="flex-1 p-4 sm:p-6 space-y-4 sm:space-y-6 overflow-y-auto">
             <!-- Status Section -->
             <div class="bg-white rounded-xl shadow-sm ring-1 ring-gray-100">
+                {{-- Status Section --}}
                 <div class="px-4 sm:px-6 py-4 sm:py-5">
                     <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                         <div class="flex items-center gap-3">
@@ -63,14 +64,21 @@
                             <x-filament::dropdown placement="bottom-end" class="w-full">
                                 <x-slot name="trigger">
                                     <x-filament::button size="sm" :color="match($document->status) {
+                                            'draft' => 'gray',
+                                            'uploaded' => 'info',
                                             'pending_review' => 'warning',
                                             'approved' => 'success',
                                             'rejected' => 'danger',
                                             default => 'gray'
                                         }" class="w-full sm:w-auto">
                                         <div class="flex items-center gap-2">
-                                            {{-- Status Icon --}}
                                             @switch($document->status)
+                                            @case('draft')
+                                            <x-heroicon-m-document class="w-4 h-4" />
+                                            @break
+                                            @case('uploaded')
+                                            <x-heroicon-m-arrow-up-tray class="w-4 h-4" />
+                                            @break
                                             @case('pending_review')
                                             <x-heroicon-m-clock class="w-4 h-4" />
                                             @break
@@ -84,24 +92,23 @@
                                             <x-heroicon-m-question-mark-circle class="w-4 h-4" />
                                             @endswitch
 
-                                            {{-- Status Text --}}
-                                            <span>
-                                                {{ ucwords(str_replace('_', ' ', $document->status ?? 'Not Set')) }}
-                                            </span>
-
-                                            {{-- Dropdown Indicator --}}
+                                            <span>{{ ucwords(str_replace('_', ' ', $document->status ?? 'Not Set'))
+                                                }}</span>
                                             <x-heroicon-m-chevron-down class="w-4 h-4" />
                                         </div>
                                     </x-filament::button>
                                 </x-slot>
 
                                 <x-filament::dropdown.list class="w-full sm:w-auto">
+                                    @if($document->status === 'uploaded')
                                     <x-filament::dropdown.list.item wire:click="updateStatus('pending_review')"
                                         icon="heroicon-m-clock"
                                         :color="$document->status === 'pending_review' ? 'warning' : 'gray'">
                                         Pending Review
                                     </x-filament::dropdown.list.item>
+                                    @endif
 
+                                    @if($document->status === 'pending_review')
                                     <x-filament::dropdown.list.item wire:click="updateStatus('approved')"
                                         icon="heroicon-m-check-circle"
                                         :color="$document->status === 'approved' ? 'success' : 'gray'">
@@ -113,16 +120,54 @@
                                         :color="$document->status === 'rejected' ? 'danger' : 'gray'">
                                         Rejected
                                     </x-filament::dropdown.list.item>
+                                    @endif
                                 </x-filament::dropdown.list>
                             </x-filament::dropdown>
                             @else
                             <div class="px-3 py-2 text-sm font-medium rounded-lg bg-gray-50 text-gray-500">
-                                {{ ucwords(str_replace('_', ' ', $document->status ?? 'Not Set')) }}
+                                <div class="flex items-center gap-2">
+                                    @switch($document->status)
+                                    @case('draft')
+                                    <x-heroicon-m-document class="w-4 h-4" />
+                                    @break
+                                    @case('uploaded')
+                                    <x-heroicon-m-arrow-up-tray class="w-4 h-4" />
+                                    @break
+                                    @case('pending_review')
+                                    <x-heroicon-m-clock class="w-4 h-4" />
+                                    @break
+                                    @case('approved')
+                                    <x-heroicon-m-check-circle class="w-4 h-4" />
+                                    @break
+                                    @case('rejected')
+                                    <x-heroicon-m-x-circle class="w-4 h-4" />
+                                    @break
+                                    @default
+                                    <x-heroicon-m-question-mark-circle class="w-4 h-4" />
+                                    @endswitch
+
+                                    <span>{{ ucwords(str_replace('_', ' ', $document->status ?? 'Not Set')) }}</span>
+                                </div>
                             </div>
                             @endif
                         </div>
                     </div>
                 </div>
+
+                {{-- Reviewer Section --}}
+                @if($document->reviewer_id && in_array($document->status, ['pending_review', 'approved', 'rejected']))
+                <div class="px-4 sm:px-6 py-3 border-t border-gray-100">
+                    <div class="flex items-center gap-3">
+                        <div class="w-8 h-8 rounded-lg bg-gray-50 flex items-center justify-center">
+                            <x-heroicon-m-user class="w-4 h-4 text-gray-600" />
+                        </div>
+                        <div class="flex flex-col">
+                            <span class="text-sm font-medium text-gray-900">Reviewer</span>
+                            <span class="text-sm text-gray-500">{{ $document->reviewer->name }}</span>
+                        </div>
+                    </div>
+                </div>
+                @endif
             </div>
 
             <!-- Upload Section -->
@@ -136,7 +181,7 @@
                     </div>
 
                     <form wire:submit="uploadDocument" class="space-y-4">
-                        {{ $this->form }}
+                        {{ $this->uploadFileForm }}
 
                         <div class="flex">
                             <x-filament::button type="submit" size="sm"
@@ -272,7 +317,6 @@
     </div>
 
     <!-- Right Section: Comments -->
-    <!-- Right Section: Comments -->
     <div
         class="order-2 lg:order-2 lg:w-[400px] border-t lg:border-t-0 lg:border-l border-gray-100 flex flex-col bg-white">
         <!-- Comments Header -->
@@ -361,18 +405,14 @@
         <!-- Comment Input -->
         <div class="sticky bottom-0 p-4 bg-white border-t border-gray-100">
             <form wire:submit="addComment">
-                <div class="relative">
-                    <x-filament::input wire:model="newComment" type="text" placeholder="Write a comment..."
-                        class="w-full pr-16 rounded-lg border-gray-200 focus:border-amber-500 focus:ring focus:ring-amber-500/20"
-                        x-on:keydown.enter.prevent="$wire.addComment()" />
-                    <div class="absolute inset-y-0 right-0 flex items-center pr-2">
-                        <x-filament::button type="submit" size="sm"
-                            class="gap-2 bg-gradient-to-r from-amber-600 to-amber-500 hover:from-amber-700 hover:to-amber-600">
-                            <x-heroicon-m-paper-airplane
-                                class="w-4 h-4 transition-transform group-hover:translate-x-1" />
-                            <span class="sr-only">Send comment</span>
-                        </x-filament::button>
-                    </div>
+                {{ $this->createCommentForm }}
+
+                <div class="flex items-center justify-end gap-2 mt-2">
+                    <x-filament::button type="submit" size="sm"
+                        class="gap-2 bg-gradient-to-r from-amber-600 to-amber-500 hover:from-amber-700 hover:to-amber-600">
+                        <x-heroicon-m-paper-airplane class="w-4 h-4 transition-transform group-hover:translate-x-1" />
+                        <span>Comment</span>
+                    </x-filament::button>
                 </div>
             </form>
         </div>
@@ -482,7 +522,7 @@
             <div class="relative rounded-xl overflow-hidden bg-gray-50 ring-1 ring-gray-200">
                 @if($fileType === 'pdf')
                 <div class="w-full h-[calc(100vh-16rem)] bg-gray-50">
-                    <object data="{{ $previewUrl }}" type="application/pdf" class="w-full h-full rounded-lg">
+                    <iframe src="{{ $previewUrl }}" class="w-full h-full rounded-lg">
                         <div class="flex flex-col items-center justify-center p-8">
                             <div class="w-16 h-16 rounded-full bg-primary-50 flex items-center justify-center mb-4">
                                 <x-heroicon-o-document-text class="w-8 h-8 text-primary-600" />
@@ -509,7 +549,7 @@
                                 @endif
                             </div>
                         </div>
-                    </object>
+                    </iframe>
                 </div>
                 @elseif(in_array($fileType, ['jpg', 'jpeg', 'png', 'gif']))
                 <div class="relative aspect-video flex items-center justify-center bg-gray-50">

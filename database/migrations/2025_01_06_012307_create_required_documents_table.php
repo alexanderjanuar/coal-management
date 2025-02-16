@@ -4,8 +4,7 @@ use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 
-return new class extends Migration
-{
+return new class extends Migration {
     /**
      * Run the migrations.
      */
@@ -15,8 +14,10 @@ return new class extends Migration
             $table->id();
             $table->foreignId('project_step_id')->constrained('project_steps')->onDelete('cascade');
             $table->string('name');
-            $table->enum('status', ['pending_review', 'approved', 'rejected'])->default('pending_review');
+            $table->enum('status', ['draft', 'uploaded', 'pending_review', 'approved', 'rejected'])->default('draft');
             $table->text('description')->nullable();
+            $table->foreignId('reviewer_id')->nullable()->constrained('users');
+            $table->timestamp('reviewed_at')->nullable();
             $table->boolean('is_required')->default(true);
             $table->timestamps();
         });

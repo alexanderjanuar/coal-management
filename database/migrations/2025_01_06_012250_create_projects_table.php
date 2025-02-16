@@ -17,6 +17,7 @@ return new class extends Migration
             $table->foreignId('sop_id')->nullable()->constrained()->onDelete('cascade');
             $table->string('name');
             $table->text('description')->nullable();
+            $table->enum('priority', ['urgent','normal','low'])->default('normal');
             $table->enum('type', ['single','monthly','yearly']);
             $table->date('due_date');
             $table->enum('status', ['draft','analysis', 'in_progress', 'completed', 'review', 'completed (Not Payed Yet)','canceled'])->default('draft');

@@ -14,6 +14,7 @@ use Filament\Notifications\Notification;
 use Illuminate\Support\Facades\Storage;
 use Livewire\Component;
 use Illuminate\Support\Str;
+use Filament\Forms\Components\RichEditor;
 
 class ProjectDetailDocumentModal extends Component implements HasForms
 {
@@ -24,6 +25,7 @@ class ProjectDetailDocumentModal extends Component implements HasForms
      */
     public RequiredDocument $document;
     public ?array $data = [];
+    public ?array $commentData = [];
     public ?string $newComment = '';
 
     /**
@@ -47,13 +49,22 @@ class ProjectDetailDocumentModal extends Component implements HasForms
     public function mount(RequiredDocument $document): void
     {
         $this->document = $document;
-        $this->form->fill();
+        $this->uploadFileForm->fill();
+        $this->createCommentForm->fill();
+    }
+
+    protected function getForms(): array
+    {
+        return [
+            'uploadFileForm',
+            'createCommentForm',
+        ];
     }
 
     /**
      * Form Configuration
      */
-    public function form(Form $form): Form
+    public function uploadFileForm(Form $form): Form
     {
         return $form
             ->schema([
@@ -85,6 +96,35 @@ class ProjectDetailDocumentModal extends Component implements HasForms
                     })
             ])
             ->statePath('data');
+    }
+
+    public function createCommentForm(Form $form): Form
+    {
+        return $form
+            ->schema([
+                RichEditor::make('newComment')
+                    ->label('')
+                    ->id('comment-editor-' . $this->document->id)
+                    ->toolbarButtons([
+                        'attachFiles',
+                        'blockquote',
+                        'bold',
+                        'bulletList',
+                        'codeBlock',
+                        'h2',
+                        'h3',
+                        'italic',
+                        'link',
+                        'orderedList',
+                        'redo',
+                        'strike',
+                        'underline',
+                        'undo',
+                    ])
+                    ->placeholder('Write your comment here...')
+                    ->required()
+            ])
+            ->statePath('commentData');
     }
 
     /**
@@ -159,11 +199,11 @@ class ProjectDetailDocumentModal extends Component implements HasForms
             $notification->actions([
                 \Filament\Notifications\Actions\Action::make('view')
                     ->label($action)
+                    ->markAsRead()
                     ->url(route('filament.admin.resources.projects.view', [
                         'record' => $this->document->projectStep->project->id,
                         'openDocument' => $this->document->id
-                    ]))
-                    ->markAsRead(),
+                    ])),
 
                 \Filament\Notifications\Actions\Action::make('Mark As Read')
                     ->markAsRead(),
@@ -204,7 +244,7 @@ class ProjectDetailDocumentModal extends Component implements HasForms
      */
     public function uploadDocument(): void
     {
-        $data = $this->form->getState();
+        $data = $this->uploadFileForm->getState();
 
         $submission = SubmittedDocument::create([
             'required_document_id' => $this->document->id,
@@ -212,10 +252,11 @@ class ProjectDetailDocumentModal extends Component implements HasForms
             'file_path' => $data['document'],
         ]);
 
-        $this->document->status = 'pending_review';
+        // Change status to 'uploaded' when document is first uploaded
+        $this->document->status = 'uploaded';  // Changed from 'pending_review' to 'uploaded'
         $this->document->save();
 
-        $this->form->fill();
+        $this->uploadFileForm->fill();
 
         $this->dispatch('refresh');
         $this->dispatch('documentUploaded', documentId: $submission->id);
@@ -225,7 +266,7 @@ class ProjectDetailDocumentModal extends Component implements HasForms
         $project = $projectStep->project;
         $client = $project->client;
 
-        // Send notifications with HTML line breaks
+        // Send notifications
         $this->sendProjectNotifications(
             "New Document",
             sprintf(
@@ -247,21 +288,37 @@ class ProjectDetailDocumentModal extends Component implements HasForms
         $this->previewUrl = Storage::disk('public')->url($submission->file_path);
         $this->isPreviewModalOpen = true;
 
-        if (auth()->user()->hasRole(['direktur', 'project-manager'])) {
+        // Check if the viewer is a project manager or director and document status is 'uploaded'
+        if (
+            auth()->user()->hasRole(['direktur', 'project-manager']) &&
+            $this->document->status === 'uploaded'
+        ) {
+            // Update status to pending_review and set reviewer information
+            $this->document->update([
+                'status' => 'pending_review',
+                'reviewer_id' => auth()->id(),
+                'reviewed_at' => now()
+            ]);
+
+            // Create a system comment for the status change
+            $this->createStatusChangeComment('uploaded', 'pending_review');
+
+            // Send notification about status change
             $this->sendProjectNotifications(
-                "Document Viewed",
+                "Document Under Review",
                 sprintf(
-                    "<span style='color: #f59e0b; font-weight: 500;'>%s</span>'s document '%s' viewed by %s",
+                    "<span style='color: #f59e0b; font-weight: 500;'>%s</span><br><strong>Document:</strong> %s<br><strong>Status:</strong> Under Review<br><strong>Reviewer:</strong> %s",
                     $this->document->projectStep->project->client->name,
                     $this->document->name,
                     auth()->user()->name
                 ),
                 'info',
-                null,
-                'document_preview'
+                'View Document',
+                'document_review'
             );
         }
     }
+
     public function closePreview(): void
     {
         $this->isPreviewModalOpen = false;
@@ -328,8 +385,11 @@ class ProjectDetailDocumentModal extends Component implements HasForms
      */
     public function addComment(): void
     {
+        // Get the state from the form
+        $data = $this->createCommentForm->getState();
+
         $this->validate([
-            'newComment' => 'required|min:1|max:1000'
+            'commentData.newComment' => 'required|min:1|max:1000'
         ]);
 
         try {
@@ -337,11 +397,13 @@ class ProjectDetailDocumentModal extends Component implements HasForms
                 'user_id' => auth()->id(),
                 'commentable_type' => RequiredDocument::class,
                 'commentable_id' => $this->document->id,
-                'content' => $this->newComment,
+                'content' => $data['newComment'],
                 'status' => 'approved'
             ]);
 
-            $this->newComment = '';
+            // Reset the form
+            $this->createCommentForm->fill();
+
             $this->dispatch('refresh');
 
             // Get related project information

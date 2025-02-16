@@ -96,6 +96,16 @@ class ProjectResource extends Resource
                                 ])
                                 ->required()
                                 ->native(false),
+                            Select::make('priority')
+                                ->label('Priority')
+                                ->options([
+                                    'urgent' => 'Urgent',
+                                    'normal' => 'Normal',
+                                    'low' => 'Low',
+                                ])
+                                ->required()
+                                ->native(false)
+                                ->default('normal'),
                             Select::make('sop_id')
                                 ->label('Standard Operating Procedure')
                                 ->options(Sop::query()->pluck('name', 'id'))
@@ -152,7 +162,7 @@ class ProjectResource extends Resource
                             Forms\Components\RichEditor::make('description')
                                 ->columnSpanFull(),
 
-                        ])->columns(3),
+                        ])->columns(4),
 
                     Forms\Components\Wizard\Step::make('Project Steps')
                         ->description('Configure steps, tasks, and documents')
