@@ -75,7 +75,14 @@ class ProjectDetailDocumentModal extends Component implements HasForms
                         'application/pdf',
                         'image/*',
                         'application/msword',
-                        'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+                        'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+                        // Excel file types
+                        'application/vnd.ms-excel',                                    // .xls
+                        'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', // .xlsx
+                        'application/vnd.oasis.opendocument.spreadsheet',             // .ods
+                        'text/csv',                                                   // .csv
+                        'application/csv',                                            // .csv alternate
+                        'text/x-csv'                                                 // .csv alternate
                     ])
                     ->maxSize(10240)
                     ->preserveFilenames()
@@ -92,7 +99,7 @@ class ProjectDetailDocumentModal extends Component implements HasForms
                         if (auth()->user()->hasRole('client')) {
                             return 'You do not have permission to upload documents';
                         }
-                        return null;
+                        return 'Accepted files: PDF, Word, Excel, Images, CSV (Max size: 10MB)';
                     })
             ])
             ->statePath('data');
