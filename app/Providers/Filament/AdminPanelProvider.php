@@ -29,6 +29,7 @@ use Filament\Support\Enums\MaxWidth;
 use Kenepa\Banner\BannerPlugin;
 use Njxqlus\FilamentProgressbar\FilamentProgressbarPlugin;
 
+
 class AdminPanelProvider extends PanelProvider
 {
     public function panel(Panel $panel): Panel

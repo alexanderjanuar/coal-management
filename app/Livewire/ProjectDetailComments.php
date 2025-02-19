@@ -11,6 +11,7 @@ use Filament\Forms\Contracts\HasForms;
 use Filament\Forms\Form;
 use Filament\Notifications\Notification;
 use Illuminate\Support\Str;
+use Asmit\FilamentMention\Forms\Components\RichMentionEditor;
 
 class ProjectDetailComments extends Component implements HasForms
 {
@@ -40,8 +41,9 @@ class ProjectDetailComments extends Component implements HasForms
     {
         return $form
             ->schema([
-                RichEditor::make('comment')
+                RichMentionEditor::make('comment')
                     ->label('Add a comment')
+                    ->id('comment-editor-' . $this->task->id)
                     ->placeholder('Type your comment here...')
                     ->toolbarButtons([
                         'bold',
@@ -68,6 +70,7 @@ class ProjectDetailComments extends Component implements HasForms
             ->schema([
                 RichEditor::make('reply')
                     ->label('Your reply')
+                    ->id('comment-editor-' . $this->task->id)
                     ->placeholder('Type your reply here...')
                     ->toolbarButtons([
                         'bold',

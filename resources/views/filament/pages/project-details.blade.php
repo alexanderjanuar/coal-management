@@ -337,7 +337,7 @@
                         $hasUploadedDocs = $step->requiredDocuments()->where('status', 'uploaded')->exists();
                         $isCompleted = $step->status === 'completed';
                         $isActive = $step->status === 'in_progress';
-                        $isPending = !$isCompleted && !$isActive;
+                        $isPending = !$isCompleted && !$isActive && $step->status === 'in_progress';
 
                         // Calculate step progress
                         $totalTasks = $step->tasks->count();
@@ -345,7 +345,9 @@
                         $stepProgress = $totalTasks > 0 ? ($completedTasks / $totalTasks) * 100 : 0;
                         @endphp
 
-                        <div x-data="{ isOpen: false }" class="relative">
+                        <div x-data="{ isOpen: false }"
+                            class="relative transition-all duration-200 rounded-lg cursor-pointer"
+                            @click="isOpen = !isOpen">
                             <!-- Step Header -->
                             <div class="flex items-start group">
                                 <!-- Status Circle -->
@@ -429,11 +431,10 @@
                                                 </div>
                                             </div>
                                         </div>
-                                        <button @click="isOpen = !isOpen"
-                                            class="self-start p-2 hover:bg-gray-100 rounded-lg transition-colors">
-                                            <x-heroicon-o-chevron-down
-                                                class="w-5 h-5 text-gray-400 transition-transform duration-300" />
-                                        </button>
+                                        <div class="self-start p-2 transition-transform duration-300"
+                                            :class="{ 'rotate-180': isOpen }">
+                                            <x-heroicon-o-chevron-down class="w-5 h-5 text-gray-400" />
+                                        </div>
                                     </div>
 
                                     @php
@@ -485,8 +486,13 @@
                                         </div>
                                         <!-- Step Progress Bar -->
                                         <div class="h-1.5 w-full bg-gray-100 rounded-full overflow-hidden">
-                                            <div class="h-full bg-amber-500 rounded-full transition-all duration-500"
-                                                style="width: {{ $stepProgress }}%">
+                                            <div class="h-full rounded-full transition-all duration-500 
+                                                {{ match(true) {
+                                                    $stepProgress == 100 => 'bg-green-500',
+                                                    $stepProgress >= 70 => 'bg-amber-500',
+                                                    $stepProgress >= 30 => 'bg-amber-400',
+                                                    default => 'bg-amber-300'
+                                                } }}" style="width: {{ $stepProgress }}%">
                                             </div>
                                         </div>
                                     </div>
@@ -497,7 +503,8 @@
                             <!-- Expandable Content -->
                             <div x-show="isOpen" x-transition:enter="transition ease-out duration-200"
                                 x-transition:enter-start="opacity-0 -translate-y-2"
-                                x-transition:enter-end="opacity-100 translate-y-0" class="mt-4 ml-4 sm:ml-16 space-y-4">
+                                x-transition:enter-end="opacity-100 translate-y-0" class="mt-4 ml-4 sm:ml-16 space-y-4"
+                                @click.stop>
 
                                 <!-- Tasks Section -->
                                 @if($step->tasks->isNotEmpty())
@@ -764,8 +771,12 @@
                                 @if($step->requiredDocuments->isNotEmpty())
                                 <div class="space-y-2">
                                     <h4 class="text-sm font-medium text-gray-700">Required Documents</h4>
+
+                                    @php
+                                    $orderByDocs = $step->requiredDocuments->sortBy('status');
+                                    @endphp
                                     <div class="space-y-2">
-                                        @foreach($step->requiredDocuments as $document)
+                                        @foreach($orderByDocs as $document)
                                         <!-- Document Item -->
                                         <button
                                             x-on:click="$dispatch('open-modal', { id: 'document-modal-{{ $document->id }}' })"

@@ -458,7 +458,7 @@
                     <!-- RichEditor Container with custom styling -->
                     <div class="bg-white rounded-lg ring-1 ring-gray-200">
                         <div
-                            class="[&_.filament-forms-rich-editor-component]:overflow-y-auto [&_.tiptap]:!p-2 [&_.tiptap]:text-sm">
+                            class="relative">
                             {{ $this->createCommentForm }}
                         </div>
 

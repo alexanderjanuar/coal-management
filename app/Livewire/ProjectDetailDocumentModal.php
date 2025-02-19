@@ -6,6 +6,7 @@ use App\Models\Comment;
 use App\Models\RequiredDocument;
 use App\Models\SubmittedDocument;
 use App\Models\ClientDocument;
+use App\Models\User;
 use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Concerns\InteractsWithForms;
 use Filament\Forms\Contracts\HasForms;
@@ -15,6 +16,7 @@ use Illuminate\Support\Facades\Storage;
 use Livewire\Component;
 use Illuminate\Support\Str;
 use Filament\Forms\Components\RichEditor;
+use Asmit\FilamentMention\Forms\Components\RichMentionEditor;
 
 class ProjectDetailDocumentModal extends Component implements HasForms
 {
@@ -25,7 +27,7 @@ class ProjectDetailDocumentModal extends Component implements HasForms
      */
     public RequiredDocument $document;
     public ?array $data = [];
-    public ?array $commentData = [];
+    public ?array $FormData = [];
     public ?string $newComment = '';
     public ?int $editingCommentId = null;
     /**
@@ -102,14 +104,15 @@ class ProjectDetailDocumentModal extends Component implements HasForms
                         return 'Accepted files: PDF, Word, Excel, Images, CSV (Max size: 10MB)';
                     })
             ])
-            ->statePath('data');
+            ->statePath('FormData');
     }
 
     public function createCommentForm(Form $form): Form
     {
         return $form
             ->schema([
-                RichEditor::make('newComment')
+                RichMentionEditor::make('newComment')
+                    ->lookupKey('name')
                     ->label('')
                     ->id('comment-editor-' . $this->document->id)
                     ->toolbarButtons([
@@ -125,7 +128,7 @@ class ProjectDetailDocumentModal extends Component implements HasForms
                     ->placeholder('Write your comment here...')
                     ->required()
             ])
-            ->statePath('commentData');
+            ->statePath('data');
     }
 
     /**
@@ -201,10 +204,11 @@ class ProjectDetailDocumentModal extends Component implements HasForms
                 \Filament\Notifications\Actions\Action::make('view')
                     ->label($action)
                     ->markAsRead()
-                    ->url(route('filament.admin.resources.projects.view', [
-                        'record' => $this->document->projectStep->project->id,
-                        'openDocument' => $this->document->id
-                    ])),
+                    ->dispatch('openDocumentModal', [$this->document->id]),
+                    // ->url(route('filament.admin.resources.projects.view', [
+                    //     'record' => $this->document->projectStep->project->id,
+                    //     'openDocument' => $this->document->id
+                    // ])),
 
                 \Filament\Notifications\Actions\Action::make('Mark As Read')
                     ->markAsRead(),
@@ -245,6 +249,7 @@ class ProjectDetailDocumentModal extends Component implements HasForms
      */
     public function uploadDocument(): void
     {
+        
         $data = $this->uploadFileForm->getState();
 
         $submission = SubmittedDocument::create([
@@ -389,7 +394,7 @@ class ProjectDetailDocumentModal extends Component implements HasForms
         $data = $this->createCommentForm->getState();
 
         $this->validate([
-            'commentData.newComment' => 'required|min:1|max:1000'
+            'data.newComment' => 'required|min:1|max:1000'
         ]);
 
         try {

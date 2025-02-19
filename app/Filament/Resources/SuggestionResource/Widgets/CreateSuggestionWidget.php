@@ -16,6 +16,7 @@ use Filament\Forms\Components\Section;
 use Filament\Forms\Concerns\InteractsWithForms;
 use App\Models\User;
 use Livewire\Attributes\On;
+use Asmit\FilamentMention\Forms\Components\RichMentionEditor;
 
 class CreateSuggestionWidget extends Widget implements HasForms
 {
@@ -88,15 +89,13 @@ class CreateSuggestionWidget extends Widget implements HasForms
                                     ->helperText('Set the priority level')
                                     ->native(false),
                             ]),
-                        RichEditor::make('description')
+                        RichMentionEditor::make('description')
                             ->required()
+                            ->lookupKey('name')
                             ->placeholder('Describe your suggestion in detail')
                             ->columnSpanFull(),
-
-
                     ]),
                 // Hidden Fields
-
             ])
             ->statePath('data');
     }
