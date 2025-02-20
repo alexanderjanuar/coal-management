@@ -42,6 +42,7 @@
         <div class="space-y-4 sm:space-y-6">
             <!-- Status Section -->
             <div class="bg-white rounded-xl shadow-sm ring-1 ring-gray-100">
+                {{-- Status Section --}}
                 <div class="px-4 sm:px-6 py-4 sm:py-5">
                     <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                         <div class="flex items-center gap-3">
@@ -83,28 +84,33 @@
                                             @default
                                             <x-heroicon-m-question-mark-circle class="w-4 h-4" />
                                             @endswitch
+
                                             <span>{{ ucwords(str_replace('_', ' ', $document->status ?? 'Not Set'))
                                                 }}</span>
+                                            <x-heroicon-m-chevron-down class="w-4 h-4" />
                                         </div>
                                     </x-filament::button>
                                 </x-slot>
 
-                                <x-filament::dropdown.list>
+                                <x-filament::dropdown.list class="w-full sm:w-auto">
                                     @if($document->status === 'uploaded')
                                     <x-filament::dropdown.list.item wire:click="updateStatus('pending_review')"
-                                        icon="heroicon-m-clock">
+                                        icon="heroicon-m-clock"
+                                        :color="$document->status === 'pending_review' ? 'warning' : 'gray'">
                                         Pending Review
                                     </x-filament::dropdown.list.item>
                                     @endif
 
                                     @if($document->status === 'pending_review')
                                     <x-filament::dropdown.list.item wire:click="updateStatus('approved')"
-                                        icon="heroicon-m-check-circle">
+                                        icon="heroicon-m-check-circle"
+                                        :color="$document->status === 'approved' ? 'success' : 'gray'">
                                         Approved
                                     </x-filament::dropdown.list.item>
 
                                     <x-filament::dropdown.list.item wire:click="updateStatus('rejected')"
-                                        icon="heroicon-m-x-circle">
+                                        icon="heroicon-m-x-circle"
+                                        :color="$document->status === 'rejected' ? 'danger' : 'gray'">
                                         Rejected
                                     </x-filament::dropdown.list.item>
                                     @endif
@@ -132,6 +138,7 @@
                                     @default
                                     <x-heroicon-m-question-mark-circle class="w-4 h-4" />
                                     @endswitch
+
                                     <span>{{ ucwords(str_replace('_', ' ', $document->status ?? 'Not Set')) }}</span>
                                 </div>
                             </div>
@@ -139,8 +146,22 @@
                         </div>
                     </div>
                 </div>
-            </div>
 
+                {{-- Reviewer Section --}}
+                @if($document->reviewer_id && in_array($document->status, ['pending_review', 'approved', 'rejected']))
+                <div class="px-4 sm:px-6 py-3 border-t border-gray-100">
+                    <div class="flex items-center gap-3">
+                        <div class="w-8 h-8 rounded-lg bg-gray-50 flex items-center justify-center">
+                            <x-heroicon-m-user class="w-4 h-4 text-gray-600" />
+                        </div>
+                        <div class="flex flex-col">
+                            <span class="text-sm font-medium text-gray-900">Reviewer</span>
+                            <span class="text-sm text-gray-500">{{ $document->reviewer->name }}</span>
+                        </div>
+                    </div>
+                </div>
+                @endif
+            </div>
             <!-- Upload Section -->
             <div class="bg-white rounded-xl shadow-sm ring-1 ring-gray-100">
                 <div class="px-4 sm:px-6 py-4 sm:py-5">
@@ -346,10 +367,6 @@
                 @endif
             </div>
         </x-filament::modal>
-
         @endif
     </x-filament::modal>
-    
-
-
 </div>

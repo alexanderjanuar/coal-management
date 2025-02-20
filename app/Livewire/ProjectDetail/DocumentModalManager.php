@@ -210,6 +210,143 @@ class DocumentModalManager extends Component implements HasForms
         }
     }
 
+    public function updateStatus(string $status): void
+    {
+        $oldStatus = $this->document->status;
+        $this->document->status = $status;
+        $this->document->save();
+
+
+
+        $this->dispatch('refresh');
+
+        // Get related project information
+        $projectStep = $this->document->projectStep;
+        $project = $projectStep->project;
+        $client = $project->client;
+
+        // Determine notification action based on status
+        $notificationAction = match ($status) {
+            'approved' => 'approval',
+            'rejected' => 'rejection',
+            default => 'status_change'
+        };
+
+        // Send notifications with HTML formatting
+        $this->sendProjectNotifications(
+            "Status Updated",
+            sprintf(
+                "<span style='color: #f59e0b; font-weight: 500;'>%s</span><br><strong>Document:</strong> %s<br><strong>Status:</strong> %s → %s<br><strong>Updated by:</strong> %s",
+                $client->name,
+                $this->document->name,
+                ucwords(str_replace('_', ' ', $oldStatus)),
+                ucwords(str_replace('_', ' ', $status)),
+                auth()->user()->name
+            ),
+            'success',
+            'View Document',
+            $notificationAction
+        );
+    }
+
+    protected function sendProjectNotifications(
+        string $title,
+        string $body,
+        string $type = 'info',
+        ?string $action = null,
+        ?string $notificationAction = null
+    ): void {
+        // Create the notification
+        $notification = Notification::make()
+                    ->title($title)
+                    ->body($body)
+                    ->icon($this->getNotificationIcon($type, $notificationAction))
+                    ->color($type)
+            ->{$type}()
+                ->persistent();
+
+        // Add action if provided
+        if ($action) {
+            $notification->actions([
+                \Filament\Notifications\Actions\Action::make('view')
+                    ->label($action)
+                    ->markAsRead()
+                    ->dispatch('openDocumentModal', [$this->document->id]),
+                // ->url(route('filament.admin.resources.projects.view', [
+                //     'record' => $this->document->projectStep->project->id,
+                //     'openDocument' => $this->document->id
+                // ])),
+
+                \Filament\Notifications\Actions\Action::make('Mark As Read')
+                    ->markAsRead(),
+            ]);
+        }
+
+        // Get all users related to the project
+        $projectUsers = $this->document->projectStep->project->userProject()
+            ->with('user')
+            ->get()
+            ->pluck('user')
+            ->filter()
+            ->unique('id')
+            ->reject(function ($user) {
+                return $user->id === auth()->id();
+            });
+
+        // Send notifications to all project users
+        foreach ($projectUsers as $user) {
+            $notification->icon($this->getNotificationIcon($type, $notificationAction))
+                ->color($type)
+                ->sendToDatabase($user)
+                ->broadcast($user);
+        }
+
+        // Send UI notification to current user
+        Notification::make()
+                    ->title($title)
+                    ->body($body)
+                    ->icon($this->getNotificationIcon($type, $notificationAction))
+                    ->color($type)
+            ->{$type}()
+                ->send();
+    }
+
+
+    private function getDefaultIconForType(string $type): string
+    {
+        return match ($type) {
+            'success' => 'heroicon-o-check-circle',
+            'danger' => 'heroicon-o-x-circle',
+            'warning' => 'heroicon-o-exclamation-triangle',
+            'info' => 'heroicon-o-information-circle',
+            'error' => 'heroicon-o-x-circle',
+            default => 'heroicon-o-bell'
+        };
+    }
+
+    protected function getNotificationIcon(string $type, string $action = ''): string
+    {
+        // First check for specific actions
+        if ($action) {
+            return match ($action) {
+                'document_upload' => 'heroicon-o-document-arrow-up',
+                'document_download' => 'heroicon-o-document-arrow-down',
+                'document_review' => 'heroicon-o-document-magnifying-glass',
+                'comment' => 'heroicon-o-chat-bubble-left-ellipsis',
+                'status_change' => 'heroicon-o-arrow-path',
+                'rejection' => 'heroicon-o-x-mark',
+                'approval' => 'heroicon-o-check-badge',
+                'document_delete' => 'heroicon-o-document-minus',
+                'document_preview' => 'heroicon-o-document-text',
+                'notification' => 'heroicon-o-bell-alert',
+                default => $this->getDefaultIconForType($type)
+            };
+        }
+
+        // Fallback to type-based icons
+        return $this->getDefaultIconForType($type);
+    }
+
     protected function getFileType(): ?string
     {
         if (!$this->previewingDocument) {
@@ -220,7 +357,7 @@ class DocumentModalManager extends Component implements HasForms
 
     public function render()
     {
-        return view('livewire.project-detail.document-modal-manager',[
+        return view('livewire.project-detail.document-modal-manager', [
             'fileType' => $this->getFileType()
         ]);
     }

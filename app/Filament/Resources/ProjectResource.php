@@ -330,6 +330,32 @@ class ProjectResource extends Resource
                         fn(string $state): string =>
                         __(Str::title(str_replace('_', ' ', $state)))
                     ),
+                Tables\Columns\TextColumn::make('priority')
+                    ->badge()
+                    ->color(fn(string $state): string => match ($state) {
+                        'urgent' => 'danger',
+                        'normal' => 'warning',
+                        'low' => 'success',
+                        default => 'gray',
+                    })
+                    ->icon(fn(string $state): string => match ($state) {
+                        'urgent' => 'heroicon-m-fire',
+                        'normal' => 'heroicon-m-arrow-trending-up',
+                        'low' => 'heroicon-m-arrow-trending-down',
+                        default => 'heroicon-m-minus',
+                    })
+                    ->sortable()
+                    ->searchable()
+                    ->formatStateUsing(fn(string $state): string => __(Str::title($state)))
+                    ->alignCenter()
+                    ->tooltip(function (string $state): string {
+                        return match ($state) {
+                            'urgent' => 'High priority - requires immediate attention',
+                            'normal' => 'Standard priority - handle in regular workflow',
+                            'low' => 'Low priority - handle when resources available',
+                            default => 'Priority not set',
+                        };
+                    }),
 
                 // Progress Bar
                 ProgressBar::make('bar')

@@ -309,19 +309,19 @@ class ProjectDetailDocumentModal extends Component implements HasForms
             // Create a system comment for the status change
             $this->createStatusChangeComment('uploaded', 'pending_review');
 
-            // Send notification about status change
-            $this->sendProjectNotifications(
-                "Document Under Review",
-                sprintf(
-                    "<span style='color: #f59e0b; font-weight: 500;'>%s</span><br><strong>Document:</strong> %s<br><strong>Status:</strong> Under Review<br><strong>Reviewer:</strong> %s",
-                    $this->document->projectStep->project->client->name,
-                    $this->document->name,
-                    auth()->user()->name
-                ),
-                'info',
-                'View Document',
-                'document_review'
-            );
+            // // Send notification about status change
+            // $this->sendProjectNotifications(
+            //     "Document Under Review",
+            //     sprintf(
+            //         "<span style='color: #f59e0b; font-weight: 500;'>%s</span><br><strong>Document:</strong> %s<br><strong>Status:</strong> Under Review<br><strong>Reviewer:</strong> %s",
+            //         $this->document->projectStep->project->client->name,
+            //         $this->document->name,
+            //         auth()->user()->name
+            //     ),
+            //     'info',
+            //     'View Document',
+            //     'document_review'
+            // );
         }
     }
 
@@ -493,18 +493,18 @@ class ProjectDetailDocumentModal extends Component implements HasForms
             $comment->delete();
 
             // Send notification
-            $this->sendProjectNotifications(
-                "Comment Deleted",
-                sprintf(
-                    "<span style='color: #f59e0b; font-weight: 500;'>%s</span><br><strong>Document:</strong> %s<br><strong>Comment:</strong> %s",
-                    $this->document->projectStep->project->client->name,
-                    $this->document->name,
-                    $truncatedContent
-                ),
-                'info',
-                null,
-                'comment'
-            );
+            // $this->sendProjectNotifications(
+            //     "Comment Deleted",
+            //     sprintf(
+            //         "<span style='color: #f59e0b; font-weight: 500;'>%s</span><br><strong>Document:</strong> %s<br><strong>Comment:</strong> %s",
+            //         $this->document->projectStep->project->client->name,
+            //         $this->document->name,
+            //         $truncatedContent
+            //     ),
+            //     'info',
+            //     null,
+            //     'comment'
+            // );
 
             $this->dispatch('refresh');
 
