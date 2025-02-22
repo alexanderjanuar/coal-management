@@ -163,7 +163,7 @@
         }
     </style>
     {{-- Stats Overview --}}
-    @livewire('dashboard.project-stats')
+    {{-- @livewire('dashboard.project-stats') --}}
 
     {{-- Status Tabs --}}
     <div class="mb-4 sm:mb-6">
