@@ -46,14 +46,15 @@ class Dashboard extends BaseDashboard
             })
             ->with([
                 'projects' => function ($query) use ($currentStatus) {
-                    // Get the latest activity timestamp for each project
-                    $query->select('projects.*')
+                    // Add ordering by priority first, urgent projects come first
+                    $query->orderByRaw("CASE WHEN priority = 'urgent' THEN 0 ELSE 1 END")
+                        ->select('projects.*')
                         ->addSelect([
                             'latest_activity' => DB::query()
                                 ->select(DB::raw('GREATEST(
-                                COALESCE(MAX(tasks.updated_at), "1970-01-01"),
-                                COALESCE(MAX(required_documents.updated_at), "1970-01-01")
-                            )'))
+                                    COALESCE(MAX(tasks.updated_at), "1970-01-01"),
+                                    COALESCE(MAX(required_documents.updated_at), "1970-01-01")
+                                )'))
                                 ->from('project_steps')
                                 ->leftJoin('tasks', 'project_steps.id', '=', 'tasks.project_step_id')
                                 ->leftJoin('required_documents', 'project_steps.id', '=', 'required_documents.project_step_id')
@@ -67,23 +68,28 @@ class Dashboard extends BaseDashboard
                     }
                 },
                 'projects.steps.tasks',
-                'projects.steps.requiredDocuments'
+                'projects.steps.requiredDocuments',
+                'projects.steps.requiredDocuments.submittedDocuments'
             ])
-            // Order clients based on their latest project activity
+            // Order clients based on urgent projects and latest activity
             ->addSelect([
+                'has_urgent_projects' => Project::select(DB::raw('COUNT(*)'))
+                    ->whereColumn('projects.client_id', 'clients.id')
+                    ->where('priority', 'urgent'),
                 'latest_project_activity' => Project::select(DB::raw('
-                GREATEST(
-                    COALESCE(MAX(tasks.updated_at), "1970-01-01"),
-                    COALESCE(MAX(required_documents.updated_at), "1970-01-01"),
-                    COALESCE(MAX(projects.updated_at), "1970-01-01")
-                )
-            '))
+                    GREATEST(
+                        COALESCE(MAX(tasks.updated_at), "1970-01-01"),
+                        COALESCE(MAX(required_documents.updated_at), "1970-01-01"),
+                        COALESCE(MAX(projects.updated_at), "1970-01-01")
+                    )
+                '))
                     ->join('project_steps', 'projects.id', '=', 'project_steps.project_id')
                     ->leftJoin('tasks', 'project_steps.id', '=', 'tasks.project_step_id')
                     ->leftJoin('required_documents', 'project_steps.id', '=', 'required_documents.project_step_id')
                     ->whereColumn('projects.client_id', 'clients.id')
                     ->limit(1)
             ])
+            ->orderByDesc('has_urgent_projects')
             ->orderByRaw('COALESCE(latest_project_activity, updated_at) DESC');
 
         // Filter clients based on user role and associations
@@ -116,11 +122,19 @@ class Dashboard extends BaseDashboard
                     $documents = $step->requiredDocuments;
                     if ($documents->count() > 0) {
                         $totalItems += $documents->count();
-                        $completedItems += $documents->where('status', 'approved')->count();
+                        $completedItems += $documents->whereIn('status', ['approved'])->count();
                     }
                 }
 
+                // Calculate project progress
                 $project->progress = $totalItems > 0 ? round(($completedItems / $totalItems) * 100) : 0;
+
+                // Add additional status info
+                $project->has_urgent_tasks = $project->priority === 'urgent';
+                $project->has_new_documents = $project->steps
+                    ->flatMap->requiredDocuments
+                    ->where('status', 'uploaded')
+                    ->isNotEmpty();
             });
         });
 
