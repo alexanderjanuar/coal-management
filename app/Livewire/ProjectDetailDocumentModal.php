@@ -94,6 +94,7 @@ class ProjectDetailDocumentModal extends Component implements HasForms
                         $projectName = Str::slug($this->document->projectStep->project->name);
                         return "clients/{$clientName}/{$projectName}";
                     })
+                    ->multiple()
                     ->downloadable()
                     ->openable()
                     ->disabled(auth()->user()->hasRole('client'))
@@ -205,10 +206,10 @@ class ProjectDetailDocumentModal extends Component implements HasForms
                     ->label($action)
                     ->markAsRead()
                     ->dispatch('openDocumentModal', [$this->document->id]),
-                    // ->url(route('filament.admin.resources.projects.view', [
-                    //     'record' => $this->document->projectStep->project->id,
-                    //     'openDocument' => $this->document->id
-                    // ])),
+                // ->url(route('filament.admin.resources.projects.view', [
+                //     'record' => $this->document->projectStep->project->id,
+                //     'openDocument' => $this->document->id
+                // ])),
 
                 \Filament\Notifications\Actions\Action::make('Mark As Read')
                     ->markAsRead(),
@@ -249,23 +250,34 @@ class ProjectDetailDocumentModal extends Component implements HasForms
      */
     public function uploadDocument(): void
     {
-        
         $data = $this->uploadFileForm->getState();
 
-        $submission = SubmittedDocument::create([
-            'required_document_id' => $this->document->id,
-            'user_id' => auth()->id(),
-            'file_path' => $data['document'],
-        ]);
+        // Check if document is an array (multiple files)
+        if (is_array($data['document'])) {
+            foreach ($data['document'] as $filePath) {
+                SubmittedDocument::create([
+                    'required_document_id' => $this->document->id,
+                    'user_id' => auth()->id(),
+                    'file_path' => $filePath,
+                ]);
+            }
+        } else {
+            // Handle single file upload
+            SubmittedDocument::create([
+                'required_document_id' => $this->document->id,
+                'user_id' => auth()->id(),
+                'file_path' => $data['document'],
+            ]);
+        }
 
         // Change status to 'uploaded' when document is first uploaded
-        $this->document->status = 'uploaded';  // Changed from 'pending_review' to 'uploaded'
+        $this->document->status = 'uploaded';
         $this->document->save();
 
         $this->uploadFileForm->fill();
 
         $this->dispatch('refresh');
-        $this->dispatch('documentUploaded', documentId: $submission->id);
+        $this->dispatch('documentUploaded', documentId: $this->document->id);
 
         // Get related project information
         $projectStep = $this->document->projectStep;
@@ -274,7 +286,7 @@ class ProjectDetailDocumentModal extends Component implements HasForms
 
         // Send notifications
         $this->sendProjectNotifications(
-            "New Document",
+            "New Document" . (is_array($data['document']) ? "s" : ""),
             sprintf(
                 "<span style='color: #f59e0b; font-weight: 500;'>%s</span><br><strong>Project:</strong> %s<br><strong>Document:</strong> %s<br><strong>Uploaded by:</strong> %s",
                 $client->name,

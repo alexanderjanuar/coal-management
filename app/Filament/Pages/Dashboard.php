@@ -23,14 +23,6 @@ class Dashboard extends BaseDashboard
     public $previewUrl = null;
     public $fileType = null;
 
-    // Add this property
-    public $activeStatus = 'all';
-
-    // Add this method
-    public function changeStatus($status)
-    {
-        $this->activeStatus = $status;
-    }
 
     public function getViewData(): array
     {

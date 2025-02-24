@@ -125,9 +125,20 @@
             }
         }
     </style>
-    {{-- Stats Overview --}}
-    @livewire('dashboard.project-stats')
 
+    {{-- Stats Overview --}}
+    {{-- @livewire('dashboard.project-stats') --}}
+
+    @livewire('widget.projects-stats-overview')
+
+    {{-- <div class="grid grid-cols-1 lg:grid-cols-5 gap-4">
+        <div class="lg:col-span-3">
+            @livewire('widget.project-report-chart')
+        </div>
+        <div class="lg:col-span-2">
+            @livewire('widget.project-properties-chart')
+        </div>
+    </div> --}}
     {{-- Status Tabs --}}
     <div class="mb-6">
         <div class="border-b border-gray-200">
@@ -363,9 +374,9 @@
                         </div>
 
                         {{-- Project Details --}}
-                        <div x-show="isProjectOpen" x-collapse x-cloak class="border-t bg-gray-50/50">
+                        {{-- <div x-show="isProjectOpen" x-collapse x-cloak class="border-t bg-gray-50/50">
                             <livewire:dashboard.project-details :project="$project" />
-                        </div>
+                        </div> --}}
                     </div>
                     @endforeach
                 </div>

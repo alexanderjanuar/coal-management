@@ -28,7 +28,7 @@ use Filament\Navigation\NavigationGroup;
 use Filament\Support\Enums\MaxWidth;
 use Kenepa\Banner\BannerPlugin;
 use Njxqlus\FilamentProgressbar\FilamentProgressbarPlugin;
-
+use Leandrocfe\FilamentApexCharts\FilamentApexChartsPlugin;
 
 class AdminPanelProvider extends PanelProvider
 {
@@ -75,9 +75,9 @@ class AdminPanelProvider extends PanelProvider
                 fn() =>
                 preg_match('/(android|iphone|ipad|mobile)/i', request()->header('User-Agent'))
             )
-            ->darkMode(false)
             ->plugins([
                 \TomatoPHP\FilamentPWA\FilamentPWAPlugin::make(),
+                FilamentApexChartsPlugin::make(),
                 EasyFooterPlugin::make()
                     ->withFooterPosition('sidebar.footer')
                     ->withSentence(new HtmlString('<img src="' . asset('images/JKB-Logo.png') . '" style="margin-right:.5rem;" alt="Laravel Logo" width="20" height="20"> JKB Management')),
