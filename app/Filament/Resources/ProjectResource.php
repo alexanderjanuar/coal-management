@@ -296,6 +296,21 @@ class ProjectResource extends Resource
     public static function table(Table $table): Table
     {
         return $table
+            ->query(function (Builder $query) {
+                $user = auth()->user();
+
+                // If user is super-admin, show all projects
+                if ($user->hasRole('super-admin')) {
+                    return Project::query();
+                }
+
+                // For other users, only show projects from their assigned clients
+                return Project::whereIn('client_id', function ($subQuery) use ($user) {
+                    $subQuery->select('client_id')
+                        ->from('user_clients')
+                        ->where('user_id', $user->id);
+                });
+            })
             ->columns([
                 Tables\Columns\TextColumn::make('index')
                     ->label('No. ')

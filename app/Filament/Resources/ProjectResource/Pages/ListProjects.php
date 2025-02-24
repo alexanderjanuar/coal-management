@@ -13,24 +13,48 @@ class ListProjects extends ListRecords
 {
     protected static string $resource = ProjectResource::class;
 
+    protected function getBaseQuery(): Builder
+    {
+        $user = auth()->user();
+
+        // Start with Project model's query builder
+        $query = Project::query();
+
+        // If user is not super-admin, filter by their assigned clients
+        if (!$user->hasRole('super-admin')) {
+            $query->whereIn('client_id', function ($subQuery) use ($user) {
+                $subQuery->select('client_id')
+                    ->from('user_clients')
+                    ->where('user_id', $user->id);
+            });
+        }
+
+        return $query;
+    }
+
     public function getTabs(): array
     {
+        $baseQuery = $this->getBaseQuery();
+
         return [
             'all' => Tab::make('All')
                 ->icon('heroicon-m-squares-2x2')
-                ->badge(Project::query()->count()),  // Grid icon representing all items
+                ->badge($baseQuery->count()),
+
             'On Spot' => Tab::make('On Spot')
-                ->icon('heroicon-m-bolt')  // Lightning bolt representing immediate/on-spot tasks
+                ->icon('heroicon-m-bolt')
                 ->modifyQueryUsing(fn(Builder $query) => $query->where('type', 'single'))
-                ->badge(Project::query()->where('type', "single")->count()),
+                ->badge($baseQuery->clone()->where('type', 'single')->count()),
+
             'Monthly' => Tab::make('Monthly')
-                ->icon('heroicon-m-calendar')  // Calendar icon for monthly tasks
+                ->icon('heroicon-m-calendar')
                 ->modifyQueryUsing(fn(Builder $query) => $query->where('type', 'monthly'))
-                ->badge(Project::query()->where('type', "monthly")->count()),
+                ->badge($baseQuery->clone()->where('type', 'monthly')->count()),
+
             'Yearly' => Tab::make('Yearly')
-                ->icon('heroicon-m-calendar-days')  // Calendar with days for yearly tasks
+                ->icon('heroicon-m-calendar-days')
                 ->modifyQueryUsing(fn(Builder $query) => $query->where('type', 'yearly'))
-                ->badge(Project::query()->where('type', "yearly")->count()),
+                ->badge($baseQuery->clone()->where('type', 'yearly')->count()),
         ];
     }
 
