@@ -198,7 +198,7 @@
             </div>
 
             <!-- Today's Activities -->
-            <x-activity-group :activities="$activities->where('created_at', '>=', today())" title="Today"
+            {{-- <x-activity-group :activities="$activities->where('created_at', '>=', today())" title="Today"
                 subtitle="{{ now()->format('F j, Y') }}"
                 labelBgClass="bg-primary-100 dark:bg-primary-900 text-primary-800 dark:text-primary-300"
                 timeFormat="short" emptyMessage="No activities today"
@@ -217,7 +217,7 @@
                 subtitle="Prior to {{ now()->subDay()->format('F j, Y') }}"
                 labelBgClass="bg-gray-200 dark:bg-gray-600 text-gray-800 dark:text-gray-300" timeFormat="long"
                 emptyMessage="No older activities"
-                emptyDescription="There are no recorded activities older than yesterday." />
+                emptyDescription="There are no recorded activities older than yesterday." /> --}}
 
             <!-- Empty state if no activities at all -->
             @if(count($activities) === 0)
