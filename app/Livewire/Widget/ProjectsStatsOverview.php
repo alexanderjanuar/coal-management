@@ -95,14 +95,14 @@ class ProjectsStatsOverview extends BaseWidget
             Stat::make('Total Projects', (string) $currentTotal)
                 ->description($totalChange . '% vs last month')
                 ->descriptionIcon($totalChange >= 0 ? 'heroicon-m-arrow-trending-up' : 'heroicon-m-arrow-trending-down')
-                ->color($totalChange >= 0 ? 'success' : 'danger')
+                ->color($totalChange >= 0 ? 'gray' : 'danger')
                 ->icon('heroicon-o-document-text')
                 ->chart($chartData->pluck('total')->toArray()),
 
             Stat::make('Active Projects', (string) $currentActive)
                 ->description($activeChange . '% vs last month')
                 ->descriptionIcon($activeChange >= 0 ? 'heroicon-m-arrow-trending-up' : 'heroicon-m-arrow-trending-down')
-                ->color($activeChange >= 0 ? 'success' : 'danger')
+                ->color($activeChange >= 0 ? 'info' : 'danger')
                 ->icon('heroicon-o-play')
                 ->chart($chartData->pluck('active')->toArray()),
 
@@ -116,7 +116,7 @@ class ProjectsStatsOverview extends BaseWidget
             Stat::make('Pending Documents', (string) $currentPending)
                 ->description($pendingChange . '% vs last month')
                 ->descriptionIcon($pendingChange <= 0 ? 'heroicon-m-arrow-trending-up' : 'heroicon-m-arrow-trending-down')
-                ->color($pendingChange <= 0 ? 'success' : 'danger')
+                ->color($pendingChange <= 0 ? 'warning' : 'danger')
                 ->icon('heroicon-o-document')
                 ->chart($chartData->pluck('pending')->toArray()),
         ];

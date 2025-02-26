@@ -471,6 +471,7 @@ class ProjectResource extends Resource
                     ->color('gray')
                     ->label('Actions')
             ])
+            
             ->recordUrl(
                 fn(Project $record): string =>
                 static::getUrl('view', ['record' => $record])
@@ -486,6 +487,7 @@ class ProjectResource extends Resource
                 ]),
             ]);
     }
+    
 
     public static function getRelations(): array
     {
@@ -618,6 +620,7 @@ class ProjectResource extends Resource
             'create' => Pages\CreateProject::route('/create'),
             'view' => Pages\ViewProject::route('/{record}'),
             'edit' => Pages\EditProject::route('/{record}/edit'),
+            'activity' => Pages\ViewProjectActivity::route('/{record}/activity'),
         ];
     }
 }

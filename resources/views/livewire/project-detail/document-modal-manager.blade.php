@@ -1,23 +1,22 @@
 <div>
-    
     <x-filament::modal id="documentModal" slide-over width='4xl'>
         @if ($document)
         <x-slot name="header">
             <div class="flex items-center gap-3 sm:gap-4 min-w-0">
                 <!-- Document Icon -->
-                <div class="flex-shrink-0 flex items-center justify-center w-10 sm:w-12 h-10 sm:h-12 rounded-xl bg-primary-50/50 ring-1 ring-primary-100">
+                <div class="flex-shrink-0 flex items-center justify-center w-10 sm:w-12 h-10 sm:h-12 rounded-xl bg-primary-950/20 dark:bg-primary-900/20 ring-1 ring-primary-900/10 dark:ring-primary-400/10">
                     @if($document->submittedDocuments->count() > 0)
-                        <x-heroicon-o-document-text class="w-5 sm:w-6 h-5 sm:h-6 text-primary-600" />
+                        <x-heroicon-o-document-text class="w-5 sm:w-6 h-5 sm:h-6 text-primary-600 dark:text-primary-400" />
                     @else
-                        <x-heroicon-o-document-plus class="w-5 sm:w-6 h-5 sm:h-6 text-primary-600" />
+                        <x-heroicon-o-document-plus class="w-5 sm:w-6 h-5 sm:h-6 text-primary-600 dark:text-primary-400" />
                     @endif
                 </div>
         
                 <!-- Document Info -->
                 <div class="min-w-0 space-y-1">
                     <!-- Project & Client Info -->
-                    <div class="flex items-center gap-2 text-sm text-gray-500">
-                        <span class="font-medium text-primary-600">
+                    <div class="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400">
+                        <span class="font-medium text-primary-600 dark:text-primary-400">
                             {{ $document->projectStep->project->client->name }}
                         </span>
                         <span>&bull;</span>
@@ -28,10 +27,10 @@
         
                     <!-- Document Name & Step -->
                     <div class="flex items-center gap-2">
-                        <h3 class="text-base sm:text-xl font-semibold text-gray-900 leading-tight truncate">
+                        <h3 class="text-base sm:text-xl font-semibold text-gray-900 dark:text-white leading-tight truncate">
                             {{ $document->name }}
                         </h3>
-                        <span class="inline-flex items-center px-2 py-1 text-xs font-medium rounded-md bg-gray-100 text-gray-600">
+                        <span class="inline-flex items-center px-2 py-1 text-xs font-medium rounded-md bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300">
                             Step {{ $document->projectStep->order }}
                         </span>
                     </div>
@@ -41,15 +40,15 @@
 
         <div class="space-y-4 sm:space-y-6">
             <!-- Status Section -->
-            <div class="bg-white rounded-xl shadow-sm ring-1 ring-gray-100">
+            <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm ring-1 ring-gray-100 dark:ring-gray-700">
                 {{-- Status Section --}}
                 <div class="px-4 sm:px-6 py-4 sm:py-5">
                     <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                         <div class="flex items-center gap-3">
-                            <div class="w-8 h-8 rounded-lg bg-gray-50 flex items-center justify-center">
-                                <x-heroicon-m-signal class="w-4 h-4 text-gray-600" />
+                            <div class="w-8 h-8 rounded-lg bg-gray-50 dark:bg-gray-700 flex items-center justify-center">
+                                <x-heroicon-m-signal class="w-4 h-4 text-gray-600 dark:text-gray-300" />
                             </div>
-                            <span class="text-sm font-medium text-gray-900">Current Status</span>
+                            <span class="text-sm font-medium text-gray-900 dark:text-white">Current Status</span>
                         </div>
 
                         <div class="w-full sm:w-auto">
@@ -117,7 +116,7 @@
                                 </x-filament::dropdown.list>
                             </x-filament::dropdown>
                             @else
-                            <div class="px-3 py-2 text-sm font-medium rounded-lg bg-gray-50 text-gray-500">
+                            <div class="px-3 py-2 text-sm font-medium rounded-lg bg-gray-50 dark:bg-gray-700 text-gray-500 dark:text-gray-400">
                                 <div class="flex items-center gap-2">
                                     @switch($document->status)
                                     @case('draft')
@@ -149,27 +148,27 @@
 
                 {{-- Reviewer Section --}}
                 @if($document->reviewer_id && in_array($document->status, ['pending_review', 'approved', 'rejected']))
-                <div class="px-4 sm:px-6 py-3 border-t border-gray-100">
+                <div class="px-4 sm:px-6 py-3 border-t border-gray-100 dark:border-gray-700">
                     <div class="flex items-center gap-3">
-                        <div class="w-8 h-8 rounded-lg bg-gray-50 flex items-center justify-center">
-                            <x-heroicon-m-user class="w-4 h-4 text-gray-600" />
+                        <div class="w-8 h-8 rounded-lg bg-gray-50 dark:bg-gray-700 flex items-center justify-center">
+                            <x-heroicon-m-user class="w-4 h-4 text-gray-600 dark:text-gray-300" />
                         </div>
                         <div class="flex flex-col">
-                            <span class="text-sm font-medium text-gray-900">Reviewer</span>
-                            <span class="text-sm text-gray-500">{{ $document->reviewer->name }}</span>
+                            <span class="text-sm font-medium text-gray-900 dark:text-white">Reviewer</span>
+                            <span class="text-sm text-gray-500 dark:text-gray-400">{{ $document->reviewer->name }}</span>
                         </div>
                     </div>
                 </div>
                 @endif
             </div>
             <!-- Upload Section -->
-            <div class="bg-white rounded-xl shadow-sm ring-1 ring-gray-100">
+            <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm ring-1 ring-gray-100 dark:ring-gray-700">
                 <div class="px-4 sm:px-6 py-4 sm:py-5">
                     <div class="flex flex-col sm:flex-row sm:items-center gap-3 mb-4">
-                        <div class="w-8 h-8 rounded-lg bg-gray-50 flex items-center justify-center">
-                            <x-heroicon-m-arrow-up-tray class="w-4 h-4 text-gray-600" />
+                        <div class="w-8 h-8 rounded-lg bg-gray-50 dark:bg-gray-700 flex items-center justify-center">
+                            <x-heroicon-m-arrow-up-tray class="w-4 h-4 text-gray-600 dark:text-gray-300" />
                         </div>
-                        <h4 class="text-sm font-medium text-gray-900">Upload New Document</h4>
+                        <h4 class="text-sm font-medium text-gray-900 dark:text-white">Upload New Document</h4>
                     </div>
 
                     <form wire:submit="uploadDocument" class="space-y-4">
@@ -192,23 +191,22 @@
         <div class="space-y-2 sm:space-y-3">
             @foreach($document->submittedDocuments->sortByDesc('created_at') as $submission)
             <div
-                class="group flex items-center gap-2 sm:gap-4 p-2 sm:p-3 bg-gray-50/50 rounded-lg hover:bg-gray-50 transition-all">
+                class="group flex items-center gap-2 sm:gap-4 p-2 sm:p-3 bg-gray-50/50 dark:bg-gray-800/50 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-all">
                 <div class="flex-shrink-0">
                     <div
-                        class="w-8 h-8 sm:w-10 sm:h-10 rounded-lg bg-white ring-1 ring-gray-100 flex items-center justify-center">
-                        <x-heroicon-o-document-text class="w-4 h-4 sm:w-5 sm:h-5 text-gray-400" />
+                        class="w-8 h-8 sm:w-10 sm:h-10 rounded-lg bg-white dark:bg-gray-700 ring-1 ring-gray-100 dark:ring-gray-600 flex items-center justify-center">
+                        <x-heroicon-o-document-text class="w-4 h-4 sm:w-5 sm:h-5 text-gray-400 dark:text-gray-300" />
                     </div>
                 </div>
 
                 <div class="flex-1 min-w-0">
-                    <p class="text-xs sm:text-sm font-medium text-gray-900 truncate">
+                    <p class="text-xs sm:text-sm font-medium text-gray-900 dark:text-white truncate">
                         {{ basename($submission->file_path) }}
                     </p>
                     <div class="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2 mt-0.5">
-                        <span class="text-[11px] sm:text-xs text-gray-500">{{ $submission->user->name }}</span>
-                        <span class="hidden sm:inline text-xs text-gray-300">&bull;</span>
-                        <span class="text-[11px] sm:text-xs text-gray-500">{{ $submission->created_at->diffForHumans()
-                            }}</span>
+                        <span class="text-[11px] sm:text-xs text-gray-500 dark:text-gray-400">{{ $submission->user->name }}</span>
+                        <span class="hidden sm:inline text-xs text-gray-300 dark:text-gray-600">&bull;</span>
+                        <span class="text-[11px] sm:text-xs text-gray-500 dark:text-gray-400">{{ $submission->created_at->diffForHumans() }}</span>
                     </div>
                 </div>
 
@@ -216,7 +214,7 @@
                     <!-- View Button -->
                     <x-filament::button wire:click="viewDocument({{ $submission->id }})" x-on:click="$dispatch('open-modal', { id: 'preview-document' })"
                         color="gray" size="xs"
-                        class="opacity-0 group-hover:opacity-100 transition-opacity hover:bg-gray-100">
+                        class="opacity-0 group-hover:opacity-100 transition-opacity hover:bg-gray-100 dark:hover:bg-gray-600">
                         <div class="inline-flex items-center gap-1 sm:gap-2">
                             <x-heroicon-m-eye class="w-3.5 h-3.5 sm:w-4 sm:h-4" />
                             <span class="hidden sm:inline font-medium">View</span>
@@ -225,7 +223,7 @@
 
                     <!-- Download Button -->
                     <x-filament::button wire:click="downloadDocument({{ $submission->id }})" color="gray" size="xs"
-                        class="opacity-0 group-hover:opacity-100 transition-opacity hover:bg-gray-100">
+                        class="opacity-0 group-hover:opacity-100 transition-opacity hover:bg-gray-100 dark:hover:bg-gray-600">
                         <div class="inline-flex items-center gap-1 sm:gap-2">
                             <x-heroicon-m-arrow-down-tray class="w-3.5 h-3.5 sm:w-4 sm:h-4" />
                             <span class="hidden sm:inline font-medium">Download</span>
@@ -237,7 +235,7 @@
                     <x-filament::button
                         x-on:click="$dispatch('open-modal', { id: 'delete-document-{{ $submission->id }}' })"
                         color="danger" size="xs"
-                        class="opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-100">
+                        class="opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-100 dark:hover:bg-red-900">
                         <div class="inline-flex items-center gap-1 sm:gap-2">
                             <x-heroicon-m-trash class="w-3.5 h-3.5 sm:w-4 sm:h-4" />
                             <span class="hidden sm:inline font-medium">Remove</span>
@@ -249,18 +247,18 @@
                         <x-slot name="header">
                             <div class="flex items-center gap-3">
                                 <div
-                                    class="flex-shrink-0 w-10 h-10 rounded-full bg-red-50 flex items-center justify-center">
-                                    <x-heroicon-o-exclamation-triangle class="w-5 h-5 text-red-500" />
+                                    class="flex-shrink-0 w-10 h-10 rounded-full bg-red-50 dark:bg-red-900/20 flex items-center justify-center">
+                                    <x-heroicon-o-exclamation-triangle class="w-5 h-5 text-red-500 dark:text-red-400" />
                                 </div>
-                                <h3 class="text-lg font-medium text-gray-900">Delete Document</h3>
+                                <h3 class="text-lg font-medium text-gray-900 dark:text-white">Delete Document</h3>
                             </div>
                         </x-slot>
 
                         <div class="space-y-3">
-                            <p class="text-sm text-gray-500">
+                            <p class="text-sm text-gray-500 dark:text-gray-400">
                                 Are you sure you want to delete this document? This action cannot be undone.
                             </p>
-                            <p class="text-sm font-medium text-gray-700">
+                            <p class="text-sm font-medium text-gray-700 dark:text-gray-300">
                                 {{ basename($submission->file_path) }}
                             </p>
                         </div>
@@ -294,21 +292,21 @@
             <x-slot name="header">
                 <div class="flex items-center justify-between w-full">
                     <div class="flex items-center gap-4">
-                        <div class="w-12 h-12 rounded-xl bg-primary-50 flex items-center justify-center ring-1 ring-primary-100">
+                        <div class="w-12 h-12 rounded-xl bg-primary-50 dark:bg-primary-900/20 flex items-center justify-center ring-1 ring-primary-100 dark:ring-primary-700/30">
                             @if($fileType === 'pdf')
-                                <x-heroicon-o-document-text class="w-6 h-6 text-primary-600" />
+                                <x-heroicon-o-document-text class="w-6 h-6 text-primary-600 dark:text-primary-400" />
                             @elseif(in_array($fileType, ['jpg', 'jpeg', 'png', 'gif']))
-                                <x-heroicon-o-photo class="w-6 h-6 text-primary-600" />
+                                <x-heroicon-o-photo class="w-6 h-6 text-primary-600 dark:text-primary-400" />
                             @else
-                                <x-heroicon-o-document class="w-6 h-6 text-primary-600" />
+                                <x-heroicon-o-document class="w-6 h-6 text-primary-600 dark:text-primary-400" />
                             @endif
                         </div>
                         @if($previewingDocument)
                             <div>
-                                <h3 class="text-xl font-semibold text-gray-900 leading-tight">
+                                <h3 class="text-xl font-semibold text-gray-900 dark:text-white leading-tight">
                                     {{ basename($previewingDocument->file_path) }}
                                 </h3>
-                                <p class="text-sm text-gray-500 mt-1">
+                                <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">
                                     Uploaded {{ $previewingDocument->created_at->diffForHumans() }}
                                 </p>
                             </div>
@@ -329,25 +327,25 @@
 
             <div class="p-6">
                 @if($previewUrl)
-                    <div class="relative rounded-xl overflow-hidden bg-gray-50 ring-1 ring-gray-200">
+                    <div class="relative rounded-xl overflow-hidden bg-gray-50 dark:bg-gray-900 ring-1 ring-gray-200 dark:ring-gray-700">
                         @if($fileType === 'pdf')
-                            <div class="w-full h-[calc(100vh-16rem)] bg-gray-50">
+                            <div class="w-full h-[calc(100vh-16rem)] bg-gray-50 dark:bg-gray-900">
                                 <iframe src="{{ $previewUrl }}" class="w-full h-full rounded-lg">
                                     <p>Your browser doesn't support PDF preview.</p>
                                 </iframe>
                             </div>
                         @elseif(in_array($fileType, ['jpg', 'jpeg', 'png', 'gif']))
-                            <div class="relative aspect-video flex items-center justify-center bg-gray-50">
+                            <div class="relative aspect-video flex items-center justify-center bg-gray-50 dark:bg-gray-900">
                                 <img src="{{ $previewUrl }}" alt="Document Preview"
                                     class="max-w-full max-h-[calc(100vh-16rem)] object-contain rounded-lg shadow-sm">
                             </div>
                         @else
                             <div class="flex flex-col items-center justify-center py-16">
-                                <div class="w-16 h-16 rounded-full bg-gray-100 flex items-center justify-center mb-4">
-                                    <x-heroicon-o-document class="w-8 h-8 text-gray-400" />
+                                <div class="w-16 h-16 rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center mb-4">
+                                    <x-heroicon-o-document class="w-8 h-8 text-gray-400 dark:text-gray-500" />
                                 </div>
-                                <h3 class="text-lg font-medium text-gray-900 mb-2">Preview not available</h3>
-                                <p class="text-sm text-gray-500 mb-4">This file type cannot be previewed directly</p>
+                                <h3 class="text-lg font-medium text-gray-900 dark:text-white mb-2">Preview not available</h3>
+                                <p class="text-sm text-gray-500 dark:text-gray-400 mb-4">This file type cannot be previewed directly</p>
                                 <x-filament::button wire:click="downloadDocument({{ $previewingDocument->id }})" size="sm">
                                     <div class="inline-flex items-center gap-2">
                                         <x-heroicon-m-arrow-down-tray class="w-4 h-4" />
@@ -359,10 +357,10 @@
                     </div>
                 @else
                     <div class="flex flex-col items-center justify-center py-16">
-                        <div class="w-16 h-16 rounded-full bg-gray-100 flex items-center justify-center animate-pulse">
-                            <x-heroicon-o-document class="w-8 h-8 text-gray-400" />
+                        <div class="w-16 h-16 rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center animate-pulse">
+                            <x-heroicon-o-document class="w-8 h-8 text-gray-400 dark:text-gray-500" />
                         </div>
-                        <h3 class="text-lg font-medium text-gray-900 mt-4">Loading preview...</h3>
+                        <h3 class="text-lg font-medium text-gray-900 dark:text-white mt-4">Loading preview...</h3>
                     </div>
                 @endif
             </div>

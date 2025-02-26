@@ -31,6 +31,8 @@ class ViewProject extends ViewRecord
 
     }
 
+
+
     protected function getViewData(): array
     {
         return [
@@ -137,10 +139,12 @@ class ViewProject extends ViewRecord
                 ->url(static::getResource()::getUrl('edit', ['record' => $this->record]))
                 ->icon('heroicon-o-pencil-square')
                 ->button(),
+            Actions\Action::make('viewActivity')
+                ->label('View Activity Log')
+                ->icon('heroicon-o-clock')
+                ->url(fn() => ProjectResource::getUrl('activity', ['record' => $this->record])),
         ];
     }
-
-    
 
     public function updateTaskStatus($taskId, $status): void
     {

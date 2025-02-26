@@ -5,59 +5,34 @@ namespace App\Livewire\Widget;
 use Leandrocfe\FilamentApexCharts\Widgets\ApexChartWidget;
 use App\Models\RequiredDocument;
 use Illuminate\Support\Facades\DB;
-use Carbon\Carbon;
+use Illuminate\Support\Facades\Auth;
 
 class ProjectPropertiesChart extends ApexChartWidget
 {
     protected static ?string $chartId = 'ProjectPropertiesChart';
-    protected static ?string $heading = 'Document Status Distribution';
-
-    protected function getHeight(): ?string
-    {
-        return '400px';
-    }
-
-    public ?string $filter = 'week';
-
-    protected function getFilters(): ?array
-    {
-        return [
-            'today' => 'Today',
-            'week' => 'Last week',
-            'month' => 'Last month',
-            'year' => 'This year',
-        ];
-    }
+    protected static ?string $heading = 'Document Status Overview';
+    protected static ?string $subheading = 'Distribution of documents by current status';
 
     protected function getOptions(): array
     {
-        $activeFilter = $this->filter;
-
-        // Start with a base query
-        $query = RequiredDocument::select('status', DB::raw('count(*) as count'))
-            ->whereIn('status', ['draft', 'uploaded', 'pending_review', 'approved', 'rejected']);
-
-        // Apply time filters
-        switch ($activeFilter) {
-            case 'today':
-                $query->whereDate('updated_at', Carbon::today());
-                break;
-            case 'week':
-                $query->whereBetween('updated_at', [Carbon::now()->subWeek(), Carbon::now()]);
-                break;
-            case 'month':
-                $query->whereBetween('updated_at', [Carbon::now()->subMonth(), Carbon::now()]);
-                break;
-            case 'year':
-                $query->whereYear('updated_at', Carbon::now()->year);
-                break;
-            default:
-                // No filter, show all data
-                break;
-        }
-
-        // Complete the query and format the data
-        $documentStats = $query->groupBy('status')
+        // Build the query with proper filtering by user's clients
+        $query = RequiredDocument::query();
+        
+        // Use proper relationship syntax without colon
+        $query->whereHas('projectStep.project', function ($query) {
+            if (!Auth::user()->hasRole('super-admin')) {
+                $query->whereIn('client_id', function ($subQuery) {
+                    $subQuery->select('client_id')
+                        ->from('user_clients')
+                        ->where('user_id', Auth::id());
+                });
+            }
+        });
+        
+        // Continue with the rest of the query
+        $documentStats = $query->whereIn('status', ['draft', 'uploaded', 'pending_review', 'approved', 'rejected'])
+            ->select('status', DB::raw('count(*) as count'))
+            ->groupBy('status')
             ->get()
             ->mapWithKeys(function ($item) {
                 // Format status to capitalized words
@@ -83,7 +58,7 @@ class ProjectPropertiesChart extends ApexChartWidget
         return [
             'chart' => [
                 'type' => 'donut',
-                'height' => 300,
+                'height' => 400,
             ],
             'series' => $documentStats->values()->toArray(),
             'labels' => $documentStats->keys()->toArray(),
@@ -108,14 +83,14 @@ class ProjectPropertiesChart extends ApexChartWidget
                             ],
                             'value' => [
                                 'show' => true,
-                                'fontSize' => '20px',
+                                'fontSize' => '24px',
                                 'fontWeight' => '600',
                                 'formatter' => 'function (val) { return val }'
                             ],
                             'total' => [
                                 'show' => true,
                                 'showAlways' => true,
-                                'fontSize' => '14px',
+                                'fontSize' => '16px',
                                 'fontWeight' => 'bold',
                                 'label' => 'Documents',
                             ]
@@ -124,6 +99,8 @@ class ProjectPropertiesChart extends ApexChartWidget
                 ]
             ],
             'legend' => [
+                'position' => 'bottom',
+                'horizontalAlign' => 'center',
                 'labels' => [
                     'fontFamily' => 'inherit',
                 ],

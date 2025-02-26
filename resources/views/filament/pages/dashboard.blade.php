@@ -131,14 +131,15 @@
 
     @livewire('widget.projects-stats-overview')
 
-    {{-- <div class="grid grid-cols-1 lg:grid-cols-5 gap-4">
-        <div class="lg:col-span-3">
+    <div class="grid grid-cols-1 lg:grid-cols-6 gap-4">
+        <div class="lg:col-span-4">
             @livewire('widget.project-report-chart')
         </div>
         <div class="lg:col-span-2">
             @livewire('widget.project-properties-chart')
         </div>
-    </div> --}}
+    </div>
+
     {{-- Status Tabs --}}
     <div class="mb-6">
         <div class="border-b border-gray-200">
