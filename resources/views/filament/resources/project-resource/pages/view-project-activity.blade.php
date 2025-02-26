@@ -150,9 +150,9 @@
         </div>
 
         <!-- Activity Timeline -->
-        {{-- <div
+        <div
             class="bg-white dark:bg-gray-800 rounded-xl shadow-md border border-gray-100 dark:border-gray-700 overflow-hidden transition-colors">
-            <div
+            {{-- <div
                 class="border-b border-gray-200 dark:border-gray-700 px-4 md:px-6 py-4 flex flex-col md:flex-row md:items-center justify-between gap-3">
                 <div>
                     <h3 class="text-lg font-medium text-gray-900 dark:text-white flex items-center">
@@ -167,35 +167,8 @@
                     </p>
                 </div>
 
-                <!-- Quick Filters -->
-                <div class="flex flex-wrap gap-2">
-                    <button type="button"
-                        class="inline-flex items-center px-3 py-1.5 rounded-full text-xs font-medium border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-600 transition-colors">
-                        <span class="w-2 h-2 bg-green-500 rounded-full mr-1.5"></span>
-                        Created
-                    </button>
-                    <button type="button"
-                        class="inline-flex items-center px-3 py-1.5 rounded-full text-xs font-medium border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-600 transition-colors">
-                        <span class="w-2 h-2 bg-blue-500 rounded-full mr-1.5"></span>
-                        Updated
-                    </button>
-                    <button type="button"
-                        class="inline-flex items-center px-3 py-1.5 rounded-full text-xs font-medium border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-600 transition-colors">
-                        <span class="w-2 h-2 bg-red-500 rounded-full mr-1.5"></span>
-                        Deleted
-                    </button>
-                    <button type="button"
-                        class="inline-flex items-center px-3 py-1.5 rounded-full text-xs font-medium border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-600 transition-colors">
-                        <svg xmlns="http://www.w3.org/2000/svg"
-                            class="h-3.5 w-3.5 mr-1 text-gray-500 dark:text-gray-400" fill="none" viewBox="0 0 24 24"
-                            stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                d="M5 12h.01M12 12h.01M19 12h.01M6 12a1 1 0 11-2 0 1 1 0 012 0zm7 0a1 1 0 11-2 0 1 1 0 012 0zm7 0a1 1 0 11-2 0 1 1 0 012 0z" />
-                        </svg>
-                        More Filters
-                    </button>
-                </div>
-            </div>
+
+            </div> --}}
 
             <!-- Today's Activities -->
             <x-activity-group :activities="$activities->where('created_at', '>=', today())" title="Today"
@@ -219,7 +192,7 @@
                 emptyMessage="No older activities"
                 emptyDescription="There are no recorded activities older than yesterday." />
 
-            <!-- Empty state if no activities at all -->
+            {{-- <!-- Empty state if no activities at all -->
             @if(count($activities) === 0)
             <div class="py-12 md:py-16 flex items-center justify-center">
                 <div class="text-center max-w-md px-4">
@@ -248,8 +221,8 @@
                     </div>
                 </div>
             </div>
-            @endif
-        </div> --}}
+            @endif --}}
+        </div>
 
 
 
