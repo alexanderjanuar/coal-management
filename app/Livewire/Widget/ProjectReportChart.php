@@ -13,51 +13,121 @@ class ProjectReportChart extends ApexChartWidget
     protected static ?string $heading = 'Project Creation Timeline';
     protected static ?string $subheading = 'Number of projects created over time';
 
-    // Make widget responsive
+    public ?string $filter = 'month';
+
+    protected function getFilters(): ?array
+    {
+        return [
+            'today' => 'Today',
+            'week' => 'Last week',
+            'month' => 'Last month',
+            'year' => 'This year',
+        ];
+    }
 
     protected function getOptions(): array
     {
-        // Get projects created in the last 6 months
-        $startDate = Carbon::now()->subMonths(6)->startOfMonth();
-        $endDate = Carbon::now()->endOfMonth();
-        
-        // Group projects by month and count them
+        $activeFilter = $this->filter;
+
+        // Set date range based on selected filter
+        switch ($activeFilter) {
+            case 'today':
+                $startDate = Carbon::now()->startOfDay();
+                $endDate = Carbon::now()->endOfDay();
+                $groupFormat = '%Y-%m-%d %H'; // Group by hour
+                $displayFormat = 'H:i'; // Hour:Minute
+                break;
+
+            case 'week':
+                $startDate = Carbon::now()->subWeek()->startOfDay();
+                $endDate = Carbon::now()->endOfDay();
+                $groupFormat = '%Y-%m-%d'; // Group by day
+                $displayFormat = 'D M d'; // Day of week, Month, Day
+                break;
+
+            case 'month':
+                $startDate = Carbon::now()->subMonth()->startOfDay();
+                $endDate = Carbon::now()->endOfDay();
+                $groupFormat = '%Y-%m-%d'; // Group by day
+                $displayFormat = 'M d'; // Month, Day
+                break;
+
+            case 'year':
+                $startDate = Carbon::now()->startOfYear()->startOfDay();
+                $endDate = Carbon::now()->endOfDay();
+                $groupFormat = '%Y-%m'; // Group by month
+                $displayFormat = 'M Y'; // Month, Year
+                break;
+
+            default:
+                $startDate = Carbon::now()->subMonth()->startOfDay();
+                $endDate = Carbon::now()->endOfDay();
+                $groupFormat = '%Y-%m-%d';
+                $displayFormat = 'M d';
+        }
+
         $projectData = Project::select(
-                DB::raw('DATE_FORMAT(created_at, "%Y-%m") as month'),
-                DB::raw('COUNT(*) as count')
-            )
-            ->where('created_at', '>=', $startDate)
-            ->where('created_at', '<=', $endDate)
-            ->groupBy('month')
-            ->orderBy('month')
+            DB::raw('DATE_FORMAT(updated_at, "' . $groupFormat . '") as time_period'),
+            DB::raw('COUNT(*) as count')
+        )
+            ->where('status', 'completed')
+            ->where('updated_at', '>=', $startDate)
+            ->where('updated_at', '<=', $endDate)
+            ->groupBy('time_period')
+            ->orderBy('time_period')
             ->get();
-            
+
+
         // Format data for the chart
         $categories = [];
         $series = [];
-        
-        // Create arrays for all months in the range (including months with zero projects)
+
+        // Create arrays for all time periods in the range (including periods with zero projects)
         $currentDate = clone $startDate;
+
+        // Different interval for different filters
+        $interval = match ($activeFilter) {
+            'today' => 'hour',
+            'week', 'month' => 'day',
+            'year' => 'month',
+            default => 'day'
+        };
+
+        $intervalMethod = 'add' . ucfirst($interval);
+
         while ($currentDate <= $endDate) {
-            $monthKey = $currentDate->format('Y-m');
-            $monthName = $currentDate->format('M Y');
-            
-            $categories[] = $monthName;
-            
-            // Find if we have data for this month
-            $monthData = $projectData->firstWhere('month', $monthKey);
-            $series[] = $monthData ? $monthData->count : 0;
-            
-            $currentDate->addMonth();
+            $timePeriodKey = $currentDate->format(match ($interval) {
+                'hour' => 'Y-m-d H',
+                'day' => 'Y-m-d',
+                'month' => 'Y-m',
+                default => 'Y-m-d'
+            });
+
+            $timePeriodDisplay = $currentDate->format($displayFormat);
+
+            $categories[] = $timePeriodDisplay;
+
+            // Find if we have data for this time period
+            $periodData = $projectData->firstWhere('time_period', $timePeriodKey);
+            $series[] = $periodData ? $periodData->count : 0;
+
+            $currentDate->$intervalMethod();
         }
 
         $hasData = !empty($series) && array_sum($series) > 0;
-
         $avgProjects = count($series) > 0 ? array_sum($series) / count($series) : 0;
+
+        // Limit number of visible labels on x-axis for readability
+        $maxLabels = 12;
+        $showEveryNth = max(1, ceil(count($categories) / $maxLabels));
+
+        $xaxisLabels = array_map(function ($index) use ($showEveryNth) {
+            return $index % $showEveryNth === 0;
+        }, array_keys($categories));
 
         return [
             'chart' => [
-                'type' => 'area', // Changed to area to ensure fill works
+                'type' => 'area',
                 'height' => '400px',
                 'toolbar' => [
                     'show' => false
@@ -73,12 +143,12 @@ class ProjectReportChart extends ApexChartWidget
             ],
             'series' => [
                 [
-                    'name' => 'New Projects',
+                    'name' => 'Completed Projects',
                     'data' => $series
                 ]
             ],
             'noData' => [
-                'text' => 'No project data available',
+                'text' => 'No completed projects data available',
                 'align' => 'center',
                 'verticalAlign' => 'middle',
                 'style' => [
@@ -94,11 +164,12 @@ class ProjectReportChart extends ApexChartWidget
                 'lineCap' => 'round'
             ],
             'markers' => [
-                'size' => 5,
+                'size' => $activeFilter === 'year' ? 5 : 0, // Only show markers for yearly view
                 'hover' => [
                     'size' => 7
                 ]
             ],
+
             'grid' => [
                 'show' => true,
                 'borderColor' => '#374151', // Gray-700

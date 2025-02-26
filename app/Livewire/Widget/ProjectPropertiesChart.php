@@ -17,7 +17,7 @@ class ProjectPropertiesChart extends ApexChartWidget
     {
         // Build the query with proper filtering by user's clients
         $query = RequiredDocument::query();
-        
+
         // Use proper relationship syntax without colon
         $query->whereHas('projectStep.project', function ($query) {
             if (!Auth::user()->hasRole('super-admin')) {
@@ -28,31 +28,42 @@ class ProjectPropertiesChart extends ApexChartWidget
                 });
             }
         });
-        
+
+        // Define status mapping with consistent display names
+        $statusMapping = [
+            'approved' => 'Approved',
+            'uploaded' => 'Uploaded',
+            'pending_review' => 'Pending Review',
+            'rejected' => 'Rejected',
+            'draft' => 'Draft'
+        ];
+
         // Continue with the rest of the query
-        $documentStats = $query->whereIn('status', ['draft', 'uploaded', 'pending_review', 'approved', 'rejected'])
+        $documentStats = $query->whereIn('status', array_keys($statusMapping))
             ->select('status', DB::raw('count(*) as count'))
             ->groupBy('status')
             ->get()
-            ->mapWithKeys(function ($item) {
-                // Format status to capitalized words
-                $formattedStatus = ucwords(str_replace('_', ' ', $item->status));
-                return [$formattedStatus => $item->count];
+            ->mapWithKeys(function ($item) use ($statusMapping) {
+                // Map DB status to consistent display name
+                $displayStatus = $statusMapping[$item->status] ?? ucwords(str_replace('_', ' ', $item->status));
+                return [$displayStatus => $item->count];
             });
 
         // Make sure all statuses have a value, even if zero
-        $statusMapping = [
-            'draft' => 'Draft',
-            'uploaded' => 'Uploaded',
-            'pending_review' => 'Pending Review',
-            'approved' => 'Approved',
-            'rejected' => 'Rejected'
-        ];
-
-        foreach ($statusMapping as $dbStatus => $displayStatus) {
+        foreach ($statusMapping as $displayStatus) {
             if (!$documentStats->has($displayStatus)) {
                 $documentStats[$displayStatus] = 0;
             }
+        }
+
+        // Create arrays for series and labels with consistent order to match colors
+        $orderedLabels = [];
+        $orderedSeries = [];
+
+        // Ensure consistent order matching our color array
+        foreach (array_values($statusMapping) as $status) {
+            $orderedLabels[] = $status;
+            $orderedSeries[] = $documentStats[$status] ?? 0;
         }
 
         return [
@@ -60,8 +71,8 @@ class ProjectPropertiesChart extends ApexChartWidget
                 'type' => 'donut',
                 'height' => 400,
             ],
-            'series' => $documentStats->values()->toArray(),
-            'labels' => $documentStats->keys()->toArray(),
+            'series' => $orderedSeries,
+            'labels' => $orderedLabels,
             'colors' => [
                 '#22c55e', // Approved - green-500
                 '#3b82f6', // Uploaded - blue-500

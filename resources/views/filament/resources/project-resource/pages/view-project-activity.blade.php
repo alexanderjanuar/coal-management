@@ -192,36 +192,7 @@
                 emptyMessage="No older activities"
                 emptyDescription="There are no recorded activities older than yesterday." />
 
-            <!-- Empty state if no activities at all -->
-            @if(count($activities) === 0)
-            <div class="py-12 md:py-16 flex items-center justify-center">
-                <div class="text-center max-w-md px-4">
-                    <div
-                        class="inline-flex items-center justify-center w-16 h-16 md:w-20 md:h-20 rounded-full bg-gray-100 dark:bg-gray-700 text-gray-400 dark:text-gray-500 mb-6 animate-pulse">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 md:h-10 md:w-10" fill="none"
-                            viewBox="0 0 24 24" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                        </svg>
-                    </div>
-                    <h3 class="text-xl font-medium text-gray-900 dark:text-white">No activities found</h3>
-                    <p class="mt-2 text-base text-gray-500 dark:text-gray-400">There are no recorded activities for this
-                        project yet. Activities will appear here once changes are made to the project or its components.
-                    </p>
-                    <div class="mt-6">
-                        <a href="{{ route('filament.resources.projects.edit', $record) }}"
-                            class="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-primary-600 hover:bg-primary-700 dark:bg-primary-500 dark:hover:bg-primary-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 transition-colors duration-150">
-                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24"
-                                stroke="currentColor">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                    d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                            </svg>
-                            Edit Project
-                        </a>
-                    </div>
-                </div>
-            </div>
-            @endif
+            
         </div>
 
 

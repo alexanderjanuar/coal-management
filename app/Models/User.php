@@ -54,6 +54,11 @@ class User extends Authenticatable
         return $this->hasMany(Document::class);
     }
 
+    public function getAvatarUrl()
+    {
+        return filament()->getUserAvatarUrl($this);
+    }
+
     public function clientDocuments(): HasMany
     {
         return $this->hasMany(ClientDocument::class);
