@@ -83,6 +83,7 @@ class RecentSubmittedDocuments extends Component implements HasForms, HasTable
 
                 return "No documents " . ($statusText ? $statusText : "found") . " at this time.";
             })
+            ->poll('5s')
             ->emptyStateIcon('heroicon-o-document')
             ->heading('Recently Submitted Documents');
     }

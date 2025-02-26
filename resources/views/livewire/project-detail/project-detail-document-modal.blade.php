@@ -1,4 +1,4 @@
-<div class="flex flex-col lg:flex-row h-full bg-gray-50">
+<div class="flex flex-col lg:flex-row h-full bg-gray-50 dark:bg-gray-900">
     <style>
         @media (max-width: 1024px) {
             .comment-truncate {
@@ -18,21 +18,22 @@
     </style>
 
     <!-- Left Section: Document Details & Upload -->
-    <div class="order-1 lg:order-1 flex-1 flex flex-col min-w-0 bg-white border-t lg:border-t-0">
+    <div
+        class="order-1 lg:order-1 flex-1 flex flex-col min-w-0 bg-white dark:bg-gray-900 border-t lg:border-t-0 dark:border-gray-700">
         <!-- Document Header Section -->
         <div
-            class="sticky top-0 z-10 flex items-center justify-between p-4 sm:p-6 border-b border-gray-100 bg-white min-h-[76px]">
+            class="sticky top-0 z-10 flex items-center justify-between p-4 sm:p-6 border-b border-gray-100 dark:border-gray-700 bg-white dark:bg-gray-900 min-h-[76px]">
             <div class="flex items-center gap-3 sm:gap-4 min-w-0">
                 <div
-                    class="flex-shrink-0 flex items-center justify-center w-10 sm:w-12 h-10 sm:h-12 rounded-xl bg-primary-50/50 ring-1 ring-primary-100">
+                    class="flex-shrink-0 flex items-center justify-center w-10 sm:w-12 h-10 sm:h-12 rounded-xl bg-primary-50/50 dark:bg-primary-900/20 ring-1 ring-primary-100 dark:ring-primary-800">
                     @if($document->submittedDocuments->count() > 0)
-                    <x-heroicon-o-document-text class="w-5 sm:w-6 h-5 sm:h-6 text-primary-600" />
+                    <x-heroicon-o-document-text class="w-5 sm:w-6 h-5 sm:h-6 text-primary-600 dark:text-primary-400" />
                     @else
-                    <x-heroicon-o-document-plus class="w-5 sm:w-6 h-5 sm:h-6 text-primary-600" />
+                    <x-heroicon-o-document-plus class="w-5 sm:w-6 h-5 sm:h-6 text-primary-600 dark:text-primary-400" />
                     @endif
                 </div>
                 <div class="min-w-0">
-                    <h3 class="text-base sm:text-xl font-semibold text-gray-900 leading-tight truncate">
+                    <h3 class="text-base sm:text-xl font-semibold text-gray-900 dark:text-white leading-tight truncate">
                         {{ $document->name }}
                     </h3>
                 </div>
@@ -40,23 +41,25 @@
 
             {{-- Close Button --}}
             <button x-on:click="$dispatch('close-modal', { id: 'document-modal-{{ $document->id }}' })" type="button"
-                class="flex-shrink-0 rounded-lg p-2 text-gray-400 hover:text-gray-500 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-primary-500 transition-colors duration-200">
+                class="flex-shrink-0 rounded-lg p-2 text-gray-400 dark:text-gray-500 hover:text-gray-500 dark:hover:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-primary-500 dark:focus:ring-primary-400 transition-colors duration-200">
                 <span class="sr-only">Close</span>
                 <x-heroicon-m-x-mark class="w-5 h-5" />
             </button>
         </div>
 
+
         <div class="flex-1 p-4 sm:p-6 space-y-4 sm:space-y-6 overflow-y-auto">
             <!-- Status Section -->
-            <div class="bg-white rounded-xl shadow-sm ring-1 ring-gray-100">
+            <div class="bg-white dark:bg-gray-900 rounded-xl shadow-sm ring-1 ring-gray-100 dark:ring-gray-700">
                 {{-- Status Section --}}
                 <div class="px-4 sm:px-6 py-4 sm:py-5">
                     <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                         <div class="flex items-center gap-3">
-                            <div class="w-8 h-8 rounded-lg bg-gray-50 flex items-center justify-center">
-                                <x-heroicon-m-signal class="w-4 h-4 text-gray-600" />
+                            <div
+                                class="w-8 h-8 rounded-lg bg-gray-50 dark:bg-gray-700 flex items-center justify-center">
+                                <x-heroicon-m-signal class="w-4 h-4 text-gray-600 dark:text-gray-400" />
                             </div>
-                            <span class="text-sm font-medium text-gray-900">Current Status</span>
+                            <span class="text-sm font-medium text-gray-900 dark:text-white">Current Status</span>
                         </div>
 
                         <div class="w-full sm:w-auto">
@@ -124,7 +127,8 @@
                                 </x-filament::dropdown.list>
                             </x-filament::dropdown>
                             @else
-                            <div class="px-3 py-2 text-sm font-medium rounded-lg bg-gray-50 text-gray-500">
+                            <div
+                                class="px-3 py-2 text-sm font-medium rounded-lg bg-gray-50 dark:bg-gray-700 text-gray-500 dark:text-gray-400">
                                 <div class="flex items-center gap-2">
                                     @switch($document->status)
                                     @case('draft')
@@ -156,14 +160,15 @@
 
                 {{-- Reviewer Section --}}
                 @if($document->reviewer_id && in_array($document->status, ['pending_review', 'approved', 'rejected']))
-                <div class="px-4 sm:px-6 py-3 border-t border-gray-100">
+                <div class="px-4 sm:px-6 py-3 border-t border-gray-100 dark:border-gray-700">
                     <div class="flex items-center gap-3">
-                        <div class="w-8 h-8 rounded-lg bg-gray-50 flex items-center justify-center">
-                            <x-heroicon-m-user class="w-4 h-4 text-gray-600" />
+                        <div class="w-8 h-8 rounded-lg bg-gray-50 dark:bg-gray-700 flex items-center justify-center">
+                            <x-heroicon-m-user class="w-4 h-4 text-gray-600 dark:text-gray-400" />
                         </div>
                         <div class="flex flex-col">
-                            <span class="text-sm font-medium text-gray-900">Reviewer</span>
-                            <span class="text-sm text-gray-500">{{ $document->reviewer->name }}</span>
+                            <span class="text-sm font-medium text-gray-900 dark:text-white">Reviewer</span>
+                            <span class="text-sm text-gray-500 dark:text-gray-400">{{ $document->reviewer->name
+                                }}</span>
                         </div>
                     </div>
                 </div>
@@ -171,13 +176,13 @@
             </div>
 
             <!-- Upload Section -->
-            <div class="bg-white rounded-xl shadow-sm ring-1 ring-gray-100">
+            <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm ring-1 ring-gray-100 dark:ring-gray-700">
                 <div class="px-4 sm:px-6 py-4 sm:py-5">
                     <div class="flex flex-col sm:flex-row sm:items-center gap-3 mb-4">
-                        <div class="w-8 h-8 rounded-lg bg-gray-50 flex items-center justify-center">
-                            <x-heroicon-m-arrow-up-tray class="w-4 h-4 text-gray-600" />
+                        <div class="w-8 h-8 rounded-lg bg-gray-50 dark:bg-gray-700 flex items-center justify-center">
+                            <x-heroicon-m-arrow-up-tray class="w-4 h-4 text-gray-600 dark:text-gray-400" />
                         </div>
-                        <h4 class="text-sm font-medium text-gray-900">Upload New Document</h4>
+                        <h4 class="text-sm font-medium text-gray-900 dark:text-white">Upload New Document</h4>
                     </div>
 
                     <form wire:submit="uploadDocument" class="space-y-4">
@@ -205,24 +210,26 @@
                     @foreach($document->submittedDocuments->sortByDesc('created_at') as $submission)
                     <!-- Document Item -->
                     <div
-                        class="group flex items-center gap-2 sm:gap-4 p-2 sm:p-3 bg-gray-50/50 rounded-lg hover:bg-gray-50 transition-all">
+                        class="group flex items-center gap-2 sm:gap-4 p-2 sm:p-3 bg-gray-50/50 dark:bg-gray-800/50 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-all">
                         <!-- Document Icon -->
                         <div class="flex-shrink-0">
                             <div
-                                class="w-8 h-8 sm:w-10 sm:h-10 rounded-lg bg-white ring-1 ring-gray-100 flex items-center justify-center">
-                                <x-heroicon-o-document-text class="w-4 h-4 sm:w-5 sm:h-5 text-gray-400" />
+                                class="w-8 h-8 sm:w-10 sm:h-10 rounded-lg bg-white dark:bg-gray-800 ring-1 ring-gray-100 dark:ring-gray-700 flex items-center justify-center">
+                                <x-heroicon-o-document-text
+                                    class="w-4 h-4 sm:w-5 sm:h-5 text-gray-400 dark:text-gray-500" />
                             </div>
                         </div>
 
                         <!-- Document Info -->
                         <div class="flex-1 min-w-0">
-                            <p class="text-xs sm:text-sm font-medium text-gray-900 truncate">
+                            <p class="text-xs sm:text-sm font-medium text-gray-900 dark:text-white truncate">
                                 {{ basename($submission->file_path) }}
                             </p>
                             <div class="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2 mt-0.5">
-                                <span class="text-[11px] sm:text-xs text-gray-500">{{ $submission->user->name }}</span>
-                                <span class="hidden sm:inline text-xs text-gray-300">&bull;</span>
-                                <span class="text-[11px] sm:text-xs text-gray-500">{{
+                                <span class="text-[11px] sm:text-xs text-gray-500 dark:text-gray-400">{{
+                                    $submission->user->name }}</span>
+                                <span class="hidden sm:inline text-xs text-gray-300 dark:text-gray-600">&bull;</span>
+                                <span class="text-[11px] sm:text-xs text-gray-500 dark:text-gray-400">{{
                                     $submission->created_at->diffForHumans() }}</span>
                             </div>
                         </div>
@@ -232,7 +239,7 @@
                             <!-- View Button -->
                             <x-filament::button wire:click="viewDocument({{ $submission->id }})"
                                 x-on:click="$dispatch('open-modal', { id: 'preview-document' })" color="gray" size="xs"
-                                class="opacity-0 group-hover:opacity-100 transition-opacity hover:bg-gray-100">
+                                class="opacity-0 group-hover:opacity-100 transition-opacity hover:bg-gray-100 dark:hover:bg-gray-700">
                                 <div class="inline-flex items-center gap-1 sm:gap-2">
                                     <x-heroicon-m-eye class="w-3.5 h-3.5 sm:w-4 sm:h-4" />
                                     <span class="hidden sm:inline font-medium">View</span>
@@ -244,7 +251,7 @@
                             <x-filament::button
                                 x-on:click="$dispatch('open-modal', { id: 'delete-document-{{ $submission->id }}' })"
                                 color="danger" size="xs"
-                                class="opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-100">
+                                class="opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-100 dark:hover:bg-red-900">
                                 <div class="inline-flex items-center gap-1 sm:gap-2">
                                     <x-heroicon-m-trash class="w-3.5 h-3.5 sm:w-4 sm:h-4" />
                                     <span class="hidden sm:inline font-medium">Remove</span>
@@ -256,20 +263,21 @@
                                 <x-slot name="header">
                                     <div class="flex items-center gap-3">
                                         <div
-                                            class="flex-shrink-0 w-10 h-10 rounded-full bg-red-50 flex items-center justify-center">
-                                            <x-heroicon-o-exclamation-triangle class="w-5 h-5 text-red-500" />
+                                            class="flex-shrink-0 w-10 h-10 rounded-full bg-red-50 dark:bg-red-900 flex items-center justify-center">
+                                            <x-heroicon-o-exclamation-triangle
+                                                class="w-5 h-5 text-red-500 dark:text-red-400" />
                                         </div>
-                                        <h3 class="text-lg font-medium text-gray-900">
+                                        <h3 class="text-lg font-medium text-gray-900 dark:text-white">
                                             Delete Document
                                         </h3>
                                     </div>
                                 </x-slot>
 
                                 <div class="space-y-3">
-                                    <p class="text-sm text-gray-500">
+                                    <p class="text-sm text-gray-500 dark:text-gray-400">
                                         Are you sure you want to delete this document? This action cannot be undone.
                                     </p>
-                                    <p class="text-sm font-medium text-gray-700">
+                                    <p class="text-sm font-medium text-gray-700 dark:text-gray-300">
                                         {{ basename($submission->file_path) }}
                                     </p>
                                 </div>
@@ -302,11 +310,11 @@
                 @if($document->submittedDocuments->count() > 3)
                 <div class="lg:hidden text-center mt-2">
                     <button x-show="!showMore" x-on:click="showMore = true"
-                        class="w-full py-1.5 sm:py-2 text-xs sm:text-sm text-primary-600 hover:text-primary-700 font-medium rounded-lg hover:bg-gray-50 transition-colors">
+                        class="w-full py-1.5 sm:py-2 text-xs sm:text-sm text-primary-600 dark:text-primary-400 hover:text-primary-700 dark:hover:text-primary-300 font-medium rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
                         Show More History
                     </button>
                     <button x-show="showMore" x-on:click="showMore = false"
-                        class="w-full py-1.5 sm:py-2 text-xs sm:text-sm text-primary-600 hover:text-primary-700 font-medium rounded-lg hover:bg-gray-50 transition-colors">
+                        class="w-full py-1.5 sm:py-2 text-xs sm:text-sm text-primary-600 dark:text-primary-400 hover:text-primary-700 dark:hover:text-primary-300 font-medium rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
                         Show Less
                     </button>
                 </div>
@@ -318,18 +326,20 @@
 
     <!-- Right Section: Comments -->
     <div
-        class="order-2 lg:order-2 lg:w-[400px] border-t lg:border-t-0 lg:border-l border-gray-100 flex flex-col bg-white">
+        class="order-2 lg:order-2 lg:w-[400px] border-t lg:border-t-0 lg:border-l border-gray-100 dark:border-gray-700 flex flex-col bg-white dark:bg-gray-900">
         <!-- Comments Header -->
-        <div class="sticky top-0 z-10 flex items-center p-4 sm:p-6 border-b border-gray-100 bg-white min-h-[76px]">
+        <div
+            class="sticky top-0 z-10 flex items-center p-4 sm:p-6 border-b border-gray-100 dark:border-gray-700 bg-white dark:bg-gray-900 min-h-[76px]">
             <div class="flex items-center gap-3">
                 <div
-                    class="flex-shrink-0 flex items-center justify-center w-10 sm:w-12 h-10 sm:h-12 rounded-xl bg-primary-50/50 ring-1 ring-primary-100">
-                    <x-heroicon-m-chat-bubble-left-right class="w-5 sm:w-6 h-5 sm:h-6 text-primary-600" />
+                    class="flex-shrink-0 flex items-center justify-center w-10 sm:w-12 h-10 sm:h-12 rounded-xl bg-primary-50/50 dark:bg-primary-900/20 ring-1 ring-primary-100 dark:ring-primary-800">
+                    <x-heroicon-m-chat-bubble-left-right
+                        class="w-5 sm:w-6 h-5 sm:h-6 text-primary-600 dark:text-primary-400" />
                 </div>
                 <div class="flex items-center gap-2">
-                    <h3 class="text-base sm:text-xl font-semibold text-gray-900">Comments</h3>
+                    <h3 class="text-base sm:text-xl font-semibold text-gray-900 dark:text-white">Comments</h3>
                     <span
-                        class="inline-flex items-center justify-center px-2.5 py-0.5 text-xs font-medium bg-primary-50 text-primary-600 rounded-full">
+                        class="inline-flex items-center justify-center px-2.5 py-0.5 text-xs font-medium bg-primary-50 dark:bg-primary-900 text-primary-600 dark:text-primary-400 rounded-full">
                         {{ $document->comments()->count() }}
                     </span>
                 </div>
@@ -337,18 +347,21 @@
         </div>
 
         <!-- Comments List -->
-        <div class="flex-1 p-4 sm:p-6 overflow-y-auto bg-gray-50/50">
+        <!-- Comments List -->
+        <div class="flex-1 p-4 sm:p-6 overflow-y-auto bg-gray-50/50 dark:bg-gray-900/50">
             <div class="space-y-6">
                 @forelse($document->comments()->orderBy('created_at', 'desc')->get() as $comment)
                 <div class="flex gap-4 group">
                     <div class="flex-shrink-0">
                         <div @class([ 'w-8 h-8 rounded-lg flex items-center justify-center'
-                            , 'bg-primary-50 ring-1 ring-primary-100'=> $comment->user_id === auth()->id(),
-                            'bg-gray-100 ring-1 ring-gray-200' => $comment->user_id !== auth()->id(),
+                            , 'bg-primary-50 dark:bg-primary-900 ring-1 ring-primary-100 dark:ring-primary-800'=>
+                            $comment->user_id === auth()->id(),
+                            'bg-gray-100 dark:bg-gray-800 ring-1 ring-gray-200 dark:ring-gray-700' => $comment->user_id
+                            !== auth()->id(),
                             ])>
-                            <span @class([ 'text-xs font-medium' , 'text-primary-600'=> $comment->user_id ===
-                                auth()->id(),
-                                'text-gray-600' => $comment->user_id !== auth()->id(),
+                            <span @class([ 'text-xs font-medium' , 'text-primary-600 dark:text-primary-400'=>
+                                $comment->user_id === auth()->id(),
+                                'text-gray-600 dark:text-gray-400' => $comment->user_id !== auth()->id(),
                                 ])>
                                 {{ substr($comment->user->name ?? 'U', 0, 1) }}
                             </span>
@@ -356,63 +369,66 @@
                     </div>
 
                     <div class="flex-1 min-w-0">
-                        <div @class([ 'bg-white rounded-lg px-4 py-3 shadow-sm ring-1 transition-all'
-                            , 'ring-primary-100 hover:ring-primary-200'=> $comment->user_id === auth()->id(),
-                            'ring-gray-100 hover:ring-gray-200' => $comment->user_id !== auth()->id(),
+                        <div @class([ 'bg-white dark:bg-gray-800 rounded-lg px-4 py-3 shadow-sm ring-1 transition-all'
+                            , 'ring-primary-100 dark:ring-primary-800 hover:ring-primary-200 dark:hover:ring-primary-700'=>
+                            $comment->user_id === auth()->id(),
+                            'ring-gray-100 dark:ring-gray-700 hover:ring-gray-200 dark:hover:ring-gray-600' =>
+                            $comment->user_id !== auth()->id(),
                             ])>
                             <div class="flex items-center justify-between gap-2">
                                 <div class="flex items-center gap-2">
-                                    <span class="text-sm font-medium text-gray-900">
+                                    <span class="text-sm font-medium text-gray-900 dark:text-white">
                                         {{ $comment->user->name ?? 'Unknown User' }}
                                     </span>
                                     @if($comment->user_id === auth()->id())
                                     <span
-                                        class="text-xs font-medium text-primary-600 bg-primary-50 px-1.5 py-0.5 rounded">
+                                        class="text-xs font-medium text-primary-600 dark:text-primary-400 bg-primary-50 dark:bg-primary-900/50 px-1.5 py-0.5 rounded">
                                         You
                                     </span>
                                     @endif
                                 </div>
                                 <div class="flex items-center gap-2">
-                                    <span class="text-xs text-gray-400">
+                                    <span class="text-xs text-gray-400 dark:text-gray-500">
                                         {{ $comment->created_at->diffForHumans() }}
                                     </span>
                                     @if($comment->user_id === auth()->id())
-                                        <div class="relative" x-data="{ isOpen: false }">
-                                            <!-- Menu Button -->
-                                            <button @click="isOpen = !isOpen" @click.away="isOpen = false"
-                                                class="opacity-0 group-hover:opacity-100 transition-opacity text-gray-400 hover:text-gray-600">
-                                                <x-heroicon-m-ellipsis-vertical class="w-4 h-4" />
-                                            </button>
+                                    <div class="relative" x-data="{ isOpen: false }">
+                                        <!-- Menu Button -->
+                                        <button @click="isOpen = !isOpen" @click.away="isOpen = false"
+                                            class="opacity-0 group-hover:opacity-100 transition-opacity text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-400">
+                                            <x-heroicon-m-ellipsis-vertical class="w-4 h-4" />
+                                        </button>
 
-                                            <!-- Dropdown Menu -->
-                                            <div x-show="isOpen" x-transition:enter="transition ease-out duration-100"
-                                                x-transition:enter-start="transform opacity-0 scale-95"
-                                                x-transition:enter-end="transform opacity-100 scale-100"
-                                                x-transition:leave="transition ease-in duration-75"
-                                                x-transition:leave-start="transform opacity-100 scale-100"
-                                                x-transition:leave-end="transform opacity-0 scale-95"
-                                                class="absolute right-0 z-10 mt-1 w-36 origin-top-right rounded-lg bg-white shadow-lg ring-1 ring-gray-200 focus:outline-none">
-                                                <div class="py-1">
-                                                    <!-- Edit Button -->
-                                                    <button wire:click="editComment({{ $comment->id }})"
-                                                        class="flex w-full items-center gap-2 px-4 py-2 text-sm text-gray-600 hover:bg-gray-50 hover:text-gray-900">
-                                                        <x-heroicon-m-pencil-square class="w-4 h-4" />
-                                                        Edit
-                                                    </button>
+                                        <!-- Dropdown Menu -->
+                                        <div x-show="isOpen" x-transition:enter="transition ease-out duration-100"
+                                            x-transition:enter-start="transform opacity-0 scale-95"
+                                            x-transition:enter-end="transform opacity-100 scale-100"
+                                            x-transition:leave="transition ease-in duration-75"
+                                            x-transition:leave-start="transform opacity-100 scale-100"
+                                            x-transition:leave-end="transform opacity-0 scale-95"
+                                            class="absolute right-0 z-10 mt-1 w-36 origin-top-right rounded-lg bg-white dark:bg-gray-800 shadow-lg ring-1 ring-gray-200 dark:ring-gray-700 focus:outline-none">
+                                            <div class="py-1">
+                                                <!-- Edit Button -->
+                                                <button wire:click="editComment({{ $comment->id }})"
+                                                    class="flex w-full items-center gap-2 px-4 py-2 text-sm text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 hover:text-gray-900 dark:hover:text-white">
+                                                    <x-heroicon-m-pencil-square class="w-4 h-4" />
+                                                    Edit
+                                                </button>
 
-                                                    <!-- Delete Button -->
-                                                    <button wire:click="deleteComment({{ $comment->id }})"
-                                                        class="flex w-full items-center gap-2 px-4 py-2 text-sm text-red-600 hover:bg-red-50">
-                                                        <x-heroicon-m-trash class="w-4 h-4" />
-                                                        Delete
-                                                    </button>
-                                                </div>
+                                                <!-- Delete Button -->
+                                                <button wire:click="deleteComment({{ $comment->id }})"
+                                                    class="flex w-full items-center gap-2 px-4 py-2 text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/30">
+                                                    <x-heroicon-m-trash class="w-4 h-4" />
+                                                    Delete
+                                                </button>
                                             </div>
                                         </div>
+                                    </div>
                                     @endif
                                 </div>
                             </div>
-                            <div class="prose prose-sm max-w-none mt-1 text-gray-600">
+                            <div
+                                class="prose prose-sm dark:prose-invert max-w-none mt-1 text-gray-600 dark:text-gray-300">
                                 {!! $comment->content !!}
                             </div>
                         </div>
@@ -420,22 +436,25 @@
                 </div>
                 @empty
                 <div class="text-center py-12">
-                    <div class="w-12 h-12 mx-auto mb-4 rounded-xl bg-gray-100 flex items-center justify-center">
-                        <x-heroicon-o-chat-bubble-left-right class="w-6 h-6 text-gray-400" />
+                    <div
+                        class="w-12 h-12 mx-auto mb-4 rounded-xl bg-gray-100 dark:bg-gray-800 flex items-center justify-center">
+                        <x-heroicon-o-chat-bubble-left-right class="w-6 h-6 text-gray-400 dark:text-gray-500" />
                     </div>
-                    <h4 class="text-sm font-medium text-gray-900 mb-1">No comments yet</h4>
-                    <p class="text-xs text-gray-500">Be the first to comment on this document</p>
+                    <h4 class="text-sm font-medium text-gray-900 dark:text-white mb-1">No comments yet</h4>
+                    <p class="text-xs text-gray-500 dark:text-gray-400">Be the first to comment on this document</p>
                 </div>
                 @endforelse
             </div>
         </div>
 
         <!-- Comment Input -->
-        <div class="sticky bottom-0 bg-white border-t border-gray-100" x-data="{ showCommentForm: false }">
+        <!-- Comment Input -->
+        <div class="sticky bottom-0 bg-white dark:bg-gray-800 border-t border-gray-100 dark:border-gray-700"
+            x-data="{ showCommentForm: false }">
             <!-- Comment Toggle Button -->
-            <div class="px-4 py-2 border-b border-gray-100">
+            <div class="px-4 py-2 border-b border-gray-100 dark:border-gray-700">
                 <button @click="showCommentForm = !showCommentForm"
-                    class="w-full flex items-center justify-center gap-2 py-1.5 text-sm font-medium text-gray-700 hover:text-gray-900 transition-colors">
+                    class="w-full flex items-center justify-center gap-2 py-1.5 text-sm font-medium text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white transition-colors">
                     <div class="flex items-center gap-2" x-show="!showCommentForm">
                         <x-heroicon-m-chat-bubble-left-right class="w-4 h-4" />
                         <span>Add Comment</span>
@@ -456,14 +475,14 @@
                 x-transition:leave-end="opacity-0 transform translate-y-2" class="p-4">
                 <form wire:submit="addComment">
                     <!-- RichEditor Container with custom styling -->
-                    <div class="bg-white rounded-lg ring-1 ring-gray-200">
-                        <div
-                            class="relative">
+                    <div class="bg-white dark:bg-gray-800 rounded-lg ring-1 ring-gray-200 dark:ring-gray-700">
+                        <div class="relative">
                             {{ $this->createCommentForm }}
                         </div>
 
                         <!-- Button Container -->
-                        <div class="px-3 py-2 border-t border-gray-100 bg-gray-50/50 rounded-b-lg">
+                        <div
+                            class="px-3 py-2 border-t border-gray-100 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-800/50 rounded-b-lg">
                             <div class="flex items-center justify-end gap-2">
                                 <!-- Clear button -->
                                 <x-filament::button wire:click="$set('commentData.newComment', '')" type="button"
@@ -473,7 +492,7 @@
 
                                 <!-- Submit button -->
                                 <x-filament::button type="submit" size="sm" icon="heroicon-m-paper-airplane"
-                                    class="inline-flex items-center bg-gradient-to-r from-amber-600 to-amber-500 hover:from-amber-700 hover:to-amber-600">
+                                    class="inline-flex items-center bg-gradient-to-r from-amber-600 to-amber-500 hover:from-amber-700 hover:to-amber-600 dark:from-amber-500 dark:to-amber-400 dark:hover:from-amber-600 dark:hover:to-amber-500">
                                     <span class="mr-2">Send</span>
                                 </x-filament::button>
                             </div>
@@ -491,21 +510,21 @@
             <div class="flex items-center justify-between w-full">
                 <div class="flex items-center gap-4">
                     <div
-                        class="w-12 h-12 rounded-xl bg-primary-50 flex items-center justify-center ring-1 ring-primary-100">
+                        class="w-12 h-12 rounded-xl bg-primary-50 dark:bg-primary-900/50 flex items-center justify-center ring-1 ring-primary-100 dark:ring-primary-800">
                         @if($fileType === 'pdf')
-                        <x-heroicon-o-document-text class="w-6 h-6 text-primary-600" />
+                        <x-heroicon-o-document-text class="w-6 h-6 text-primary-600 dark:text-primary-400" />
                         @elseif(in_array($fileType, ['jpg', 'jpeg', 'png', 'gif']))
-                        <x-heroicon-o-photo class="w-6 h-6 text-primary-600" />
+                        <x-heroicon-o-photo class="w-6 h-6 text-primary-600 dark:text-primary-400" />
                         @else
-                        <x-heroicon-o-document class="w-6 h-6 text-primary-600" />
+                        <x-heroicon-o-document class="w-6 h-6 text-primary-600 dark:text-primary-400" />
                         @endif
                     </div>
                     @if($previewingDocument)
                     <div>
-                        <h3 class="text-xl font-semibold text-gray-900 leading-tight">
+                        <h3 class="text-xl font-semibold text-gray-900 dark:text-white leading-tight">
                             {{ basename($previewingDocument->file_path) }}
                         </h3>
-                        <p class="text-sm text-gray-500 mt-1">
+                        <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">
                             Uploaded {{ $previewingDocument->created_at->diffForHumans() }}
                         </p>
                     </div>
@@ -519,11 +538,11 @@
                     <x-filament::dropdown placement="bottom-end">
                         <x-slot name="trigger">
                             <x-filament::button size="sm" :color="match($document->status) {
-                                    'pending_review' => 'warning',
-                                    'approved' => 'success',
-                                    'rejected' => 'danger',
-                                    default => 'gray'
-                                }">
+                                'pending_review' => 'warning',
+                                'approved' => 'success',
+                                'rejected' => 'danger',
+                                default => 'gray'
+                            }">
                                 <div class="flex items-center gap-2">
                                     {{-- Status Icon --}}
                                     @switch($document->status)
@@ -585,18 +604,20 @@
         <!-- Preview Content -->
         <div class="p-6">
             @if($previewUrl)
-            <div class="relative rounded-xl overflow-hidden bg-gray-50 ring-1 ring-gray-200">
+            <div
+                class="relative rounded-xl overflow-hidden bg-gray-50 dark:bg-gray-900 ring-1 ring-gray-200 dark:ring-gray-700">
                 @if($fileType === 'pdf')
-                <div class="w-full h-[calc(100vh-16rem)] bg-gray-50">
+                <div class="w-full h-[calc(100vh-16rem)] bg-gray-50 dark:bg-gray-900">
                     <iframe src="{{ $previewUrl }}" class="w-full h-full rounded-lg">
                         <div class="flex flex-col items-center justify-center p-8">
-                            <div class="w-16 h-16 rounded-full bg-primary-50 flex items-center justify-center mb-4">
-                                <x-heroicon-o-document-text class="w-8 h-8 text-primary-600" />
+                            <div
+                                class="w-16 h-16 rounded-full bg-primary-50 dark:bg-primary-900 flex items-center justify-center mb-4">
+                                <x-heroicon-o-document-text class="w-8 h-8 text-primary-600 dark:text-primary-400" />
                             </div>
-                            <h3 class="text-lg font-medium text-gray-900 mb-2 text-center">
+                            <h3 class="text-lg font-medium text-gray-900 dark:text-white mb-2 text-center">
                                 Unable to display PDF
                             </h3>
-                            <p class="text-sm text-gray-500 mb-4 text-center">
+                            <p class="text-sm text-gray-500 dark:text-gray-400 mb-4 text-center">
                                 The PDF viewer is not supported on this device
                             </p>
                             <div class="flex flex-col sm:flex-row gap-2">
@@ -618,19 +639,20 @@
                     </iframe>
                 </div>
                 @elseif(in_array($fileType, ['jpg', 'jpeg', 'png', 'gif']))
-                <div class="relative aspect-video flex items-center justify-center bg-gray-50">
+                <div class="relative aspect-video flex items-center justify-center bg-gray-50 dark:bg-gray-900">
                     <img src="{{ $previewUrl }}" alt="Document Preview"
                         class="max-w-full max-h-[calc(100vh-16rem)] object-contain rounded-lg shadow-sm">
                 </div>
                 @else
                 <div class="flex flex-col items-center justify-center py-16">
-                    <div class="w-16 h-16 rounded-full bg-gray-100 flex items-center justify-center mb-4">
-                        <x-heroicon-o-document class="w-8 h-8 text-gray-400" />
+                    <div
+                        class="w-16 h-16 rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center mb-4">
+                        <x-heroicon-o-document class="w-8 h-8 text-gray-400 dark:text-gray-500" />
                     </div>
-                    <h3 class="text-lg font-medium text-gray-900 mb-2">
+                    <h3 class="text-lg font-medium text-gray-900 dark:text-white mb-2">
                         Preview not available
                     </h3>
-                    <p class="text-sm text-gray-500 mb-4">
+                    <p class="text-sm text-gray-500 dark:text-gray-400 mb-4">
                         This file type cannot be previewed directly in the browser
                     </p>
                     @if($previewingDocument)
@@ -647,10 +669,11 @@
             </div>
             @else
             <div class="flex flex-col items-center justify-center py-16">
-                <div class="w-16 h-16 rounded-full bg-gray-100 flex items-center justify-center animate-pulse">
-                    <x-heroicon-o-document class="w-8 h-8 text-gray-400" />
+                <div
+                    class="w-16 h-16 rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center animate-pulse">
+                    <x-heroicon-o-document class="w-8 h-8 text-gray-400 dark:text-gray-500" />
                 </div>
-                <h3 class="text-lg font-medium text-gray-900 mt-4">
+                <h3 class="text-lg font-medium text-gray-900 dark:text-white mt-4">
                     Loading preview...
                 </h3>
             </div>

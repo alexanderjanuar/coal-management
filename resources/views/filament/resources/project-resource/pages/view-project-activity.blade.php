@@ -191,8 +191,6 @@
                 labelBgClass="bg-gray-200 dark:bg-gray-600 text-gray-800 dark:text-gray-300" timeFormat="long"
                 emptyMessage="No older activities"
                 emptyDescription="There are no recorded activities older than yesterday." />
-
-            
         </div>
 
 

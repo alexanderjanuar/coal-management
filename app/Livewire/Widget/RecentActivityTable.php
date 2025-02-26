@@ -100,7 +100,6 @@ class RecentActivityTable extends Component implements HasForms, HasTable
 
                 Tables\Columns\TextColumn::make('description')
                     ->label('Action')
-                    ->searchable()
                     ->formatStateUsing(function ($state) {
                         return ucfirst($state);
                     }),
@@ -142,8 +141,7 @@ class RecentActivityTable extends Component implements HasForms, HasTable
                         }
 
                         return 'N/A';
-                    })
-                    ->searchable(),
+                    }),
                     
                 Tables\Columns\TextColumn::make('created_at')
                     ->label('Time')
@@ -153,70 +151,6 @@ class RecentActivityTable extends Component implements HasForms, HasTable
                         return $record->created_at->format('Y-m-d H:i:s');
                     })
                     ->sortable(),
-            ])
-            ->filters([
-                // Date range filter using proper Filter object instead of property
-                Tables\Filters\SelectFilter::make('date_filter')
-                    ->label('Date Range')
-                    ->options([
-                        'today' => 'Today',
-                        'week' => 'This Week',
-                        'month' => 'This Month',
-                        'year' => 'This Year',
-                        'all' => 'All Time',
-                    ])
-                    ->default('today')
-                    ->query(function (Builder $query, array $data): Builder {
-                        return $query->when($data['value'], function (Builder $query, string $value): Builder {
-                            switch ($value) {
-                                case 'today':
-                                    return $query->whereDate('created_at', Carbon::today());
-                                case 'week':
-                                    return $query->where('created_at', '>=', Carbon::now()->startOfWeek());
-                                case 'month':
-                                    return $query->where('created_at', '>=', Carbon::now()->startOfMonth());
-                                case 'year':
-                                    return $query->where('created_at', '>=', Carbon::now()->startOfYear());
-                                case 'all':
-                                    return $query; // No date filtering
-                                default:
-                                    return $query->whereDate('created_at', Carbon::today()); // Default to today
-                            }
-                        });
-                    })
-                    ->indicateUsing(function (array $data): ?string {
-                        if (!$data['value']) {
-                            return null;
-                        }
-
-                        $labels = [
-                            'today' => 'Today',
-                            'week' => 'This Week',
-                            'month' => 'This Month',
-                            'year' => 'This Year',
-                            'all' => 'All Time',
-                        ];
-
-                        return 'Date: ' . ($labels[$data['value']] ?? $data['value']);
-                    }),
-
-                Tables\Filters\SelectFilter::make('description')
-                    ->label('Action Type')
-                    ->options(function () {
-                        // Get unique activity descriptions from the database
-                        $descriptions = Activity::distinct()
-                            ->pluck('description')
-                            ->filter()
-                            ->mapWithKeys(function ($item) {
-                            return [
-                                $item => ucfirst($item)
-                            ];
-                        })
-                            ->toArray();
-
-                        return $descriptions;
-                    })
-                    ->attribute('description'),
             ])
             ->actions([
                 Tables\Actions\Action::make('view')

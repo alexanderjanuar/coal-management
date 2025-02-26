@@ -10,8 +10,8 @@ use Illuminate\Support\Facades\DB;
 class ProjectReportChart extends ApexChartWidget
 {
     protected static ?string $chartId = 'ProjectReportChart';
-    protected static ?string $heading = 'Project Creation Timeline';
-    protected static ?string $subheading = 'Number of projects created over time';
+    protected static ?string $heading = 'Project Completed Timeline';
+    protected static ?string $subheading = 'Number of projects completed over time';
 
     public ?string $filter = 'month';
 

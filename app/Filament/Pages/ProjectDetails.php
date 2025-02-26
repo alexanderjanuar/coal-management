@@ -10,8 +10,8 @@ use Filament\Forms\Form;
 use Filament\Forms\Contracts\HasForms;
 use Filament\Forms\Concerns\InteractsWithForms;
 use Livewire\Attributes\Computed;
-
-
+use Filament\Notifications\Notification;
+use Illuminate\Support\Facades\DB;
 
 class ProjectDetails extends Page implements HasForms
 {
@@ -23,7 +23,6 @@ class ProjectDetails extends Page implements HasForms
 
     protected static string $view = 'filament.pages.project-details';
     protected static bool $shouldRegisterNavigation = false;
-
 
     public ?string $comment = '';
 
@@ -90,5 +89,75 @@ class ProjectDetails extends Page implements HasForms
 
         // Calculate percentage (average of tasks and documents progress)
         return ($completedWeight / $totalWeight) * 100;
+    }
+
+    /**
+     * Check if the project is of type "yearly"
+     */
+    public function isYearlyProject(): bool
+    {
+        return $this->record->type === 'yearly';
+    }
+
+    /**
+     * Convert project to Nihil status
+     */
+    public function convertToNihil(): void
+    {
+        try {
+            // Start a database transaction
+            DB::beginTransaction();
+            
+            // 1. Delete steps 1-3
+            $stepsToDelete = $this->record->steps()
+                ->whereIn('order', [1, 2, 3])
+                ->get();
+                
+            foreach ($stepsToDelete as $step) {
+                // Delete related tasks
+                $step->tasks()->delete();
+                
+                // Delete related documents
+                $requiredDocs = $step->requiredDocuments;
+                foreach ($requiredDocs as $doc) {
+                    // Delete submitted documents for each required document
+                    $doc->submittedDocuments()->delete();
+                    $doc->delete();
+                }
+                
+                // Delete the step
+                $step->delete();
+            }
+            
+            // 2. Update project name to add (Nihil)
+            if (!str_contains($this->record->name, '(Nihil)')) {
+                $this->record->name = $this->record->name . ' (Nihil)';
+                $this->record->save();
+            }
+            
+            // Commit the transaction
+            DB::commit();
+            
+            // Show success notification
+            Notification::make()
+                ->title('Success')
+                ->body('Project has been converted to Nihil status successfully.')
+                ->success()
+                ->send();
+                
+            // Refresh the page to show changes
+            $this->redirect(request()->header('Referer'));
+            
+        } catch (\Exception $e) {
+            // Rollback in case of error
+            DB::rollBack();
+            
+            // Show error notification
+            Notification::make()
+                ->title('Error')
+                ->body('Failed to convert project to Nihil status: ' . $e->getMessage())
+                ->danger()
+                ->send();
+        }
     }
 }

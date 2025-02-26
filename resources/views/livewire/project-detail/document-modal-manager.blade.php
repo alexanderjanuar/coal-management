@@ -16,20 +16,23 @@
                 <div class="min-w-0 space-y-1">
                     <!-- Project & Client Info -->
                     <div class="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400">
-                        <span class="font-medium text-primary-600 dark:text-primary-400">
+                        <a href="{{ route('filament.admin.resources.clients.view', $document->projectStep->project->client->id) }}" 
+                           class="font-medium text-primary-600 dark:text-primary-400 hover:text-primary-700 dark:hover:text-primary-300 hover:underline transition-colors">
                             {{ $document->projectStep->project->client->name }}
-                        </span>
+                        </a>
                         <span>&bull;</span>
-                        <span class="truncate">
+                        <a href="{{ route('filament.admin.resources.projects.view', $document->projectStep->project->id) }}"
+                           class="truncate hover:text-gray-700 dark:hover:text-gray-300 hover:underline transition-colors">
                             {{ $document->projectStep->project->name }}
-                        </span>
+                        </a>
                     </div>
         
                     <!-- Document Name & Step -->
                     <div class="flex items-center gap-2">
-                        <h3 class="text-base sm:text-xl font-semibold text-gray-900 dark:text-white leading-tight truncate">
+                        <a href="{{ route('filament.admin.resources.projects.view', $document->projectStep->project->id) }}" 
+                           class="text-base sm:text-xl font-semibold text-gray-900 dark:text-white leading-tight truncate hover:text-primary-600 dark:hover:text-primary-400 hover:underline transition-colors">
                             {{ $document->name }}
-                        </h3>
+                        </a>
                         <span class="inline-flex items-center px-2 py-1 text-xs font-medium rounded-md bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300">
                             Step {{ $document->projectStep->order }}
                         </span>
