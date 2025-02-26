@@ -150,7 +150,7 @@
         </div>
 
         <!-- Activity Timeline -->
-        <div
+        {{-- <div
             class="bg-white dark:bg-gray-800 rounded-xl shadow-md border border-gray-100 dark:border-gray-700 overflow-hidden transition-colors">
             <div
                 class="border-b border-gray-200 dark:border-gray-700 px-4 md:px-6 py-4 flex flex-col md:flex-row md:items-center justify-between gap-3">
@@ -198,7 +198,7 @@
             </div>
 
             <!-- Today's Activities -->
-            {{-- <x-activity-group :activities="$activities->where('created_at', '>=', today())" title="Today"
+            <x-activity-group :activities="$activities->where('created_at', '>=', today())" title="Today"
                 subtitle="{{ now()->format('F j, Y') }}"
                 labelBgClass="bg-primary-100 dark:bg-primary-900 text-primary-800 dark:text-primary-300"
                 timeFormat="short" emptyMessage="No activities today"
@@ -217,7 +217,7 @@
                 subtitle="Prior to {{ now()->subDay()->format('F j, Y') }}"
                 labelBgClass="bg-gray-200 dark:bg-gray-600 text-gray-800 dark:text-gray-300" timeFormat="long"
                 emptyMessage="No older activities"
-                emptyDescription="There are no recorded activities older than yesterday." /> --}}
+                emptyDescription="There are no recorded activities older than yesterday." />
 
             <!-- Empty state if no activities at all -->
             @if(count($activities) === 0)
@@ -249,7 +249,7 @@
                 </div>
             </div>
             @endif
-        </div>
+        </div> --}}
 
 
 
