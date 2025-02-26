@@ -192,7 +192,7 @@
                 emptyMessage="No older activities"
                 emptyDescription="There are no recorded activities older than yesterday." />
 
-            {{-- <!-- Empty state if no activities at all -->
+            <!-- Empty state if no activities at all -->
             @if(count($activities) === 0)
             <div class="py-12 md:py-16 flex items-center justify-center">
                 <div class="text-center max-w-md px-4">
@@ -221,7 +221,7 @@
                     </div>
                 </div>
             </div>
-            @endif --}}
+            @endif
         </div>
 
 
