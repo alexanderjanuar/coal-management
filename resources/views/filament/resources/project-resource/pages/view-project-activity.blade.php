@@ -152,7 +152,7 @@
         <!-- Activity Timeline -->
         <div
             class="bg-white dark:bg-gray-800 rounded-xl shadow-md border border-gray-100 dark:border-gray-700 overflow-hidden transition-colors">
-            {{-- <div
+            <div
                 class="border-b border-gray-200 dark:border-gray-700 px-4 md:px-6 py-4 flex flex-col md:flex-row md:items-center justify-between gap-3">
                 <div>
                     <h3 class="text-lg font-medium text-gray-900 dark:text-white flex items-center">
@@ -168,7 +168,7 @@
                 </div>
 
 
-            </div> --}}
+            </div>
 
             <!-- Today's Activities -->
             <x-activity-group :activities="$activities->where('created_at', '>=', today())" title="Today"
