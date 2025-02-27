@@ -347,7 +347,6 @@
         </div>
 
         <!-- Comments List -->
-        <!-- Comments List -->
         <div class="flex-1 p-4 sm:p-6 overflow-y-auto bg-gray-50/50 dark:bg-gray-900/50">
             <div class="space-y-6">
                 @forelse($document->comments()->orderBy('created_at', 'desc')->get() as $comment)

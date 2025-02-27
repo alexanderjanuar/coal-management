@@ -5,13 +5,16 @@ namespace App\Livewire\ProjectDetail;
 use Livewire\Component;
 use App\Models\RequiredDocument;
 use App\Models\SubmittedDocument;
+use App\Models\Comment;
 use Filament\Forms\Components\FileUpload;
+use Filament\Forms\Components\RichEditor;
 use Filament\Forms\Concerns\InteractsWithForms;
 use Filament\Forms\Contracts\HasForms;
 use Filament\Forms\Form;
 use Filament\Notifications\Notification;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
+use Asmit\FilamentMention\Forms\Components\RichMentionEditor;
 
 class DocumentModalManager extends Component implements HasForms
 {
@@ -25,6 +28,8 @@ class DocumentModalManager extends Component implements HasForms
 
     public RequiredDocument $document;
     public ?array $FormData = [];
+    public ?array $data = [];
+    public ?int $editingCommentId = null;
 
     // Document Preview Properties
     public $previewingDocument = null;
@@ -34,6 +39,7 @@ class DocumentModalManager extends Component implements HasForms
     public function mount(): void
     {
         $this->uploadFileForm->fill();
+        $this->createCommentForm->fill();
     }
 
     public function openDocumentModal($documentId)
@@ -41,12 +47,15 @@ class DocumentModalManager extends Component implements HasForms
         $this->dispatch('close-modal', id: 'database-notifications');
         $this->dispatch('open-modal', id: 'documentModal');
         $this->document = RequiredDocument::find($documentId);
+        $this->uploadFileForm->fill();
+        $this->createCommentForm->fill();
     }
 
     protected function getForms(): array
     {
         return [
             'uploadFileForm',
+            'createCommentForm',
         ];
     }
 
@@ -73,6 +82,9 @@ class DocumentModalManager extends Component implements HasForms
                     ->preserveFilenames()
                     ->disk('public')
                     ->directory(function () {
+                        if (!isset($this->document)) {
+                            return "clients/temp";
+                        }
                         $clientName = Str::slug($this->document->projectStep->project->client->name);
                         $projectName = Str::slug($this->document->projectStep->project->name);
                         return "clients/{$clientName}/{$projectName}";
@@ -89,6 +101,29 @@ class DocumentModalManager extends Component implements HasForms
             ->statePath('FormData');
     }
 
+    public function createCommentForm(Form $form): Form
+    {
+        return $form
+            ->schema([
+                RichMentionEditor::make('newComment')
+                    ->lookupKey('name')
+                    ->label('')
+                    ->toolbarButtons([
+                        'attachFiles',
+                        'bold',
+                        'bulletList',
+                        'h2',
+                        'link',
+                        'orderedList',
+                        'underline',
+                    ])
+                    ->extraInputAttributes(['style' => 'font-size:14px'])
+                    ->placeholder('Write your comment here...')
+                    ->required()
+            ])
+            ->statePath('data');
+    }
+
     public function uploadDocument(): void
     {
         $data = $this->uploadFileForm->getState();
@@ -99,8 +134,11 @@ class DocumentModalManager extends Component implements HasForms
             'file_path' => $data['document'],
         ]);
 
-        $this->document->status = 'uploaded';
-        $this->document->save();
+        // Update document status if it's the first upload
+        if ($this->document->status === 'draft') {
+            $this->document->status = 'uploaded';
+            $this->document->save();
+        }
 
         $this->uploadFileForm->fill();
         $this->dispatch('refresh');
@@ -108,6 +146,162 @@ class DocumentModalManager extends Component implements HasForms
 
         Notification::make()
             ->title('Document uploaded successfully')
+            ->success()
+            ->send();
+    }
+
+    public function addComment(): void
+    {
+        $data = $this->createCommentForm->getState();
+
+        if ($this->editingCommentId) {
+            // Update existing comment
+            $comment = Comment::findOrFail($this->editingCommentId);
+
+            if ($comment->user_id !== auth()->id()) {
+                throw new \Exception('Unauthorized action.');
+            }
+
+            $comment->update([
+                'content' => $data['newComment']
+            ]);
+
+            $this->editingCommentId = null; // Reset editing state
+            $this->processMentions($comment, $data['newComment']);
+        } else {
+            // Create new comment
+            $comment = Comment::create([
+                'user_id' => auth()->id(),
+                'commentable_type' => RequiredDocument::class,
+                'commentable_id' => $this->document->id,
+                'content' => $data['newComment'],
+                'status' => 'approved'
+            ]);
+            $this->processMentions($comment, $data['newComment']);
+        }
+
+        // Reset form and refresh
+        $this->createCommentForm->fill();
+        $this->dispatch('refresh');
+
+        // Send notification
+        $plainContent = strip_tags($comment->content);
+        $truncatedContent = Str::limit($plainContent, 100);
+
+        $this->sendProjectNotifications(
+            $this->editingCommentId ? "Comment Updated" : "New Comment",
+            sprintf(
+                "<span style='color: #f59e0b; font-weight: 500;'>%s</span><br><strong>Document:</strong> %s<br><strong>Comment:</strong> %s<br><strong>By:</strong> %s",
+                $this->document->projectStep->project->client->name,
+                $this->document->name,
+                $truncatedContent,
+                auth()->user()->name
+            ),
+            'info',
+            'View Comment',
+            'comment'
+        );
+
+
+    }
+
+    /**
+     * Process user mentions in comment and send notifications
+     * 
+     * @param Comment $comment
+     * @param string $content
+     * @return void
+     */
+    protected function processMentions(Comment $comment, string $content): void
+    {
+        // Extract user IDs from href links in format <a href="...admin/users/{id}">@Username</a>
+        preg_match_all('/<a href="[^"]*\/users\/(\d+)"[^>]*>@([^<]+)<\/a>/', $content, $matches, PREG_SET_ORDER);
+
+        if (empty($matches)) {
+            return;
+        }
+
+        $projectName = $this->document->projectStep->project->name;
+        $documentName = $this->document->name;
+        $clientName = $this->document->projectStep->project->client->name;
+
+        // Process each mentioned user
+        foreach ($matches as $match) {
+            $userId = $match[1];
+            $userName = $match[2];
+
+            // Skip if the mentioned user is the comment author
+            if ((int) $userId === auth()->id()) {
+                continue;
+            }
+
+            // Find the mentioned user
+            $user = \App\Models\User::find($userId);
+
+            if (!$user) {
+                continue;
+            }
+
+            // Send a mention notification to the user
+            Notification::make()
+                ->title('You were mentioned in a comment')
+                ->body(sprintf(
+                    '<strong>%s</strong> mentioned you in a comment on document <strong>%s</strong> for project <strong>%s</strong> (%s)',
+                    auth()->user()->name,
+                    $documentName,
+                    $projectName,
+                    $clientName
+                ))
+                ->icon('heroicon-o-at-symbol')
+                ->actions([
+                    \Filament\Notifications\Actions\Action::make('view')
+                        ->label('View Comment')
+                        ->dispatch('openDocumentModal', [$this->document->id])
+                        ->markAsRead(),
+                ])
+                ->color('warning')
+                ->sendToDatabase($user)
+                ->broadcast($user);
+        }
+    }
+
+    public function editComment(int $commentId): void
+    {
+        $comment = Comment::findOrFail($commentId);
+
+        if ($comment->user_id !== auth()->id()) {
+            Notification::make()
+                ->title('Unauthorized action')
+                ->danger()
+                ->send();
+            return;
+        }
+
+        $this->editingCommentId = $commentId;
+        $this->createCommentForm->fill([
+            'comment' => $comment->content
+        ]);
+
+        $this->dispatch('showCommentForm');
+    }
+
+    public function deleteComment(int $commentId): void
+    {
+        $comment = Comment::findOrFail($commentId);
+
+        if ($comment->user_id !== auth()->id()) {
+            Notification::make()
+                ->title('Unauthorized action')
+                ->danger()
+                ->send();
+            return;
+        }
+
+        $comment->delete();
+        $this->dispatch('refresh');
+
+        Notification::make()
+            ->title('Comment deleted')
             ->success()
             ->send();
     }
@@ -140,6 +334,9 @@ class DocumentModalManager extends Component implements HasForms
                     'reviewer_id' => auth()->id(),
                     'reviewed_at' => now()
                 ]);
+
+                // Add system comment about status change
+                $this->createStatusChangeComment('uploaded', 'pending_review');
             }
         } catch (\Exception $e) {
             Notification::make()
@@ -152,6 +349,21 @@ class DocumentModalManager extends Component implements HasForms
             $this->previewUrl = null;
             $this->isPreviewModalOpen = false;
         }
+    }
+
+    protected function createStatusChangeComment(string $oldStatus, string $newStatus): void
+    {
+        Comment::create([
+            'user_id' => auth()->id(),
+            'commentable_type' => RequiredDocument::class,
+            'commentable_id' => $this->document->id,
+            'content' => sprintf(
+                "Status changed from <strong>%s</strong> to <strong>%s</strong>",
+                ucwords(str_replace('_', ' ', $oldStatus)),
+                ucwords(str_replace('_', ' ', $newStatus))
+            ),
+            'status' => 'approved'
+        ]);
     }
 
     public function downloadDocument($documentId)
@@ -216,7 +428,8 @@ class DocumentModalManager extends Component implements HasForms
         $this->document->status = $status;
         $this->document->save();
 
-
+        // Create a system comment for the status change
+        $this->createStatusChangeComment($oldStatus, $status);
 
         $this->dispatch('refresh');
 
@@ -353,6 +566,14 @@ class DocumentModalManager extends Component implements HasForms
             return null;
         }
         return strtolower(pathinfo($this->previewingDocument->file_path, PATHINFO_EXTENSION));
+    }
+
+    public function handleDocumentUploaded(int $documentId): void
+    {
+        // Refresh the document if we have it loaded
+        if (isset($this->document) && $this->document->id == $documentId) {
+            $this->document->refresh();
+        }
     }
 
     public function render()
