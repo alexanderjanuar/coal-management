@@ -95,21 +95,21 @@ class ProjectsStatsOverview extends BaseWidget
             Stat::make('Total Projects', (string) $currentTotal)
                 ->description($totalChange . '% vs last month')
                 ->descriptionIcon($totalChange >= 0 ? 'heroicon-m-arrow-trending-up' : 'heroicon-m-arrow-trending-down')
-                ->color($totalChange >= 0 ? 'gray' : 'danger')
+                ->color($totalChange >= 0 ? 'warning' : 'danger')
                 ->icon('heroicon-o-document-text')
                 ->chart($chartData->pluck('total')->toArray()),
 
             Stat::make('Active Projects', (string) $currentActive)
                 ->description($activeChange . '% vs last month')
                 ->descriptionIcon($activeChange >= 0 ? 'heroicon-m-arrow-trending-up' : 'heroicon-m-arrow-trending-down')
-                ->color($activeChange >= 0 ? 'info' : 'danger')
+                ->color($activeChange >= 0 ? 'warning' : 'danger')
                 ->icon('heroicon-o-play')
                 ->chart($chartData->pluck('active')->toArray()),
 
             Stat::make('Completed', (string) $currentCompleted)
                 ->description($completedChange . '% vs last month')
                 ->descriptionIcon($completedChange >= 0 ? 'heroicon-m-arrow-trending-up' : 'heroicon-m-arrow-trending-down')
-                ->color($completedChange >= 0 ? 'success' : 'danger')
+                ->color($completedChange >= 0 ? 'warning' : 'danger')
                 ->icon('heroicon-o-check-circle')
                 ->chart($chartData->pluck('completed')->toArray()),
 
