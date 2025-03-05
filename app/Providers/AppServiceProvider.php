@@ -34,15 +34,15 @@ class AppServiceProvider extends ServiceProvider
         // DatabaseNotifications::trigger('filament.notifications.database-notifications-trigger');
 
 
-        // FilamentView::registerRenderHook(
-        //     PanelsRenderHook::BODY_END,
-        //     fn(): string => Blade::render('@livewire(\'project-detail.document-modal-manager\')'),
-        // );
+        FilamentView::registerRenderHook(
+            PanelsRenderHook::BODY_END,
+            fn(): string => Blade::render('@livewire(\'project-detail.document-modal-manager\')'),
+        );
 
-        // FilamentView::registerRenderHook(
-        //     PanelsRenderHook::GLOBAL_SEARCH_BEFORE,
-        //     fn(): string => Blade::render('@livewire(\'notification.notification-button\')'),
-        // );
+        FilamentView::registerRenderHook(
+            PanelsRenderHook::GLOBAL_SEARCH_BEFORE,
+            fn(): string => Blade::render('@livewire(\'notification.notification-button\')'),
+        );
 
 
     }
