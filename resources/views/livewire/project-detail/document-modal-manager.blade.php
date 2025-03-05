@@ -189,8 +189,7 @@
                     </div>
 
                     <!-- Document History -->
-                    <!-- Document History -->
-                    @if(isset($document) && $document->submittedDocuments->count() > 0)
+                    @if($document->submittedDocuments->count() > 0)
                     <div
                         class="bg-white dark:bg-gray-800 rounded-xl shadow-sm ring-1 ring-gray-200 dark:ring-gray-700 overflow-hidden">
                         <div class="px-4 sm:px-6 py-4">
@@ -205,7 +204,8 @@
                                         <h4 class="text-sm font-medium text-gray-900 dark:text-white">Document History
                                         </h4>
                                         <p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">All uploaded
-                                            documents</p>
+                                            documents
+                                        </p>
                                     </div>
                                 </div>
 
@@ -224,132 +224,100 @@
 
                             <!-- Status Groups Container -->
                             <div class="space-y-5">
-                                @php
-                                $groupedDocuments = $sortedDocuments->groupBy('status');
-                                $statusOrder = ['pending_review', 'uploaded', 'approved', 'rejected'];
-                                $statusIcons = [
-                                'approved' => 'heroicon-o-check-badge',
-                                'pending_review' => 'heroicon-o-clock',
-                                'rejected' => 'heroicon-o-x-circle',
-                                'uploaded' => 'heroicon-o-arrow-up-tray'
-                                ];
-
-                                // Enhanced colors for better light theme visibility
-                                $statusColors = [
-                                'approved' => [
-                                'bg' => 'bg-green-50 dark:bg-green-900/20',
-                                'text' => 'text-green-700 dark:text-green-400',
-                                'light_bg' => 'bg-green-50/70 dark:bg-green-900/10',
-                                'border' => 'border-green-200 dark:border-green-800/30',
-                                'pill_bg' => 'bg-green-100 dark:bg-green-800/30',
-                                'pill_text' => 'text-green-800 dark:text-green-300'
-                                ],
-                                'pending_review' => [
-                                'bg' => 'bg-amber-50 dark:bg-amber-900/20',
-                                'text' => 'text-amber-700 dark:text-amber-400',
-                                'light_bg' => 'bg-amber-50/70 dark:bg-amber-900/10',
-                                'border' => 'border-amber-200 dark:border-amber-800/30',
-                                'pill_bg' => 'bg-amber-100 dark:bg-amber-800/30',
-                                'pill_text' => 'text-amber-800 dark:text-amber-300'
-                                ],
-                                'rejected' => [
-                                'bg' => 'bg-red-50 dark:bg-red-900/20',
-                                'text' => 'text-red-700 dark:text-red-400',
-                                'light_bg' => 'bg-red-50/70 dark:bg-red-900/10',
-                                'border' => 'border-red-200 dark:border-red-800/30',
-                                'pill_bg' => 'bg-red-100 dark:bg-red-800/30',
-                                'pill_text' => 'text-red-800 dark:text-red-300'
-                                ],
-                                'uploaded' => [
-                                'bg' => 'bg-blue-50 dark:bg-blue-900/20',
-                                'text' => 'text-blue-700 dark:text-blue-400',
-                                'light_bg' => 'bg-blue-50/70 dark:bg-blue-900/10',
-                                'border' => 'border-blue-200 dark:border-blue-800/30',
-                                'pill_bg' => 'bg-blue-100 dark:bg-blue-800/30',
-                                'pill_text' => 'text-blue-800 dark:text-blue-300'
-                                ]
-                                ];
-                                @endphp
-
-                                @foreach($statusOrder as $status)
-                                @if(isset($groupedDocuments[$status]) && $groupedDocuments[$status]->count() > 0)
-                                <!-- Enhanced Status Group Section -->
-                                <div class="relative">
-                                    <div class="flex items-center gap-2 mb-3">
-                                        <div
-                                            class="flex items-center gap-2 px-3 py-1.5 rounded-full {{ $statusColors[$status]['bg'] }} border {{ $statusColors[$status]['border'] }}">
-                                            <x-dynamic-component :component="$statusIcons[$status]"
-                                                class="w-4 h-4 {{ $statusColors[$status]['text'] }}" />
-                                            <span class="text-xs font-medium {{ $statusColors[$status]['text'] }}">{{
-                                                $this->getStatusLabel($status) }}</span>
-                                            <span
-                                                class="flex items-center justify-center w-5 h-5 rounded-full {{ $statusColors[$status]['pill_bg'] }} text-xs font-medium {{ $statusColors[$status]['pill_text'] }}">
-                                                {{ $groupedDocuments[$status]->count() }}
-                                            </span>
+                                <!-- Document List -->
+                                <div class="space-y-2 sm:space-y-3">
+                                    @foreach($sortedDocuments as $submission)
+                                    <!-- Document Item -->
+                                    <div
+                                        class="group relative flex items-center gap-3 p-3 rounded-lg border border-gray-100 dark:border-gray-700 bg-gray-50/80 dark:bg-gray-800/50 hover:bg-white dark:hover:bg-gray-700/50 transition-all shadow-sm">
+                                        <!-- Status Icon -->
+                                        <div class="flex-shrink-0">
+                                            <div class="w-10 h-10 rounded-lg bg-{{ match($submission->status) {
+                                                'uploaded' => 'blue',
+                                                'pending_review' => 'amber',
+                                                'approved' => 'green',
+                                                'rejected' => 'red',
+                                                default => 'gray'
+                                            } }}-50 dark:bg-{{ match($submission->status) {
+                                                'uploaded' => 'blue',
+                                                'pending_review' => 'amber',
+                                                'approved' => 'green',
+                                                'rejected' => 'red',
+                                                default => 'gray'
+                                            } }}-900/20 border border-{{ match($submission->status) {
+                                                'uploaded' => 'blue',
+                                                'pending_review' => 'amber',
+                                                'approved' => 'green',
+                                                'rejected' => 'red',
+                                                default => 'gray'
+                                            } }}-100 dark:border-{{ match($submission->status) {
+                                                'uploaded' => 'blue',
+                                                'pending_review' => 'amber',
+                                                'approved' => 'green',
+                                                'rejected' => 'red',
+                                                default => 'gray'
+                                            } }}-800/30 flex items-center justify-center">
+                                                <x-dynamic-component
+                                                    :component="$this->getStatusIcon($submission->status)" class="w-5 h-5 text-{{ match($submission->status) {
+                                                        'uploaded' => 'blue',
+                                                        'pending_review' => 'amber',
+                                                        'approved' => 'green',
+                                                        'rejected' => 'red',
+                                                        default => 'gray'
+                                                    } }}-600 dark:text-{{ match($submission->status) {
+                                                        'uploaded' => 'blue',
+                                                        'pending_review' => 'amber',
+                                                        'approved' => 'green',
+                                                        'rejected' => 'red',
+                                                        default => 'gray'
+                                                    } }}-400" />
+                                            </div>
                                         </div>
-                                    </div>
 
-                                    <!-- Status Group Documents with Enhanced UI -->
-                                    <div class="space-y-2.5">
-                                        @foreach($groupedDocuments[$status] as $submission)
-                                        <div
-                                            class="group relative flex items-center gap-3 p-3 rounded-lg border {{ $statusColors[$status]['border'] }} {{ $statusColors[$status]['light_bg'] }} hover:bg-white dark:hover:bg-gray-700/50 transition-all shadow-sm">
-                                            <!-- Status Icon -->
-                                            <div class="flex-shrink-0">
-                                                <div
-                                                    class="w-10 h-10 rounded-lg {{ $statusColors[$status]['bg'] }} border {{ $statusColors[$status]['border'] }} flex items-center justify-center">
-                                                    <x-dynamic-component :component="$statusIcons[$status]"
-                                                        class="w-5 h-5 {{ $statusColors[$status]['text'] }}" />
-                                                </div>
-                                            </div>
-
-                                            <!-- Document Info with Notes Indicator -->
-                                            <div class="flex-1 min-w-0">
-                                                <div class="flex items-center gap-2">
-                                                    <h4
-                                                        class="text-sm font-medium text-gray-900 dark:text-white truncate max-w-[200px] sm:max-w-[300px]">
-                                                        {{ basename($submission->file_path) }}
-                                                    </h4>
-                                                    @if($submission->notes)
-                                                    <span
-                                                        class="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-gray-600">
-                                                        <x-heroicon-m-document-text class="w-3 h-3" />
-                                                        Notes
-                                                    </span>
-                                                    @endif
-                                                </div>
-                                                <div class="flex items-center gap-2 mt-0.5">
-                                                    <span class="text-xs text-gray-600 dark:text-gray-400">
-                                                        {{ $submission->user->name }}
-                                                    </span>
-                                                    <span class="text-xs text-gray-300 dark:text-gray-600">•</span>
-                                                    <span class="text-xs text-gray-600 dark:text-gray-400">
-                                                        {{ $submission->created_at->diffForHumans() }}
-                                                    </span>
-                                                </div>
-                                            </div>
-
-                                            <!-- Action Buttons -->
+                                        <!-- Document Info with Notes Indicator -->
+                                        <div class="flex-1 min-w-0">
                                             <div class="flex items-center gap-2">
-                                                <!-- Download Button -->
-                                                <button wire:click="downloadDocument({{ $submission->id }})"
-                                                    class="inline-flex items-center justify-center p-1.5 rounded-lg text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-primary-500/30 dark:focus:ring-primary-400/30 transition-all opacity-0 group-hover:opacity-100">
-                                                    <x-heroicon-m-arrow-down-tray class="w-4 h-4" />
-                                                </button>
-
-                                                <!-- Preview Button - Enhanced Visibility -->
-                                                <button wire:click="viewDocument({{ $submission->id }})"
-                                                    x-on:click="$dispatch('open-modal', { id: 'preview-document' })"
-                                                    class="inline-flex items-center justify-center p-1.5 rounded-lg text-gray-600 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-primary-500/30 dark:focus:ring-primary-400/30 transition-all">
-                                                    <x-heroicon-m-eye class="w-4 h-4" />
-                                                </button>
+                                                <h4
+                                                    class="text-sm font-medium text-gray-900 dark:text-white truncate max-w-[200px] sm:max-w-[300px]">
+                                                    {{ basename($submission->file_path) }}
+                                                </h4>
+                                                @if($submission->notes)
+                                                <span
+                                                    class="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-gray-600">
+                                                    <x-heroicon-m-document-text class="w-3 h-3" />
+                                                    Notes
+                                                </span>
+                                                @endif
+                                            </div>
+                                            <div class="flex items-center gap-2 mt-0.5">
+                                                <span class="text-xs text-gray-600 dark:text-gray-400">
+                                                    {{ $submission->user->name }}
+                                                </span>
+                                                <span class="text-xs text-gray-300 dark:text-gray-600">•</span>
+                                                <span class="text-xs text-gray-600 dark:text-gray-400">
+                                                    {{ $submission->created_at->diffForHumans() }}
+                                                </span>
                                             </div>
                                         </div>
-                                        @endforeach
+
+                                        <!-- Action Buttons -->
+                                        <div class="flex items-center gap-2">
+                                            <!-- Download Button -->
+                                            <button wire:click="downloadDocument({{ $submission->id }})"
+                                                class="inline-flex items-center justify-center p-1.5 rounded-lg text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-primary-500/30 dark:focus:ring-primary-400/30 transition-all opacity-0 group-hover:opacity-100">
+                                                <x-heroicon-m-arrow-down-tray class="w-4 h-4" />
+                                            </button>
+
+                                            <!-- Preview Button - Enhanced Visibility -->
+                                            <button wire:click="viewDocument({{ $submission->id }})"
+                                                x-on:click="$dispatch('open-modal', { id: 'preview-document' })"
+                                                class="inline-flex items-center justify-center p-1.5 rounded-lg text-gray-600 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-primary-500/30 dark:focus:ring-primary-400/30 transition-all">
+                                                <x-heroicon-m-eye class="w-4 h-4" />
+                                            </button>
+                                        </div>
                                     </div>
+                                    @endforeach
                                 </div>
-                                @endif
-                                @endforeach
                             </div>
                         </div>
                     </div>
