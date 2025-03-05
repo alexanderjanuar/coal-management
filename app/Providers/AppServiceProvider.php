@@ -31,18 +31,18 @@ class AppServiceProvider extends ServiceProvider
         //
         Model::unguard();
 
-        DatabaseNotifications::trigger('filament.notifications.database-notifications-trigger');
+        // DatabaseNotifications::trigger('filament.notifications.database-notifications-trigger');
 
 
-        FilamentView::registerRenderHook(
-            PanelsRenderHook::BODY_END,
-            fn(): string => Blade::render('@livewire(\'project-detail.document-modal-manager\')'),
-        );
+        // FilamentView::registerRenderHook(
+        //     PanelsRenderHook::BODY_END,
+        //     fn(): string => Blade::render('@livewire(\'project-detail.document-modal-manager\')'),
+        // );
 
-        FilamentView::registerRenderHook(
-            PanelsRenderHook::GLOBAL_SEARCH_BEFORE,
-            fn(): string => Blade::render('@livewire(\'notification.notification-button\')'),
-        );
+        // FilamentView::registerRenderHook(
+        //     PanelsRenderHook::GLOBAL_SEARCH_BEFORE,
+        //     fn(): string => Blade::render('@livewire(\'notification.notification-button\')'),
+        // );
 
 
     }
