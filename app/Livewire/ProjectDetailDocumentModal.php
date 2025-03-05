@@ -5,9 +5,8 @@ namespace App\Livewire;
 use App\Models\Comment;
 use App\Models\RequiredDocument;
 use App\Models\SubmittedDocument;
-use App\Models\ClientDocument;
-use App\Models\User;
 use Filament\Forms\Components\FileUpload;
+use Filament\Forms\Components\RichEditor;
 use Filament\Forms\Concerns\InteractsWithForms;
 use Filament\Forms\Contracts\HasForms;
 use Filament\Forms\Form;
@@ -15,7 +14,6 @@ use Filament\Notifications\Notification;
 use Illuminate\Support\Facades\Storage;
 use Livewire\Component;
 use Illuminate\Support\Str;
-use Filament\Forms\Components\RichEditor;
 use Asmit\FilamentMention\Forms\Components\RichMentionEditor;
 
 class ProjectDetailDocumentModal extends Component implements HasForms
@@ -28,14 +26,28 @@ class ProjectDetailDocumentModal extends Component implements HasForms
     public RequiredDocument $document;
     public ?array $data = [];
     public ?array $FormData = [];
-    public ?string $newComment = '';
+    public ?array $rejectData = [];
+    public ?array $notesData = [];
+
     public ?int $editingCommentId = null;
+
     /**
      * Document Preview Properties
      */
     public $previewingDocument = null;
     public $previewUrl = null;
     public $isPreviewModalOpen = false;
+
+    /**
+     * Rejection Modal Properties
+     */
+    public $isRejectionModalOpen = false;
+    public $rejectionDocument = null;
+
+    /**
+     * Current overall submission status (derived from individual documents)
+     */
+    public $overallStatus = 'uploaded';
 
     /**
      * Listeners
@@ -46,6 +58,21 @@ class ProjectDetailDocumentModal extends Component implements HasForms
     ];
 
     /**
+     * Track document being rejected
+     */
+    public $documentBeingRejected = null;
+
+    /**
+     * Document ordering by priority
+     */
+    protected $statusOrder = [
+        'pending_review' => 1,
+        'uploaded' => 2,
+        'approved' => 3,
+        'rejected' => 4
+    ];
+
+    /**
      * Component Initialization
      */
     public function mount(RequiredDocument $document): void
@@ -53,6 +80,54 @@ class ProjectDetailDocumentModal extends Component implements HasForms
         $this->document = $document;
         $this->uploadFileForm->fill();
         $this->createCommentForm->fill();
+        $this->rejectionForm->fill();
+        $this->documentNotesForm->fill();
+
+        // Calculate overall status based on submitted documents
+        $this->calculateOverallStatus();
+    }
+
+    /**
+     * Calculate the overall status based on individual document statuses
+     */
+    public function calculateOverallStatus(): void
+    {
+        $submissions = $this->document->submittedDocuments;
+
+        if ($submissions->count() === 0) {
+            $this->overallStatus = 'uploaded';
+            $this->document->status = 'uploaded';
+            $this->document->save();
+            return;
+        }
+
+        // Count documents by status
+        $approvedCount = $submissions->where('status', 'approved')->count();
+        $pendingReviewCount = $submissions->where('status', 'pending_review')->count();
+        $uploadedCount = $submissions->where('status', 'uploaded')->count();
+        $totalCount = $submissions->count();
+
+        if ($approvedCount === $totalCount) {
+            // All documents are approved
+            $status = 'approved';
+        } elseif ($pendingReviewCount > 0 || $approvedCount > 0) {
+            // At least one document is pending review or some (but not all) are approved
+            $status = 'pending_review';
+        } elseif ($uploadedCount > 0) {
+            // At least one document is uploaded and none are pending or approved
+            $status = 'uploaded';
+        } else {
+            // All remaining documents must be rejected
+            $status = 'rejected';
+        }
+
+        // Only update if the status changed
+        if ($this->document->status !== $status) {
+            $this->document->status = $status;
+            $this->document->save();
+        }
+
+        $this->overallStatus = $status;
     }
 
     protected function getForms(): array
@@ -60,6 +135,8 @@ class ProjectDetailDocumentModal extends Component implements HasForms
         return [
             'uploadFileForm',
             'createCommentForm',
+            'rejectionForm',
+            'documentNotesForm',
         ];
     }
 
@@ -79,12 +156,12 @@ class ProjectDetailDocumentModal extends Component implements HasForms
                         'application/msword',
                         'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
                         // Excel file types
-                        'application/vnd.ms-excel',                                    // .xls
-                        'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', // .xlsx
-                        'application/vnd.oasis.opendocument.spreadsheet',             // .ods
-                        'text/csv',                                                   // .csv
-                        'application/csv',                                            // .csv alternate
-                        'text/x-csv'                                                 // .csv alternate
+                        'application/vnd.ms-excel',
+                        'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+                        'application/vnd.oasis.opendocument.spreadsheet',
+                        'text/csv',
+                        'application/csv',
+                        'text/x-csv'
                     ])
                     ->maxSize(10240)
                     ->preserveFilenames()
@@ -132,6 +209,90 @@ class ProjectDetailDocumentModal extends Component implements HasForms
             ->statePath('data');
     }
 
+    public function rejectionForm(Form $form): Form
+    {
+        return $form
+            ->schema([
+                RichEditor::make('rejectionReason')
+                    ->label('Reason for Rejection')
+                    ->toolbarButtons([
+                        'bold',
+                        'bulletList',
+                        'orderedList',
+                    ])
+                    ->placeholder('Please provide details about why this document is being rejected...')
+                    ->required()
+            ])
+            ->statePath('rejectData');
+    }
+
+    /**
+     * Document Notes Form
+     */
+    public function documentNotesForm(Form $form): Form
+    {
+        return $form
+            ->schema([
+                RichEditor::make('notes')
+                    ->label('Document Notes')
+                    ->placeholder('Add notes about this document...')
+                    ->toolbarButtons([
+                        'bold',
+                        'italic',
+                        'bulletList',
+                        'orderedList',
+                    ])
+                    ->extraInputAttributes(['style' => 'font-size:14px'])
+            ])
+            ->statePath('notesData');
+    }
+
+    /**
+     * Update document notes
+     */
+    public function saveDocumentNotes(): void
+    {
+        if (!$this->previewingDocument) {
+            return;
+        }
+
+        try {
+            $data = $this->documentNotesForm->getState();
+
+            // Update the notes directly on the document
+            $this->previewingDocument->update([
+                'notes' => $data['notes']
+            ]);
+
+            Notification::make()
+                ->title('Notes Saved')
+                ->success()
+                ->send();
+
+            // Send notification to project team
+            $this->sendProjectNotifications(
+                "Document Notes Updated",
+                sprintf(
+                    "<span style='color: #f59e0b; font-weight: 500;'>%s</span><br><strong>Document:</strong> %s<br><strong>File:</strong> %s<br><strong>Updated by:</strong> %s",
+                    $this->document->projectStep->project->client->name,
+                    $this->document->name,
+                    basename($this->previewingDocument->file_path),
+                    auth()->user()->name
+                ),
+                'info',
+                'View Document',
+                'document_note'
+            );
+
+        } catch (\Exception $e) {
+            Notification::make()
+                ->title('Error')
+                ->body('Failed to save notes. Please try again.')
+                ->danger()
+                ->send();
+        }
+    }
+
     /**
      * Get the appropriate notification icon based on action and status type
      * 
@@ -151,8 +312,10 @@ class ProjectDetailDocumentModal extends Component implements HasForms
                 'status_change' => 'heroicon-o-arrow-path',
                 'rejection' => 'heroicon-o-x-mark',
                 'approval' => 'heroicon-o-check-badge',
+                'pending_review' => 'heroicon-o-clock',
                 'document_delete' => 'heroicon-o-document-minus',
                 'document_preview' => 'heroicon-o-document-text',
+                'document_note' => 'heroicon-o-pencil-square',
                 'notification' => 'heroicon-o-bell-alert',
                 default => $this->getDefaultIconForType($type)
             };
@@ -206,11 +369,6 @@ class ProjectDetailDocumentModal extends Component implements HasForms
                     ->label($action)
                     ->markAsRead()
                     ->dispatch('openDocumentModal', [$this->document->id]),
-                // ->url(route('filament.admin.resources.projects.view', [
-                //     'record' => $this->document->projectStep->project->id,
-                //     'openDocument' => $this->document->id
-                // ])),
-
                 \Filament\Notifications\Actions\Action::make('Mark As Read')
                     ->markAsRead(),
             ]);
@@ -259,6 +417,7 @@ class ProjectDetailDocumentModal extends Component implements HasForms
                     'required_document_id' => $this->document->id,
                     'user_id' => auth()->id(),
                     'file_path' => $filePath,
+                    'status' => 'uploaded', // Initial status for submitted documents
                 ]);
             }
         } else {
@@ -267,12 +426,12 @@ class ProjectDetailDocumentModal extends Component implements HasForms
                 'required_document_id' => $this->document->id,
                 'user_id' => auth()->id(),
                 'file_path' => $data['document'],
+                'status' => 'uploaded', // Initial status for submitted documents
             ]);
         }
 
-        // Change status to 'uploaded' when document is first uploaded
-        $this->document->status = 'uploaded';
-        $this->document->save();
+        // Recalculate overall status
+        $this->calculateOverallStatus();
 
         $this->uploadFileForm->fill();
 
@@ -286,7 +445,7 @@ class ProjectDetailDocumentModal extends Component implements HasForms
 
         // Send notifications
         $this->sendProjectNotifications(
-            "New Document" . (is_array($data['document']) ? "s" : ""),
+            "New Document" . (is_array($data['document']) ? "s" : "") . " Uploaded",
             sprintf(
                 "<span style='color: #f59e0b; font-weight: 500;'>%s</span><br><strong>Project:</strong> %s<br><strong>Document:</strong> %s<br><strong>Uploaded by:</strong> %s",
                 $client->name,
@@ -300,41 +459,44 @@ class ProjectDetailDocumentModal extends Component implements HasForms
         );
     }
 
+    /**
+     * Load document for preview and populate notes
+     */
     public function viewDocument(SubmittedDocument $submission): void
     {
         $this->previewingDocument = $submission;
         $this->previewUrl = Storage::disk('public')->url($submission->file_path);
-        $this->isPreviewModalOpen = true;
 
-        // Check if the viewer is a project manager or director and document status is 'uploaded'
-        if (
-            auth()->user()->hasRole(['direktur', 'project-manager']) &&
-            $this->document->status === 'uploaded'
-        ) {
-            // Update status to pending_review and set reviewer information
-            $this->document->update([
-                'status' => 'pending_review',
-                'reviewer_id' => auth()->id(),
-                'reviewed_at' => now()
+        // Load notes into the form
+        $this->documentNotesForm->fill([
+            'notes' => $submission->notes
+        ]);
+
+        // Only update status if the document is in 'uploaded' status
+        if ($submission->status === 'uploaded') {
+            // Change status to pending_review
+            $oldStatus = $submission->status;
+            $submission->status = 'pending_review';
+            $submission->save();
+
+            // Create a system comment
+            Comment::create([
+                'user_id' => auth()->id(),
+                'commentable_type' => SubmittedDocument::class,
+                'commentable_id' => $submission->id,
+                'content' => sprintf(
+                    "Document status automatically changed from <strong>%s</strong> to <strong>pending_review</strong> when viewed by <strong>%s</strong>",
+                    $oldStatus,
+                    auth()->user()->name
+                ),
+                'status' => 'approved'
             ]);
 
-            // Create a system comment for the status change
-            $this->createStatusChangeComment('uploaded', 'pending_review');
-
-            // // Send notification about status change
-            // $this->sendProjectNotifications(
-            //     "Document Under Review",
-            //     sprintf(
-            //         "<span style='color: #f59e0b; font-weight: 500;'>%s</span><br><strong>Document:</strong> %s<br><strong>Status:</strong> Under Review<br><strong>Reviewer:</strong> %s",
-            //         $this->document->projectStep->project->client->name,
-            //         $this->document->name,
-            //         auth()->user()->name
-            //     ),
-            //     'info',
-            //     'View Document',
-            //     'document_review'
-            // );
+            // Recalculate the overall document status
+            $this->calculateOverallStatus();
         }
+
+        $this->isPreviewModalOpen = true;
     }
 
     public function closePreview(): void
@@ -353,16 +515,179 @@ class ProjectDetailDocumentModal extends Component implements HasForms
     }
 
     /**
-     * Status Management Methods
+     * Download all documents as a ZIP archive
      */
-    public function updateStatus(string $status): void
+    public function downloadAllDocuments()
     {
         try {
-            $oldStatus = $this->document->status;
-            $this->document->status = $status;
-            $this->document->save();
+            $documents = $this->document->submittedDocuments;
 
-            $this->createStatusChangeComment($oldStatus, $status);
+            if ($documents->isEmpty()) {
+                Notification::make()
+                    ->title('No Documents')
+                    ->body('There are no documents available to download.')
+                    ->warning()
+                    ->send();
+                return;
+            }
+
+            // Create temporary directory if it doesn't exist
+            $tempDir = storage_path('app/temp');
+            if (!file_exists($tempDir)) {
+                mkdir($tempDir, 0755, true);
+            }
+
+            // Get project and client details for filename
+            $client = Str::slug($this->document->projectStep->project->client->name);
+            $project = Str::slug($this->document->projectStep->project->name);
+            $docName = Str::slug($this->document->name);
+
+            // Create ZIP filename with better structure
+            $zipFileName = sprintf(
+                '%s_%s_%s_%s.zip',
+                $client,
+                $project,
+                $docName,
+                now()->format('Y-m-d_His')
+            );
+
+            $zipPath = $tempDir . '/' . $zipFileName;
+
+            // Create new ZIP archive
+            $zip = new \ZipArchive();
+            if ($zip->open($zipPath, \ZipArchive::CREATE | \ZipArchive::OVERWRITE) !== true) {
+                throw new \Exception('Cannot create zip file');
+            }
+
+            // Add files to ZIP
+            foreach ($documents as $document) {
+                $filePath = storage_path('app/public/' . $document->file_path);
+                if (file_exists($filePath)) {
+                    // Use original filename for better readability
+                    $originalName = basename($document->file_path);
+                    $zip->addFile($filePath, $originalName);
+                }
+            }
+
+            $zip->close();
+
+            // Return the ZIP file for download and delete it afterward
+            return response()->download($zipPath)->deleteFileAfterSend(true);
+
+        } catch (\Exception $e) {
+            Notification::make()
+                ->title('Download Failed')
+                ->body('Failed to create download archive. Please try again.')
+                ->danger()
+                ->send();
+
+            report($e); // Log the error for debugging
+        }
+    }
+
+    /**
+     * Get the last status change activity for this document
+     *
+     * @return \Spatie\Activitylog\Models\Activity|null
+     */
+    public function getLastStatusChangeActivity()
+    {
+        // Query for activities related to document status changes
+        return \Spatie\Activitylog\Models\Activity::where(function ($query) {
+            // Check for activities directly on the required document
+            $query->where('subject_type', RequiredDocument::class)
+                ->where('subject_id', $this->document->id)
+                ->whereIn('description', ['approved', 'pending_review', 'uploaded', 'rejected', 'updated']);
+        })
+            ->orWhere(function ($query) {
+                // Check for activities on submitted documents related to this required document
+                $query->where('subject_type',SubmittedDocument::class)
+                    ->whereIn('subject_id', $this->document->submittedDocuments->pluck('id'))
+                    ->whereIn('description', ['approved', 'pending_review', 'uploaded', 'rejected', 'updated']);
+            })
+            ->where(function ($query) {
+                // Make sure we only get activities that involve status changes
+                $query->whereJsonContains('properties->attributes->status', 'approved')
+                    ->orWhereJsonContains('properties->attributes->status', 'pending_review')
+                    ->orWhereJsonContains('properties->attributes->status', 'uploaded')
+                    ->orWhereJsonContains('properties->attributes->status', 'rejected');
+            })
+            ->with('causer')
+            ->orderBy('created_at', 'desc')
+            ->first();
+    }
+
+    /**
+     * Get status information for the view
+     * 
+     * @param string $status
+     * @return array
+     */
+    public function getStatusInfo(string $status = '')
+    {
+        return [
+            'title' => match ($status) {
+                'approved' => 'Approved Document',
+                'pending_review' => 'Pending Review',
+                'uploaded' => 'Document Uploaded',
+                'rejected' => 'Document Rejected',
+                default => 'Status Updated'
+            },
+            'color' => match ($status) {
+                'approved' => 'bg-green-50 dark:bg-green-900/20',
+                'pending_review' => 'bg-amber-50 dark:bg-amber-900/20',
+                'uploaded' => 'bg-blue-50 dark:bg-blue-900/20',
+                'rejected' => 'bg-red-50 dark:bg-red-900/20',
+                default => 'bg-gray-50 dark:bg-gray-800/50'
+            },
+            'textColor' => match ($status) {
+                'approved' => 'text-green-600 dark:text-green-400',
+                'pending_review' => 'text-amber-600 dark:text-amber-400',
+                'uploaded' => 'text-blue-600 dark:text-blue-400',
+                'rejected' => 'text-red-600 dark:text-red-400',
+                default => 'text-gray-600 dark:text-gray-400'
+            },
+            'icon' => match ($status) {
+                'approved' => 'heroicon-m-check-badge',
+                'pending_review' => 'heroicon-m-clock',
+                'uploaded' => 'heroicon-m-arrow-up-tray',
+                'rejected' => 'heroicon-m-x-circle',
+                default => 'heroicon-m-document'
+            }
+        ];
+    }
+    /**
+     * Status Management Methods
+     */
+    public function updateDocumentStatus(SubmittedDocument $submission, string $status): void
+    {
+        try {
+            // If rejecting, we'll open the rejection modal instead
+            if ($status === 'rejected') {
+                $this->openRejectionModal($submission);
+                return;
+            }
+
+            $oldStatus = $submission->status;
+            $submission->status = $status;
+            $submission->save();
+
+            // Create a comment on the submitted document record
+            Comment::create([
+                'user_id' => auth()->id(),
+                'commentable_type' => SubmittedDocument::class,
+                'commentable_id' => $submission->id,
+                'content' => sprintf(
+                    "Status changed from <strong class='text-gray-700'>%s</strong> to <strong class='text-gray-700'>%s</strong> by <strong>%s</strong>",
+                    $this->getStatusLabel($oldStatus),
+                    $this->getStatusLabel($status),
+                    auth()->user()->name
+                ),
+                'status' => 'approved'
+            ]);
+
+            // Recalculate overall document status
+            $this->calculateOverallStatus();
 
             $this->dispatch('refresh');
 
@@ -374,19 +699,20 @@ class ProjectDetailDocumentModal extends Component implements HasForms
             // Determine notification action based on status
             $notificationAction = match ($status) {
                 'approved' => 'approval',
-                'rejected' => 'rejection',
+                'pending_review' => 'pending_review',
                 default => 'status_change'
             };
 
             // Send notifications with HTML formatting
             $this->sendProjectNotifications(
-                "Status Updated",
+                "Document Status Updated",
                 sprintf(
-                    "<span style='color: #f59e0b; font-weight: 500;'>%s</span><br><strong>Document:</strong> %s<br><strong>Status:</strong> %s → %s<br><strong>Updated by:</strong> %s",
+                    "<span style='color: #f59e0b; font-weight: 500;'>%s</span><br><strong>Document:</strong> %s<br><strong>File:</strong> %s<br><strong>Status:</strong> %s → %s<br><strong>Updated by:</strong> %s",
                     $client->name,
                     $this->document->name,
-                    ucwords(str_replace('_', ' ', $oldStatus)),
-                    ucwords(str_replace('_', ' ', $status)),
+                    basename($submission->file_path),
+                    $this->getStatusLabel($oldStatus),
+                    $this->getStatusLabel($status),
                     auth()->user()->name
                 ),
                 'success',
@@ -395,6 +721,116 @@ class ProjectDetailDocumentModal extends Component implements HasForms
             );
         } catch (\Exception $e) {
             $this->sendNotification('error', 'Error updating status', 'Please try again.');
+        }
+    }
+
+    /**
+     * Set document to pending review
+     */
+    public function setToPendingReview(SubmittedDocument $submission): void
+    {
+        $this->updateDocumentStatus($submission, 'pending_review');
+    }
+
+    /**
+     * Trigger the rejection modal for a document
+     */
+    public function openRejectionModal(SubmittedDocument $document): void
+    {
+        $this->documentBeingRejected = $document;
+
+        // Reset rejection form
+        $this->rejectionForm->fill();
+
+        // Emit event to open the modal
+        $this->dispatch('openRejectionModal', $document->id);
+    }
+
+    /**
+     * Handle document rejection with reason
+     */
+    public function submitRejection(): void
+    {
+        if (!$this->documentBeingRejected) {
+            return;
+        }
+
+        // Validate rejection reason
+        $this->validate([
+            'rejectData.rejectionReason' => 'required|min:10'
+        ]);
+
+        try {
+            // Store file path in a variable before resetting documentBeingRejected
+            $rejectedFilePath = $this->documentBeingRejected->file_path;
+
+            // Update document status
+            $oldStatus = $this->documentBeingRejected->status;
+            $this->documentBeingRejected->status = 'rejected';
+            $this->documentBeingRejected->rejection_reason = $this->rejectData['rejectionReason'];
+            $this->documentBeingRejected->save();
+
+            // Create a comment
+            Comment::create([
+                'user_id' => auth()->id(),
+                'commentable_type' => SubmittedDocument::class,
+                'commentable_id' => $this->documentBeingRejected->id,
+                'content' => sprintf(
+                    "<div class='p-3 bg-red-50 dark:bg-red-900/30 rounded-lg border border-red-100 dark:border-red-800'><p class='text-red-800 dark:text-red-300 font-medium'>Document Rejected</p><div class='mt-2 text-red-700 dark:text-red-400'>%s</div></div>",
+                    $this->rejectData['rejectionReason']
+                ),
+                'status' => 'approved'
+            ]);
+
+            // Reset form and modal
+            $this->rejectionForm->fill();
+
+            // Store the document in a temporary variable before clearing it
+            $rejectedDocument = $this->documentBeingRejected;
+            $this->documentBeingRejected = null;
+
+            // Recalculate overall status
+            $this->calculateOverallStatus();
+
+            $this->dispatch('refresh');
+            $this->dispatch('close-modal', ['id' => 'rejection-reason-modal']);
+
+            // Send notification - now using the stored variables
+            $projectStep = $this->document->projectStep;
+            $project = $projectStep->project;
+            $client = $project->client;
+
+            $this->sendProjectNotifications(
+                "Document Rejected",
+                sprintf(
+                    "<span style='color: #f59e0b; font-weight: 500;'>%s</span><br><strong>Document:</strong> %s<br><strong>File:</strong> %s<br><strong>Rejected by:</strong> %s",
+                    $client->name,
+                    $this->document->name,
+                    basename($rejectedFilePath), // Using stored file path
+                    auth()->user()->name
+                ),
+                'danger',
+                'View Details',
+                'rejection'
+            );
+
+            // Show success notification
+            Notification::make()
+                ->title('Document Rejected')
+                ->body('The document has been rejected with the provided reason.')
+                ->icon('heroicon-o-x-circle')
+                ->color('danger')
+                ->send();
+        } catch (\Exception $e) {
+            // Error handling
+            Notification::make()
+                ->title('Error')
+                ->body('Failed to reject document. Please try again.')
+                ->icon('heroicon-o-x-circle')
+                ->color('danger')
+                ->send();
+
+            report($e); // Log the error
         }
     }
 
@@ -497,26 +933,8 @@ class ProjectDetailDocumentModal extends Component implements HasForms
                 throw new \Exception('Unauthorized action.');
             }
 
-            // Store comment info for notification
-            $commentContent = strip_tags($comment->content);
-            $truncatedContent = Str::limit($commentContent, 50);
-
             // Delete the comment
             $comment->delete();
-
-            // Send notification
-            // $this->sendProjectNotifications(
-            //     "Comment Deleted",
-            //     sprintf(
-            //         "<span style='color: #f59e0b; font-weight: 500;'>%s</span><br><strong>Document:</strong> %s<br><strong>Comment:</strong> %s",
-            //         $this->document->projectStep->project->client->name,
-            //         $this->document->name,
-            //         $truncatedContent
-            //     ),
-            //     'info',
-            //     null,
-            //     'comment'
-            // );
 
             $this->dispatch('refresh');
 
@@ -525,6 +943,9 @@ class ProjectDetailDocumentModal extends Component implements HasForms
         }
     }
 
+    /**
+     * Remove document functionality
+     */
     public function removeDocument(int $documentId): void
     {
         try {
@@ -540,6 +961,16 @@ class ProjectDetailDocumentModal extends Component implements HasForms
 
             // Delete the record
             $submission->delete();
+
+            // Close the preview modal if removing the current document
+            if ($this->previewingDocument && $this->previewingDocument->id === $documentId) {
+                $this->isPreviewModalOpen = false;
+                $this->previewingDocument = null;
+                $this->previewUrl = null;
+            }
+
+            // Recalculate overall status
+            $this->calculateOverallStatus();
 
             // Send notification
             $this->sendProjectNotifications(
@@ -584,21 +1015,6 @@ class ProjectDetailDocumentModal extends Component implements HasForms
         return strtolower(pathinfo($this->previewingDocument->file_path, PATHINFO_EXTENSION));
     }
 
-    protected function createStatusChangeComment(string $oldStatus, string $newStatus): void
-    {
-        Comment::create([
-            'user_id' => auth()->id(),
-            'commentable_type' => RequiredDocument::class,
-            'commentable_id' => $this->document->id,
-            'content' => sprintf(
-                "Status changed from <strong class='text-gray-700'>%s</strong> to <strong class='text-gray-700'>%s</strong>",
-                ucwords(str_replace('_', ' ', $oldStatus)),
-                ucwords(str_replace('_', ' ', $newStatus))
-            ),
-            'status' => 'approved'
-        ]);
-    }
-
     protected function sendNotification(string $type, string $title, ?string $body = null): void
     {
         $notification = Notification::make()
@@ -625,6 +1041,119 @@ class ProjectDetailDocumentModal extends Component implements HasForms
     public function handleDocumentUploaded(int $documentId): void
     {
         $this->document->refresh();
+        $this->calculateOverallStatus();
+    }
+
+    /**
+     * Get human-readable status label
+     */
+    public function getStatusLabel(string $status): string
+    {
+        return match ($status) {
+            'uploaded' => 'Uploaded',
+            'pending_review' => 'Pending Review',
+            'approved' => 'Approved',
+            'rejected' => 'Rejected',
+            default => ucwords(str_replace('_', ' ', $status))
+        };
+    }
+
+    /**
+     * Get status icon for UI elements
+     */
+    public function getStatusIcon(string $status): string
+    {
+        return match ($status) {
+            'uploaded' => 'heroicon-m-arrow-up-tray',
+            'pending_review' => 'heroicon-m-clock',
+            'approved' => 'heroicon-m-check-circle',
+            'rejected' => 'heroicon-m-x-circle',
+            default => 'heroicon-m-question-mark-circle'
+        };
+    }
+
+    /**
+     * Get the ordered list of documents
+     */
+    protected function getOrderedDocuments()
+    {
+        return $this->document->submittedDocuments
+            ->sortBy(function ($doc) {
+                return $this->statusOrder[$doc->status] ?? 999;
+            })
+            ->values(); // Convert to indexed array for proper navigation
+    }
+
+    /**
+     * Get next document based on status order with circular navigation
+     */
+    public function nextDocument(): void
+    {
+        if (!$this->previewingDocument) {
+            return;
+        }
+
+        $documents = $this->getOrderedDocuments();
+        $currentIndex = $documents->search(function ($item) {
+            return $item->id === $this->previewingDocument->id;
+        });
+
+        // Next index with circular navigation
+        $nextIndex = ($currentIndex + 1) % $documents->count();
+        $this->viewDocument($documents[$nextIndex]);
+    }
+
+    /**
+     * Get previous document based on status order with circular navigation
+     */
+    public function previousDocument(): void
+    {
+        if (!$this->previewingDocument) {
+            return;
+        }
+
+        $documents = $this->getOrderedDocuments();
+        $currentIndex = $documents->search(function ($item) {
+            return $item->id === $this->previewingDocument->id;
+        });
+
+        // Previous index with circular navigation
+        $prevIndex = ($currentIndex - 1 + $documents->count()) % $documents->count();
+        $this->viewDocument($documents[$prevIndex]);
+    }
+
+    // These methods are no longer needed since we always show navigation
+    public function hasNextDocument(): bool
+    {
+        return true;
+    }
+
+    public function hasPreviousDocument(): bool
+    {
+        return true;
+    }
+
+    /**
+     * Get current document position and total
+     */
+    public function getDocumentPosition(): array
+    {
+        if (!$this->previewingDocument) {
+            return [
+                'current' => 0,
+                'total' => 0
+            ];
+        }
+
+        $documents = $this->getOrderedDocuments();
+        $position = $documents->search(function ($item) {
+            return $item->id === $this->previewingDocument->id;
+        });
+
+        return [
+            'current' => $position + 1,
+            'total' => $documents->count()
+        ];
     }
 
     /**
@@ -632,12 +1161,15 @@ class ProjectDetailDocumentModal extends Component implements HasForms
      */
     public function render()
     {
+        $sortedDocuments = $this->getOrderedDocuments();
+
         return view('livewire.project-detail.project-detail-document-modal', [
             'comments' => $this->document->comments()
                 ->with('user')
                 ->latest()
                 ->get(),
-            'fileType' => $this->getFileType()
+            'fileType' => $this->getFileType(),
+            'sortedDocuments' => $sortedDocuments
         ]);
     }
 }

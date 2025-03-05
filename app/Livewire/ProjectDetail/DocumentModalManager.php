@@ -26,6 +26,7 @@ class DocumentModalManager extends Component implements HasForms
         'openDocumentModal' => 'openDocumentModal'
     ];
 
+    // Core document properties
     public RequiredDocument $document;
     public ?array $FormData = [];
     public ?array $data = [];
@@ -36,10 +37,26 @@ class DocumentModalManager extends Component implements HasForms
     public $previewUrl = null;
     public $isPreviewModalOpen = false;
 
+    // Status management and document handling
+    public $overallStatus = 'uploaded';
+    public $documentBeingRejected = null;
+    public ?array $rejectData = [];
+    public ?array $notesData = [];
+
+    // Status prioritization for sorting
+    public $statusOrder = [
+        'pending_review' => 1,
+        'uploaded' => 2,
+        'approved' => 3,
+        'rejected' => 4
+    ];
+
     public function mount(): void
     {
         $this->uploadFileForm->fill();
         $this->createCommentForm->fill();
+        $this->rejectionForm->fill();
+        $this->documentNotesForm->fill();
     }
 
     public function openDocumentModal($documentId)
@@ -49,6 +66,58 @@ class DocumentModalManager extends Component implements HasForms
         $this->document = RequiredDocument::find($documentId);
         $this->uploadFileForm->fill();
         $this->createCommentForm->fill();
+        $this->rejectionForm->fill();
+        $this->documentNotesForm->fill();
+
+        // Calculate overall status
+        $this->calculateOverallStatus();
+    }
+
+    /**
+     * Calculate the overall status based on individual document statuses
+     */
+    public function calculateOverallStatus(): void
+    {
+        if (!isset($this->document)) {
+            return;
+        }
+
+        $submissions = $this->document->submittedDocuments;
+
+        if ($submissions->count() === 0) {
+            $this->overallStatus = 'uploaded';
+            $this->document->status = 'uploaded';
+            $this->document->save();
+            return;
+        }
+
+        // Count documents by status
+        $approvedCount = $submissions->where('status', 'approved')->count();
+        $pendingReviewCount = $submissions->where('status', 'pending_review')->count();
+        $uploadedCount = $submissions->where('status', 'uploaded')->count();
+        $totalCount = $submissions->count();
+
+        if ($approvedCount === $totalCount) {
+            // All documents are approved
+            $status = 'approved';
+        } elseif ($pendingReviewCount > 0 || $approvedCount > 0) {
+            // At least one document is pending review or some (but not all) are approved
+            $status = 'pending_review';
+        } elseif ($uploadedCount > 0) {
+            // At least one document is uploaded and none are pending or approved
+            $status = 'uploaded';
+        } else {
+            // All remaining documents must be rejected
+            $status = 'rejected';
+        }
+
+        // Only update if the status changed
+        if ($this->document->status !== $status) {
+            $this->document->status = $status;
+            $this->document->save();
+        }
+
+        $this->overallStatus = $status;
     }
 
     protected function getForms(): array
@@ -56,6 +125,8 @@ class DocumentModalManager extends Component implements HasForms
         return [
             'uploadFileForm',
             'createCommentForm',
+            'rejectionForm',
+            'documentNotesForm',
         ];
     }
 
@@ -89,8 +160,10 @@ class DocumentModalManager extends Component implements HasForms
                         $projectName = Str::slug($this->document->projectStep->project->name);
                         return "clients/{$clientName}/{$projectName}";
                     })
+                    ->multiple()
                     ->downloadable()
                     ->openable()
+                    ->disabled(auth()->user()->hasRole('client'))
                     ->helperText(function () {
                         if (auth()->user()->hasRole('client')) {
                             return 'You do not have permission to upload documents';
@@ -108,6 +181,11 @@ class DocumentModalManager extends Component implements HasForms
                 RichMentionEditor::make('newComment')
                     ->lookupKey('name')
                     ->label('')
+                    ->id(function () {
+                        return isset($this->document)
+                            ? 'comment-editor-' . $this->document->id
+                            : 'comment-editor';
+                    })
                     ->toolbarButtons([
                         'attachFiles',
                         'bold',
@@ -124,94 +202,160 @@ class DocumentModalManager extends Component implements HasForms
             ->statePath('data');
     }
 
+    public function rejectionForm(Form $form): Form
+    {
+        return $form
+            ->schema([
+                RichEditor::make('rejectionReason')
+                    ->label('Reason for Rejection')
+                    ->toolbarButtons([
+                        'bold',
+                        'bulletList',
+                        'orderedList',
+                    ])
+                    ->placeholder('Please provide details about why this document is being rejected...')
+                    ->required()
+            ])
+            ->statePath('rejectData');
+    }
+
+    public function documentNotesForm(Form $form): Form
+    {
+        return $form
+            ->schema([
+                RichEditor::make('notes')
+                    ->label('Document Notes')
+                    ->placeholder('Add notes about this document...')
+                    ->toolbarButtons([
+                        'bold',
+                        'italic',
+                        'bulletList',
+                        'orderedList',
+                    ])
+                    ->extraInputAttributes(['style' => 'font-size:14px'])
+            ])
+            ->statePath('notesData');
+    }
+
     public function uploadDocument(): void
     {
         $data = $this->uploadFileForm->getState();
 
-        $submission = SubmittedDocument::create([
-            'required_document_id' => $this->document->id,
-            'user_id' => auth()->id(),
-            'file_path' => $data['document'],
-        ]);
-
-        // Update document status if it's the first upload
-        if ($this->document->status === 'draft') {
-            $this->document->status = 'uploaded';
-            $this->document->save();
+        // Check if document is an array (multiple files)
+        if (is_array($data['document'])) {
+            foreach ($data['document'] as $filePath) {
+                SubmittedDocument::create([
+                    'required_document_id' => $this->document->id,
+                    'user_id' => auth()->id(),
+                    'file_path' => $filePath,
+                    'status' => 'uploaded', // Initial status for submitted documents
+                ]);
+            }
+        } else {
+            // Handle single file upload
+            SubmittedDocument::create([
+                'required_document_id' => $this->document->id,
+                'user_id' => auth()->id(),
+                'file_path' => $data['document'],
+                'status' => 'uploaded', // Initial status for submitted documents
+            ]);
         }
 
-        $this->uploadFileForm->fill();
-        $this->dispatch('refresh');
-        $this->dispatch('documentUploaded', documentId: $submission->id);
+        // Recalculate overall status
+        $this->calculateOverallStatus();
 
-        Notification::make()
-            ->title('Document uploaded successfully')
-            ->success()
-            ->send();
+        $this->uploadFileForm->fill();
+
+        $this->dispatch('refresh');
+        $this->dispatch('documentUploaded', documentId: $this->document->id);
+
+        // Get related project information
+        $projectStep = $this->document->projectStep;
+        $project = $projectStep->project;
+        $client = $project->client;
+
+        // Send notifications
+        $this->sendProjectNotifications(
+            "New Document" . (is_array($data['document']) ? "s" : "") . " Uploaded",
+            sprintf(
+                "<span style='color: #f59e0b; font-weight: 500;'>%s</span><br><strong>Project:</strong> %s<br><strong>Document:</strong> %s<br><strong>Uploaded by:</strong> %s",
+                $client->name,
+                $project->name,
+                $this->document->name,
+                auth()->user()->name
+            ),
+            'success',
+            'View Document',
+            'document_upload'
+        );
     }
 
     public function addComment(): void
     {
         $data = $this->createCommentForm->getState();
 
-        if ($this->editingCommentId) {
-            // Update existing comment
-            $comment = Comment::findOrFail($this->editingCommentId);
+        $this->validate([
+            'data.newComment' => 'required|min:1|max:1000'
+        ]);
 
-            if ($comment->user_id !== auth()->id()) {
-                throw new \Exception('Unauthorized action.');
+        try {
+            if ($this->editingCommentId) {
+                // Update existing comment
+                $comment = Comment::findOrFail($this->editingCommentId);
+
+                if ($comment->user_id !== auth()->id()) {
+                    throw new \Exception('Unauthorized action.');
+                }
+
+                $comment->update([
+                    'content' => $data['newComment']
+                ]);
+
+                $this->editingCommentId = null; // Reset editing state
+                $this->processMentions($comment, $data['newComment']);
+            } else {
+                // Create new comment
+                $comment = Comment::create([
+                    'user_id' => auth()->id(),
+                    'commentable_type' => RequiredDocument::class,
+                    'commentable_id' => $this->document->id,
+                    'content' => $data['newComment'],
+                    'status' => 'approved'
+                ]);
+                $this->processMentions($comment, $data['newComment']);
             }
 
-            $comment->update([
-                'content' => $data['newComment']
-            ]);
+            // Reset form and refresh
+            $this->createCommentForm->fill();
+            $this->dispatch('refresh');
 
-            $this->editingCommentId = null; // Reset editing state
-            $this->processMentions($comment, $data['newComment']);
-        } else {
-            // Create new comment
-            $comment = Comment::create([
-                'user_id' => auth()->id(),
-                'commentable_type' => RequiredDocument::class,
-                'commentable_id' => $this->document->id,
-                'content' => $data['newComment'],
-                'status' => 'approved'
-            ]);
-            $this->processMentions($comment, $data['newComment']);
+            // Send notification
+            $plainContent = strip_tags($comment->content);
+            $truncatedContent = Str::limit($plainContent, 100);
+
+            $this->sendProjectNotifications(
+                $this->editingCommentId ? "Comment Updated" : "New Comment",
+                sprintf(
+                    "<span style='color: #f59e0b; font-weight: 500;'>%s</span><br><strong>Document:</strong> %s<br><strong>Comment:</strong> %s<br><strong>By:</strong> %s",
+                    $this->document->projectStep->project->client->name,
+                    $this->document->name,
+                    $truncatedContent,
+                    auth()->user()->name
+                ),
+                'info',
+                'View Comment',
+                'comment'
+            );
+
+        } catch (\Exception $e) {
+            Notification::make()
+                ->title('Error')
+                ->body('Unable to save comment: ' . $e->getMessage())
+                ->danger()
+                ->send();
         }
-
-        // Reset form and refresh
-        $this->createCommentForm->fill();
-        $this->dispatch('refresh');
-
-        // Send notification
-        $plainContent = strip_tags($comment->content);
-        $truncatedContent = Str::limit($plainContent, 100);
-
-        $this->sendProjectNotifications(
-            $this->editingCommentId ? "Comment Updated" : "New Comment",
-            sprintf(
-                "<span style='color: #f59e0b; font-weight: 500;'>%s</span><br><strong>Document:</strong> %s<br><strong>Comment:</strong> %s<br><strong>By:</strong> %s",
-                $this->document->projectStep->project->client->name,
-                $this->document->name,
-                $truncatedContent,
-                auth()->user()->name
-            ),
-            'info',
-            'View Comment',
-            'comment'
-        );
-
-
     }
 
-    /**
-     * Process user mentions in comment and send notifications
-     * 
-     * @param Comment $comment
-     * @param string $content
-     * @return void
-     */
     protected function processMentions(Comment $comment, string $content): void
     {
         // Extract user IDs from href links in format <a href="...admin/users/{id}">@Username</a>
@@ -267,130 +411,109 @@ class DocumentModalManager extends Component implements HasForms
 
     public function editComment(int $commentId): void
     {
-        $comment = Comment::findOrFail($commentId);
+        try {
+            $comment = Comment::findOrFail($commentId);
 
-        if ($comment->user_id !== auth()->id()) {
+            // Ensure user can only edit their own comments
+            if ($comment->user_id !== auth()->id()) {
+                throw new \Exception('Unauthorized action.');
+            }
+
+            // Set the form data for editing
+            $this->createCommentForm->fill([
+                'newComment' => $comment->content
+            ]);
+
+            // You might want to set a state to track which comment is being edited
+            $this->editingCommentId = $commentId;
+
+            // Show the comment form if it's hidden
+            $this->dispatch('showCommentForm');
+
+        } catch (\Exception $e) {
             Notification::make()
-                ->title('Unauthorized action')
+                ->title('Error')
+                ->body('Unable to edit comment: ' . $e->getMessage())
                 ->danger()
                 ->send();
-            return;
         }
-
-        $this->editingCommentId = $commentId;
-        $this->createCommentForm->fill([
-            'comment' => $comment->content
-        ]);
-
-        $this->dispatch('showCommentForm');
     }
 
     public function deleteComment(int $commentId): void
     {
-        $comment = Comment::findOrFail($commentId);
+        try {
+            $comment = Comment::findOrFail($commentId);
 
-        if ($comment->user_id !== auth()->id()) {
+            // Ensure user can only delete their own comments
+            if ($comment->user_id !== auth()->id()) {
+                throw new \Exception('Unauthorized action.');
+            }
+
+            // Delete the comment
+            $comment->delete();
+
+            $this->dispatch('refresh');
+
             Notification::make()
-                ->title('Unauthorized action')
+                ->title('Comment deleted')
+                ->success()
+                ->send();
+
+        } catch (\Exception $e) {
+            Notification::make()
+                ->title('Error')
+                ->body('Unable to delete comment: ' . $e->getMessage())
                 ->danger()
                 ->send();
-            return;
         }
-
-        $comment->delete();
-        $this->dispatch('refresh');
-
-        Notification::make()
-            ->title('Comment deleted')
-            ->success()
-            ->send();
     }
 
     public function viewDocument(SubmittedDocument $submission): void
     {
-        try {
-            // Instead of loading the whole file into memory
-            $this->previewingDocument = $submission;
-            $this->previewUrl = Storage::disk('public')->url($submission->file_path);
-            $this->isPreviewModalOpen = true;
+        $this->previewingDocument = $submission;
+        $this->previewUrl = Storage::disk('public')->url($submission->file_path);
 
-            // Check file size before processing
-            $fileSize = Storage::disk('public')->size($submission->file_path);
-            if ($fileSize > 50 * 1024 * 1024) { // 50MB limit
-                Notification::make()
-                    ->title('File too large for preview')
-                    ->body('Please download the file to view it.')
-                    ->warning()
-                    ->send();
-                return;
-            }
-
-            if (
-                auth()->user()->hasRole(['direktur', 'project-manager']) &&
-                $this->document->status === 'uploaded'
-            ) {
-                $this->document->update([
-                    'status' => 'pending_review',
-                    'reviewer_id' => auth()->id(),
-                    'reviewed_at' => now()
-                ]);
-
-                // Add system comment about status change
-                $this->createStatusChangeComment('uploaded', 'pending_review');
-            }
-        } catch (\Exception $e) {
-            Notification::make()
-                ->title('Error previewing document')
-                ->body('Please try downloading the file instead.')
-                ->danger()
-                ->send();
-
-            $this->previewingDocument = null;
-            $this->previewUrl = null;
-            $this->isPreviewModalOpen = false;
-        }
-    }
-
-    protected function createStatusChangeComment(string $oldStatus, string $newStatus): void
-    {
-        Comment::create([
-            'user_id' => auth()->id(),
-            'commentable_type' => RequiredDocument::class,
-            'commentable_id' => $this->document->id,
-            'content' => sprintf(
-                "Status changed from <strong>%s</strong> to <strong>%s</strong>",
-                ucwords(str_replace('_', ' ', $oldStatus)),
-                ucwords(str_replace('_', ' ', $newStatus))
-            ),
-            'status' => 'approved'
+        // Load notes into the form
+        $this->documentNotesForm->fill([
+            'notes' => $submission->notes
         ]);
+
+        // Only update status if the document is in 'uploaded' status
+        if ($submission->status === 'uploaded') {
+            // Change status to pending_review
+            $oldStatus = $submission->status;
+            $submission->status = 'pending_review';
+            $submission->save();
+
+            // Create a system comment
+            Comment::create([
+                'user_id' => auth()->id(),
+                'commentable_type' => SubmittedDocument::class,
+                'commentable_id' => $submission->id,
+                'content' => sprintf(
+                    "Document status automatically changed from <strong>%s</strong> to <strong>pending_review</strong> when viewed by <strong>%s</strong>",
+                    $oldStatus,
+                    auth()->user()->name
+                ),
+                'status' => 'approved'
+            ]);
+
+            // Recalculate the overall document status
+            $this->calculateOverallStatus();
+        }
+
+        $this->isPreviewModalOpen = true;
     }
 
     public function downloadDocument($documentId)
     {
         $document = SubmittedDocument::find($documentId);
-        if (!$document)
+        if (!$document) {
             return;
+        }
 
         try {
-            $path = Storage::disk('public')->path($document->file_path);
-            $filename = basename($document->file_path);
-
-            return response()->stream(
-                function () use ($path) {
-                    $stream = fopen($path, 'rb');
-                    while (!feof($stream)) {
-                        echo fread($stream, 1024 * 8); // Read in chunks
-                        flush();
-                    }
-                    fclose($stream);
-                },
-                200,
-                [
-                    'Content-Type' => Storage::disk('public')->mimeType($document->file_path),
-                    'Content-Disposition' => 'attachment; filename="' . $filename . '"',
-                ]
-            );
+            return Storage::disk('public')->download($document->file_path);
         } catch (\Exception $e) {
             Notification::make()
                 ->title('Error downloading file')
@@ -400,12 +523,114 @@ class DocumentModalManager extends Component implements HasForms
         }
     }
 
+    /**
+     * Download all documents as a ZIP archive
+     */
+    public function downloadAllDocuments()
+    {
+        try {
+            $documents = $this->document->submittedDocuments;
+
+            if ($documents->isEmpty()) {
+                Notification::make()
+                    ->title('No Documents')
+                    ->body('There are no documents available to download.')
+                    ->warning()
+                    ->send();
+                return;
+            }
+
+            // Create temporary directory if it doesn't exist
+            $tempDir = storage_path('app/temp');
+            if (!file_exists($tempDir)) {
+                mkdir($tempDir, 0755, true);
+            }
+
+            // Get project and client details for filename
+            $client = Str::slug($this->document->projectStep->project->client->name);
+            $project = Str::slug($this->document->projectStep->project->name);
+            $docName = Str::slug($this->document->name);
+
+            // Create ZIP filename with better structure
+            $zipFileName = sprintf(
+                '%s_%s_%s_%s.zip',
+                $client,
+                $project,
+                $docName,
+                now()->format('Y-m-d_His')
+            );
+
+            $zipPath = $tempDir . '/' . $zipFileName;
+
+            // Create new ZIP archive
+            $zip = new \ZipArchive();
+            if ($zip->open($zipPath, \ZipArchive::CREATE | \ZipArchive::OVERWRITE) !== true) {
+                throw new \Exception('Cannot create zip file');
+            }
+
+            // Add files to ZIP
+            foreach ($documents as $document) {
+                $filePath = storage_path('app/public/' . $document->file_path);
+                if (file_exists($filePath)) {
+                    // Use original filename for better readability
+                    $originalName = basename($document->file_path);
+                    $zip->addFile($filePath, $originalName);
+                }
+            }
+
+            $zip->close();
+
+            // Return the ZIP file for download and delete it afterward
+            return response()->download($zipPath)->deleteFileAfterSend(true);
+
+        } catch (\Exception $e) {
+            Notification::make()
+                ->title('Download Failed')
+                ->body('Failed to create download archive. Please try again.')
+                ->danger()
+                ->send();
+
+            report($e); // Log the error for debugging
+        }
+    }
+
     public function removeDocument(int $documentId): void
     {
         try {
             $submission = SubmittedDocument::findOrFail($documentId);
+
+            // Store document info for notification
+            $documentName = basename($submission->file_path);
+            $clientName = $this->document->projectStep->project->client->name;
+            $projectName = $this->document->projectStep->project->name;
+
             Storage::disk('public')->delete($submission->file_path);
             $submission->delete();
+
+            // Close the preview modal if removing the current document
+            if ($this->previewingDocument && $this->previewingDocument->id === $documentId) {
+                $this->isPreviewModalOpen = false;
+                $this->previewingDocument = null;
+                $this->previewUrl = null;
+            }
+
+            // Recalculate overall status
+            $this->calculateOverallStatus();
+
+            // Send notification
+            $this->sendProjectNotifications(
+                "Document Removed",
+                sprintf(
+                    "<span style='color: #f59e0b; font-weight: 500;'>%s</span><br><strong>Project:</strong> %s<br><strong>Document:</strong> %s<br><strong>Removed by:</strong> %s",
+                    $clientName,
+                    $projectName,
+                    $documentName,
+                    auth()->user()->name
+                ),
+                'danger',
+                null,
+                'document_delete'
+            );
 
             Notification::make()
                 ->title('Document Removed')
@@ -452,8 +677,8 @@ class DocumentModalManager extends Component implements HasForms
                 "<span style='color: #f59e0b; font-weight: 500;'>%s</span><br><strong>Document:</strong> %s<br><strong>Status:</strong> %s → %s<br><strong>Updated by:</strong> %s",
                 $client->name,
                 $this->document->name,
-                ucwords(str_replace('_', ' ', $oldStatus)),
-                ucwords(str_replace('_', ' ', $status)),
+                $this->getStatusLabel($oldStatus),
+                $this->getStatusLabel($status),
                 auth()->user()->name
             ),
             'success',
@@ -462,6 +687,236 @@ class DocumentModalManager extends Component implements HasForms
         );
     }
 
+    /**
+     * Update document status with additional handling for rejections
+     */
+    public function updateDocumentStatus(SubmittedDocument $submission, string $status): void
+    {
+        try {
+            // If rejecting, we'll open the rejection modal instead
+            if ($status === 'rejected') {
+                $this->openRejectionModal($submission);
+                return;
+            }
+
+            $oldStatus = $submission->status;
+            $submission->status = $status;
+            $submission->save();
+
+            // Create a comment on the submitted document record
+            Comment::create([
+                'user_id' => auth()->id(),
+                'commentable_type' => SubmittedDocument::class,
+                'commentable_id' => $submission->id,
+                'content' => sprintf(
+                    "Status changed from <strong class='text-gray-700'>%s</strong> to <strong class='text-gray-700'>%s</strong> by <strong>%s</strong>",
+                    $this->getStatusLabel($oldStatus),
+                    $this->getStatusLabel($status),
+                    auth()->user()->name
+                ),
+                'status' => 'approved'
+            ]);
+
+            // Recalculate overall document status
+            $this->calculateOverallStatus();
+
+            $this->dispatch('refresh');
+
+            // Get related project information
+            $projectStep = $this->document->projectStep;
+            $project = $projectStep->project;
+            $client = $project->client;
+
+            // Determine notification action based on status
+            $notificationAction = match ($status) {
+                'approved' => 'approval',
+                'pending_review' => 'pending_review',
+                default => 'status_change'
+            };
+
+            // Send notifications with HTML formatting
+            $this->sendProjectNotifications(
+                "Document Status Updated",
+                sprintf(
+                    "<span style='color: #f59e0b; font-weight: 500;'>%s</span><br><strong>Document:</strong> %s<br><strong>File:</strong> %s<br><strong>Status:</strong> %s → %s<br><strong>Updated by:</strong> %s",
+                    $client->name,
+                    $this->document->name,
+                    basename($submission->file_path),
+                    $this->getStatusLabel($oldStatus),
+                    $this->getStatusLabel($status),
+                    auth()->user()->name
+                ),
+                'success',
+                'View Document',
+                $notificationAction
+            );
+        } catch (\Exception $e) {
+            Notification::make()
+                ->title('Error updating status')
+                ->body('Please try again: ' . $e->getMessage())
+                ->danger()
+                ->send();
+        }
+    }
+
+    protected function createStatusChangeComment(string $oldStatus, string $newStatus): void
+    {
+        Comment::create([
+            'user_id' => auth()->id(),
+            'commentable_type' => RequiredDocument::class,
+            'commentable_id' => $this->document->id,
+            'content' => sprintf(
+                "Status changed from <strong>%s</strong> to <strong>%s</strong>",
+                $this->getStatusLabel($oldStatus),
+                $this->getStatusLabel($newStatus)
+            ),
+            'status' => 'approved'
+        ]);
+    }
+
+    public function openRejectionModal(SubmittedDocument $document): void
+    {
+        $this->documentBeingRejected = $document;
+        $this->rejectionForm->fill();
+
+        // Emit event to open the modal
+        $this->dispatch('openRejectionModal', $document->id);
+    }
+
+    public function submitRejection(): void
+    {
+        if (!$this->documentBeingRejected) {
+            return;
+        }
+
+        // Validate rejection reason
+        $this->validate([
+            'rejectData.rejectionReason' => 'required|min:10'
+        ]);
+
+        try {
+            // Store file path in a variable before resetting documentBeingRejected
+            $rejectedFilePath = $this->documentBeingRejected->file_path;
+
+            // Update document status
+            $oldStatus = $this->documentBeingRejected->status;
+            $this->documentBeingRejected->status = 'rejected';
+            $this->documentBeingRejected->rejection_reason = $this->rejectData['rejectionReason'];
+            $this->documentBeingRejected->save();
+
+            // Create a comment
+            Comment::create([
+                'user_id' => auth()->id(),
+                'commentable_type' => SubmittedDocument::class,
+                'commentable_id' => $this->documentBeingRejected->id,
+                'content' => sprintf(
+                    "<div class='p-3 bg-red-50 dark:bg-red-900/30 rounded-lg border border-red-100 dark:border-red-800'><p class='text-red-800 dark:text-red-300 font-medium'>Document Rejected</p><div class='mt-2 text-red-700 dark:text-red-400'>%s</div></div>",
+                    $this->rejectData['rejectionReason']
+                ),
+                'status' => 'approved'
+            ]);
+
+            // Reset form and modal
+            $this->rejectionForm->fill();
+
+            // Store the document in a temporary variable before clearing it
+            $rejectedDocument = $this->documentBeingRejected;
+            $this->documentBeingRejected = null;
+
+            // Recalculate overall status
+            $this->calculateOverallStatus();
+
+            $this->dispatch('refresh');
+            $this->dispatch('close-modal', ['id' => 'rejection-reason-modal']);
+
+            // Send notification - now using the stored variables
+            $projectStep = $this->document->projectStep;
+            $project = $projectStep->project;
+            $client = $project->client;
+
+            $this->sendProjectNotifications(
+                "Document Rejected",
+                sprintf(
+                    "<span style='color: #f59e0b; font-weight: 500;'>%s</span><br><strong>Document:</strong> %s<br><strong>File:</strong> %s<br><strong>Rejected by:</strong> %s",
+                    $client->name,
+                    $this->document->name,
+                    basename($rejectedFilePath), // Using stored file path
+                    auth()->user()->name
+                ),
+                'danger',
+                'View Details',
+                'rejection'
+            );
+
+            // Show success notification
+            Notification::make()
+                ->title('Document Rejected')
+                ->body('The document has been rejected with the provided reason.')
+                ->icon('heroicon-o-x-circle')
+                ->color('danger')
+                ->send();
+        } catch (\Exception $e) {
+            // Error handling
+            Notification::make()
+                ->title('Error')
+                ->body('Failed to reject document. Please try again.')
+                ->icon('heroicon-o-x-circle')
+                ->color('danger')
+                ->send();
+
+            report($e); // Log the error
+        }
+    }
+
+    /**
+     * Update document notes
+     */
+    public function saveDocumentNotes(): void
+    {
+        if (!$this->previewingDocument) {
+            return;
+        }
+
+        try {
+            $data = $this->documentNotesForm->getState();
+
+            // Update the notes directly on the document
+            $this->previewingDocument->update([
+                'notes' => $data['notes']
+            ]);
+
+            Notification::make()
+                ->title('Notes Saved')
+                ->success()
+                ->send();
+
+            // Send notification to project team
+            $this->sendProjectNotifications(
+                "Document Notes Updated",
+                sprintf(
+                    "<span style='color: #f59e0b; font-weight: 500;'>%s</span><br><strong>Document:</strong> %s<br><strong>File:</strong> %s<br><strong>Updated by:</strong> %s",
+                    $this->document->projectStep->project->client->name,
+                    $this->document->name,
+                    basename($this->previewingDocument->file_path),
+                    auth()->user()->name
+                ),
+                'info',
+                'View Document',
+                'document_note'
+            );
+
+        } catch (\Exception $e) {
+            Notification::make()
+                ->title('Error')
+                ->body('Failed to save notes. Please try again.')
+                ->danger()
+                ->send();
+        }
+    }
+
+    /**
+     * Enhanced notification system for project members
+     */
     protected function sendProjectNotifications(
         string $title,
         string $body,
@@ -485,11 +940,6 @@ class DocumentModalManager extends Component implements HasForms
                     ->label($action)
                     ->markAsRead()
                     ->dispatch('openDocumentModal', [$this->document->id]),
-                // ->url(route('filament.admin.resources.projects.view', [
-                //     'record' => $this->document->projectStep->project->id,
-                //     'openDocument' => $this->document->id
-                // ])),
-
                 \Filament\Notifications\Actions\Action::make('Mark As Read')
                     ->markAsRead(),
             ]);
@@ -524,19 +974,13 @@ class DocumentModalManager extends Component implements HasForms
                 ->send();
     }
 
-
-    private function getDefaultIconForType(string $type): string
-    {
-        return match ($type) {
-            'success' => 'heroicon-o-check-circle',
-            'danger' => 'heroicon-o-x-circle',
-            'warning' => 'heroicon-o-exclamation-triangle',
-            'info' => 'heroicon-o-information-circle',
-            'error' => 'heroicon-o-x-circle',
-            default => 'heroicon-o-bell'
-        };
-    }
-
+    /**
+     * Get the appropriate notification icon based on action and status type
+     * 
+     * @param string $type The type of notification (success, danger, etc.)
+     * @param string $action The action being performed (optional)
+     * @return string The heroicon name
+     */
     protected function getNotificationIcon(string $type, string $action = ''): string
     {
         // First check for specific actions
@@ -549,8 +993,10 @@ class DocumentModalManager extends Component implements HasForms
                 'status_change' => 'heroicon-o-arrow-path',
                 'rejection' => 'heroicon-o-x-mark',
                 'approval' => 'heroicon-o-check-badge',
+                'pending_review' => 'heroicon-o-clock',
                 'document_delete' => 'heroicon-o-document-minus',
                 'document_preview' => 'heroicon-o-document-text',
+                'document_note' => 'heroicon-o-pencil-square',
                 'notification' => 'heroicon-o-bell-alert',
                 default => $this->getDefaultIconForType($type)
             };
@@ -560,6 +1006,27 @@ class DocumentModalManager extends Component implements HasForms
         return $this->getDefaultIconForType($type);
     }
 
+    /**
+     * Get default icon based on notification type
+     * 
+     * @param string $type
+     * @return string
+     */
+    private function getDefaultIconForType(string $type): string
+    {
+        return match ($type) {
+            'success' => 'heroicon-o-check-circle',
+            'danger' => 'heroicon-o-x-circle',
+            'warning' => 'heroicon-o-exclamation-triangle',
+            'info' => 'heroicon-o-information-circle',
+            'error' => 'heroicon-o-x-circle',
+            default => 'heroicon-o-bell'
+        };
+    }
+
+    /**
+     * Get file type of currently previewing document
+     */
     protected function getFileType(): ?string
     {
         if (!$this->previewingDocument) {
@@ -568,18 +1035,139 @@ class DocumentModalManager extends Component implements HasForms
         return strtolower(pathinfo($this->previewingDocument->file_path, PATHINFO_EXTENSION));
     }
 
+    /**
+     * Get human-readable status label
+     */
+    public function getStatusLabel(string $status): string
+    {
+        return match ($status) {
+            'uploaded' => 'Uploaded',
+            'pending_review' => 'Pending Review',
+            'approved' => 'Approved',
+            'rejected' => 'Rejected',
+            default => ucwords(str_replace('_', ' ', $status))
+        };
+    }
+
+    /**
+     * Get status icon for UI elements
+     */
+    public function getStatusIcon(string $status): string
+    {
+        return match ($status) {
+            'uploaded' => 'heroicon-m-arrow-up-tray',
+            'pending_review' => 'heroicon-m-clock',
+            'approved' => 'heroicon-m-check-circle',
+            'rejected' => 'heroicon-m-x-circle',
+            default => 'heroicon-m-question-mark-circle'
+        };
+    }
+
+    /**
+     * Handle document upload event from other components
+     */
     public function handleDocumentUploaded(int $documentId): void
     {
         // Refresh the document if we have it loaded
         if (isset($this->document) && $this->document->id == $documentId) {
             $this->document->refresh();
+            $this->calculateOverallStatus();
         }
     }
 
+
+    /**
+     * Get the ordered list of documents
+     */
+    protected function getOrderedDocuments()
+    {
+        if (!isset($this->document)) {
+            return collect();
+        }
+
+        return $this->document->submittedDocuments
+            ->sortBy(function ($doc) {
+                return $this->statusOrder[$doc->status] ?? 999;
+            })
+            ->values(); // Convert to indexed array for proper navigation
+    }
+
+    /**
+     * Get next document based on status order with circular navigation
+     */
+    public function nextDocument(): void
+    {
+        if (!$this->previewingDocument) {
+            return;
+        }
+
+        $documents = $this->getOrderedDocuments();
+        $currentIndex = $documents->search(function ($item) {
+            return $item->id === $this->previewingDocument->id;
+        });
+
+        // Next index with circular navigation
+        $nextIndex = ($currentIndex + 1) % $documents->count();
+        $this->viewDocument($documents[$nextIndex]);
+    }
+
+    /**
+     * Get previous document based on status order with circular navigation
+     */
+    public function previousDocument(): void
+    {
+        if (!$this->previewingDocument) {
+            return;
+        }
+
+        $documents = $this->getOrderedDocuments();
+        $currentIndex = $documents->search(function ($item) {
+            return $item->id === $this->previewingDocument->id;
+        });
+
+        // Previous index with circular navigation
+        $prevIndex = ($currentIndex - 1 + $documents->count()) % $documents->count();
+        $this->viewDocument($documents[$prevIndex]);
+    }
+
+    /**
+     * Get current document position and total
+     */
+    public function getDocumentPosition(): array
+    {
+        if (!$this->previewingDocument || !$this->document) {
+            return [
+                'current' => 0,
+                'total' => 0
+            ];
+        }
+
+        $documents = $this->getOrderedDocuments();
+        $position = $documents->search(function ($item) {
+            return $item->id === $this->previewingDocument->id;
+        });
+
+        return [
+            'current' => $position + 1,
+            'total' => $documents->count()
+        ];
+    }
+
+    /**
+     * Render Method
+     */
     public function render()
     {
+        $sortedDocuments = $this->getOrderedDocuments();
+
         return view('livewire.project-detail.document-modal-manager', [
-            'fileType' => $this->getFileType()
+            'comments' => isset($this->document) ? $this->document->comments()
+                ->with('user')
+                ->latest()
+                ->get() : collect(),
+            'fileType' => $this->getFileType(),
+            'sortedDocuments' => $sortedDocuments
         ]);
     }
 }
+

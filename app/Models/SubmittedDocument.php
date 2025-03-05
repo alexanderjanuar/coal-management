@@ -18,7 +18,7 @@ class SubmittedDocument extends Model
     public function getActivitylogOptions(): LogOptions
     {
         return LogOptions::defaults()
-            ->logOnly(['file_path', 'rejection_reason'])
+            ->logOnly(['file_path', 'rejection_reason','status','notes'])
             ->logOnlyDirty()
             ->dontSubmitEmptyLogs()
             ->setDescriptionForEvent(function(string $eventName) {
@@ -27,8 +27,6 @@ class SubmittedDocument extends Model
             })
             ->logFillable();
     }
-
-    
 
     public function requiredDocument()
     {
