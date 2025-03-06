@@ -480,7 +480,7 @@ class DocumentModalManager extends Component implements HasForms
                 ->success()
                 ->send();
 
-
+            $this->dispatch('close-modal', id: 'confirm-delete-modal');
 
         } catch (\Exception $e) {
             Notification::make()
@@ -1239,6 +1239,91 @@ class DocumentModalManager extends Component implements HasForms
         $this->isPreviewModalOpen = false;
         $this->previewUrl = null;
         $this->previewingDocument = null;
+    }
+
+    /**
+     * Approve all documents related to the current required document
+     */
+    public function approveAllDocuments(): void
+    {
+        try {
+            $documents = $this->document->submittedDocuments;
+            
+            if ($documents->isEmpty()) {
+                $this->sendNotification(
+                    'warning',
+                    'No Documents Found',
+                    'There are no documents to approve.'
+                );
+                return;
+            }
+
+            // Store the count of affected documents
+            $affectedCount = $documents->count();
+
+            // Update all documents to approved status
+            foreach ($documents as $doc) {
+                $oldStatus = $doc->status;
+                $doc->status = 'approved';
+                $doc->save();
+
+                // Create a comment for each document
+                Comment::create([
+                    'user_id' => auth()->id(),
+                    'commentable_type' => SubmittedDocument::class,
+                    'commentable_id' => $doc->id,
+                    'content' => sprintf(
+                        "Status changed from <strong>%s</strong> to <strong>approved</strong> using bulk approve by <strong>%s</strong>",
+                        $oldStatus,
+                        auth()->user()->name
+                    ),
+                    'status' => 'approved'
+                ]);
+            }
+
+            // Update the main document status
+            $this->document->status = 'approved';
+            $this->document->save();
+
+            // Close the confirmation modal
+            $this->dispatch('close-modal', id: 'confirm-approve-all');
+
+            // Recalculate overall status
+            $this->calculateOverallStatus();
+
+            // Send notifications
+            $this->sendProjectNotifications(
+                "All Documents Approved",
+                sprintf(
+                    "<span style='color: #f59e0b; font-weight: 500;'>%s</span><br><strong>Document:</strong> %s<br><strong>Action:</strong> %d documents approved<br><strong>Updated by:</strong> %s",
+                    $this->document->projectStep->project->client->name,
+                    $this->document->name,
+                    $affectedCount,
+                    auth()->user()->name
+                ),
+                'success',
+                'View Documents',
+                'approval'
+            );
+
+            // Show success notification
+            Notification::make()
+                ->title('Documents Approved')
+                ->body(sprintf('%d documents have been approved successfully.', $affectedCount))
+                ->success()
+                ->send();
+
+            // Refresh the view
+            $this->dispatch('refresh');
+
+        } catch (\Exception $e) {
+            report($e);
+            $this->sendNotification(
+                'error',
+                'Error Approving Documents',
+                'An error occurred while trying to approve the documents. Please try again.'
+            );
+        }
     }
 
     public function render()
