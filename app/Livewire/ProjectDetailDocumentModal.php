@@ -247,6 +247,73 @@ class ProjectDetailDocumentModal extends Component implements HasForms
             ->statePath('notesData');
     }
 
+    public function approveAllDocuments(): void
+    {
+        try {
+            $documents = $this->document->submittedDocuments;
+
+            if ($documents->isEmpty()) {
+                $this->sendNotification(
+                    'warning',
+                    'No Documents Found',
+                    'There are no documents to approve.'
+                );
+                return;
+            }
+
+            // Store the count of affected documents
+            $affectedCount = $documents->count();
+
+            // Update all documents to approved status
+            foreach ($documents as $doc) {
+                $oldStatus = $doc->status;
+                $doc->status = 'approved';
+                $doc->save();
+
+                // Create a comment for each document
+                Comment::create([
+                    'user_id' => auth()->id(),
+                    'commentable_type' => SubmittedDocument::class,
+                    'commentable_id' => $doc->id,
+                    'content' => sprintf(
+                        "Status changed from <strong>%s</strong> to <strong>approved</strong> using bulk approve by <strong>%s</strong>",
+                        $oldStatus,
+                        auth()->user()->name
+                    ),
+                    'status' => 'approved'
+                ]);
+            }
+
+            // Update the main document status
+            $this->document->status = 'approved';
+            $this->document->save();
+
+            // Close the confirmation modal
+            $this->dispatch('close-modal', id: 'confirm-approve-all');
+
+            // Recalculate overall status
+            $this->calculateOverallStatus();
+
+            // Show success notification
+            Notification::make()
+                ->title('Documents Approved')
+                ->body(sprintf('%d documents have been approved successfully.', $affectedCount))
+                ->success()
+                ->send();
+
+            // Refresh the view
+            $this->dispatch('refresh');
+
+        } catch (\Exception $e) {
+            report($e);
+            $this->sendNotification(
+                'error',
+                'Error Approving Documents',
+                'An error occurred while trying to approve the documents. Please try again.'
+            );
+        }
+    }
+
     /**
      * Update document notes
      */
@@ -601,7 +668,7 @@ class ProjectDetailDocumentModal extends Component implements HasForms
         })
             ->orWhere(function ($query) {
                 // Check for activities on submitted documents related to this required document
-                $query->where('subject_type',SubmittedDocument::class)
+                $query->where('subject_type', SubmittedDocument::class)
                     ->whereIn('subject_id', $this->document->submittedDocuments->pluck('id'))
                     ->whereIn('description', ['approved', 'pending_review', 'uploaded', 'rejected', 'updated']);
             })
@@ -702,23 +769,6 @@ class ProjectDetailDocumentModal extends Component implements HasForms
                 'pending_review' => 'pending_review',
                 default => 'status_change'
             };
-
-            // Send notifications with HTML formatting
-            $this->sendProjectNotifications(
-                "Document Status Updated",
-                sprintf(
-                    "<span style='color: #f59e0b; font-weight: 500;'>%s</span><br><strong>Document:</strong> %s<br><strong>File:</strong> %s<br><strong>Status:</strong> %s → %s<br><strong>Updated by:</strong> %s",
-                    $client->name,
-                    $this->document->name,
-                    basename($submission->file_path),
-                    $this->getStatusLabel($oldStatus),
-                    $this->getStatusLabel($status),
-                    auth()->user()->name
-                ),
-                'success',
-                'View Document',
-                $notificationAction
-            );
         } catch (\Exception $e) {
             $this->sendNotification('error', 'Error updating status', 'Please try again.');
         }
@@ -972,20 +1022,6 @@ class ProjectDetailDocumentModal extends Component implements HasForms
             // Recalculate overall status
             $this->calculateOverallStatus();
 
-            // Send notification
-            $this->sendProjectNotifications(
-                "Document Removed",
-                sprintf(
-                    "<span style='color: #f59e0b; font-weight: 500;'>%s</span><br><strong>Project:</strong> %s<br><strong>Document:</strong> %s<br><strong>Removed by:</strong> %s",
-                    $clientName,
-                    $projectName,
-                    $documentName,
-                    auth()->user()->name
-                ),
-                'danger',
-                null,
-                'document_delete'
-            );
 
             // Show success notification
             Notification::make()

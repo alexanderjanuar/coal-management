@@ -36,10 +36,6 @@ class RecentSubmittedDocuments extends Component implements HasForms, HasTable
                 Tables\Columns\TextColumn::make('projectStep.project.client.name')
                     ->label('Client')
                     ->sortable(),
-                Tables\Columns\TextColumn::make('projectStep.project.due_date')
-                    ->label('Deadline')
-                    ->date()
-                    ->sortable(),
                 Tables\Columns\TextColumn::make('projectStep.project.priority')
                     ->label('Priority')
                     ->formatStateUsing(function (string $state): string {
@@ -65,10 +61,6 @@ class RecentSubmittedDocuments extends Component implements HasForms, HasTable
                     ])
                     ->formatStateUsing(fn(string $state): string => ucwords(str_replace('_', ' ', $state)))
                     ->sortable(),
-                Tables\Columns\TextColumn::make('reviewer.name')
-                    ->label('Reviewer')
-                    ->placeholder('Not assigned')
-                    ->visible(fn() => !Auth::user()->hasRole('staff') && $this->hasStatus('pending_review')),
             ])
             ->actions([
                 Tables\Actions\Action::make('view')

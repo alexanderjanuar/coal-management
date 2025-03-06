@@ -30,7 +30,12 @@ class RecentActivityTable extends Component implements HasForms, HasTable
         // Get base query - default to today's activities
         $query = Activity::query()
             ->with(['causer', 'subject'])
-            ->whereDate('created_at', Carbon::today());
+            ->whereDate('created_at', Carbon::today())
+            ->whereDoesntHave('causer', function ($query) {
+                $query->whereHas('roles', function ($q) {
+                    $q->whereIn('name', ['super-admin', 'admin']);
+                });
+            });
 
         if (!Auth::user()->hasRole('super-admin')) {
             $query->where(function ($q) {
@@ -74,7 +79,7 @@ class RecentActivityTable extends Component implements HasForms, HasTable
             });
         }
 
-        return $query->latest()->limit($this->limit);
+        return $query->latest();  // Remove the limit() call here
     }
 
     public function table(Table $table): Table
@@ -100,8 +105,26 @@ class RecentActivityTable extends Component implements HasForms, HasTable
 
                 Tables\Columns\TextColumn::make('description')
                     ->label('Action')
-                    ->formatStateUsing(function ($state) {
-                        return ucfirst($state);
+                    ->formatStateUsing(function ($state, Activity $record) {
+                        // Get the subject type first
+                        $type = match ($record->subject_type) {
+                            'App\Models\Project' => 'Project',
+                            'App\Models\Client' => 'Client information',
+                            'App\Models\RequiredDocument' => 'Document',
+                            'App\Models\SubmittedDocument' => 'Document',
+                            default => 'Record'
+                        };
+
+                        // Then get the action in past tense
+                        $action = match ($record->description) {
+                            'created' => 'submitted',
+                            'updated' => 'updated',
+                            'deleted' => 'removed',
+                            default => $record->description
+                        };
+
+                        // Format: "Document submitted" or "Project updated"
+                        return "{$type} {$action}";
                     }),
                     
                 // Add client name based on the subject type
@@ -142,15 +165,6 @@ class RecentActivityTable extends Component implements HasForms, HasTable
 
                         return 'N/A';
                     }),
-                    
-                Tables\Columns\TextColumn::make('created_at')
-                    ->label('Time')
-                    ->dateTime('H:i') // 24-hour format
-                    ->tooltip(function (Activity $record): string {
-                        // Full date and time on hover
-                        return $record->created_at->format('Y-m-d H:i:s');
-                    })
-                    ->sortable(),
             ])
             ->actions([
                 Tables\Actions\Action::make('view')
@@ -202,7 +216,9 @@ class RecentActivityTable extends Component implements HasForms, HasTable
             })
             ->emptyStateIcon('heroicon-o-clipboard-document-check')
             ->heading('Recent User Activity')
-            ->paginated(false);
+            ->paginated(true)
+            ->defaultPaginationPageOption(8)
+            ->paginationPageOptions([10, 25, 50]);
     }
 
     public static function canView(): bool

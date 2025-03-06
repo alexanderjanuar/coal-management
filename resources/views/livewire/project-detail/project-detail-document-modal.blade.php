@@ -69,48 +69,69 @@
 
 
         <div class="flex-1 p-4 sm:p-6 space-y-4 sm:space-y-6 overflow-y-auto">
-            <!-- Status Section -->
+            <!-- Enhanced Status Section -->
             <div class="bg-white dark:bg-gray-900 rounded-xl shadow-sm ring-1 ring-gray-100 dark:ring-gray-700">
-                {{-- Status Section --}}
-                <div class="px-4 sm:px-6 py-4 sm:py-5">
-                    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <div class="p-4">
+                    <!-- Status Header -->
+                    <div class="flex items-center justify-between mb-3">
                         <div class="flex items-center gap-3">
                             <div
                                 class="w-8 h-8 rounded-lg bg-gray-50 dark:bg-gray-700 flex items-center justify-center">
                                 <x-heroicon-m-signal class="w-4 h-4 text-gray-600 dark:text-gray-400" />
                             </div>
-                            <span class="text-sm font-medium text-gray-900 dark:text-white">Current Status</span>
+                            <span class="text-sm font-medium text-gray-900 dark:text-white">Document Status</span>
+                        </div>
+                    </div>
+
+                    <!-- Status Content Area -->
+                    <div class="flex flex-col sm:flex-row sm:items-center gap-3">
+                        <!-- Status Badge -->
+                        <div class="flex-shrink-0">
+                            <div class="inline-flex items-center px-3 py-2 rounded-lg text-sm font-medium 
+                                {{ match($document->status) {
+                                    'uploaded' => 'bg-blue-50 text-blue-700 dark:bg-blue-900/20 dark:text-blue-300',
+                                    'pending_review' => 'bg-amber-50 text-amber-700 dark:bg-amber-900/20 dark:text-amber-300',
+                                    'approved' => 'bg-green-50 text-green-700 dark:bg-green-900/20 dark:text-green-300',
+                                    'rejected' => 'bg-red-50 text-red-700 dark:bg-red-900/20 dark:text-red-300',
+                                    default => 'bg-gray-50 text-gray-600 dark:bg-gray-800 dark:text-gray-400'
+                                } }}">
+                                <x-dynamic-component :component="$this->getStatusIcon($document->status)"
+                                    class="w-4 h-4 mr-2" />
+                                <span>{{ ucwords(str_replace('_', ' ', $document->status ?? 'Not Set')) }}</span>
+                            </div>
                         </div>
 
-                        <div class="w-full sm:w-auto">
-                            <div class="flex items-center gap-2 px-3 py-1.5 rounded-lg border
-                                {{ match($overallStatus) {
-                                    'uploaded' => 'bg-blue-50 border-blue-200 dark:bg-blue-900/20 dark:border-blue-800/30',
-                                    'pending_review' => 'bg-amber-50 border-amber-200 dark:bg-amber-900/20 dark:border-amber-800/30',
-                                    'approved' => 'bg-green-50 border-green-200 dark:bg-green-900/20 dark:border-green-800/30',
-                                    'rejected' => 'bg-red-50 border-red-200 dark:bg-red-900/20 dark:border-red-800/30',
-                                    default => 'bg-gray-50 border-gray-200 dark:bg-gray-800 dark:border-gray-700'
-                                } }}">
-                                <x-dynamic-component :component="$this->getStatusIcon($overallStatus)" class="w-4 h-4 {{ match($overallStatus) {
-                                        'uploaded' => 'text-blue-600 dark:text-blue-400',
-                                        'pending_review' => 'text-amber-600 dark:text-amber-400',
-                                        'approved' => 'text-green-600 dark:text-green-400',
-                                        'rejected' => 'text-red-600 dark:text-red-400',
-                                        default => 'text-gray-600 dark:text-gray-400'
-                                    } }}" />
-                                <span class="text-sm font-medium {{ match($overallStatus) {
-                                    'uploaded' => 'text-blue-700 dark:text-blue-400',
-                                    'pending_review' => 'text-amber-700 dark:text-amber-400',
-                                    'approved' => 'text-green-700 dark:text-green-400',
-                                    'rejected' => 'text-red-700 dark:text-red-400',
-                                    default => 'text-gray-700 dark:text-gray-400'
-                                } }}">
-                                    {{ $this->getStatusLabel($overallStatus) }}
-                                </span>
+                        <!-- Approve All Button -->
+                        @if(!auth()->user()->hasRole(['staff', 'client']))
+                        <x-filament::button x-data="{}"
+                            x-on:click="$dispatch('open-modal', { id: 'confirm-approve-all' })" color="success"
+                            size="sm"
+                            :disabled="$document->submittedDocuments->count() === $document->submittedDocuments->where('status', 'approved')->count()">
+                            <div class="flex items-center gap-2">
+                                <x-heroicon-m-check-badge class="w-4 h-4" />
+                                <span>Approve All</span>
                             </div>
+                        </x-filament::button>
+                        @endif
+                    </div>
+                </div>
+
+
+
+                @if($document->reviewer_id && in_array($document->status, ['pending_review', 'approved', 'rejected']))
+                <div class="px-4 py-3 border-t border-gray-100 dark:border-gray-700">
+                    <div class="flex items-center gap-3">
+                        <div class="w-8 h-8 rounded-lg bg-gray-50 dark:bg-gray-700 flex items-center justify-center">
+                            <x-heroicon-m-user class="w-4 h-4 text-gray-600 dark:text-gray-400" />
+                        </div>
+                        <div class="flex flex-col">
+                            <span class="text-sm font-medium text-gray-900 dark:text-white">Reviewer</span>
+                            <span class="text-sm text-gray-500 dark:text-gray-400">{{ $document->reviewer->name
+                                }}</span>
                         </div>
                     </div>
                 </div>
+                @endif
             </div>
 
             <!-- Upload Section -->
@@ -743,8 +764,8 @@
 
                         <!-- Remove Button with Confirmation Modal -->
                         <x-filament::button x-data="{}"
-                            x-on:click="$dispatch('open-modal', { id: 'confirm-delete-modal' })"
-                            color="danger" size="md" class="justify-center">
+                            x-on:click="$dispatch('open-modal', { id: 'confirm-delete-modal' })" color="danger"
+                            size="md" class="justify-center">
                             <div class="inline-flex items-center gap-2">
                                 <x-heroicon-m-trash class="w-4 h-4" />
                                 <span>Remove</span>
@@ -1121,5 +1142,49 @@
                     </form>
                 </div>
         </x-filament::modal>
+    </x-filament::modal>
+
+    <x-filament::modal id="confirm-approve-all" alignment="center" width="sm">
+        <x-slot name="header">
+            <div class="flex items-center gap-3">
+                <div
+                    class="flex-shrink-0 w-10 h-10 rounded-full bg-green-50 dark:bg-green-900 flex items-center justify-center">
+                    <x-heroicon-o-check-badge class="w-5 h-5 text-green-500 dark:text-green-400" />
+                </div>
+                <h3 class="text-lg font-medium text-gray-900 dark:text-white">
+                    Approve All Documents
+                </h3>
+            </div>
+        </x-slot>
+
+        <div class="space-y-3">
+            <p class="text-sm text-gray-500 dark:text-gray-400">
+                This action will approve all documents regardless of their current status. Are you sure you
+                want to
+                continue?
+            </p>
+            <div
+                class="bg-amber-50 dark:bg-amber-900/30 border border-amber-100 dark:border-amber-700/50 rounded-lg p-3">
+                <p class="text-sm font-medium text-amber-800 dark:text-amber-300">
+                    Note: This action cannot be undone.
+                </p>
+            </div>
+        </div>
+
+        <x-slot name="footer">
+            <div class="flex justify-end gap-2">
+                <x-filament::button x-on:click="$dispatch('close-modal', { id: 'confirm-approve-all' })" color="gray"
+                    size="sm">
+                    Cancel
+                </x-filament::button>
+
+                <x-filament::button wire:click="approveAllDocuments" color="success" size="sm">
+                    <div class="flex items-center gap-1">
+                        <x-heroicon-m-check-badge class="w-4 h-4" />
+                        <span>Approve All</span>
+                    </div>
+                </x-filament::button>
+            </div>
+        </x-slot>
     </x-filament::modal>
 </div>

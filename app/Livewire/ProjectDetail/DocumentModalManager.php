@@ -962,22 +962,6 @@ class DocumentModalManager extends Component implements HasForms
                 default => 'status_change'
             };
 
-            // Send notifications with HTML formatting
-            $this->sendProjectNotifications(
-                "Document Status Updated",
-                sprintf(
-                    "<span style='color: #f59e0b; font-weight: 500;'>%s</span><br><strong>Document:</strong> %s<br><strong>File:</strong> %s<br><strong>Status:</strong> %s → %s<br><strong>Updated by:</strong> %s",
-                    $client->name,
-                    $this->document->name,
-                    basename($submission->file_path),
-                    $this->getStatusLabel($oldStatus),
-                    $this->getStatusLabel($status),
-                    auth()->user()->name
-                ),
-                'success',
-                'View Document',
-                $notificationAction
-            );
         } catch (\Exception $e) {
             $this->sendNotification('error', 'Error updating status', 'Please try again.');
         }
@@ -1292,21 +1276,6 @@ class DocumentModalManager extends Component implements HasForms
 
             // Recalculate overall status
             $this->calculateOverallStatus();
-
-            // Send notifications
-            $this->sendProjectNotifications(
-                "All Documents Approved",
-                sprintf(
-                    "<span style='color: #f59e0b; font-weight: 500;'>%s</span><br><strong>Document:</strong> %s<br><strong>Action:</strong> %d documents approved<br><strong>Updated by:</strong> %s",
-                    $this->document->projectStep->project->client->name,
-                    $this->document->name,
-                    $affectedCount,
-                    auth()->user()->name
-                ),
-                'success',
-                'View Documents',
-                'approval'
-            );
 
             // Show success notification
             Notification::make()

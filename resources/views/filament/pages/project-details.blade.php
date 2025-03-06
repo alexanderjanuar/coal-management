@@ -131,42 +131,50 @@
                                 class="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-3 py-1.5
                                 text-sm font-medium text-gray-700 dark:text-gray-300 transition-colors group">
                                 <div class="flex items-center -space-x-2">
-                                    @foreach($record->userProject->take(4) as $member)
-                                    <div class="relative group/tooltip py-3">
-                                        <img src="https://ui-avatars.com/api/?name={{ urlencode($member->user->name) }}"
-                                            alt="{{ $member->user->name }}"
-                                            class="w-8 h-8 rounded-full ring-2 ring-white dark:ring-gray-800 object-cover transition-transform hover:scale-110"
-                                            title="{{ $member->user->name }}">
+                                    @php
+                                        $nonDirectorMembers = $record->userProject->filter(function($userProject) {
+                                            return !$userProject->user->roles->contains('name', 'direktur');
+                                        });
+                                    @endphp
 
-                                        <div class="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-2 py-1 bg-gray-900 dark:bg-gray-700 text-white text-xs rounded-lg 
-                                            opacity-0 invisible group-hover/tooltip:opacity-100 group-hover/tooltip:visible transition-all duration-200 min-w-max z-[999]
-                                            shadow-lg">
-                                            <span>{{ $member->user->name }}</span>
-                                            <div
-                                                class="absolute -bottom-1 left-1/2 -translate-x-1/2 w-2 h-2 bg-gray-900 dark:bg-gray-700 rotate-45">
+                                    <div class="flex items-center -space-x-2">
+                                        @foreach($nonDirectorMembers->take(4) as $member)
+                                        <div class="relative group/tooltip py-3">
+                                            <img src="https://ui-avatars.com/api/?name={{ urlencode($member->user->name) }}"
+                                                alt="{{ $member->user->name }}"
+                                                class="w-8 h-8 rounded-full ring-2 ring-white dark:ring-gray-800 object-cover transition-transform hover:scale-110"
+                                                title="{{ $member->user->name }}">
+
+                                            <div class="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-2 py-1 bg-gray-900 dark:bg-gray-700 text-white text-xs rounded-lg 
+                                                opacity-0 invisible group-hover/tooltip:opacity-100 group-hover/tooltip:visible transition-all duration-200 min-w-max z-[999]
+                                                shadow-lg">
+                                                <span>{{ $member->user->name }}</span>
+                                                <div class="absolute -bottom-1 left-1/2 -translate-x-1/2 w-2 h-2 bg-gray-900 dark:bg-gray-700 rotate-45">
+                                                </div>
                                             </div>
                                         </div>
-                                    </div>
-                                    @endforeach
+                                        @endforeach
 
-                                    @if($record->userProject->count() > 4)
-                                    <div class="relative group/tooltip py-3">
-                                        <div
-                                            class="w-8 h-8 rounded-full ring-2 ring-white dark:ring-gray-800 bg-gray-100 dark:bg-gray-700 flex items-center justify-center transition-transform hover:scale-110">
-                                            <span class="text-xs font-medium text-gray-600 dark:text-gray-300">+{{
-                                                $record->userProject->count() - 4 }}</span>
-                                        </div>
+                                        @php
+                                            $nonDirectorCount = $nonDirectorMembers->count();
+                                        @endphp
 
-                                        <div class="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-2 py-1 bg-gray-900 dark:bg-gray-700 text-white text-xs rounded-lg
-                                            opacity-0 invisible group-hover/tooltip:opacity-100 group-hover/tooltip:visible transition-all duration-200 whitespace-nowrap z-50
-                                            shadow-lg">
-                                            {{ $record->userProject->count() - 4 }} more team members
-                                            <div
-                                                class="absolute -bottom-1 left-1/2 -translate-x-1/2 w-2 h-2 bg-gray-900 dark:bg-gray-700 rotate-45">
+                                        @if($nonDirectorCount > 4)
+                                        <div class="relative group/tooltip py-3">
+                                            <div class="w-8 h-8 rounded-full ring-2 ring-white dark:ring-gray-800 bg-gray-100 dark:bg-gray-700 flex items-center justify-center transition-transform hover:scale-110">
+                                                <span class="text-xs font-medium text-gray-600 dark:text-gray-300">+{{ $nonDirectorCount - 4 }}</span>
+                                            </div>
+
+                                            <div class="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-2 py-1 bg-gray-900 dark:bg-gray-700 text-white text-xs rounded-lg
+                                                opacity-0 invisible group-hover/tooltip:opacity-100 group-hover/tooltip:visible transition-all duration-200 whitespace-nowrap z-50
+                                                shadow-lg">
+                                                {{ $nonDirectorCount - 4 }} more team members
+                                                <div class="absolute -bottom-1 left-1/2 -translate-x-1/2 w-2 h-2 bg-gray-900 dark:bg-gray-700 rotate-45">
+                                                </div>
                                             </div>
                                         </div>
+                                        @endif
                                     </div>
-                                    @endif
                                 </div>
                             </button>
 
@@ -663,7 +671,7 @@
                                                                         $wire.updateTaskStatus({{ $task->id }}, 'in_progress')"
                                                                     class="group flex w-full items-center px-4 py-2 text-sm text-amber-700 dark:text-amber-300 hover:bg-amber-50 dark:hover:bg-amber-900">
                                                                     <span
-                                                                        class="mr-3 h-2 w-2 rounded-full bg-amber-400 dark:bg-amber-500 animate-pulse"></span>
+                                                                        class="mr-3 h-2 w-2 rounded-full bg-amber-400 dark:bg-amber-500 animate-ping"></span>
                                                                     In Progress
                                                                 </button>
                                                                 <button
