@@ -66,7 +66,7 @@ class DocumentModalManager extends Component implements HasForms
      * For rejection form
      */
     public ?array $rejectData = [];
-    
+
     /**
      * For document notes
      */
@@ -89,7 +89,7 @@ class DocumentModalManager extends Component implements HasForms
         $this->createCommentForm->fill();
         $this->rejectionForm->fill();
         $this->documentNotesForm->fill();
-        
+
         // Calculate overall status based on submitted documents
         if (isset($this->document)) {
             $this->calculateOverallStatus();
@@ -480,7 +480,8 @@ class DocumentModalManager extends Component implements HasForms
                 ->success()
                 ->send();
 
-            $this->dispatch('refresh');
+
+
         } catch (\Exception $e) {
             Notification::make()
                 ->title('Error')
@@ -858,7 +859,7 @@ class DocumentModalManager extends Component implements HasForms
         })
             ->orWhere(function ($query) {
                 // Check for activities on submitted documents related to this required document
-                $query->where('subject_type',SubmittedDocument::class)
+                $query->where('subject_type', SubmittedDocument::class)
                     ->whereIn('subject_id', $this->document->submittedDocuments->pluck('id'))
                     ->whereIn('description', ['approved', 'pending_review', 'uploaded', 'rejected', 'updated']);
             })
