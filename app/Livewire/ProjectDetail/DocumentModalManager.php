@@ -653,8 +653,8 @@ class DocumentModalManager extends Component implements HasForms
         $submissions = $this->document->submittedDocuments;
 
         if ($submissions->count() === 0) {
-            $this->overallStatus = 'uploaded';
-            $this->document->status = 'uploaded';
+            $this->overallStatus = 'draft'; // Changed from 'uploaded' to 'draft'
+            $this->document->status = 'draft'; // Changed from 'uploaded' to 'draft'
             $this->document->save();
             return;
         }
@@ -1099,6 +1099,7 @@ class DocumentModalManager extends Component implements HasForms
     public function getStatusLabel(string $status): string
     {
         return match ($status) {
+            'draft' => 'Draft', // Added draft status label
             'uploaded' => 'Uploaded',
             'pending_review' => 'Pending Review',
             'approved' => 'Approved',
@@ -1113,6 +1114,7 @@ class DocumentModalManager extends Component implements HasForms
     public function getStatusIcon(string $status): string
     {
         return match ($status) {
+            'draft' => 'heroicon-m-document', // Added draft status icon
             'uploaded' => 'heroicon-m-arrow-up-tray',
             'pending_review' => 'heroicon-m-clock',
             'approved' => 'heroicon-m-check-circle',
