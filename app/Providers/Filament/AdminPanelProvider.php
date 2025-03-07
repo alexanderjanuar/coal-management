@@ -29,6 +29,7 @@ use Filament\Support\Enums\MaxWidth;
 use Kenepa\Banner\BannerPlugin;
 use Njxqlus\FilamentProgressbar\FilamentProgressbarPlugin;
 use Leandrocfe\FilamentApexCharts\FilamentApexChartsPlugin;
+use EightCedars\FilamentInactivityGuard\FilamentInactivityGuardPlugin;
 
 class AdminPanelProvider extends PanelProvider
 {
@@ -76,6 +77,7 @@ class AdminPanelProvider extends PanelProvider
                 preg_match('/(android|iphone|ipad|mobile)/i', request()->header('User-Agent'))
             )
             ->plugins([
+                FilamentInactivityGuardPlugin::make(),
                 \TomatoPHP\FilamentPWA\FilamentPWAPlugin::make(),
                 FilamentApexChartsPlugin::make(),
                 EasyFooterPlugin::make()
@@ -94,7 +96,8 @@ class AdminPanelProvider extends PanelProvider
                     ->emptyPanelBackgroundImageOpacity('80%')
                     ->emptyPanelBackgroundImageUrl('https://images.pexels.com/photos/466685/pexels-photo-466685.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=2')
             ])
-
+            ->brandLogo(asset('images/JKB-Logo.png'))
+            ->brandLogoHeight('3.5rem')
             ->viteTheme('resources/css/filament/admin/theme.css')
             ->authMiddleware([
                 Authenticate::class,

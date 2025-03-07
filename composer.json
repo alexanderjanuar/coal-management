@@ -14,6 +14,7 @@
         "cmsmaxinc/filament-error-pages": "^1.0",
         "devonab/filament-easy-footer": "^1.0",
         "diogogpinto/filament-auth-ui-enhancer": "^1.0",
+        "eightcedars/filament-inactivity-guard": "^0.2.0",
         "filament/filament": "^3.2",
         "filament/notifications": "^3.2",
         "guava/filament-modal-relation-managers": "^1.1",
