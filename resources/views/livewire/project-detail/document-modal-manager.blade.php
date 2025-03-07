@@ -98,10 +98,12 @@
                             <!-- Status Header -->
                             <div class="flex items-center justify-between mb-3">
                                 <div class="flex items-center gap-3">
-                                    <div class="w-8 h-8 rounded-lg bg-gray-50 dark:bg-gray-700 flex items-center justify-center">
+                                    <div
+                                        class="w-8 h-8 rounded-lg bg-gray-50 dark:bg-gray-700 flex items-center justify-center">
                                         <x-heroicon-m-signal class="w-4 h-4 text-gray-600 dark:text-gray-400" />
                                     </div>
-                                    <span class="text-sm font-medium text-gray-900 dark:text-white">Document Status</span>
+                                    <span class="text-sm font-medium text-gray-900 dark:text-white">Document
+                                        Status</span>
                                 </div>
                             </div>
 
@@ -117,23 +119,19 @@
                                             'rejected' => 'bg-red-50 text-red-700 dark:bg-red-900/20 dark:text-red-300',
                                             default => 'bg-gray-50 text-gray-600 dark:bg-gray-800 dark:text-gray-400'
                                         } }}">
-                                        <x-dynamic-component 
-                                            :component="$this->getStatusIcon($document->status)" 
-                                            class="w-4 h-4 mr-2" 
-                                        />
-                                        <span>{{ ucwords(str_replace('_', ' ', $document->status ?? 'Not Set')) }}</span>
+                                        <x-dynamic-component :component="$this->getStatusIcon($document->status)"
+                                            class="w-4 h-4 mr-2" />
+                                        <span>{{ ucwords(str_replace('_', ' ', $document->status ?? 'Not Set'))
+                                            }}</span>
                                     </div>
                                 </div>
 
                                 <!-- Approve All Button -->
                                 @if(!auth()->user()->hasRole(['staff', 'client']))
-                                <x-filament::button
-                                    x-data="{}"
-                                    x-on:click="$dispatch('open-modal', { id: 'confirm-approve-all' })"
-                                    color="success"
+                                <x-filament::button x-data="{}"
+                                    x-on:click="$dispatch('open-modal', { id: 'confirm-approve-all' })" color="success"
                                     size="sm"
-                                    :disabled="$document->submittedDocuments->count() === $document->submittedDocuments->where('status', 'approved')->count()"
-                                >
+                                    :disabled="$document->submittedDocuments->count() === $document->submittedDocuments->where('status', 'approved')->count()">
                                     <div class="flex items-center gap-2">
                                         <x-heroicon-m-check-badge class="w-4 h-4" />
                                         <span>Approve All</span>
@@ -144,7 +142,8 @@
                         </div>
 
                         <!-- Reviewer Info (if exists) -->
-                        @if($document->reviewer_id && in_array($document->status, ['pending_review', 'approved', 'rejected']))
+                        @if($document->reviewer_id && in_array($document->status, ['pending_review', 'approved',
+                        'rejected']))
                         <div class="px-4 py-3 border-t border-gray-100 dark:border-gray-700">
                             <div class="flex items-center gap-3">
                                 <div
@@ -919,7 +918,7 @@
                                     </x-filament::button>
 
                                     <!-- Remove Button with Confirmation Modal -->
-                                    <x-filament::button x-data="{}"
+                                    <x-filament::button
                                         x-on:click="$dispatch('open-modal', { id: 'confirm-delete-modal' })"
                                         color="danger" size="md" class="justify-center">
                                         <div class="inline-flex items-center gap-2">
@@ -1149,6 +1148,189 @@
             </script>
         </div>
 
+
+        <x-filament::modal id="rejection-reason-modal" width="md">
+            <x-slot name="header">
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 rounded-lg bg-red-50 dark:bg-red-900/20 flex items-center justify-center">
+                        <x-heroicon-o-x-circle class="w-6 h-6 text-red-600 dark:text-red-400" />
+                    </div>
+                    <div>
+                        <h2 class="text-lg font-medium text-gray-900 dark:text-white leading-6">
+                            Document Rejection
+                        </h2>
+                        <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">
+                            Please provide a detailed reason for rejecting this document
+                        </p>
+                    </div>
+                </div>
+            </x-slot>
+
+            <div class="space-y-5">
+                <!-- Document Info Card -->
+                <div class="bg-gray-50 dark:bg-gray-800/50 rounded-lg p-4">
+                    <div class="flex items-start gap-3">
+                        <div class="flex-shrink-0">
+                            @if($documentBeingRejected)
+                            <div
+                                class="w-10 h-10 rounded-lg bg-white dark:bg-gray-700 flex items-center justify-center shadow-sm">
+                                @php
+                                $fileType = strtolower(pathinfo($documentBeingRejected->file_path, PATHINFO_EXTENSION));
+                                @endphp
+                                @if($fileType === 'pdf')
+                                <x-heroicon-o-document-text class="w-5 h-5 text-gray-500 dark:text-gray-400" />
+                                @elseif(in_array($fileType, ['jpg', 'jpeg', 'png', 'gif']))
+                                <x-heroicon-o-photo class="w-5 h-5 text-gray-500 dark:text-gray-400" />
+                                @elseif(in_array($fileType, ['doc', 'docx']))
+                                <x-heroicon-o-document class="w-5 h-5 text-gray-500 dark:text-gray-400" />
+                                @elseif(in_array($fileType, ['xls', 'xlsx', 'csv']))
+                                <x-heroicon-o-table-cells class="w-5 h-5 text-gray-500 dark:text-gray-400" />
+                                @else
+                                <x-heroicon-o-document class="w-5 h-5 text-gray-500 dark:text-gray-400" />
+                                @endif
+                            </div>
+                            @endif
+                        </div>
+                        <div class="flex-1 min-w-0">
+                            @if($documentBeingRejected)
+                            <h3 class="text-sm font-medium text-gray-900 dark:text-white truncate">
+                                {{ basename($documentBeingRejected->file_path) }}
+                            </h3>
+                            <div class="flex items-center gap-2 mt-1">
+                                <span class="text-xs text-gray-500 dark:text-gray-400">
+                                    Uploaded by {{ $documentBeingRejected->user->name }}
+                                </span>
+                                <span class="text-xs text-gray-300 dark:text-gray-600">•</span>
+                                <span class="text-xs text-gray-500 dark:text-gray-400">
+                                    {{ $documentBeingRejected->created_at->diffForHumans() }}
+                                </span>
+                                @endif
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Rejection Warning -->
+                    <div
+                        class="bg-red-50 dark:bg-red-900/10 rounded-lg p-4 border border-red-100 dark:border-red-800/30">
+                        <div class="flex items-start gap-3">
+                            <x-heroicon-o-exclamation-triangle
+                                class="w-5 h-5 text-red-600 dark:text-red-400 flex-shrink-0 mt-0.5" />
+                            <div>
+                                <p class="text-sm font-medium text-red-800 dark:text-red-300">
+                                    This action requires explanation
+                                </p>
+                                <p class="text-sm text-red-600 dark:text-red-400 mt-1">
+                                    The submitter will be notified of your decision with the reason you provide below.
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Rejection Form -->
+                    <form wire:submit.prevent="submitRejection" class="space-y-4">
+                        <!-- Rejection Reason Field -->
+                        <div>
+                            <div class="mt-1">
+                                {{ $this->rejectionForm }}
+                            </div>
+                            <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                                Please be specific about what needs to be corrected or improved.
+                            </p>
+                        </div>
+
+                        <!-- Button Group -->
+                        <div class="flex justify-end gap-3 pt-3 border-t border-gray-100 dark:border-gray-800">
+                            <x-filament::button type="button" color="gray"
+                                x-on:click="$dispatch('close-modal', { id: 'rejection-reason-modal' })">
+                                Cancel
+                            </x-filament::button>
+
+                            <x-filament::button type="submit" color="danger" class="px-4"
+                                x-on:submit="$dispatch('close-modal', { id: 'rejection-reason-modal' })">
+                                <div class="flex items-center gap-2">
+                                    <x-heroicon-m-x-circle class="w-4 h-4" />
+                                    <span>Reject Document</span>
+                                </div>
+                            </x-filament::button>
+                        </div>
+                    </form>
+                </div>
+        </x-filament::modal>
+
+        <!-- Confirmation Modal for Document Deletion -->
+        <x-filament::modal id="confirm-delete-modal" width="md">
+            <x-slot name="header">
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 rounded-lg bg-red-50 dark:bg-red-900/20 flex items-center justify-center">
+                        <x-heroicon-o-trash class="w-6 h-6 text-red-600 dark:text-red-400" />
+                    </div>
+                    <h2 class="text-lg font-medium text-gray-900 dark:text-white leading-6">
+                        Confirm Document Removal
+                    </h2>
+                </div>
+            </x-slot>
+
+            <div class="space-y-4">
+                <p class="text-gray-700 dark:text-gray-300">
+                    Are you sure you want to remove this document? This action cannot be undone.
+                </p>
+
+                @if($previewingDocument)
+                <div
+                    class="p-3 rounded-lg bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 mt-3">
+                    <div class="flex items-start gap-3">
+                        <div
+                            class="w-9 h-9 flex-shrink-0 rounded-lg bg-gray-100 dark:bg-gray-700 flex items-center justify-center">
+                            @php
+                            $fileType = $previewingDocument ? strtolower(pathinfo($previewingDocument->file_path,
+                            PATHINFO_EXTENSION)) : '';
+                            @endphp
+
+                            @if($fileType === 'pdf')
+                            <x-heroicon-o-document-text class="w-5 h-5 text-gray-500 dark:text-gray-400" />
+                            @elseif(in_array($fileType, ['jpg', 'jpeg', 'png', 'gif']))
+                            <x-heroicon-o-photo class="w-5 h-5 text-gray-500 dark:text-gray-400" />
+                            @else
+                            <x-heroicon-o-document class="w-5 h-5 text-gray-500 dark:text-gray-400" />
+                            @endif
+                        </div>
+
+                        <div class="flex-1 min-w-0">
+                            <h4 class="text-sm font-medium text-gray-900 dark:text-white truncate">
+                                {{ basename($previewingDocument->file_path) }}
+                            </h4>
+                            <div class="flex items-center gap-2 mt-0.5">
+                                <span class="text-xs text-gray-500 dark:text-gray-400">
+                                    Uploaded by {{ $previewingDocument->user->name }}
+                                </span>
+                                <span class="text-xs text-gray-300 dark:text-gray-600">•</span>
+                                <span class="text-xs text-gray-500 dark:text-gray-400">
+                                    {{ $previewingDocument->created_at->diffForHumans() }}
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                @endif
+            </div>
+
+            <x-slot name="footer">
+                <div class="flex justify-end gap-3">
+                    <x-filament::button x-on:click="$dispatch('close-modal', { id: 'confirm-delete-modal' })"
+                        color="gray">
+                        Cancel
+                    </x-filament::button>
+
+                    <x-filament::button wire:click="removeDocument({{ $previewingDocument->id ?? 'null' }})"
+                        wire:loading.attr="disabled" color="danger">
+                        <div class="flex items-center gap-1">
+                            <x-heroicon-m-trash class="w-4 h-4" />
+                            <span>Delete Document</span>
+                        </div>
+                    </x-filament::button>
+                </div>
+            </x-slot>
+        </x-filament::modal>
 
         <!-- Add Approve All Confirmation Modal -->
         <x-filament::modal id="confirm-approve-all" alignment="center" width="sm">
