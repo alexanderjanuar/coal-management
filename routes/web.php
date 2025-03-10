@@ -17,3 +17,7 @@ Route::get('/welcome', function () {
     return view('welcome');
 });
 // Route::get('/admin/projects/{record}', ProjectDetails::class)->name('filament.pages.project_details');
+
+Route::get('/storage/download-all', [App\Http\Controllers\StorageDownloadController::class, 'downloadAll'])
+    ->name('storage.download-all')
+    ->middleware(['auth', 'verified']);

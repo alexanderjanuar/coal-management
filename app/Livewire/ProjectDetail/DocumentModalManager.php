@@ -15,6 +15,7 @@ use Filament\Notifications\Notification;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Asmit\FilamentMention\Forms\Components\RichMentionEditor;
+use Yaza\LaravelGoogleDriveStorage\Gdrive;
 
 class DocumentModalManager extends Component implements HasForms
 {
@@ -173,6 +174,13 @@ class DocumentModalManager extends Component implements HasForms
             ->statePath('data');
     }
 
+    protected function getGoogleDrivePath(string $filePath): string
+    {
+        $clientName = strtoupper(str_replace('-', ' ', Str::slug($this->document->projectStep->project->client->name)));
+        $projectName = strtoupper(str_replace('-', ' ', Str::slug($this->document->projectStep->project->name)));
+        return "{$clientName}/{$projectName}/" . basename($filePath);
+    }
+
     public function uploadDocument(): void
     {
         $data = $this->uploadFileForm->getState();
@@ -186,6 +194,9 @@ class DocumentModalManager extends Component implements HasForms
                     'file_path' => $filePath,
                     'status' => 'uploaded', // Initial status for submitted documents
                 ]);
+
+                Gdrive::put($this->getGoogleDrivePath($filePath), public_path('storage/' . ($filePath)));
+
             }
         } else {
             // Handle single file upload
@@ -195,6 +206,7 @@ class DocumentModalManager extends Component implements HasForms
                 'file_path' => $data['document'],
                 'status' => 'uploaded', // Initial status for submitted documents
             ]);
+
         }
 
         // Recalculate overall status
@@ -202,7 +214,9 @@ class DocumentModalManager extends Component implements HasForms
 
         $this->uploadFileForm->fill();
 
-        $this->dispatch('refresh');
+        $this->dispatch(
+            'refresh'
+        );
         $this->dispatch('documentUploaded', documentId: $this->document->id);
 
         // Get related project information
@@ -474,7 +488,7 @@ class DocumentModalManager extends Component implements HasForms
             $submission = SubmittedDocument::findOrFail($documentId);
             Storage::disk('public')->delete($submission->file_path);
             $submission->delete();
-
+            
             Notification::make()
                 ->title('Document Removed')
                 ->success()
@@ -1234,7 +1248,7 @@ class DocumentModalManager extends Component implements HasForms
     {
         try {
             $documents = $this->document->submittedDocuments;
-            
+
             if ($documents->isEmpty()) {
                 $this->sendNotification(
                     'warning',

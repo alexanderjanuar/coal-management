@@ -15,6 +15,7 @@ use Illuminate\Support\Facades\Storage;
 use Livewire\Component;
 use Illuminate\Support\Str;
 use Asmit\FilamentMention\Forms\Components\RichMentionEditor;
+use Yaza\LaravelGoogleDriveStorage\Gdrive;
 
 class ProjectDetailDocumentModal extends Component implements HasForms
 {
@@ -95,8 +96,8 @@ class ProjectDetailDocumentModal extends Component implements HasForms
         $submissions = $this->document->submittedDocuments;
 
         if ($submissions->count() === 0) {
-            $this->overallStatus = 'uploaded';
-            $this->document->status = 'uploaded';
+            $this->overallStatus = 'draft';
+            $this->document->status = 'draft';
             $this->document->save();
             return;
         }
@@ -484,8 +485,11 @@ class ProjectDetailDocumentModal extends Component implements HasForms
                     'required_document_id' => $this->document->id,
                     'user_id' => auth()->id(),
                     'file_path' => $filePath,
-                    'status' => 'uploaded', // Initial status for submitted documents
+                    'status' => 'uploaded', 
                 ]);
+
+                Gdrive::put($this->getGoogleDrivePath($filePath), public_path('storage/' . ($filePath)));
+
             }
         } else {
             // Handle single file upload

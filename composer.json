@@ -28,6 +28,7 @@
         "laravel/reverb": "^1.4",
         "laravel/sanctum": "^3.3",
         "laravel/tinker": "^2.8",
+        "league/flysystem-aws-s3-v3": "^3.0",
         "leandrocfe/filament-apex-charts": "^3.1",
         "malzariey/filament-daterangepicker-filter": "^3.2",
         "mokhosh/filament-kanban": "^2.9",
@@ -35,7 +36,8 @@
         "pusher/pusher-php-server": "^7.2",
         "solution-forest/filament-access-management": "^2.2",
         "spatie/laravel-activitylog": "^4.10",
-        "tomatophp/filament-pwa": "^1.0"
+        "tomatophp/filament-pwa": "^1.0",
+        "yaza/laravel-google-drive-storage": "~2.0.0"
     },
     "require-dev": {
         "barryvdh/laravel-debugbar": "^3.14",
