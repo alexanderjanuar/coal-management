@@ -16,6 +16,7 @@ use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Asmit\FilamentMention\Forms\Components\RichMentionEditor;
 use Yaza\LaravelGoogleDriveStorage\Gdrive;
+use File;
 
 class DocumentModalManager extends Component implements HasForms
 {
@@ -194,8 +195,7 @@ class DocumentModalManager extends Component implements HasForms
                     'file_path' => $filePath,
                     'status' => 'uploaded', // Initial status for submitted documents
                 ]);
-
-                Gdrive::put($this->getGoogleDrivePath($filePath), public_path('storage/' . ($filePath)));
+                Storage::disk('google')->put($this->getGoogleDrivePath($filePath), File::get(public_path('storage/' . ($filePath))));
 
             }
         } else {
@@ -488,7 +488,7 @@ class DocumentModalManager extends Component implements HasForms
             $submission = SubmittedDocument::findOrFail($documentId);
             Storage::disk('public')->delete($submission->file_path);
             $submission->delete();
-            
+
             Notification::make()
                 ->title('Document Removed')
                 ->success()
