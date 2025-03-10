@@ -48,7 +48,7 @@ class UserController extends Controller
     public function detail(User $user)
     {
         try {
-            $user->load(['roles', 'userClients.client', 'userProjects.project', 'submittedDocuments', 'comments','activities']);
+            $user->load(['roles', 'userClients.client', 'userProjects.project', 'submittedDocuments', 'comments']);
             
             return response()->json([
                 'success' => true,
