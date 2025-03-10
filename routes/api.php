@@ -1,6 +1,11 @@
 <?php
 
 use App\Http\Controllers\Api\UserController;
+use App\Http\Controllers\Api\ProjectController;
+use App\Http\Controllers\Api\ClientController;
+use App\Http\Controllers\Api\ActivityController;
+
+
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -14,5 +19,16 @@ use Illuminate\Support\Facades\Route;
 |
 */
 
-Route::get('/user', [UserController::class, 'show']);
+Route::get('/users', [UserController::class, 'show']);
 Route::get('/users/{user}', [UserController::class, 'detail']);
+
+Route::get('/projects', [ProjectController::class, 'index']);
+Route::get('/projects/{project}', [ProjectController::class, 'show']);
+
+// Client routes
+Route::get('/clients', [ClientController::class, 'index']);
+Route::get('/clients/{client}', [ClientController::class, 'show']);
+
+// Activity routes
+Route::get('/activities', [ActivityController::class, 'index']);
+Route::get('/activities/{activity}', [ActivityController::class, 'show']);
