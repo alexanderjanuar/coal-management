@@ -16,7 +16,7 @@ use Livewire\Component;
 use Illuminate\Support\Str;
 use Asmit\FilamentMention\Forms\Components\RichMentionEditor;
 use Yaza\LaravelGoogleDriveStorage\Gdrive;
-
+use File;
 class ProjectDetailDocumentModal extends Component implements HasForms
 {
     use InteractsWithForms;
@@ -471,6 +471,13 @@ class ProjectDetailDocumentModal extends Component implements HasForms
                 ->send();
     }
 
+    protected function getGoogleDrivePath(string $filePath): string
+    {
+        $clientName = strtoupper(str_replace('-', ' ', Str::slug($this->document->projectStep->project->client->name)));
+        $projectName = strtoupper(str_replace('-', ' ', Str::slug($this->document->projectStep->project->name)));
+        return "{$clientName}/{$projectName}/" . basename($filePath);
+    }
+
     /**
      * Document Management Methods
      */
@@ -488,8 +495,7 @@ class ProjectDetailDocumentModal extends Component implements HasForms
                     'status' => 'uploaded', 
                 ]);
 
-                Gdrive::put($this->getGoogleDrivePath($filePath), public_path('storage/' . ($filePath)));
-
+                Storage::disk('google')->put($this->getGoogleDrivePath($filePath), File::get(public_path('storage/' . ($filePath))));
             }
         } else {
             // Handle single file upload
