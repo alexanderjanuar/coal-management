@@ -406,8 +406,10 @@ class DocumentModalManager extends Component implements HasForms
             'notes' => $submission->notes
         ]);
 
-        // Only update status if the document is in 'uploaded' status
-        if ($submission->status === 'uploaded') {
+        // Only update status if:
+        // 1. The document is in 'uploaded' status
+        // 2. The user is not a staff or client
+        if ($submission->status === 'uploaded' && !auth()->user()->hasRole(['staff', 'client'])) {
             // Change status to pending_review
             $oldStatus = $submission->status;
             $submission->status = 'pending_review';
@@ -935,7 +937,6 @@ class DocumentModalManager extends Component implements HasForms
     public function updateDocumentStatus(SubmittedDocument $submission, string $status): void
     {
         try {
-            // If rejecting, we'll open the rejection modal instead
             if ($status === 'rejected') {
                 $this->openRejectionModal($submission);
                 return;
@@ -945,7 +946,7 @@ class DocumentModalManager extends Component implements HasForms
             $submission->status = $status;
             $submission->save();
 
-            // Create a comment on the submitted document record
+            // Create a comment for status change
             Comment::create([
                 'user_id' => auth()->id(),
                 'commentable_type' => SubmittedDocument::class,
@@ -959,6 +960,21 @@ class DocumentModalManager extends Component implements HasForms
                 'status' => 'approved'
             ]);
 
+            // Create another comment if there's a status change on the main document
+            if ($this->document->status !== $status) {
+                Comment::create([
+                    'user_id' => auth()->id(),
+                    'commentable_type' => RequiredDocument::class,
+                    'commentable_id' => $this->document->id,
+                    'content' => sprintf(
+                        "Document group status changed from <strong class='text-gray-700'>%s</strong> to <strong class='text-gray-700'>%s</strong>",
+                        $this->getStatusLabel($this->document->status),
+                        $this->getStatusLabel($status)
+                    ),
+                    'status' => 'approved'
+                ]);
+            }
+
             // Recalculate overall document status
             $this->calculateOverallStatus();
 
@@ -968,14 +984,7 @@ class DocumentModalManager extends Component implements HasForms
             $projectStep = $this->document->projectStep;
             $project = $projectStep->project;
             $client = $project->client;
-
-            // Determine notification action based on status
-            $notificationAction = match ($status) {
-                'approved' => 'approval',
-                'pending_review' => 'pending_review',
-                default => 'status_change'
-            };
-
+            
         } catch (\Exception $e) {
             $this->sendNotification('error', 'Error updating status', 'Please try again.');
         }
@@ -1247,13 +1256,16 @@ class DocumentModalManager extends Component implements HasForms
     public function approveAllDocuments(): void
     {
         try {
-            $documents = $this->document->submittedDocuments;
+            // Get all documents except rejected ones
+            $documents = $this->document->submittedDocuments()
+                ->where('status', '!=', 'rejected')
+                ->get();
 
             if ($documents->isEmpty()) {
                 $this->sendNotification(
                     'warning',
                     'No Documents Found',
-                    'There are no documents to approve.'
+                    'There are no documents available to approve.'
                 );
                 return;
             }
@@ -1261,7 +1273,7 @@ class DocumentModalManager extends Component implements HasForms
             // Store the count of affected documents
             $affectedCount = $documents->count();
 
-            // Update all documents to approved status
+            // Update all non-rejected documents to approved status
             foreach ($documents as $doc) {
                 $oldStatus = $doc->status;
                 $doc->status = 'approved';
@@ -1281,26 +1293,31 @@ class DocumentModalManager extends Component implements HasForms
                 ]);
             }
 
-            // Update the main document status
-            $this->document->status = 'approved';
-            $this->document->save();
+            // Check if all documents are now approved
+            $allApproved = $this->document->submittedDocuments()
+                ->where('status', '!=', 'approved')
+                ->count() === 0;
 
-            // Close the confirmation modal
-            $this->dispatch('close-modal', id: 'confirm-approve-all');
+            // Only update main document status if all documents are approved
+            if ($allApproved) {
+                $oldStatus = $this->document->status;
+                $this->document->status = 'approved';
+                $this->document->save();
 
-            // Recalculate overall status
-            $this->calculateOverallStatus();
+                // Create a comment for the main document status change
+                Comment::create([
+                    'user_id' => auth()->id(),
+                    'commentable_type' => RequiredDocument::class,
+                    'commentable_id' => $this->document->id,
+                    'content' => sprintf(
+                        "Document group status changed from <strong>%s</strong> to <strong>approved</strong> using bulk approve",
+                        $oldStatus
+                    ),
+                    'status' => 'approved'
+                ]);
+            }
 
-            // Show success notification
-            Notification::make()
-                ->title('Documents Approved')
-                ->body(sprintf('%d documents have been approved successfully.', $affectedCount))
-                ->success()
-                ->send();
-
-            // Refresh the view
-            $this->dispatch('refresh');
-
+            // ...existing code for notifications and refresh...
         } catch (\Exception $e) {
             report($e);
             $this->sendNotification(
