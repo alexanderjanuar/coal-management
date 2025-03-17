@@ -518,7 +518,7 @@ class ProjectDetailDocumentModal extends Component implements HasForms
                     'status' => 'uploaded', 
                 ]);
 
-                Storage::disk('google')->put($this->getGoogleDrivePath($filePath), File::get(public_path('storage/' . ($filePath))));
+                // Storage::disk('google')->put($this->getGoogleDrivePath($filePath), File::get(public_path('storage/' . ($filePath))));
             }
         } else {
             // Handle single file upload

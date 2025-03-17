@@ -195,7 +195,7 @@ class DocumentModalManager extends Component implements HasForms
                     'file_path' => $filePath,
                     'status' => 'uploaded', // Initial status for submitted documents
                 ]);
-                Storage::disk('google')->put($this->getGoogleDrivePath($filePath), File::get(public_path('storage/' . ($filePath))));
+                // Storage::disk('google')->put($this->getGoogleDrivePath($filePath), File::get(public_path('storage/' . ($filePath))));
 
             }
         } else {
