@@ -21,7 +21,15 @@ class ProjectStep extends Model
             ->logOnly(['name', 'order', 'description', 'priority', 'start_date', 'due_date', 'status'])
             ->logOnlyDirty()
             ->dontSubmitEmptyLogs()
-            ->setDescriptionForEvent(fn(string $eventName) => "Step {$this->name} was {$eventName}")
+            ->setDescriptionForEvent(function(string $eventName) {
+                $prefix = match($eventName) {
+                    'created' => 'New project step was created:',
+                    'updated' => 'Project step was modified:',
+                    'deleted' => 'Project step was removed:',
+                    default => "Project step was {$eventName}:"
+                };
+                return "{$prefix} {$this->name}";
+            })
             ->logFillable();
     }
 

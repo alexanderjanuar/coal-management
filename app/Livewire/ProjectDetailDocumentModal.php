@@ -203,7 +203,7 @@ class ProjectDetailDocumentModal extends Component implements HasForms
                         'orderedList',
                         'underline',
                     ])
-                    ->extraInputAttributes(['style' => 'font-size:14px'])
+                    ->extraInputAttributes(['style' => 'height: 12rem; max-height: 12rem; overflow-y: scroll;font-size:14px'])
                     ->placeholder('Write your comment here...')
                     ->required()
             ])
@@ -243,7 +243,7 @@ class ProjectDetailDocumentModal extends Component implements HasForms
                         'bulletList',
                         'orderedList',
                     ])
-                    ->extraInputAttributes(['style' => 'font-size:14px'])
+                    ->extraInputAttributes(['style' =>'height: 12rem; max-height: 12rem; overflow-y: scroll;font-size:14px'])
             ])
             ->statePath('notesData');
     }
@@ -941,7 +941,7 @@ class ProjectDetailDocumentModal extends Component implements HasForms
         $data = $this->createCommentForm->getState();
 
         $this->validate([
-            'data.newComment' => 'required|min:1|max:1000'
+            'data.newComment' => 'required|min:1'
         ]);
 
         try {

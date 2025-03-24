@@ -27,7 +27,15 @@ class Project extends Model
             ->logOnly(['name', 'description', 'priority', 'type', 'due_date', 'status'])
             ->logOnlyDirty()
             ->dontSubmitEmptyLogs()
-            ->setDescriptionForEvent(fn(string $eventName) => "Project {$this->name} was {$eventName}");
+            ->setDescriptionForEvent(function(string $eventName) {
+                $prefix = match($eventName) {
+                    'created' => 'New project was created:',
+                    'updated' => 'Project details were modified:',
+                    'deleted' => 'Project was deleted:',
+                    default => "Project was {$eventName}:"
+                };
+                return "{$prefix} {$this->name}";
+            });
     }
 
     public function client()

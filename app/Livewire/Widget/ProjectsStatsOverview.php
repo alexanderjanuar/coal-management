@@ -66,12 +66,24 @@ class ProjectsStatsOverview extends BaseWidget
         $currentCompleted = $baseQuery->clone()->where('status', 'completed')->count();
         $currentPending = RequiredDocument::where('status', 'pending_review')->count();
 
-        // Last month totals
+        // Last month totals - modified to count only last month's data
         $lastMonthStart = now()->subMonth()->startOfMonth();
-        $lastMonthTotal = $baseQuery->clone()->where('created_at', '<', now()->startOfMonth())->count();
-        $lastMonthActive = $baseQuery->clone()->where('status', 'in_progress')->where('created_at', '<', now()->startOfMonth())->count();
-        $lastMonthCompleted = $baseQuery->clone()->where('status', 'completed')->where('created_at', '<', now()->startOfMonth())->count();
-        $lastMonthPending = RequiredDocument::where('status', 'pending_review')->where('created_at', '<', now()->startOfMonth())->count();
+        $lastMonthEnd = now()->subMonth()->endOfMonth();
+        
+        $lastMonthTotal = $baseQuery->clone()
+            ->whereBetween('created_at', [$lastMonthStart, $lastMonthEnd])
+            ->count();
+        $lastMonthActive = $baseQuery->clone()
+            ->where('status', 'in_progress')
+            ->whereBetween('created_at', [$lastMonthStart, $lastMonthEnd])
+            ->count();
+        $lastMonthCompleted = $baseQuery->clone()
+            ->where('status', 'completed')
+            ->whereBetween('created_at', [$lastMonthStart, $lastMonthEnd])
+            ->count();
+        $lastMonthPending = RequiredDocument::where('status', 'pending_review')
+            ->whereBetween('created_at', [$lastMonthStart, $lastMonthEnd])
+            ->count();
 
         // Calculate percentage changes
         $totalChange = $this->calculatePercentageChange($currentTotal, $lastMonthTotal);

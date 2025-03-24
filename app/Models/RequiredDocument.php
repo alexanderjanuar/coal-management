@@ -21,9 +21,18 @@ class RequiredDocument extends Model
             ->logOnly(['name', 'status', 'description', 'is_required'])
             ->logOnlyDirty()
             ->dontSubmitEmptyLogs()
-            ->setDescriptionForEvent(fn(string $eventName) => "Document requirement {$this->name} was {$eventName}")
+            ->setDescriptionForEvent(function(string $eventName) {
+                $prefix = match($eventName) {
+                    'created' => 'New document requirement was added:',
+                    'updated' => 'Document requirement was updated:',
+                    'deleted' => 'Document requirement was removed:',
+                    default => "Document requirement was {$eventName}:"
+                };
+                return "{$prefix} {$this->name}";
+            })
             ->logFillable();
     }
+
     public function projectStep()
     {
         return $this->belongsTo(ProjectStep::class);

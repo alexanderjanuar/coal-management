@@ -21,7 +21,15 @@ class Task extends Model
             ->logOnly(['title', 'description', 'status', 'requires_document'])
             ->logOnlyDirty()
             ->dontSubmitEmptyLogs()
-            ->setDescriptionForEvent(fn(string $eventName) => "Task {$this->title} was {$eventName}")
+            ->setDescriptionForEvent(function(string $eventName) {
+                $prefix = match($eventName) {
+                    'created' => 'New task was created:',  
+                    'updated' => 'Task was modified:',
+                    'deleted' => 'Task was removed:',
+                    default => "Task was {$eventName}:"
+                };
+                return "{$prefix} {$this->title}";
+            })
             ->logFillable();
     }
 

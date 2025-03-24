@@ -1075,7 +1075,9 @@
                                                         <p
                                                             class="text-sm font-medium {{ $statusColors[$previewingDocument->status]['text'] }}">
                                                             Document Notes</p>
-                                                        <div class="text-gray-700 dark:text-gray-300">
+                                                        <!-- Add max-height and overflow to make content scrollable -->
+                                                        <div
+                                                            class="text-gray-700 dark:text-gray-300 max-h-[24rem] overflow-y-auto pr-2">
                                                             {!! $previewingDocument->notes !!}
                                                         </div>
                                                         <div

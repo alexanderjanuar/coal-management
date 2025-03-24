@@ -907,7 +907,7 @@
                                             <p
                                                 class="text-sm font-medium {{ $statusColors[$previewingDocument->status]['text'] }}">
                                                 Document Notes</p>
-                                            <div class="text-gray-700 dark:text-gray-300">
+                                            <div class="text-gray-700 dark:text-gray-300 max-h-[14rem] overflow-y-auto">
                                                 {!! $previewingDocument->notes !!}
                                             </div>
                                             <div

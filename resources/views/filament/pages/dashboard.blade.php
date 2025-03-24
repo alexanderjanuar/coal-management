@@ -140,14 +140,14 @@
         </div>
     </div>
 
-    <div class="grid grid-cols-1 lg:grid-cols-6 gap-4">
+    {{-- <div class="grid grid-cols-1 lg:grid-cols-6 gap-4">
         <div class="lg:col-span-3">
             @livewire('widget.recent-submitted-documents')
         </div>
         <div class="lg:col-span-3">
             @livewire('widget.recent-activity-table')
         </div>
-    </div>
+    </div> --}}
 
 
     {{-- Status Tabs --}}

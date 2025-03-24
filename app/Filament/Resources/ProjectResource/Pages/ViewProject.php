@@ -51,13 +51,11 @@ class ViewProject extends ViewRecord
             return;
         }
 
+        // Only update to in_progress automatically
         if ($steps->where('status', 'in_progress')->count() > 0) {
             $this->record->status = 'in_progress';
-        } elseif ($steps->every(fn($step) => $step->status === 'completed')) {
-            $this->record->status = 'completed';
+            $this->record->save();
         }
-
-        $this->record->save();
     }
 
     private function updateProjectStepStatus(): void
@@ -134,7 +132,35 @@ class ViewProject extends ViewRecord
 
     protected function getHeaderActions(): array
     {
+        $canComplete = $this->record->steps->isNotEmpty() && 
+                      $this->record->steps->every(fn($step) => $step->status === 'completed');
+
         return [
+            Actions\Action::make('completeProject')
+                ->label('Complete Project')
+                ->icon('heroicon-o-check-circle')
+                ->color('success')
+                ->visible($canComplete && $this->record->status !== 'completed')
+                ->requiresConfirmation()
+                ->modalHeading('Complete Project')
+                ->modalDescription('Are you sure you want to mark this project as completed? This will lock all steps and tasks.')
+                ->modalSubmitActionLabel('Yes, complete project')
+                ->action(function() {
+                    $this->record->status = 'completed';
+                    $this->record->save();
+
+                    Comment::create([
+                        'user_id' => auth()->id(),
+                        'commentable_id' => $this->record->id,
+                        'commentable_type' => get_class($this->record),
+                        'content' => "Project marked as completed manually"
+                    ]);
+
+                    Notification::make()
+                        ->title('Project completed successfully')
+                        ->success()
+                        ->send();
+                }),
             Actions\Action::make('edit')
                 ->url(static::getResource()::getUrl('edit', ['record' => $this->record]))
                 ->icon('heroicon-o-pencil-square')
