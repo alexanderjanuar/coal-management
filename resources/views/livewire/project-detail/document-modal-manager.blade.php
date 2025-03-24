@@ -1023,7 +1023,7 @@
                                                     Reason:
                                                 </p>
                                                 <div
-                                                    class="text-xs text-red-600 dark:text-red-300 prose prose-sm max-w-none">
+                                                    class="text-xs text-red-600 dark:text-red-300 prose prose-sm max-w-none max-h-[13rem] ">
                                                     {!! $previewingDocument->rejection_reason !!}
                                                 </div>
                                             </div>
@@ -1033,7 +1033,7 @@
                                 </div>
 
                                 <!-- Improved Document Notes with Toggle -->
-                                <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm ring-1 ring-gray-100 dark:ring-gray-700 overflow-hidden flex-1"
+                                <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm ring-1 ring-gray-100 dark:ring-gray-700 overflow-y-auto flex-1"
                                     x-data="{ showNotesForm: false }">
                                     <!-- Notes Header with Toggle Button -->
                                     <div
@@ -1077,7 +1077,7 @@
                                                             Document Notes</p>
                                                         <!-- Add max-height and overflow to make content scrollable -->
                                                         <div
-                                                            class="text-gray-700 dark:text-gray-300 max-h-[24rem] overflow-y-auto pr-2">
+                                                            class="text-gray-700 dark:text-gray-300 max-h-[16rem] overflow-y-auto pr-2">
                                                             {!! $previewingDocument->notes !!}
                                                         </div>
                                                         <div

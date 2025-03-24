@@ -859,7 +859,7 @@
                                 <div class="min-w-0">
                                     <p class="text-xs font-medium text-red-700 dark:text-red-400 mb-1">Rejection Reason:
                                     </p>
-                                    <div class="text-xs text-red-600 dark:text-red-300 prose prose-sm max-w-none">
+                                    <div class="text-xs text-red-600 dark:text-red-300 prose prose-sm max-h-[13rem] overflow-y-auto">
                                         {!! $previewingDocument->rejection_reason !!}
                                     </div>
                                 </div>
@@ -869,7 +869,7 @@
                     </div>
 
                     <!-- Improved Document Notes with Toggle -->
-                    <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm ring-1 ring-gray-100 dark:ring-gray-700 overflow-hidden flex-1"
+                    <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm ring-1 ring-gray-100 dark:ring-gray-700 overflow-y-auto flex-1"
                         x-data="{ showNotesForm: false }">
                         <!-- Notes Header with Toggle Button -->
                         <div
@@ -907,7 +907,7 @@
                                             <p
                                                 class="text-sm font-medium {{ $statusColors[$previewingDocument->status]['text'] }}">
                                                 Document Notes</p>
-                                            <div class="text-gray-700 dark:text-gray-300 max-h-[14rem] overflow-y-auto">
+                                            <div class="text-gray-700 dark:text-gray-300 max-h-[16rem] overflow-y-auto">
                                                 {!! $previewingDocument->notes !!}
                                             </div>
                                             <div
