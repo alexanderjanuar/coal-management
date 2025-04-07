@@ -667,41 +667,37 @@ class DocumentModalManager extends Component implements HasForms
     public function calculateOverallStatus(): void
     {
         $submissions = $this->document->submittedDocuments;
-
+        
         if ($submissions->count() === 0) {
-            $this->overallStatus = 'draft'; // Changed from 'uploaded' to 'draft'
-            $this->document->status = 'draft'; // Changed from 'uploaded' to 'draft'
+            $this->overallStatus = 'draft';
+            $this->document->status = 'draft';
             $this->document->save();
             return;
         }
-
-        // Count documents by status
-        $approvedCount = $submissions->where('status', 'approved')->count();
-        $pendingReviewCount = $submissions->where('status', 'pending_review')->count();
-        $uploadedCount = $submissions->where('status', 'uploaded')->count();
+        
+        // Check if all documents are either approved or rejected
+        $resolvedCount = $submissions->filter(fn($doc) => 
+            $doc->status === 'approved' || $doc->status === 'rejected'
+        )->count();
+        
         $totalCount = $submissions->count();
-
-        if ($approvedCount === $totalCount) {
-            // All documents are approved
+        
+        // If all documents are resolved (approved or rejected), set to approved
+        if ($resolvedCount === $totalCount) {
             $status = 'approved';
-        } elseif ($pendingReviewCount > 0 || $approvedCount > 0) {
-            // At least one document is pending review or some (but not all) are approved
+        } elseif ($submissions->where('status', 'pending_review')->count() > 0) {
             $status = 'pending_review';
-        } elseif ($uploadedCount > 0) {
-            // At least one document is uploaded and none are pending or approved
-            $status = 'uploaded';
         } else {
-            // All remaining documents must be rejected
-            $status = 'rejected';
+            $status = 'uploaded';
         }
-
-        // Only update if the status changed
+        
+        $this->overallStatus = $status;
+        
+        // Only update if status has changed
         if ($this->document->status !== $status) {
             $this->document->status = $status;
             $this->document->save();
         }
-
-        $this->overallStatus = $status;
     }
 
     public function rejectionForm(Form $form): Form

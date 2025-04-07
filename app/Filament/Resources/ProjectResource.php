@@ -1,7 +1,7 @@
 <?php
 
 namespace App\Filament\Resources;
-
+use Closure;
 use App\Filament\Resources\ProjectResource\Pages;
 use App\Filament\Resources\ProjectResource\RelationManagers;
 use App\Filament\Resources\ProjectResource\RelationManagers\ClientRelationManager;
@@ -299,17 +299,34 @@ class ProjectResource extends Resource
             ->query(function (Builder $query) {
                 $user = auth()->user();
 
-                // If user is super-admin, show all projects
+                // Optimize base query with eager loading of commonly used relationships
+                $baseQuery = Project::query()
+                    ->with([
+                        'client',
+                        'steps' => function ($query) {
+                            $query->select('id', 'project_id', 'name', 'status', 'order')
+                                  ->orderBy('order');
+                        },
+                        'steps.tasks' => function ($query) {
+                            $query->select('id', 'project_step_id', 'title', 'status');
+                        },
+                        'steps.requiredDocuments' => function ($query) {
+                            $query->select('id', 'project_step_id', 'name', 'status');
+                        }
+                    ]);
+
+                // If user is super-admin, return the optimized query
                 if ($user->hasRole('super-admin')) {
-                    return Project::query();
+                    return $baseQuery;
                 }
 
-                // For other users, only show projects from their assigned clients
-                return Project::whereIn('client_id', function ($subQuery) use ($user) {
-                    $subQuery->select('client_id')
-                        ->from('user_clients')
-                        ->where('user_id', $user->id);
-                });
+                // For other users, optimize by using a join instead of a subquery
+                return $baseQuery->join('user_clients', function ($join) use ($user) {
+                    $join->on('projects.client_id', '=', 'user_clients.client_id')
+                         ->where('user_clients.user_id', $user->id);
+                })
+                ->select('projects.*') // Select only from the projects table to avoid column conflicts
+                ->distinct(); // Ensure we don't get duplicate projects
             })
             ->columns([
                 Tables\Columns\TextColumn::make('index')
@@ -405,29 +422,6 @@ class ProjectResource extends Resource
                             'total' => $totalItems ?: 1, // Prevent division by zero
                             'progress' => $completedItems,
                         ];
-                    })
-
-                    ->tooltip(function ($record) {
-                        // Add tooltip to show detailed progress
-                        $steps = $record->steps;
-
-                        $totalItems = 0;
-                        $completedItems = 0;
-
-                        foreach ($steps as $step) {
-                            $totalItems++;
-                            if ($step->status === 'completed') {
-                                $completedItems++;
-                            }
-
-                            $totalItems += $step->tasks->count();
-                            $completedItems += $step->tasks->where('status', 'completed')->count();
-
-                            $totalItems += $step->requiredDocuments->count();
-                            $completedItems += $step->requiredDocuments->where('status', 'approved')->count();
-                        }
-
-                        return "Completed: {$completedItems} / {$totalItems} items";
                     }),
 
                 // Timestamps
@@ -480,6 +474,29 @@ class ProjectResource extends Resource
             ->groups([
                 'client.name',
             ])
+            // Add styling to rows based on document status
+            ->recordClasses(function (Project $record) {
+                // Check for submitted documents with 'uploaded' status
+                $hasUploadedDocs = \DB::table('submitted_documents')
+                    ->join('required_documents', 'submitted_documents.required_document_id', '=', 'required_documents.id')
+                    ->join('project_steps', 'required_documents.project_step_id', '=', 'project_steps.id')
+                    ->where('project_steps.project_id', $record->id)
+                    ->where('submitted_documents.status', 'uploaded')
+                    ->exists();
+                
+                if ($hasUploadedDocs) {
+                    return 'bg-blue-100/50 dark:bg-blue-900/20 hover:bg-blue-100 dark:hover:bg-blue-900/30 ring-1 ring-blue-200 dark:ring-blue-800/30';
+                } elseif ($record->status === 'completed') {
+                    return 'border-l-4 border-l-green-500 dark:border-l-green-400 hover:bg-green-50 dark:hover:bg-green-900/10';
+                } elseif ($record->status === 'on_hold') {
+                    return 'border-l-4 border-l-gray-500 dark:border-l-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800/10';
+                } elseif ($record->status === 'canceled') {
+                    return 'border-l-4 border-l-red-500 dark:border-l-red-400 opacity-70 hover:bg-red-50 dark:hover:bg-red-900/10';
+                }
+                
+                // Default hover effect for rows without special status
+                return 'hover:bg-gray-50 dark:hover:bg-gray-800/10';
+            })
             // Bulk Actions
             ->bulkActions([
                 Tables\Actions\BulkActionGroup::make([
@@ -533,11 +550,15 @@ class ProjectResource extends Resource
                         ProgressBarEntry::make('bar')
                             ->label('Progress')
                             ->getStateUsing(function ($record) {
-                                $total = $record->steps()->count();
-                                $progress = $record->steps()->where('status', 'completed')->count();
+                                // Use an optimized query that counts directly in the database
+                                $stats = \DB::table('project_steps')
+                                    ->selectRaw('COUNT(*) as total, SUM(CASE WHEN status = "completed" THEN 1 ELSE 0 END) as completed')
+                                    ->where('project_id', $record->id)
+                                    ->first();
+                                
                                 return [
-                                    'total' => $total,
-                                    'progress' => $progress,
+                                    'total' => $stats->total ?: 1, // Prevent division by zero
+                                    'progress' => $stats->completed ?: 0,
                                 ];
                             })
                             ->columnSpanFull(),
@@ -565,8 +586,8 @@ class ProjectResource extends Resource
 
     public static function sendProjectNotifications(string $title, string $body, $project, string $type = 'info', ?string $action = null): void
     {
-        // Create the notification
-        $notification = Notification::make()
+        // Create the notification template
+        $notificationTemplate = Notification::make()
             ->title($title)
             ->body($body)
             ->icon(match ($type) {
@@ -579,7 +600,7 @@ class ProjectResource extends Resource
 
         // Add action if provided
         if ($action) {
-            $notification->actions([
+            $notificationTemplate->actions([
                 \Filament\Notifications\Actions\Action::make('view')
                     ->label($action)
                     ->url(static::getUrl('view', ['record' => $project->id])),
@@ -588,28 +609,30 @@ class ProjectResource extends Resource
             ]);
         }
 
-        // Get all users assigned to the project
-        $projectUsers = $project->userProject()
-            ->with('user')
-            ->get()
-            ->pluck('user')
-            ->filter()
-            ->unique('id')
-            ->reject(function ($user) {
-                return $user->id === auth()->id(); // Exclude current user
-            });
+        // Optimize recipient query - use a single query with joins instead of eager loading
+        $recipients = \App\Models\User::select('users.*')
+            ->join('user_projects', 'users.id', '=', 'user_projects.user_id')
+            ->where('user_projects.project_id', $project->id)
+            ->where('users.id', '!=', auth()->id()) // Exclude current user
+            ->distinct()
+            ->get();
 
-        // Send notifications to all project users
-        foreach ($projectUsers as $user) {
-            $notification->sendToDatabase($user)->broadcast($user);
-        }
+        // Use database transaction to ensure all notifications are created or none
+        \DB::transaction(function () use ($recipients, $notificationTemplate, $type) {
+            // Process in chunks for large recipient lists
+            foreach ($recipients->chunk(50) as $chunk) {
+                foreach ($chunk as $user) {
+                    $notificationTemplate->sendToDatabase($user)->broadcast($user);
+                }
+            }
+        });
 
         // Send UI notification to current user
         Notification::make()
-                    ->title($title)
-                    ->body($body)
+            ->title($title)
+            ->body($body)
             ->{$type}()
-                ->send();
+            ->send();
     }
 
 

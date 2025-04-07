@@ -1251,7 +1251,7 @@ class ProjectDetailDocumentModal extends Component implements HasForms
         return view('livewire.project-detail.project-detail-document-modal', [
             'comments' => $this->document->comments()
                 ->with('user')
-                ->latest()
+                ->oldest()  // Changed from latest() to oldest() to display comments in ascending order
                 ->get(),
             'fileType' => $this->getFileType(),
             'sortedDocuments' => $sortedDocuments

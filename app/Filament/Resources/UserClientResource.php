@@ -33,7 +33,7 @@ class UserClientResource extends Resource
 
     public static function shouldRegisterNavigation(): bool
     {
-        return !auth()->user()->hasRole(['client','staff']);
+        return !auth()->user()->hasRole(['client', 'staff']);
     }
 
     protected static ?string $navigationGroup = 'Master Data';
@@ -88,12 +88,8 @@ class UserClientResource extends Resource
         return $table
             ->query(
                 User::query()
-                    ->whereIn('id', function ($query) {
-                        $query->select('user_id')
-                            ->from('user_clients')
-                            ->distinct();
-                    })
-                    ->withCount('userClients')
+                ->whereHas('userClients')
+                ->withCount('userClients')
             )
             ->columns([
                 TextColumn::make('name')
