@@ -48,14 +48,25 @@ class ViewUserClient extends ViewRecord
         $user = $record->user;
         $client = $record->client;
         
-        
         // Get all projects the user is assigned to
         $userProjects = $user->userProjects;
         
-        // Calculate project statistics using collection filtering instead of whereHas
-        $totalProjects = $userProjects->count();
+        // Get project IDs
+        $projectIds = $userProjects->pluck('project_id')->filter();
         
-        // Fix: Using filter() instead of whereHas for collections
+        // Calculate document statistics
+        $totalSubmittedDocuments = \App\Models\SubmittedDocument::where('user_id', $user->id)->count();
+        
+        $approvedDocuments = \App\Models\SubmittedDocument::where('user_id', $user->id)
+            ->where('status', 'approved')
+            ->count();
+        
+        $rejectedDocuments = \App\Models\SubmittedDocument::where('user_id', $user->id)
+            ->where('status', 'rejected')
+            ->count();
+
+        // Calculate other stats...
+        $totalProjects = $userProjects->count();
         $activeProjects = $userProjects->filter(function ($userProject) {
             return $userProject->project && $userProject->project->status === 'in_progress';
         })->count();
@@ -67,9 +78,6 @@ class ViewUserClient extends ViewRecord
         $urgentProjects = $userProjects->filter(function ($userProject) {
             return $userProject->project && $userProject->project->priority === 'urgent';
         })->count();
-
-        // Remove this debugging statement that's causing the issue
-        // @dd($record->user->name);
         
         return [
             'record' => $record,
@@ -81,6 +89,9 @@ class ViewUserClient extends ViewRecord
                 'activeProjects' => $activeProjects,
                 'completedProjects' => $completedProjects,
                 'urgentProjects' => $urgentProjects,
+                'totalSubmittedDocuments' => $totalSubmittedDocuments,
+                'approvedDocuments' => $approvedDocuments,
+                'rejectedDocuments' => $rejectedDocuments,
             ],
         ];
     }
