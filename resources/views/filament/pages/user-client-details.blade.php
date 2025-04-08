@@ -710,6 +710,161 @@ $activities = \Spatie\Activitylog\Models\Activity::causedBy($user)->orderBy('cre
                 </div>
             </div>
 
+            <!-- Clients Tab Content - THIS IS THE MISSING SECTION -->
+            <div class="tab-content hidden" id="clients-content">
+                <div class="p-4">
+                    <div class="overflow-x-auto rounded-lg border border-gray-200 dark:border-gray-700">
+                        @if ($allUserClients->count() > 0)
+                        <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+                            <thead class="bg-gray-50 dark:bg-gray-800">
+                                <tr>
+                                    <th scope="col"
+                                        class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                                        Client</th>
+                                    <th scope="col"
+                                        class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                                        NPWP</th>
+                                    <th scope="col"
+                                        class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                                        Contact</th>
+                                    <th scope="col"
+                                        class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                                        Status</th>
+                                    <th scope="col"
+                                        class="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                                        Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody class="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
+                                @foreach ($allUserClients as $index => $userClient)
+                                @if ($userClient->client)
+                                <tr
+                                    class="hover:bg-gray-50 dark:hover:bg-gray-700 @if ($record->id === $userClient->id) bg-primary-50 dark:bg-primary-900/20 @endif">
+                                    <td class="px-6 py-4 whitespace-nowrap">
+                                        <div class="flex items-center">
+                                            @if ($userClient->client->logo)
+                                            <div class="flex-shrink-0 h-10 w-10">
+                                                <img class="h-10 w-10 rounded-full object-cover"
+                                                    src="{{ Storage::url($userClient->client->logo) }}"
+                                                    alt="{{ $userClient->client->name }}">
+                                            </div>
+                                            @else
+                                            <div
+                                                class="flex-shrink-0 h-10 w-10 flex items-center justify-center rounded-full bg-primary-100 dark:bg-primary-900 text-primary-600 dark:text-primary-300 border border-primary-200 dark:border-primary-700">
+                                                <span class="text-sm font-medium">
+                                                    {{ substr($userClient->client->name, 0, 2) }}
+                                                </span>
+                                            </div>
+                                            @endif
+                                            <div class="ml-4">
+                                                <div class="text-sm font-medium text-gray-900 dark:text-white">
+                                                    {{ $userClient->client->name }}
+                                                </div>
+                                                @if ($userClient->client->KPP)
+                                                <div class="text-xs text-gray-500 dark:text-gray-400">
+                                                    KPP: {{ $userClient->client->KPP }}
+                                                </div>
+                                                @endif
+                                            </div>
+                                            @if ($record->id === $userClient->id)
+                                            <span
+                                                class="ml-2 inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-primary-100 text-primary-800 dark:bg-primary-800 dark:text-primary-100">
+                                                Current
+                                            </span>
+                                            @endif
+                                        </div>
+                                    </td>
+                                    <td class="px-6 py-4 whitespace-nowrap">
+                                        <div class="text-sm text-gray-900 dark:text-white">
+                                            {{ $userClient->client->NPWP ?? 'Not specified' }}
+                                        </div>
+                                        @if ($userClient->client->EFIN)
+                                        <div class="text-xs text-gray-500 dark:text-gray-400">
+                                            EFIN: {{ $userClient->client->EFIN }}
+                                        </div>
+                                        @endif
+                                    </td>
+                                    <td class="px-6 py-4 whitespace-nowrap">
+                                        @if ($userClient->client->email)
+                                        <div class="text-sm text-gray-900 dark:text-white flex items-center">
+                                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-1 text-gray-400"
+                                                fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                    d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                                            </svg>
+                                            {{ $userClient->client->email }}
+                                        </div>
+                                        @endif
+                                        @if ($userClient->client->ar_phone_number)
+                                        <div class="text-sm text-gray-900 dark:text-white flex items-center mt-1">
+                                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-1 text-gray-400"
+                                                fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                    d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
+                                            </svg>
+                                            {{ $userClient->client->ar_phone_number }}
+                                        </div>
+                                        @endif
+                                    </td>
+                                    <td class="px-6 py-4 whitespace-nowrap">
+                                        @if ($userClient->client->status === 'Active')
+                                        <span
+                                            class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800 dark:bg-green-800 dark:text-green-100">
+                                            <svg class="mr-1.5 h-2 w-2 text-green-400" fill="currentColor"
+                                                viewBox="0 0 8 8">
+                                                <circle cx="4" cy="4" r="3" />
+                                            </svg>
+                                            Active
+                                        </span>
+                                        @else
+                                        <span
+                                            class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800 dark:bg-red-800 dark:text-red-100">
+                                            <svg class="mr-1.5 h-2 w-2 text-red-400" fill="currentColor"
+                                                viewBox="0 0 8 8">
+                                                <circle cx="4" cy="4" r="3" />
+                                            </svg>
+                                            Inactive
+                                        </span>
+                                        @endif
+                                    </td>
+                                    <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                                        <div class="flex justify-end space-x-2">
+                                            <a href="{{ route('filament.admin.resources.clients.view', $userClient->client) }}"
+                                                class="text-primary-600 hover:text-primary-900 dark:text-primary-400 dark:hover:text-primary-300 bg-primary-50 dark:bg-primary-900/20 hover:bg-primary-100 dark:hover:bg-primary-800/30 p-1.5 rounded-lg transition-colors">
+                                                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none"
+                                                    viewBox="0 0 24 24" stroke="currentColor">
+                                                    <path stroke-linecap="round" stroke-linejoin="round"
+                                                        stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                                    <path stroke-linecap="round" stroke-linejoin="round"
+                                                        stroke-width="2"
+                                                        d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                                                </svg>
+                                            </a>
+                                        </div>
+                                    </td>
+                                </tr>
+                                @endif
+                                @endforeach
+                            </tbody>
+                        </table>
+                        @else
+                        <div class="flex justify-center items-center py-8 text-gray-500 dark:text-gray-400">
+                            <div class="text-center">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="mx-auto h-12 w-12 text-gray-400"
+                                    fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1" />
+                                </svg>
+                                <h3 class="mt-2 text-sm font-medium text-gray-900 dark:text-white">No Clients
+                                    Assigned</h3>
+                                <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">This user isn't
+                                    assigned to any clients yet.</p>
+                            </div>
+                        </div>
+                        @endif
+                    </div>
+                </div>
+            </div>
             <!-- Activity Tab Content -->
             <div class="tab-content hidden" id="activity-content">
                 <div class="p-4">
