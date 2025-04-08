@@ -171,17 +171,20 @@ class ViewProject extends ViewRecord
         // Check if current user has the required role
         $hasRequiredRole = auth()->user()->hasAnyRole(['director', 'project-manager', 'super-admin']);
         
-        // Check if ALL steps are completed (not just that there are steps)
-        $stepsCompleted = $this->record->steps->isNotEmpty() && 
-            $this->record->steps->every(fn($step) => $step->status === 'completed');
-        
-        // Check that no tasks are in draft status
-        $tasksCompleted = true;
-        foreach ($this->record->steps as $step) {
-            if ($step->tasks->some(fn($task) => $task->status === 'draft' || $task->status === 'pending')) {
-                $tasksCompleted = false;
-                break;
-            }
+        if (!$hasRequiredRole) {
+            return [
+                // Only include the other actions if user doesn't have required role
+                Actions\Action::make('edit')
+                    ->url(static::getResource()::getUrl('edit', ['record' => $this->record]))
+                    ->icon('heroicon-o-pencil-square')
+                    ->visible(fn() => $this->record->status !== 'completed')
+                    ->button(),
+                
+                Actions\Action::make('viewActivity')
+                    ->label('View Activity Log')
+                    ->icon('heroicon-o-clock')
+                    ->url(fn() => ProjectResource::getUrl('activity', ['record' => $this->record])),
+            ];
         }
         
         // Check if all documents are either approved or rejected
@@ -189,11 +192,6 @@ class ViewProject extends ViewRecord
         $unfinishedItems = [];
         
         foreach ($this->record->steps as $step) {
-            // Check for incomplete tasks
-            foreach ($step->tasks->where('status', '!=', 'completed') as $task) {
-                $unfinishedItems[] = "Task: {$task->name}";
-            }
-            
             // Check for documents not in approved/rejected status
             foreach ($step->requiredDocuments as $document) {
                 if ($document->status === 'draft') {
@@ -214,44 +212,20 @@ class ViewProject extends ViewRecord
             }
         }
         
-        // Only show complete button for users with required roles
-        if (!$hasRequiredRole) {
-            return [
-                // Only include the other actions if user doesn't have required role
-                Actions\Action::make('edit')
-                    ->url(static::getResource()::getUrl('edit', ['record' => $this->record]))
-                    ->icon('heroicon-o-pencil-square')
-                    ->visible(fn() => $this->record->status !== 'completed')
-                    ->button(),
-                
-                Actions\Action::make('viewActivity')
-                    ->label('View Activity Log')
-                    ->icon('heroicon-o-clock')
-                    ->url(fn() => ProjectResource::getUrl('activity', ['record' => $this->record])),
-            ];
-        }
-        
-        // All requirements met?
-        $requirementsMet = $stepsCompleted && $tasksCompleted && $allDocumentsResolved;
+        // All documents resolved is the only requirement now
+        $requirementsMet = $allDocumentsResolved;
         
         // Determine tooltip message if requirements are not met
         $tooltipMessage = "";
         if (!$requirementsMet) {
             $tooltipMessage = "This project cannot be completed yet. ";
             
-            if (!$stepsCompleted)
-                $tooltipMessage .= "Not all steps are completed. ";
-                
-            if (!$tasksCompleted)
-                $tooltipMessage .= "Not all tasks are completed. ";
-                
-            if (!$allDocumentsResolved)
-                $tooltipMessage .= "Not all documents are approved or rejected. ";
-                
-            if (count($unfinishedItems) > 0) {
-                $tooltipMessage .= "Unfinished items: " . implode(", ", array_slice($unfinishedItems, 0, 3));
-                if (count($unfinishedItems) > 3) {
-                    $tooltipMessage .= " and " . (count($unfinishedItems) - 3) . " more.";
+            if (!$allDocumentsResolved) {
+                if (count($unfinishedItems) > 0) {
+                    $tooltipMessage .= "Unfinished documents: " . implode(", ", array_slice($unfinishedItems, 0, 3));
+                    if (count($unfinishedItems) > 3) {
+                        $tooltipMessage .= " and " . (count($unfinishedItems) - 3) . " more.";
+                    }
                 }
             }
         }
@@ -260,7 +234,6 @@ class ViewProject extends ViewRecord
         $canComplete = $requirementsMet && $this->record->status !== 'completed';
         
         // Check if this is the first time the button is available 
-        // and notification hasn't been sent yet
         if ($canComplete && !$this->completionNotificationSent) {
             $this->notifyProjectReadyForCompletion();
             $this->completionNotificationSent = true;
