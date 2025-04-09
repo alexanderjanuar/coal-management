@@ -82,6 +82,117 @@
         .dark .custom-scrollbar::-webkit-scrollbar-thumb:hover {
             background: #6b7280;
         }
+
+
+
+
+        /* Force independent scrolling */
+        .document-section,
+        .comments-section {
+            height: 100%;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .document-scrollable,
+        .comments-scrollable {
+            flex: 1;
+            overflow-y: auto;
+            -ms-overflow-style: none !important;
+            /* For Internet Explorer and Edge */
+            scrollbar-width: none !important;
+            /* For Firefox */
+            scrollbar-width: thin;
+            -webkit-overflow-scrolling: touch;
+        }
+
+        /* Prevent any scroll propagation between sections */
+        .document-section,
+        .comments-section {
+            isolation: isolate;
+        }
+
+        /* Additional selector for Chrome, Safari, and newer Edge */
+        .document-scrollable::-webkit-scrollbar {
+            display: none !important;
+            /* Hide scrollbar */
+            width: 0 !important;
+            /* Optional: ensure zero width */
+        }
+
+        .comments-scrollable {
+            overflow-y: auto;
+            scrollbar-width: thin;
+            /* Make the scrollbar thinner in Firefox */
+            -webkit-overflow-scrolling: touch;
+        }
+
+        /* Style scrollbar for Chrome/Safari/Edge in comments section (optional) */
+        .comments-scrollable::-webkit-scrollbar {
+            width: 6px;
+            /* Thin scrollbar */
+        }
+
+        .comments-scrollable::-webkit-scrollbar-track {
+            background: rgba(0, 0, 0, 0.05);
+            /* Light track */
+        }
+
+        .comments-scrollable::-webkit-scrollbar-thumb {
+            background: rgba(0, 0, 0, 0.2);
+            /* Darker thumb */
+            border-radius: 3px;
+        }
+
+        .comments-scrollable::-webkit-scrollbar-thumb:hover {
+            background: rgba(0, 0, 0, 0.3);
+            /* Even darker on hover */
+        }
+
+        /* Use a fixed height for the modal content */
+        @media (min-width: 1024px) {
+            .document-modal-content {
+                height: 100vh;
+            }
+        }
+
+
+        @media (min-width: 1024px) {
+
+            /* lg breakpoint */
+            .flex-col.lg\:flex-row {
+                /* Make sure the parent container takes available height */
+                height: 100%;
+                overflow: hidden;
+                /* Prevent parent container from scrolling */
+            }
+
+            /* Left section (document) */
+            .order-1.lg\:order-1 {
+                /* Let this container handle its own scrolling */
+                overflow: hidden;
+                display: flex;
+                flex-direction: column;
+            }
+
+            /* Right section (comments) */
+            .order-2.lg\:order-2 {
+                /* Let this container handle its own scrolling */
+                overflow: hidden;
+                display: flex;
+                flex-direction: column;
+            }
+
+            /* Scrollable areas within each section */
+            .order-1.lg\:order-1>.flex-1,
+            .order-2.lg\:order-2>.flex-1 {
+                overflow-y: auto;
+                /* Enable scrolling */
+                -webkit-overflow-scrolling: touch;
+                /* Smooth scrolling on iOS */
+            }
+        }
     </style>
 
 
@@ -132,9 +243,9 @@
                                 text-sm font-medium text-gray-700 dark:text-gray-300 transition-colors group">
                                 <div class="flex items-center -space-x-2">
                                     @php
-                                        $nonDirectorMembers = $record->userProject->filter(function($userProject) {
-                                            return !$userProject->user->roles->contains('name', 'direktur');
-                                        });
+                                    $nonDirectorMembers = $record->userProject->filter(function($userProject) {
+                                    return !$userProject->user->roles->contains('name', 'direktur');
+                                    });
                                     @endphp
 
                                     <div class="flex items-center -space-x-2">
@@ -149,27 +260,31 @@
                                                 opacity-0 invisible group-hover/tooltip:opacity-100 group-hover/tooltip:visible transition-all duration-200 min-w-max z-[999]
                                                 shadow-lg">
                                                 <span>{{ $member->user->name }}</span>
-                                                <div class="absolute -bottom-1 left-1/2 -translate-x-1/2 w-2 h-2 bg-gray-900 dark:bg-gray-700 rotate-45">
+                                                <div
+                                                    class="absolute -bottom-1 left-1/2 -translate-x-1/2 w-2 h-2 bg-gray-900 dark:bg-gray-700 rotate-45">
                                                 </div>
                                             </div>
                                         </div>
                                         @endforeach
 
                                         @php
-                                            $nonDirectorCount = $nonDirectorMembers->count();
+                                        $nonDirectorCount = $nonDirectorMembers->count();
                                         @endphp
 
                                         @if($nonDirectorCount > 4)
                                         <div class="relative group/tooltip py-3">
-                                            <div class="w-8 h-8 rounded-full ring-2 ring-white dark:ring-gray-800 bg-gray-100 dark:bg-gray-700 flex items-center justify-center transition-transform hover:scale-110">
-                                                <span class="text-xs font-medium text-gray-600 dark:text-gray-300">+{{ $nonDirectorCount - 4 }}</span>
+                                            <div
+                                                class="w-8 h-8 rounded-full ring-2 ring-white dark:ring-gray-800 bg-gray-100 dark:bg-gray-700 flex items-center justify-center transition-transform hover:scale-110">
+                                                <span class="text-xs font-medium text-gray-600 dark:text-gray-300">+{{
+                                                    $nonDirectorCount - 4 }}</span>
                                             </div>
 
                                             <div class="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-2 py-1 bg-gray-900 dark:bg-gray-700 text-white text-xs rounded-lg
                                                 opacity-0 invisible group-hover/tooltip:opacity-100 group-hover/tooltip:visible transition-all duration-200 whitespace-nowrap z-50
                                                 shadow-lg">
                                                 {{ $nonDirectorCount - 4 }} more team members
-                                                <div class="absolute -bottom-1 left-1/2 -translate-x-1/2 w-2 h-2 bg-gray-900 dark:bg-gray-700 rotate-45">
+                                                <div
+                                                    class="absolute -bottom-1 left-1/2 -translate-x-1/2 w-2 h-2 bg-gray-900 dark:bg-gray-700 rotate-45">
                                                 </div>
                                             </div>
                                         </div>
@@ -962,9 +1077,11 @@
 
                                         <!-- Document Modal -->
                                         <x-filament::modal id="document-modal-{{ $document->id }}" width="4xl"
-                                            slide-over>
-                                            @livewire('project-detail-document-modal', ['document' => $document],
-                                            key('document-modal-'.$document->id))
+                                            class="document-modal-container" slide-over>
+                                            <div class="document-modal-content">
+                                                @livewire('project-detail-document-modal', ['document' => $document],
+                                                key('document-modal-'.$document->id))
+                                            </div>
                                         </x-filament::modal>
                                         @endforeach
                                     </div>
