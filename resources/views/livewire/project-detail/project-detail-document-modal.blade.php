@@ -35,42 +35,6 @@
         .status-badge.rejected {
             @apply bg-red-100 text-red-700 dark: bg-red-900/50 dark:text-red-300;
         }
-
-        @media (min-width: 1024px) {
-
-            /* lg breakpoint */
-            .flex-col.lg\:flex-row {
-                /* Make sure the parent container takes available height */
-                height: 100%;
-                overflow: hidden;
-                /* Prevent parent container from scrolling */
-            }
-
-            /* Left section (document) */
-            .order-1.lg\:order-1 {
-                /* Let this container handle its own scrolling */
-                overflow: hidden;
-                display: flex;
-                flex-direction: column;
-            }
-
-            /* Right section (comments) */
-            .order-2.lg\:order-2 {
-                /* Let this container handle its own scrolling */
-                overflow: hidden;
-                display: flex;
-                flex-direction: column;
-            }
-
-            /* Scrollable areas within each section */
-            .order-1.lg\:order-1>.flex-1,
-            .order-2.lg\:order-2>.flex-1 {
-                overflow-y: auto;
-                /* Enable scrolling */
-                -webkit-overflow-scrolling: touch;
-                /* Smooth scrolling on iOS */
-            }
-        }
     </style>
 
     <!-- Left Section: Document Details & Upload -->
@@ -396,8 +360,7 @@
                 return 'today';
                 } elseif ($date->isYesterday()) {
                 return 'yesterday';
-                } elseif ($date->diffInDays(now()->startOfDay()) <= 7) { // For days within the last week, use the
-                    $dayNames=[ 0=> 'Minggu',
+                } elseif ($date->diffInDays(now()->startOfDay()) <= 7) { $dayNames=[ 0=> 'Minggu',
                     1 => 'Senin',
                     2 => 'Selasa',
                     3 => 'Rabu',
@@ -407,16 +370,12 @@
                     ];
                     return $dayNames[$date->dayOfWeek];
                     } else {
-                    // For older dates, use the format "30 September"
                     return $date->format('j F');
                     }
                     });
-                    // Custom sort function for Indonesian day names and other date formats - REVERSED to put today at
-                    // Replace the current sorting logic with this:
-                    // Replace the current date sorting logic with this improved version
+
                     $sortedKeys = $groupedComments->keys()->sort(function ($a, $b) {
-                    // Define a custom priority for specific keys
-                    // Higher numbers appear first in the list
+
                     $priority = [
                     'today' => 100, // Today appears first
                     'yesterday' => 99,
@@ -449,8 +408,7 @@
                         $dateA = \Carbon\Carbon::createFromFormat('j F Y', $a . ' ' . $currentYear);
                         $dateB = \Carbon\Carbon::createFromFormat('j F Y', $b . ' ' . $currentYear);
 
-                        // Adjust year for dates that would be in the future
-                        // (this happens when comparing dates from previous year)
+
                         if ($dateA > now() && $dateA->month < 6) { $dateA->subYear();
                             }
                             if ($dateB > now() && $dateB->month < 6) { $dateB->subYear();
@@ -592,8 +550,7 @@
                                             <h4 class="text-sm font-medium text-gray-900 dark:text-white mb-1">Belum ada
                                                 komentar</h4>
                                             <p class="text-xs text-gray-500 dark:text-gray-400">Jadilah yang pertama
-                                                berkomentar
-                                                pada
+                                                berkomentar pada
                                                 dokumen ini</p>
                                         </div>
                                         @endforelse
