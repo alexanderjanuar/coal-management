@@ -17,6 +17,7 @@ use Illuminate\Support\Str;
 use Asmit\FilamentMention\Forms\Components\RichMentionEditor;
 use Yaza\LaravelGoogleDriveStorage\Gdrive;
 use File;
+
 class ProjectDetailDocumentModal extends Component implements HasForms
 {
     use InteractsWithForms;
@@ -102,33 +103,43 @@ class ProjectDetailDocumentModal extends Component implements HasForms
             return;
         }
 
-        // Count documents by status
+        // Count different statuses
         $approvedCount = $submissions->where('status', 'approved')->count();
+        $rejectedCount = $submissions->where('status', 'rejected')->count();
         $pendingReviewCount = $submissions->where('status', 'pending_review')->count();
-        $uploadedCount = $submissions->where('status', 'uploaded')->count();
-        $totalCount = $submissions->count();
 
-        if ($approvedCount === $totalCount) {
-            // All documents are approved
-            $status = 'approved';
-        } elseif ($pendingReviewCount > 0 || $approvedCount > 0) {
-            // At least one document is pending review or some (but not all) are approved
-            $status = 'pending_review';
-        } elseif ($uploadedCount > 0) {
-            // At least one document is uploaded and none are pending or approved
-            $status = 'uploaded';
-        } else {
-            // All remaining documents must be rejected
+        // Set status based on new conditions
+        if ($rejectedCount === $submissions->count()) {
+            // All documents are rejected
             $status = 'rejected';
-        }
-
-        // Only update if the status changed
-        if ($this->document->status !== $status) {
-            $this->document->status = $status;
-            $this->document->save();
+        } elseif ($approvedCount > 0) {
+            // At least one document is approved
+            $status = 'approved';
+        } elseif ($pendingReviewCount > 0) {
+            // At least one document is pending review
+            $status = 'pending_review';
+        } else {
+            // Default to uploaded if no other conditions met
+            $status = 'uploaded';
         }
 
         $this->overallStatus = $status;
+        
+        // Only update if status has changed
+        if ($this->document->status !== $status) {
+            $oldStatus = $this->document->status;
+            $this->document->status = $status;
+            $this->document->save();
+
+            // Create a comment about status change if transitioning
+            Comment::create([
+                'user_id' => auth()->id(),
+                'commentable_type' => RequiredDocument::class,
+                'commentable_id' => $this->document->id,
+                'content' => "Document status automatically changed from <strong>{$oldStatus}</strong> to <strong>{$status}</strong>",
+                'status' => 'approved'
+            ]);
+        }
     }
 
     protected function getForms(): array
@@ -913,6 +924,8 @@ class ProjectDetailDocumentModal extends Component implements HasForms
                 'rejection'
             );
 
+            $this->dispatch('close-modal', ['id' => 'rejection-reason-modal']);
+            
             // Show success notification
             Notification::make()
                 ->title('Document Rejected')

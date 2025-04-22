@@ -22,13 +22,21 @@ class Task extends Model
             ->logOnlyDirty()
             ->dontSubmitEmptyLogs()
             ->setDescriptionForEvent(function(string $eventName) {
-                $prefix = match($eventName) {
-                    'created' => 'New task was created:',  
-                    'updated' => 'Task was modified:',
-                    'deleted' => 'Task was removed:',
-                    default => "Task was {$eventName}:"
+                $projectName = $this->projectStep->project->name ?? 'Proyek';
+                $clientName = $this->projectStep->project->client->name ?? 'Klien';
+                $stepName = $this->projectStep->name ?? 'Tahap';
+                
+                return match($eventName) {
+                    'created' => "[{$clientName}] ✚ TUGAS BARU: {$this->title} | Proyek: {$projectName} ({$stepName})",
+                    'updated' => match($this->status) {
+                        'completed' => "[{$clientName}] ✓ SELESAI: {$this->title} | Proyek: {$projectName} ({$stepName})",
+                        'pending' => "[{$clientName}] ⌛ MENUNGGU: {$this->title} | Proyek: {$projectName} ({$stepName})",
+                        'in_progress' => "[{$clientName}] ⚡ SEDANG DIKERJAKAN: {$this->title} | Proyek: {$projectName} ({$stepName})",
+                        default => "[{$clientName}] Tugas diperbarui: {$this->title} | Proyek: {$projectName} ({$stepName})"
+                    },
+                    'deleted' => "[{$clientName}] 🗑 DIHAPUS: {$this->title} | Proyek: {$projectName} ({$stepName})",
+                    default => "[{$clientName}] Tugas {$this->title} telah di{$eventName} | Proyek: {$projectName} ({$stepName})"
                 };
-                return "{$prefix} {$this->title}";
             })
             ->logFillable();
     }

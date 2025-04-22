@@ -325,8 +325,8 @@ class ProjectResource extends Resource
                     $join->on('projects.client_id', '=', 'user_clients.client_id')
                          ->where('user_clients.user_id', $user->id);
                 })
-                ->select('projects.*') // Select only from the projects table to avoid column conflicts
-                ->distinct(); // Ensure we don't get duplicate projects
+                ->select('projects.*') 
+                ->distinct(); 
             })
             ->columns([
                 Tables\Columns\TextColumn::make('index')
@@ -444,7 +444,8 @@ class ProjectResource extends Resource
                         'in_progress' => 'In Progress',
                         'completed' => 'Completed',
                         'canceled' => 'Canceled',
-                    ]),
+                    ])
+                    ->default(['draft', 'in_progress']),
                 DateRangeFilter::make('due_date'),
             ])
             // Row Actions

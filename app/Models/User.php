@@ -92,8 +92,17 @@ class User extends Authenticatable
     public function getActivitylogOptions(): LogOptions
     {
         return LogOptions::defaults()
-            ->logAll()
-            ->logOnlyDirty();
+            ->logOnly(['name', 'email', 'password'])
+            ->logOnlyDirty()
+            ->dontSubmitEmptyLogs()
+            ->setDescriptionForEvent(function(string $eventName) {
+                return match ($eventName) {
+                    'created' => "Akun pengguna baru dibuat: {$this->name}",
+                    'updated' => "Detail akun pengguna diubah: {$this->name}",
+                    'deleted' => "Akun pengguna dihapus: {$this->name}",
+                    default => "Akun pengguna {$this->name} telah di{$eventName}"
+                };
+            });
     }
 
     public function canAccessPanel(Panel $panel): bool

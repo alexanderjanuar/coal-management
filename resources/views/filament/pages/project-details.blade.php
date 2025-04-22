@@ -815,7 +815,6 @@
 
 
                                 <!-- Documents Section -->
-                                <!-- Documents Section -->
                                 @if($step->requiredDocuments->isNotEmpty())
                                 <div class="space-y-2">
                                     <h4 class="text-sm font-medium text-gray-700 dark:text-gray-300">Required Documents

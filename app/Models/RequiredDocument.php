@@ -22,13 +22,23 @@ class RequiredDocument extends Model
             ->logOnlyDirty()
             ->dontSubmitEmptyLogs()
             ->setDescriptionForEvent(function(string $eventName) {
-                $prefix = match($eventName) {
-                    'created' => 'New document requirement was added:',
-                    'updated' => 'Document requirement was updated:',
-                    'deleted' => 'Document requirement was removed:',
-                    default => "Document requirement was {$eventName}:"
+                $clientName = $this->projectStep->project->client->name ?? 'Klien';
+                $projectName = $this->projectStep->project->name ?? 'Proyek';
+                $stepName = $this->projectStep->name ?? 'Tahap';
+                
+                return match($eventName) {
+                    'created' => "[{$clientName}] 📋 Persyaratan dokumen baru ditambahkan: {$this->name} pada {$stepName} ({$projectName})",
+                    'updated' => match($this->status) {
+                        'approved' => "[{$clientName}] ✅ Semua dokumen {$this->name} telah disetujui",
+                        'pending_review' => "[{$clientName}] 👁️ Dokumen {$this->name} menunggu peninjauan",
+                        'uploaded' => "[{$clientName}] 📤 Dokumen baru diunggah untuk {$this->name}",
+                        'rejected' => "[{$clientName}] ❌ Beberapa dokumen {$this->name} ditolak",
+                        'draft' => "[{$clientName}] 📝 Dokumen {$this->name} masih draft",
+                        default => "[{$clientName}] 🔄 Persyaratan dokumen diperbarui: {$this->name}"
+                    },
+                    'deleted' => "[{$clientName}] 🗑️ Persyaratan dokumen dihapus: {$this->name} dari {$stepName}",
+                    default => "[{$clientName}] ℹ️ Persyaratan dokumen {$this->name} telah di{$eventName}"
                 };
-                return "{$prefix} {$this->name}";
             })
             ->logFillable();
     }

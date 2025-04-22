@@ -675,19 +675,22 @@ class DocumentModalManager extends Component implements HasForms
             return;
         }
         
-        // Check if all documents are either approved or rejected
-        $resolvedCount = $submissions->filter(fn($doc) => 
+        // Check if all documents are in a final state (approved or rejected)
+        $finalizedCount = $submissions->filter(fn($doc) => 
             $doc->status === 'approved' || $doc->status === 'rejected'
         )->count();
         
         $totalCount = $submissions->count();
         
-        // If all documents are resolved (approved or rejected), set to approved
-        if ($resolvedCount === $totalCount) {
+        // Set status based on conditions
+        if ($finalizedCount === $totalCount) {
+            // All documents are either approved or rejected
             $status = 'approved';
         } elseif ($submissions->where('status', 'pending_review')->count() > 0) {
+            // At least one document is pending review
             $status = 'pending_review';
         } else {
+            // Default to uploaded if not in other states
             $status = 'uploaded';
         }
         
@@ -695,8 +698,20 @@ class DocumentModalManager extends Component implements HasForms
         
         // Only update if status has changed
         if ($this->document->status !== $status) {
+            $oldStatus = $this->document->status;
             $this->document->status = $status;
             $this->document->save();
+
+            // Create a comment about auto-completion if transitioning to approved
+            if ($status === 'approved' && $oldStatus !== 'approved') {
+                Comment::create([
+                    'user_id' => auth()->id(),
+                    'commentable_type' => RequiredDocument::class,
+                    'commentable_id' => $this->document->id,
+                    'content' => "Document automatically marked as completed because all submitted documents have been finalized (approved or rejected).",
+                    'status' => 'approved'
+                ]);
+            }
         }
     }
 
@@ -1076,6 +1091,9 @@ class DocumentModalManager extends Component implements HasForms
                 'rejection'
             );
 
+            $this->dispatch('close-modal', ['id' => 'rejection-reason-modal']);
+
+
             // Show success notification
             Notification::make()
                 ->title('Document Rejected')
@@ -1083,6 +1101,7 @@ class DocumentModalManager extends Component implements HasForms
                 ->icon('heroicon-o-x-circle')
                 ->color('danger')
                 ->send();
+            
         } catch (\Exception $e) {
             // Error handling
             Notification::make()
@@ -1254,7 +1273,7 @@ class DocumentModalManager extends Component implements HasForms
         try {
             // Get all documents except rejected ones
             $documents = $this->document->submittedDocuments()
-                ->where('status', '!=', 'rejected')
+                ->whereNotIn('status', ['rejected', 'approved'])
                 ->get();
 
             if ($documents->isEmpty()) {
@@ -1289,31 +1308,43 @@ class DocumentModalManager extends Component implements HasForms
                 ]);
             }
 
-            // Check if all documents are now approved
-            $allApproved = $this->document->submittedDocuments()
-                ->where('status', '!=', 'approved')
-                ->count() === 0;
+            // Recalculate overall status
+            $this->calculateOverallStatus();
 
-            // Only update main document status if all documents are approved
-            if ($allApproved) {
-                $oldStatus = $this->document->status;
-                $this->document->status = 'approved';
-                $this->document->save();
+            // Close the confirmation modal
+            $this->dispatch('close-modal', ['id' => 'confirm-approve-all']);
 
-                // Create a comment for the main document status change
-                Comment::create([
-                    'user_id' => auth()->id(),
-                    'commentable_type' => RequiredDocument::class,
-                    'commentable_id' => $this->document->id,
-                    'content' => sprintf(
-                        "Document group status changed from <strong>%s</strong> to <strong>approved</strong> using bulk approve",
-                        $oldStatus
-                    ),
-                    'status' => 'approved'
-                ]);
-            }
+            // Get project info for notification
+            $projectStep = $this->document->projectStep;
+            $project = $projectStep->project;
+            $client = $project->client;
 
-            // ...existing code for notifications and refresh...
+            // Send notification for bulk approval
+            $this->sendProjectNotifications(
+                "Documents Approved",
+                sprintf(
+                    "<span style='color: #f59e0b; font-weight: 500;'>%s</span><br><strong>Project:</strong> %s<br><strong>Document:</strong> %s<br><strong>Action:</strong> %d documents approved<br><strong>Approved by:</strong> %s",
+                    $client->name,
+                    $project->name,
+                    $this->document->name,
+                    $affectedCount,
+                    auth()->user()->name
+                ),
+                'success',
+                'View Documents',
+                'approval'
+            );
+
+            // Show success notification
+            Notification::make()
+                ->title('Documents Approved')
+                ->body(sprintf('%d documents have been approved successfully.', $affectedCount))
+                ->success()
+                ->send();
+
+            // Refresh the view
+            $this->dispatch('refresh');
+
         } catch (\Exception $e) {
             report($e);
             $this->sendNotification(

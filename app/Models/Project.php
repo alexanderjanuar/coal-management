@@ -28,13 +28,20 @@ class Project extends Model
             ->logOnlyDirty()
             ->dontSubmitEmptyLogs()
             ->setDescriptionForEvent(function(string $eventName) {
-                $prefix = match($eventName) {
-                    'created' => 'New project was created:',
-                    'updated' => 'Project details were modified:',
-                    'deleted' => 'Project was deleted:',
-                    default => "Project was {$eventName}:"
+                $clientName = $this->client->name ?? 'Klien';
+                
+                return match($eventName) {
+                    'created' => "[{$clientName}] 📂 PROYEK BARU: {$this->name} | Prioritas: {$this->priority}",
+                    'updated' => match($this->status) {
+                        'completed' => "[{$clientName}] ✅ PROYEK SELESAI: {$this->name}",
+                        'in_progress' => "[{$clientName}] ⚡ PROYEK AKTIF: {$this->name}",
+                        'on_hold' => "[{$clientName}] ⏸️ PROYEK DITUNDA: {$this->name}",
+                        'canceled' => "[{$clientName}] ❌ PROYEK DIBATALKAN: {$this->name}",
+                        default => "[{$clientName}] Proyek {$this->name} diperbarui"
+                    },
+                    'deleted' => "[{$clientName}] 🗑️ PROYEK DIHAPUS: {$this->name}",
+                    default => "[{$clientName}] Proyek {$this->name} telah di{$eventName}"
                 };
-                return "{$prefix} {$this->name}";
             });
     }
 
