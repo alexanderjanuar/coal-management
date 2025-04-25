@@ -20,15 +20,6 @@ class ListProjects extends ListRecords
         // Start with Project model's query builder
         $query = Project::query();
 
-        // If user is not super-admin, filter by their assigned clients
-        if (!$user->hasRole('super-admin')) {
-            $query->whereIn('client_id', function ($subQuery) use ($user) {
-                $subQuery->select('client_id')
-                    ->from('user_clients')
-                    ->where('user_id', $user->id);
-            });
-        }
-
         return $query;
     }
 
