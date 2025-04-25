@@ -296,6 +296,38 @@ class ProjectResource extends Resource
     public static function table(Table $table): Table
     {
         return $table
+            ->query(function (Builder $query) {
+                $user = auth()->user();
+
+                // Optimize base query with eager loading of commonly used relationships
+                $baseQuery = Project::query()
+                    ->with([
+                        'client',
+                        'steps' => function ($query) {
+                            $query->select('id', 'project_id', 'name', 'status', 'order')
+                                  ->orderBy('order');
+                        },
+                        'steps.tasks' => function ($query) {
+                            $query->select('id', 'project_step_id', 'title', 'status');
+                        },
+                        'steps.requiredDocuments' => function ($query) {
+                            $query->select('id', 'project_step_id', 'name', 'status');
+                        }
+                    ]);
+
+                // If user is super-admin, return the optimized query
+                if ($user->hasRole('super-admin')) {
+                    return $baseQuery;
+                }
+
+                // For other users, optimize by using a join instead of a subquery
+                return $baseQuery->join('user_clients', function ($join) use ($user) {
+                    $join->on('projects.client_id', '=', 'user_clients.client_id')
+                         ->where('user_clients.user_id', $user->id);
+                })
+                ->select('projects.*') 
+                ->distinct(); 
+            })
             ->columns([
                 Tables\Columns\TextColumn::make('index')
                     ->label('No. ')

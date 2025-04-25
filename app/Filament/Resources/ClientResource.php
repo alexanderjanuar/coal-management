@@ -108,21 +108,6 @@ class ClientResource extends Resource
     public static function table(Table $table): Table
     {
         return $table
-            ->query(function (Builder $query) {
-                $user = auth()->user();
-
-                // If user is super-admin, show all clients
-                if ($user->hasRole('super-admin')) {
-                    return Client::query();
-                }
-
-                // For other users, only show their assigned clients
-                return Client::whereIn('id', function ($subQuery) use ($user) {
-                    $subQuery->select('client_id')
-                        ->from('user_clients')
-                        ->where('user_id', $user->id);
-                });
-            })
             ->columns([
                 ImageColumn::make('logo')
                     ->circular(),
