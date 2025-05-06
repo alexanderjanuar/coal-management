@@ -14,10 +14,6 @@ return new class extends Migration {
             $table->id();
             $table->foreignId('client_id')->constrained();
             $table->string('month');
-            $table->decimal('ppn', 15, 2)->nullable();
-            $table->decimal('pph_21', 15, 2)->nullable(); 
-            $table->decimal('pph_unifikasi', 15, 2)->nullable();
-            $table->enum('status', ['PKP', 'NON-PKP']);
             $table->timestamps();
         });
     }

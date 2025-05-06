@@ -36,4 +36,9 @@ class Client extends Model
     {
         return $this->hasMany(ClientDocument::class);
     }
+
+    public function employees(): HasMany
+    {
+        return $this->hasMany(Employee::class);
+    }
 }

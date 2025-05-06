@@ -8,5 +8,8 @@ use Filament\Resources\Pages\CreateRecord;
 
 class CreateTaxReport extends CreateRecord
 {
+    protected static string $view = 'filament.resources.taxReport-resource.create-taxReport';
     protected static string $resource = TaxReportResource::class;
+
+    
 }

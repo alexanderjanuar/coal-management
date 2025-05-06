@@ -12,4 +12,16 @@ class TaxReport extends Model
     public function client(){
         return $this->belongsTo(Client::class);
     }
+
+    public function invoices(){
+        return $this->hasMany(Invoice::class);
+    }
+
+    public function incomeTaxs(){
+        return $this->hasMany(IncomeTax::class);
+    }
+
+    public function bupots(){
+        return $this->hasMany(Bupot::class);
+    }
 }
