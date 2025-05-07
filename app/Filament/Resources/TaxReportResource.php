@@ -45,70 +45,56 @@ class TaxReportResource extends Resource
     public static function form(Form $form): Form
     {
         return $form
-
             ->schema([
-                Split::make([
-                    Section::make([
+                Section::make('Tax Report Information')
+                    ->schema([
                         Select::make('client_id')
+                            ->label('Client')
                             ->required()
-                            ->label('Client Name')
+                            ->relationship('client', 'name')
                             ->searchable()
-                            ->options(Client::all()->pluck('name', 'id')),
+                            ->preload()
+                            ->createOptionForm([
+                                TextInput::make('name')
+                                    ->required()
+                                    ->maxLength(255),
+                                TextInput::make('NPWP')
+                                    ->label('NPWP')
+                                    ->maxLength(255),
+                                TextInput::make('KPP')
+                                    ->label('KPP')
+                                    ->maxLength(255),
+                                TextInput::make('email')
+                                    ->email()
+                                    ->unique(ignorable: fn ($record) => $record)
+                                    ->maxLength(255),
+                                Select::make('status')
+                                    ->options([
+                                        'Active' => 'Active',
+                                        'Inactive' => 'Inactive',
+                                    ])
+                                    ->default('Active'),
+                            ]),
+                        
                         Select::make('month')
                             ->required()
-                            ->label('Month')
-                            ->searchable()
-                            ->options(array_combine(
-                                ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'],
-                                ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December']
-                            ))
-                            ->rules([
-                                fn(Get $get): Closure => function (string $attribute, $value, Closure $fail) use ($get) {
-                                    $exists = TaxReport::where('client_id', $get('client_id'))
-                                        ->where('month', $value)
-                                        ->exists();
-                                    if ($exists) {
-                                        $fail("Tax report for this client in {$value} already exists.");
-                                    }
-                                },
-                            ])
-                        ,
-                        Select::make('status')
-                            ->required()
-                            ->label('Status')
-                            ->searchable()
-                            ->options(array_combine(
-                                ['PKP', 'NON-PKP'],
-                                ['PKP', 'NON-PKP']
-                            ))
-                            ->columnSpanFull()
-                    ])->columns(2),
-                    Section::make([
-                        Forms\Components\TextInput::make('ppn')
-                            ->label('PPN')
-                            ->prefix('Rp')
-                            ->mask(RawJs::make('$money($input)'))
-                            ->stripCharacters(',')
-                            ->numeric()
-                            ->default(0),
-                        Forms\Components\TextInput::make('pph_21')
-                            ->label('PPH 21')
-                            ->prefix('Rp')
-                            ->mask(RawJs::make('$money($input)'))
-                            ->stripCharacters(',')
-                            ->numeric()
-                            ->default(0),
-                        Forms\Components\TextInput::make('pph_unifikasi')
-                            ->label('PPH Unifikasi')
-                            ->prefix('Rp')
-                            ->mask(RawJs::make('$money($input)'))
-                            ->stripCharacters(',')
-                            ->numeric()
-                            ->default(0)
-                        ,
-                    ])->grow(false),
-                ])->columnSpanFull(),
-
+                            ->native(false)
+                            ->options([
+                                'January' => 'January',
+                                'February' => 'February',
+                                'March' => 'March',
+                                'April' => 'April',
+                                'May' => 'May',
+                                'June' => 'June',
+                                'July' => 'July',
+                                'August' => 'August',
+                                'September' => 'September',
+                                'October' => 'October',
+                                'November' => 'November',
+                                'December' => 'December',
+                            ]),
+                    ]),
+                
             ]);
     }
 
@@ -116,75 +102,34 @@ class TaxReportResource extends Resource
     {
         return $table
             ->columns([
-                Tables\Columns\TextColumn::make('client.name')  // Changed from client_id to show client name
-                    ->label('Client')
-                    ->searchable()
+                TextColumn::make('client.name')
+                ->label('Client')
+                ->sortable()
+                ->searchable(),
+                
+                TextColumn::make('month')
+                    ->label('Month')
                     ->sortable(),
-                Tables\Columns\TextColumn::make('month')
-                    ->searchable()
-                    ->sortable()
-                    ->badge()  // Makes month stand out visually
-                    ->color('success'),
-
-                Tables\Columns\TextColumn::make('ppn')
-                    ->label('PPN')
-                    ->numeric()
-                    ->money('idr')  // Format as Indonesian Rupiah
-                    ->alignRight()
-                    ->sortable()
-                    ->summarize(
-                        Tables\Columns\Summarizers\Sum::make()
-                            ->label('Total PPN')
-                            ->money('idr')
-                    ),
-                Tables\Columns\TextColumn::make('pph_21')
-                    ->label('PPH 21')
-                    ->numeric()
-                    ->money('idr')
-                    ->alignRight()
-                    ->sortable()
-                    ->summarize(
-                        Tables\Columns\Summarizers\Sum::make()
-                            ->label('Total PPH 21')
-                            ->money('idr')
-                    ),
-                Tables\Columns\TextColumn::make('pph_unifikasi')
-                    ->label('PPH Unifikasi')
-                    ->numeric()
-                    ->money('idr')
-                    ->alignRight()
-                    ->sortable()
-                    ->summarize(
-                        Tables\Columns\Summarizers\Sum::make()
-                            ->label('Total PPN + PPH 21')
-                            ->money('idr')
-                    ),
-                Tables\Columns\TextColumn::make('status')
-                    ->badge()
-                    ->color(fn(string $state): string => match ($state) {
-                        'PKP' => 'success',
-                        'NON-PKP' => 'warning',
-                        default => 'gray',
-                    })
-                    ->searchable(),
-                TextColumn::make('amount_including_vat')
-                    ->numeric()
-                    ->money('idr')
-                    ->label('Total')
-                    ->state(function (TaxReport $record): float {
-                        return $record->pph_21 + $record->nihil + $record->ppn;
-                    }),
-                Tables\Columns\TextColumn::make('created_at')
-                    ->label('Created Date')
-                    ->dateTime('d M Y, H:i')  // Better date format
-                    ->sortable()
-                    ->toggleable(isToggledHiddenByDefault: true),
-
-                Tables\Columns\TextColumn::make('updated_at')
-                    ->label('Last Updated')
-                    ->dateTime('d M Y, H:i')
-                    ->sortable()
-                    ->toggleable(isToggledHiddenByDefault: true),
+                                
+                TextColumn::make('invoices_count')
+                    ->label('Invoices')
+                    ->counts('invoices')
+                    ->sortable(),
+                    
+                TextColumn::make('incomeTaxs_count')
+                    ->label('Income Taxes')
+                    ->counts('incomeTaxs')
+                    ->sortable(),
+                    
+                TextColumn::make('bupots_count')
+                    ->label('Bupots')
+                    ->counts('bupots')
+                    ->sortable(),
+                    
+                TextColumn::make('created_at')
+                    ->label('Created At')
+                    ->dateTime('d M Y')
+                    ->sortable(),
             ])
             ->groups([
                 'client.name',
@@ -204,33 +149,11 @@ class TaxReportResource extends Resource
             ]);
     }
 
-
-
     public static function getRelations(): array
     {
         return [
-            //
+            RelationManagers\InvoicesRelationManager::class,
         ];
-    }
-
-    protected function beforeCreate(): void
-    {
-
-        if (!auth()->user()->team->subscribed()) {
-            Notification::make()
-                ->warning()
-                ->title('You don\'t have an active subscription!')
-                ->body('Choose a plan to continue.')
-                ->persistent()
-                ->actions([
-                    Action::make('subscribe')
-                        ->button()
-                        ->url(route('subscribe'), shouldOpenInNewTab: true),
-                ])
-                ->send();
-
-            $this->halt();
-        }
     }
 
     public static function getPages(): array

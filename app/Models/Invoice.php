@@ -6,14 +6,38 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Spatie\Activitylog\Traits\LogsActivity;
 use Spatie\Activitylog\LogOptions;
- 
+
 class Invoice extends Model
 {
     use HasFactory;
 
+    protected $fillable = [
+        'tax_report_id',
+        'invoice_number',
+        'company_name',
+        'npwp',
+        'type',
+        'dpp',
+        'ppn',
+        'nihil',
+        'file_path',
+        'notes',
+        'created_by'
+    ];
+
     public function taxReport()
     {
         return $this->belongsTo(TaxReport::class);
+    }
+
+    public function createdBy()
+    {
+        return $this->belongsTo(User::class, 'created_by');
+    }
+
+    public function bupots()
+    {
+        return $this->hasOne(Bupot::class);
     }
 
     public function getActivitylogOptions(): LogOptions

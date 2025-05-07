@@ -14,6 +14,7 @@ return new class extends Migration
         Schema::create('bupots', function (Blueprint $table) {
             $table->id();
             $table->foreignId('tax_report_id')->constrained()->onDelete('cascade');
+            $table->foreignId('invoice_id')->nullable()->constrained()->nullOnDelete();
             $table->string('tax_period')->nullable();
             $table->string('npwp');
             $table->string('company_name');
@@ -23,6 +24,8 @@ return new class extends Migration
             $table->enum('pph_type',["PPh 21","PPh 23"]);
             $table->decimal('bupot_amount', 15, 2)->default(0);
             $table->string('file_path');
+            $table->foreignId('created_by')->nullable()->constrained('users')->nullOnDelete();
+
             $table->timestamps();
         });
     }

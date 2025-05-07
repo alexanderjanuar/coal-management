@@ -18,6 +18,7 @@ return new class extends Migration
             $table->decimal('ter_amount', 15, 2)->default(0);
             $table->decimal('pph_21_amount', 15, 2)->default(0);
             $table->string('file_path');
+            $table->foreignId('created_by')->nullable()->constrained('users')->nullOnDelete();
             $table->timestamps();
         });
     }

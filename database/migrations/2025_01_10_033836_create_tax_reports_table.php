@@ -14,6 +14,7 @@ return new class extends Migration {
             $table->id();
             $table->foreignId('client_id')->constrained();
             $table->string('month');
+            $table->foreignId('created_by')->nullable()->constrained('users')->nullOnDelete();
             $table->timestamps();
         });
     }

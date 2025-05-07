@@ -9,6 +9,12 @@ class IncomeTax extends Model
 {
     use HasFactory;
 
+    protected $fillable = [
+        'tax_report_id',
+        'employee_id',
+        'created_by'
+    ];
+
     public function taxreport()
     {
         return $this->belongsTo(TaxReport::class);
@@ -17,5 +23,10 @@ class IncomeTax extends Model
     public function employee()
     {
         return $this->belongsTo(Employee::class);
+    }
+
+    public function createdBy()
+    {
+        return $this->belongsTo(User::class, 'created_by');
     }
 }

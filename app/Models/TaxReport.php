@@ -9,6 +9,12 @@ class TaxReport extends Model
 {
     use HasFactory;
 
+    protected $fillable = [
+        'client_id',
+        'month',
+        'created_by'
+    ];
+
     public function client(){
         return $this->belongsTo(Client::class);
     }
@@ -23,5 +29,10 @@ class TaxReport extends Model
 
     public function bupots(){
         return $this->hasMany(Bupot::class);
+    }
+
+    public function createdBy()
+    {
+        return $this->belongsTo(User::class, 'created_by');
     }
 }

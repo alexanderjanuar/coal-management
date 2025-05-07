@@ -117,7 +117,6 @@ class TaxReportManager extends Component implements HasForms
         $taxReport = TaxReport::create([
             'client_id' => $data['client_id'],
             'month' => $monthValue,
-            'status' => 'PKP', // Setting default status
         ]);
         
         // Set the newly created tax report ID
