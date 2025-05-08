@@ -406,6 +406,22 @@ class IncomeTaxsRelationManager extends RelationManager
                         ->modalDescription('Apakah Anda yakin ingin mengekspor data pajak penghasilan yang terpilih?')
                         ->modalSubmitActionLabel('Ya, Ekspor'),
                 ]),
+            ])
+            ->emptyStateHeading('Belum Ada Data PPh 21')
+            ->emptyStateDescription('Tambahkan data pajak penghasilan (PPh 21) karyawan untuk laporan pajak ini. Data PPh 21 membantu mencatat kewajiban pajak penghasilan.')
+            ->emptyStateIcon('heroicon-o-user-group')
+            ->emptyStateActions([
+                Tables\Actions\CreateAction::make()
+                    ->label('Tambah Data PPh 21')
+                    ->modalWidth('7xl')
+                    ->icon('heroicon-o-plus'),
+                    
+                // Tables\Actions\Action::make('register_employee')
+                //     ->label('Daftarkan Karyawan Baru')
+                //     ->url(route('filament.admin.resources.employees.create'))
+                //     ->icon('heroicon-o-user-plus')
+                //     ->color('gray')
+                //     ->openUrlInNewTab(),
             ]);
     }
 }

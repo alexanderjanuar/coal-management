@@ -357,6 +357,28 @@ class BupotsRelationManager extends RelationManager
                         ->modalDescription('Apakah Anda yakin ingin mengekspor bukti potong yang terpilih?')
                         ->modalSubmitActionLabel('Ya, Ekspor'),
                 ]),
+            ])
+            ->emptyStateHeading('Belum Ada Bukti Potong')
+            ->emptyStateDescription('Bukti potong pajak (untuk PPh 21 dan PPh 23) akan muncul di sini. Tambahkan bukti potong untuk melengkapi laporan pajak Anda.')
+            ->emptyStateIcon('heroicon-o-document-check')
+            ->emptyStateActions([
+                Tables\Actions\CreateAction::make()
+                    ->label('Tambah Bukti Potong')
+                    ->modalWidth('7xl')
+                    ->icon('heroicon-o-plus'),
+                    
+                Tables\Actions\Action::make('link_invoice')
+                    ->label('Kaitkan dengan Faktur')
+                    ->color('gray')
+                    ->icon('heroicon-o-link')
+                    ->visible(function () {
+                        // Only show if there are invoices to link
+                        $taxReport = $this->getOwnerRecord();
+                        return $taxReport && $taxReport->invoices()->count() > 0;
+                    })
+                    ->action(function () {
+                        // Placeholder for linking action
+                    }),
             ]);
     }
 }

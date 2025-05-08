@@ -295,6 +295,15 @@ class InvoicesRelationManager extends RelationManager
                         ->modalDescription('Apakah Anda yakin ingin mengekspor faktur yang terpilih?')
                         ->modalSubmitActionLabel('Ya, Ekspor'),
                 ]),
+            ])
+            ->emptyStateHeading('Belum Ada Faktur Pajak')
+            ->emptyStateDescription('Faktur pajak untuk laporan pajak ini akan muncul di sini. Tambahkan faktur masukan dan keluaran untuk melacak PPN.')
+            ->emptyStateIcon('heroicon-o-document-duplicate')
+            ->emptyStateActions([
+                Tables\Actions\CreateAction::make()
+                    ->label('Tambah Faktur Pajak')
+                    ->modalWidth('7xl')
+                    ->icon('heroicon-o-plus'),
             ]);
     }
 
