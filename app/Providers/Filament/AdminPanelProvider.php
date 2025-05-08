@@ -98,6 +98,7 @@ class AdminPanelProvider extends PanelProvider
                     ->emptyPanelBackgroundImageOpacity('80%')
                     ->emptyPanelBackgroundImageUrl('https://images.pexels.com/photos/466685/pexels-photo-466685.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=2')
             ])
+            
             ->brandLogo(asset('images/JKB-Logo.png'))
             ->brandLogoHeight('3.5rem')
             ->viteTheme('resources/css/filament/admin/theme.css')

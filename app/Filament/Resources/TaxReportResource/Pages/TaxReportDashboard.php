@@ -73,13 +73,83 @@ class TaxReportDashboard extends Page
         
         return $clients;
     }
+
+    public function getMonthlyTaxesData($taxType = 'ppn')
+    {
+        $currentYear = date('Y');
+        $chartData = [];
+        
+        // Initialize data for all months
+        for ($i = 1; $i <= 12; $i++) {
+            $chartData[] = [
+                'x' => Carbon::create()->month($i)->format('M'),
+                'y' => 0,
+            ];
+        }
+        
+        // Get the appropriate data based on tax type
+        switch ($taxType) {
+            case 'ppn':
+                $monthlyData = Invoice::selectRaw('MONTH(created_at) as month, SUM(ppn) as total')
+                    ->whereYear('created_at', $currentYear)
+                    ->groupBy('month')
+                    ->orderBy('month')
+                    ->get()
+                    ->keyBy('month');
+                break;
+            
+            case 'pph21':
+                $monthlyData = IncomeTax::selectRaw('MONTH(created_at) as month, SUM(pph_21_amount) as total')
+                    ->whereYear('created_at', $currentYear)
+                    ->groupBy('month')
+                    ->orderBy('month')
+                    ->get()
+                    ->keyBy('month');
+                break;
+            
+            case 'bupot':
+                $monthlyData = Bupot::selectRaw('MONTH(created_at) as month, SUM(bupot_amount) as total')
+                    ->whereYear('created_at', $currentYear)
+                    ->groupBy('month')
+                    ->orderBy('month')
+                    ->get()
+                    ->keyBy('month');
+                break;
+                
+            default:
+                return json_encode($chartData);
+        }
+        
+        // Merge the data with the initialized array
+        foreach ($monthlyData as $month => $data) {
+            if (isset($chartData[$month-1])) {
+                $chartData[$month-1]['y'] = (float)$data->total;
+            }
+        }
+        
+        return json_encode($chartData);
+    }
     
     public function getTaxTypeDistribution()
     {
-        $ppnTotal = Invoice::sum('ppn');
-        $pph21Total = IncomeTax::sum('pph_21_amount');
-        $bupotsTotal = Bupot::sum('bupot_amount');
+        // Make sure all values are numeric and defaulting to 0 if null
+        $ppnTotal = floatval(Invoice::sum('ppn')) ?: 0;
+        $pph21Total = floatval(IncomeTax::sum('pph_21_amount')) ?: 0;
+        $bupotsTotal = floatval(Bupot::sum('bupot_amount')) ?: 0;
         
+        // Check if all values are zero
+        $allZero = ($ppnTotal == 0 && $pph21Total == 0 && $bupotsTotal == 0);
+        
+        // If all values are zero, return a dataset with placeholder values
+        if ($allZero) {
+            return [
+                ['name' => 'PPN', 'value' => 1],
+                ['name' => 'PPh 21', 'value' => 1],
+                ['name' => 'Bupot', 'value' => 1],
+            ];
+        }
+        
+        // Otherwise return the actual values
         return [
             ['name' => 'PPN', 'value' => $ppnTotal],
             ['name' => 'PPh 21', 'value' => $pph21Total],
