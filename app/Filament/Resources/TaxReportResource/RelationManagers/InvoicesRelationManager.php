@@ -19,6 +19,9 @@ class InvoicesRelationManager extends RelationManager
 {
     protected static string $relationship = 'invoices';
 
+    protected static ?string $title = 'PPN';
+
+
     public function form(Form $form): Form
     {
         return $form
@@ -154,24 +157,33 @@ class InvoicesRelationManager extends RelationManager
         return $table
             ->recordTitleAttribute('company_name')
             ->columns([
-                Tables\Columns\ImageColumn::make('creator.avatar')
-                ->label('Dibuat Oleh')
-                ->circular()
-                ->defaultImageUrl(function ($record) {
-                    if ($record->created_by && $record->creator) {
-                        // Generate initials from creator's name
-                        $name = $record->creator->name;
-                        $initials = collect(explode(' ', $name))
-                            ->map(fn ($segment) => $segment[0] ?? '')
-                            ->join('');
-                            
-                        return "https://ui-avatars.com/api/?name=" . urlencode($initials) . "&color=FFFFFF&background=4F46E5";
-                    }
-                    
-                    return "https://ui-avatars.com/api/?name=?&color=FFFFFF&background=4F46E5";
-                })
-                ->tooltip(fn ($record) => $record->creator ? $record->creator->name : 'Tidak Diketahui')
-                ->size(40),
+                Tables\Columns\ImageColumn::make('user_avatar')
+                    ->label('Dibuat Oleh')
+                    ->circular()
+                    ->state(function ($record) {
+                        // If we have a created_by value
+                        if ($record->created_by) {
+                            $user = \App\Models\User::find($record->created_by);
+                            if ($user && method_exists($user, 'getAvatarUrl')) {
+                                return $user->getAvatarUrl();
+                            }
+                        }
+                        return null;
+                    })
+                    ->defaultImageUrl(asset('images/default-avatar.png'))
+                    ->size(40)
+                    ->tooltip(function ($record): string {
+                        if ($record->created_by) {
+                            $user = \App\Models\User::find($record->created_by);
+                            return $user ? $user->name : 'User #' . $record->created_by;
+                        }
+                        return 'System';
+                    })
+                    ->defaultImageUrl(asset('images/default-avatar.png'))
+                    ->size(40)
+                    ->tooltip(function ($record): string {
+                        return $record->creator?->name ?? 'System';
+                    }),
                 Tables\Columns\TextColumn::make('invoice_number')
                     ->label('Nomor Faktur')
                     ->searchable()
@@ -179,6 +191,8 @@ class InvoicesRelationManager extends RelationManager
                     
                 Tables\Columns\TextColumn::make('company_name')
                     ->label('Nama Perusahaan')
+                    ->badge()
+                    ->color('gray')
                     ->searchable()
                     ->sortable(),
                     
@@ -191,12 +205,12 @@ class InvoicesRelationManager extends RelationManager
                     
                 Tables\Columns\TextColumn::make('dpp')
                     ->label('DPP')
-                    ->money('IDR')
+                    ->money('Rp.')
                     ->sortable(),
                     
                 Tables\Columns\TextColumn::make('ppn')
                     ->label('PPN')
-                    ->money('IDR')
+                    ->money('Rp.')
                     ->sortable(),
                     
                 // New column to show related bupots count

@@ -8,7 +8,7 @@ return new class extends Migration
 {
     /**
      * Run the migrations.
-     */
+     */                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     
     public function up(): void
     {
         Schema::create('income_taxes', function (Blueprint $table) {
@@ -19,6 +19,8 @@ return new class extends Migration
             $table->decimal('pph_21_amount', 15, 2)->default(0);
             $table->string('file_path');
             $table->foreignId('created_by')->nullable()->constrained('users')->nullOnDelete();
+            $table->text('notes')->nullable();
+
             $table->timestamps();
         });
     }
