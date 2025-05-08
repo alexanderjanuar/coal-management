@@ -335,9 +335,12 @@ class TaxReportResource extends Resource
         ];
     }
 
+    
+
     public static function getPages(): array
     {
         return [
+            'dashboard' => Pages\TaxReportDashboard::route('/dashboard'),
             'index' => Pages\ListTaxReports::route('/'),
             'create' => Pages\CreateTaxReport::route('/create'),
             'view' => Pages\ViewTaxReport::route('/{record}'),
