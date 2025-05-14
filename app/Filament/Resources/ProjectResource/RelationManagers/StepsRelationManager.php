@@ -24,12 +24,12 @@ use Illuminate\Support\HtmlString;
 use Illuminate\Support\Facades\Blade;
 use Illuminate\Database\Eloquent\Model;
 use Filament\Tables\Filters\SelectFilter;
-use Guava\FilamentModalRelationManagers\Concerns\CanBeEmbeddedInModals;
+// use Guava\FilamentModalRelationManagers\Concerns\CanBeEmbeddedInModals;
 class StepsRelationManager extends RelationManager
 {
     protected static string $relationship = 'steps';
 
-    use CanBeEmbeddedInModals;
+    // use CanBeEmbeddedInModals;
 
     public function form(Form $form): Form
     {
