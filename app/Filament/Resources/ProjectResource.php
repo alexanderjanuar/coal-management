@@ -43,6 +43,8 @@ use Carbon\Carbon;
 use Illuminate\Contracts\Support\Htmlable;
 use Filament\Notifications\Notification;
 use Illuminate\Database\Eloquent\Model;
+use Swis\Filament\Activitylog\Tables\Actions\ActivitylogAction;
+
 class ProjectResource extends Resource
 {
     protected static ?string $model = Project::class;
@@ -451,6 +453,7 @@ class ProjectResource extends Resource
             // Row Actions
             ->actions([
                 Tables\Actions\ActionGroup::make([
+                    ActivitylogAction::make(),
                     RelationManagerAction::make('project-step-relation-manager')
                         ->label('Project Step')
                         ->slideOver()

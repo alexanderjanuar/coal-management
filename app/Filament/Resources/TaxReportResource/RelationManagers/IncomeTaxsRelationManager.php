@@ -216,6 +216,7 @@ class IncomeTaxsRelationManager extends RelationManager
                                 ]),
                         ]),
                 ])
+                
                 ->skippable()
                 ->persistStepInQueryString('income-tax-wizard-step')
                 ->columnSpanFull(),
@@ -233,6 +234,8 @@ class IncomeTaxsRelationManager extends RelationManager
             return $amount * 0.025;
         }
     }
+
+    
 
     public function table(Table $table): Table
     {
