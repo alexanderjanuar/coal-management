@@ -49,4 +49,18 @@ class ListTaxReports extends ListRecords
                 ->modifyQueryUsing(fn(Builder $query) => $query->where('month', 'December')),
         ];
     }
+
+    public function getDefaultActiveTab(): string | int | null
+    {
+        // Get the current month name (e.g., "January", "February", etc.)
+        $currentMonth = now()->format('F');
+        
+        // Check if the current month exists as a tab
+        if (array_key_exists($currentMonth, $this->getTabs())) {
+            return $currentMonth;
+        }
+        
+        // Fallback to 'all' if the current month doesn't exist as a tab
+        return 'all';
+    }
 }
