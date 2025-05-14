@@ -7,11 +7,13 @@ use Carbon\Carbon;
 
 class TaxCalendar extends Component
 {
-     public $currentDate;
+    public $currentDate;
     public $calendarDays = [];
     public $selectedDate = null;
     public $isModalOpen = false;
+    public $isClientModalOpen = false;
     public $selectedEvents = [];
+    public $pendingClients = [];
     
     public function mount()
     {
@@ -48,6 +50,7 @@ class TaxCalendar extends Component
                 'isCurrentMonth' => false,
                 'hasEvent' => $this->hasTaxEvent($date),
                 'isToday' => $date->isToday(),
+                'pendingClientsCount' => $this->getPendingClientsCount($date),
             ];
         }
         
@@ -62,6 +65,7 @@ class TaxCalendar extends Component
                 'isCurrentMonth' => true,
                 'hasEvent' => $this->hasTaxEvent($date),
                 'isToday' => $date->isToday(),
+                'pendingClientsCount' => $this->getPendingClientsCount($date),
             ];
         }
         
@@ -81,6 +85,7 @@ class TaxCalendar extends Component
                 'isCurrentMonth' => false,
                 'hasEvent' => $this->hasTaxEvent($date),
                 'isToday' => $date->isToday(),
+                'pendingClientsCount' => $this->getPendingClientsCount($date),
             ];
         }
         
@@ -104,6 +109,13 @@ class TaxCalendar extends Component
         $this->selectedDate = $dateString;
         $date = Carbon::parse($dateString);
         
+        // Check if this is a date with pending clients
+        if ($this->getPendingClientsCount($date) > 0) {
+            $this->pendingClients = $this->getPendingClients($date);
+            $this->isClientModalOpen = true;
+            return;
+        }
+        
         if ($this->hasTaxEvent($date)) {
             $this->selectedEvents = $this->getTaxEventsForDate($date);
             $this->isModalOpen = true;
@@ -116,6 +128,11 @@ class TaxCalendar extends Component
     public function closeModal()
     {
         $this->isModalOpen = false;
+    }
+
+    public function closeClientModal()
+    {
+        $this->isClientModalOpen = false;
     }
 
     protected function hasTaxEvent(Carbon $date)
@@ -201,6 +218,93 @@ class TaxCalendar extends Component
         ];
     }
 
+    protected function getPendingClientsCount(Carbon $date)
+    {
+        // Dummy logic to determine the count of pending clients for specific dates
+        $day = $date->day;
+        $currentMonth = $date->month;
+        $currentYear = $date->year;
+        $thisMonth = Carbon::now()->month;
+        $thisYear = Carbon::now()->year;
+        
+        // Only show pending clients for current or future months
+        if ($currentYear < $thisYear || ($currentYear == $thisYear && $currentMonth < $thisMonth)) {
+            return 0;
+        }
+        
+        // Check important tax dates
+        if ($day == 15) {
+            return 8; // 8 clients pending for PPh and PPN payments
+        } elseif ($day == 20) {
+            return 5; // 5 clients pending for PPh 21 reports
+        } elseif ($day == $date->endOfMonth()->day) {
+            return 12; // 12 clients pending for PPN reports
+        }
+        
+        return 0;
+    }
+    
+    protected function getPendingClients(Carbon $date)
+    {
+        // Dummy data for pending clients
+        $day = $date->day;
+        $currentMonth = Carbon::now()->month; 
+        $monthName = $date->translatedFormat('F');
+        
+        $reportType = '';
+        if ($day == 15) {
+            $reportType = 'Setor PPh dan PPN';
+        } elseif ($day == 20) {
+            $reportType = 'Lapor SPT Masa PPh 21';
+        } elseif ($day == $date->endOfMonth()->day) {
+            $reportType = 'Lapor SPT Masa PPN';
+        }
+        
+        $clients = [];
+        
+        // Generate different client lists for different dates
+        if ($day == 15) {
+            $clients = [
+                ['id' => 1, 'name' => 'PT Maju Jaya', 'status' => 'belum bayar', 'dueAmount' => 5250000, 'NPWP' => '01.234.567.8-123.000'],
+                ['id' => 2, 'name' => 'CV Teknologi Mandiri', 'status' => 'belum upload e-faktur', 'dueAmount' => 3750000, 'NPWP' => '02.345.678.9-234.000'],
+                ['id' => 3, 'name' => 'PT Sejahtera Abadi', 'status' => 'belum bayar', 'dueAmount' => 8150000, 'NPWP' => '03.456.789.0-345.000'],
+                ['id' => 4, 'name' => 'Toko Makmur', 'status' => 'belum upload e-faktur', 'dueAmount' => 1250000, 'NPWP' => '04.567.890.1-456.000'],
+                ['id' => 5, 'name' => 'PT Global Indonesia', 'status' => 'belum bayar', 'dueAmount' => 12500000, 'NPWP' => '05.678.901.2-567.000'],
+                ['id' => 6, 'name' => 'UD Sentosa', 'status' => 'belum bayar', 'dueAmount' => 2150000, 'NPWP' => '06.789.012.3-678.000'],
+                ['id' => 7, 'name' => 'PT Cahaya Timur', 'status' => 'belum upload e-faktur', 'dueAmount' => 4500000, 'NPWP' => '07.890.123.4-789.000'],
+                ['id' => 8, 'name' => 'CV Karya Utama', 'status' => 'belum bayar', 'dueAmount' => 3250000, 'NPWP' => '08.901.234.5-890.000'],
+            ];
+        } elseif ($day == 20) {
+            $clients = [
+                ['id' => 1, 'name' => 'PT Maju Jaya', 'status' => 'belum lapor', 'employees' => 24, 'NPWP' => '01.234.567.8-123.000'],
+                ['id' => 2, 'name' => 'PT Sejahtera Abadi', 'status' => 'belum lapor', 'employees' => 18, 'NPWP' => '03.456.789.0-345.000'],
+                ['id' => 3, 'name' => 'PT Global Indonesia', 'status' => 'belum bayar PPh 21', 'employees' => 45, 'NPWP' => '05.678.901.2-567.000'],
+                ['id' => 4, 'name' => 'PT Cahaya Timur', 'status' => 'belum lapor', 'employees' => 12, 'NPWP' => '07.890.123.4-789.000'],
+                ['id' => 5, 'name' => 'PT Harmoni Raya', 'status' => 'belum bayar PPh 21', 'employees' => 35, 'NPWP' => '09.012.345.6-901.000'],
+            ];
+        } elseif ($day == $date->endOfMonth()->day) {
+            $clients = [
+                ['id' => 1, 'name' => 'PT Maju Jaya', 'status' => 'belum lapor PPN', 'transaksiCount' => 42, 'NPWP' => '01.234.567.8-123.000'],
+                ['id' => 2, 'name' => 'CV Teknologi Mandiri', 'status' => 'belum lapor PPN', 'transaksiCount' => 23, 'NPWP' => '02.345.678.9-234.000'],
+                ['id' => 3, 'name' => 'PT Sejahtera Abadi', 'status' => 'belum rekonsiliasi faktur', 'transaksiCount' => 56, 'NPWP' => '03.456.789.0-345.000'],
+                ['id' => 4, 'name' => 'Toko Makmur', 'status' => 'belum lapor PPN', 'transaksiCount' => 18, 'NPWP' => '04.567.890.1-456.000'],
+                ['id' => 5, 'name' => 'PT Global Indonesia', 'status' => 'belum rekonsiliasi faktur', 'transaksiCount' => 87, 'NPWP' => '05.678.901.2-567.000'],
+                ['id' => 6, 'name' => 'UD Sentosa', 'status' => 'belum lapor PPN', 'transaksiCount' => 29, 'NPWP' => '06.789.012.3-678.000'],
+                ['id' => 7, 'name' => 'PT Cahaya Timur', 'status' => 'belum lapor PPN', 'transaksiCount' => 34, 'NPWP' => '07.890.123.4-789.000'],
+                ['id' => 8, 'name' => 'CV Karya Utama', 'status' => 'belum rekonsiliasi faktur', 'transaksiCount' => 19, 'NPWP' => '08.901.234.5-890.000'],
+                ['id' => 9, 'name' => 'PT Harmoni Raya', 'status' => 'belum lapor PPN', 'transaksiCount' => 68, 'NPWP' => '09.012.345.6-901.000'],
+                ['id' => 10, 'name' => 'Toko Barokah', 'status' => 'belum lapor PPN', 'transaksiCount' => 12, 'NPWP' => '10.123.456.7-012.000'],
+                ['id' => 11, 'name' => 'PT Mitra Sejati', 'status' => 'belum rekonsiliasi faktur', 'transaksiCount' => 45, 'NPWP' => '11.234.567.8-123.000'],
+                ['id' => 12, 'name' => 'CV Sukses Jaya', 'status' => 'belum lapor PPN', 'transaksiCount' => 31, 'NPWP' => '12.345.678.9-234.000'],
+            ];
+        }
+        
+        return [
+            'reportType' => $reportType,
+            'date' => $date->translatedFormat('d F Y'),
+            'clients' => $clients
+        ];
+    }
 
     public function render()
     {
