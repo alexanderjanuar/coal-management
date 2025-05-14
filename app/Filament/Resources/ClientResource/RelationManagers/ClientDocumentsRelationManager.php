@@ -11,11 +11,11 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\SoftDeletingScope;
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Storage;
-// use Guava\FilamentModalRelationManagers\Concerns\CanBeEmbeddedInModals;
+use Guava\FilamentModalRelationManagers\Concerns\CanBeEmbeddedInModals;
 
 class ClientDocumentsRelationManager extends RelationManager
 {
-    // use CanBeEmbeddedInModals;
+    use CanBeEmbeddedInModals;
 
     protected static string $relationship = 'clientDocuments';
 
