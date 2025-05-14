@@ -36,6 +36,7 @@
         "pusher/pusher-php-server": "^7.2",
         "solution-forest/filament-access-management": "^2.2",
         "spatie/laravel-activitylog": "^4.10",
+        "swisnl/filament-activitylog": "^1.0",
         "tomatophp/filament-pwa": "^1.0",
         "yaza/laravel-google-drive-storage": "~2.0.0"
     },

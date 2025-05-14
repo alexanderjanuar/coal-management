@@ -15,7 +15,7 @@ class TaxReportDashboard extends Page
 {
     protected static string $resource = TaxReportResource::class;
 
-    protected static ?string $navigationIcon = 'heroicon-o-document-currency-dollar';
+    protected static ?string $navigationIcon = 'heroicon-o-chart-pie';
 
     protected static ?string $modelLabel = 'Dashboard Pajak';
 

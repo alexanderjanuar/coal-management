@@ -13,7 +13,7 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\SoftDeletingScope;
 use Filament\Tables\Columns\TextColumn;
 use Illuminate\Support\Str;
-use Guava\FilamentModalRelationManagers\Concerns\CanBeEmbeddedInModals;
+// use Guava\FilamentModalRelationManagers\Concerns\CanBeEmbeddedInModals;
 use IbrahimBougaoua\FilaProgress\Infolists\Components\ProgressBarEntry;
 use IbrahimBougaoua\FilaProgress\Tables\Columns\ProgressBar;
 use Filament\Forms\Components\Section;

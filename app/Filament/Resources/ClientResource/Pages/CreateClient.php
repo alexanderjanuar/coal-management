@@ -15,8 +15,13 @@ class CreateClient extends CreateRecord
 
     protected function afterCreate(): void
     {
-        // Get all directors
+        // Get users with the required roles
         $directors = User::role('direktur')->get();
+        $staffMembers = User::role('staff')->get();
+        $projectManagers = User::role('project-manager')->get();
+
+        // Count how many users we're assigning for the notification
+        $assignedCount = 0;
 
         // Assign each director to the new client
         foreach ($directors as $director) {
@@ -24,12 +29,31 @@ class CreateClient extends CreateRecord
                 'user_id' => $director->id,
                 'client_id' => $this->record->id
             ]);
+            $assignedCount++;
         }
 
-        // Optional: Show a notification
+        // Assign each staff member to the new client
+        foreach ($staffMembers as $staff) {
+            UserClient::create([
+                'user_id' => $staff->id,
+                'client_id' => $this->record->id
+            ]);
+            $assignedCount++;
+        }
+
+        // Assign each project manager to the new client
+        foreach ($projectManagers as $manager) {
+            UserClient::create([
+                'user_id' => $manager->id,
+                'client_id' => $this->record->id
+            ]);
+            $assignedCount++;
+        }
+
+        // Show a notification with the assignment details
         Notification::make()
-            ->title('Client created successfully')
-            ->body('All directors have been automatically assigned to this client.')
+            ->title('Client successfully created')
+            ->body("All directors, project managers, and staff have been automatically assigned to this client. ({$assignedCount} users in total)")
             ->success()
             ->send();
     }
