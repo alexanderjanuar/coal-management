@@ -55,7 +55,7 @@
             </div>
         </div>
 
-        {{-- @livewire('tax-report.tax-calendar') --}}
+        @livewire('tax-report.tax-calendar')
         
         <!-- Monthly PPN Chart & Tax Distribution -->
         <div class="grid grid-cols-1 gap-8 lg:grid-cols-3">
