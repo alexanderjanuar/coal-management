@@ -18,6 +18,7 @@ return new class extends Migration
             $table->string('tax_period')->nullable();
             $table->string('npwp');
             $table->string('company_name');
+            $table->string('bupot_percentage');
             $table->enum('bupot_type',["Bupot Masukan","Bupot Keluaran"]);
             $table->text('notes')->nullable();
             $table->decimal('dpp', 15, 2)->default(0);

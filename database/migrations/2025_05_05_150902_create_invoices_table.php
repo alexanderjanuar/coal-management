@@ -20,7 +20,8 @@ return new class extends Migration
             $table->string('company_name');
             $table->enum('type', ['Faktur Keluaran', 'Faktur Masuk'])->nullable();
             $table->decimal('dpp', 15, 2)->default(0);
-            $table->decimal('ppn', 15, 2)->default(0); 
+            $table->decimal('ppn', 15, 2)->default(0);
+            $table->string('ppn_percentage');
             $table->text('notes')->nullable();
             $table->string('file_path');
             $table->boolean('nihil')->default(false);

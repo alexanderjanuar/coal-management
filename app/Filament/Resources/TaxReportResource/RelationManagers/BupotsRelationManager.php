@@ -54,6 +54,7 @@ class BupotsRelationManager extends RelationManager
                                         ->preload()
                                         ->placeholder('Pilih faktur (opsional)')
                                         ->live()
+                                        ->columnSpanFull()
                                         ->afterStateUpdated(function ($state, Forms\Set $set) {
                                             if ($state) {
                                                 $invoice = Invoice::find($state);
@@ -62,17 +63,17 @@ class BupotsRelationManager extends RelationManager
                                                     $set('npwp', $invoice->npwp);
                                                     $set('dpp', $invoice->dpp);
                                                     
-                                                    // Set bupot type based on invoice type
-                                                    if ($invoice->type === 'Faktur Keluaran') {
+                                                    // Set bupot type based on invoice type (REVERSED logic as requested)
+                                                    if ($invoice->type === 'Faktur Masukan') {
                                                         $set('bupot_type', 'Bupot Keluaran');
-                                                    } elseif ($invoice->type === 'Faktur Masuk') {
+                                                    } elseif ($invoice->type === 'Faktur Keluaran') {
                                                         $set('bupot_type', 'Bupot Masukan');
                                                     }
                                                 }
                                             }
                                         }),
                                         
-                                        Forms\Components\Select::make('tax_period')
+                                    Forms\Components\Select::make('tax_period')
                                         ->label('Periode Pajak')
                                         ->native(false)
                                         ->options([
@@ -123,15 +124,7 @@ class BupotsRelationManager extends RelationManager
                                         ->helperText('Format: 00.000.000.0-000.000')
                                         ->maxLength(255),
                                         
-                                    Forms\Components\Select::make('bupot_type')
-                                        ->label('Jenis Bukti Potong')
-                                        ->required()
-                                        ->native(false)
-                                        ->options([
-                                            'Bupot Masukan' => 'Bupot Masukan',
-                                            'Bupot Keluaran' => 'Bupot Keluaran',
-                                        ])
-                                        ->default('Bupot Keluaran'),
+
                                         
                                     Forms\Components\Select::make('pph_type')
                                         ->label('Jenis PPh')
@@ -142,6 +135,16 @@ class BupotsRelationManager extends RelationManager
                                             'PPh 23' => 'PPh 23',
                                         ])
                                         ->default('PPh 23'),
+                                    Forms\Components\Select::make('bupot_type')
+                                        ->label('Jenis Bukti Potong')
+                                        ->required()
+                                        ->native(false)
+                                        ->options([
+                                            'Bupot Masukan' => 'Bupot Masukan',
+                                            'Bupot Keluaran' => 'Bupot Keluaran',
+                                        ])
+                                        ->columnSpanFull()
+                                        ->default('Bupot Keluaran'),
                                 ]),
                         ]),
                         
@@ -160,11 +163,33 @@ class BupotsRelationManager extends RelationManager
                                         ->stripCharacters(',')
                                         ->live(onBlur: true)
                                         ->afterStateUpdated(function ($state, Forms\Get $get, Forms\Set $set) {
-                                            // Auto-calculate bupot amount based on PPh type
+                                            // Auto-calculate bupot amount based on selected percentage
                                             if (is_numeric($state) && $state > 0) {
-                                                $pphType = $get('pph_type');
-                                                $rate = ($pphType === 'PPh 21') ? 0.05 : 0.02; // 5% for PPh 21, 2% for PPh 23
-                                                $set('bupot_amount', floatval($state) * $rate);
+                                                $bupotPercentage = floatval($get('bupot_percentage') ?? 2); // Default to 2% if not set
+                                                $set('bupot_amount', floatval($state) * ($bupotPercentage / 100));
+                                            }
+                                        }),
+                                        
+                                    // New field for BUPOT percentage selection
+                                    Forms\Components\Select::make('bupot_percentage')
+                                        ->label('Persentase Bukti Potong')
+                                        ->options([
+                                            '1.2' => '1.2%',
+                                            '1.5' => '1.5%',
+                                            '1.75' => '1.75%',
+                                            '2' => '2%',
+                                        ])
+                                        ->native(false)
+                                        ->required()
+                                        ->live()
+                                        ->helperText('Pilih persentase bukti potong yang berlaku')
+                                        ->afterStateUpdated(function ($state, Forms\Get $get, Forms\Set $set) {
+                                            $dpp = $get('dpp');
+                                            if (is_numeric($dpp) && $dpp > 0) {
+                                                // Calculate BUPOT amount based on selected percentage
+                                                $percentage = floatval($state) / 100;
+                                                $bupotAmount = floatval($dpp) * $percentage;
+                                                $set('bupot_amount', $bupotAmount);
                                             }
                                         }),
                                         
@@ -176,9 +201,8 @@ class BupotsRelationManager extends RelationManager
                                         ->mask(RawJs::make('$money($input)'))
                                         ->stripCharacters(',')
                                         ->helperText(function (Forms\Get $get) {
-                                            $pphType = $get('pph_type');
-                                            $rate = ($pphType === 'PPh 21') ? '5%' : '2%';
-                                            return "Secara default dihitung sebagai {$rate} dari DPP";
+                                            $percentage = $get('bupot_percentage') ?? '2';
+                                            return "Otomatis dihitung sebagai {$percentage}% dari DPP";
                                         }),
                                 ]),
                         ]),
@@ -192,6 +216,9 @@ class BupotsRelationManager extends RelationManager
                                         ->label('Bukti Potong')
                                         ->required()
                                         ->disk('public')
+                                        ->openable()
+                                        ->downloadable()
+                                        ->preserveFilenames()
                                         ->directory('bupot-documents')
                                         ->acceptedFileTypes(['application/pdf', 'image/jpeg', 'image/png', 'image/jpg', 'image/webp'])
                                         ->helperText('Unggah dokumen bukti potong (PDF atau gambar)')
@@ -314,7 +341,59 @@ class BupotsRelationManager extends RelationManager
                     ->label('Tambah Bukti Potong')
                     ->modalHeading('Tambah Bukti Potong')
                     ->modalWidth('7xl')
-                    ->successNotificationTitle('Bukti potong berhasil ditambahkan'),
+                    ->successNotificationTitle('Bukti potong berhasil ditambahkan')
+                    ->disabled(function () {
+                        // Get the tax report first
+                        $taxReport = $this->getOwnerRecord();
+                        
+                        // If we have a tax report, check the client's contract status
+                        if ($taxReport) {
+                            $client = \App\Models\Client::find($taxReport->client_id);
+                            
+                            // Disable the button if the client doesn't have an active bupot_contract
+                            return !($client && $client->bupot_contract);
+                        }
+                        
+                        return true; // Disable if no tax report is found
+                    })
+                    ->tooltip(function () {
+                        $taxReport = $this->getOwnerRecord();
+                        
+                        if ($taxReport) {
+                            $client = \App\Models\Client::find($taxReport->client_id);
+                            
+                            if (!$client || !$client->bupot_contract) {
+                                return 'Klien tidak memiliki kontrak BUPOT aktif. Aktifkan kontrak BUPOT terlebih dahulu.';
+                            }
+                        }
+                        
+                        return 'Tambah Bukti Potong';
+                    })
+                    ->before(function (array $data) {
+                        // Get the tax report
+                        $taxReport = $this->getOwnerRecord();
+                        
+                        if ($taxReport) {
+                            // Double-check the client's contract status as a safeguard
+                            $client = \App\Models\Client::find($taxReport->client_id);
+                            if (!$client || !$client->bupot_contract) {
+                                // Use notification
+                                \Filament\Notifications\Notification::make()
+                                    ->title('Kontrak BUPOT Tidak Aktif')
+                                    ->body('Klien tidak memiliki kontrak BUPOT aktif. Aktifkan kontrak BUPOT terlebih dahulu.')
+                                    ->danger()
+                                    ->send();
+                                
+                                // Throw validation exception to stop the process
+                                throw new \Illuminate\Validation\ValidationException(
+                                    validator: validator([], []),
+                                    response: response()->json([
+                                        'message' => 'Klien tidak memiliki kontrak BUPOT aktif.',
+                                    ], 422)
+                                );
+                            }
+                        }
+                    }),
             ])
             ->actions([
                 Tables\Actions\ActionGroup::make([
@@ -365,20 +444,55 @@ class BupotsRelationManager extends RelationManager
                 Tables\Actions\CreateAction::make()
                     ->label('Tambah Bukti Potong')
                     ->modalWidth('7xl')
-                    ->icon('heroicon-o-plus'),
+                    ->icon('heroicon-o-plus')
+                    ->disabled(function () {
+                        // Get the tax report
+                        $taxReport = $this->getOwnerRecord();
+                        
+                        // If we have a tax report, check the client's contract status
+                        if ($taxReport) {
+                            $client = \App\Models\Client::find($taxReport->client_id);
+                            
+                            // Disable the button if the client doesn't have an active bupot_contract
+                            return !($client && $client->bupot_contract);
+                        }
+                        
+                        return true; // Disable if no tax report is found
+                    })
+                    ->tooltip(function () {
+                        $taxReport = $this->getOwnerRecord();
+                        
+                        if ($taxReport) {
+                            $client = \App\Models\Client::find($taxReport->client_id);
+                            
+                            if (!$client || !$client->bupot_contract) {
+                                return 'Klien tidak memiliki kontrak BUPOT aktif. Aktifkan kontrak BUPOT terlebih dahulu.';
+                            }
+                        }
+                        
+                        return 'Tambah Bukti Potong';
+                    }),
                     
                 Tables\Actions\Action::make('link_invoice')
                     ->label('Kaitkan dengan Faktur')
                     ->color('gray')
                     ->icon('heroicon-o-link')
                     ->visible(function () {
-                        // Only show if there are invoices to link
+                        // Only show if there are invoices to link AND client has bupot_contract
                         $taxReport = $this->getOwnerRecord();
-                        return $taxReport && $taxReport->invoices()->count() > 0;
+                        
+                        if ($taxReport) {
+                            $client = \App\Models\Client::find($taxReport->client_id);
+                            $hasInvoices = $taxReport->invoices()->count() > 0;
+                            
+                            return $client && $client->bupot_contract && $hasInvoices;
+                        }
+                        
+                        return false;
                     })
                     ->action(function () {
                         // Placeholder for linking action
                     }),
-            ]);
+                ]);
     }
 }

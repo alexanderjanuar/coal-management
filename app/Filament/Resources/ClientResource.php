@@ -68,6 +68,8 @@ class ClientResource extends Resource
                             ->label('Person In Charge'),
                         FileUpload::make('logo')
                             ->label('Client Logo')
+                            ->openable()
+                            ->downloadable()
                             ->columnSpanFull()
                     ])
                     ->columns(2),
@@ -102,6 +104,55 @@ class ClientResource extends Resource
                             ->columnSpanFull(),
                     ])
                     ->columns(2),
+                
+                Section::make('Contract Documents')
+                    ->description('Manage client contract documents')
+                    ->icon('heroicon-o-document-text')
+                    ->schema([
+                        Forms\Components\Grid::make(3)
+                            ->schema([
+                                Forms\Components\Toggle::make('ppn_contract')
+                                    ->label('PPN Contract')
+                                    ->reactive()
+                                    ->columnSpan(1),
+                                Forms\Components\Toggle::make('pph_contract')
+                                    ->label('PPH Contract')
+                                    ->reactive()
+                                    ->columnSpan(1),
+                                Forms\Components\Toggle::make('bupot_contract')
+                                    ->label('BUPOT Contract')
+                                    ->reactive()
+                                    ->columnSpan(1),
+                                    
+                                Forms\Components\FileUpload::make('ppn_contract_file')
+                                    ->label('PPN Contract File')
+                                    ->visible(fn (callable $get) => $get('ppn_contract'))
+                                    ->preserveFilenames()
+                                    ->openable()
+                                    ->downloadable()
+                                    ->directory('client-contracts')
+                                    ->acceptedFileTypes(['application/pdf'])
+                                    ->columnSpan(1),
+                                Forms\Components\FileUpload::make('pph_contract_file')
+                                    ->label('PPH Contract File')
+                                    ->visible(fn (callable $get) => $get('pph_contract'))
+                                    ->preserveFilenames()
+                                    ->openable()
+                                    ->downloadable()
+                                    ->directory('client-contracts')
+                                    ->acceptedFileTypes(['application/pdf'])
+                                    ->columnSpan(1),
+                                Forms\Components\FileUpload::make('bupot_contract_file')
+                                    ->label('BUPOT Contract File')
+                                    ->visible(fn (callable $get) => $get('bupot_contract'))
+                                    ->preserveFilenames()
+                                    ->openable()
+                                    ->downloadable()
+                                    ->directory('client-contracts')
+                                    ->acceptedFileTypes(['application/pdf'])
+                                    ->columnSpan(1),
+                            ]),
+                    ])
             ]);
     }
 

@@ -99,6 +99,8 @@ class ProjectStepResource extends Resource
                                     ->helperText('Describe the document requirements'),
                                 FileUpload::make('file_path')
                                     ->columnSpanFull()
+                                    ->openable()
+                                    ->downloadable()
                                     ->helperText('Upload the document file')
                             ])
                             ->itemLabel(fn(array $state): ?string => $state['name'] ?? null)

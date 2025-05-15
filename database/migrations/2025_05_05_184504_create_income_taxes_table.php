@@ -16,6 +16,7 @@ return new class extends Migration
             $table->foreignId('tax_report_id')->constrained()->onDelete('cascade');
             $table->foreignId('employee_id')->constrained()->onDelete('cascade');
             $table->decimal('ter_amount', 15, 2)->default(0);
+            $table->string('ter_category');
             $table->decimal('pph_21_amount', 15, 2)->default(0);
             $table->string('file_path');
             $table->foreignId('created_by')->nullable()->constrained('users')->nullOnDelete();

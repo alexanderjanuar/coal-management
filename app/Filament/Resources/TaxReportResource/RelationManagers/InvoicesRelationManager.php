@@ -90,25 +90,51 @@ class InvoicesRelationManager extends RelationManager
                                         ->required()
                                         ->numeric()
                                         ->prefix('Rp')
-                                        ->mask(RawJs::make('$money($input)'))
-                                        ->stripCharacters(',')
                                         ->placeholder('0.00')
                                         ->live(onBlur: true)
                                         ->afterStateUpdated(function (Forms\Get $get, Forms\Set $set, ?string $state) {
                                             if (is_numeric($state)) {
-                                                $ppn = floatval($state) * 0.11; // 11% tax
+                                                // Get the PPN percentage from the select field
+                                                $ppnPercentage = $get('ppn_percentage') === '12' ? 0.12 : 0.11;
+                                                $ppn = floatval($state) * $ppnPercentage;
                                                 $set('ppn', number_format($ppn, 2, '.', ''));
                                             }
                                         }),
-                                        
+                                    
+                                    // New field for PPN percentage selection
+                                    Forms\Components\Select::make('ppn_percentage')
+                                        ->label('Tarif PPN')
+                                        ->options([
+                                            '11' => '11%',
+                                            '12' => '12%',
+                                        ])
+                                        ->default('11')
+                                        ->native(false)
+                                        ->required()
+                                        ->live()
+                                        ->helperText('Pilih tarif PPN yang berlaku')
+                                        ->afterStateUpdated(function (Forms\Get $get, Forms\Set $set, ?string $state) {
+                                            $dpp = $get('dpp');
+                                            if (is_numeric($dpp)) {
+                                                // Calculate PPN based on selected percentage
+                                                $ppnPercentage = $state === '12' ? 0.12 : 0.11;
+                                                $ppn = floatval($dpp) * $ppnPercentage;
+                                                $set('ppn', number_format($ppn, 2, '.', ''));
+                                            }
+                                        }),
+                                    
                                     Forms\Components\TextInput::make('ppn')
-                                        ->label('PPN (11%)')
+                                        ->label('PPN')
                                         ->numeric()
                                         ->prefix('Rp')
                                         ->placeholder('0.00')
                                         ->required()
+                                        ->readOnly()
                                         ->stripCharacters(',')
-                                        ->helperText('Otomatis terhitung sebesar 11% dari DPP'),
+                                        ->helperText(function (Forms\Get $get) {
+                                            $percentage = $get('ppn_percentage') === '12' ? '12%' : '11%';
+                                            return "Otomatis terhitung sebesar {$percentage} dari DPP";
+                                        }),
                                 ]),
                         ]),
                     
@@ -120,6 +146,8 @@ class InvoicesRelationManager extends RelationManager
                                     FileUpload::make('file_path')
                                         ->label('Berkas Faktur')
                                         ->required()
+                                        ->openable()
+                                        ->downloadable()
                                         ->disk('public')
                                         ->directory('invoices')   
                                         ->acceptedFileTypes(['application/pdf', 'image/jpeg', 'image/png', 'image/jpg', 'image/webp'])
@@ -252,7 +280,59 @@ class InvoicesRelationManager extends RelationManager
                 Tables\Actions\CreateAction::make()
                     ->label('Faktur Baru')
                     ->successNotificationTitle('Faktur berhasil dibuat')
-                    ->modalWidth('7xl'),
+                    ->modalWidth('7xl')
+                    ->tooltip(function () {
+                        $taxReport = $this->getOwnerRecord();
+                        
+                        if ($taxReport) {
+                            $client = \App\Models\Client::find($taxReport->client_id);
+                            
+                            if (!$client || !$client->ppn_contract) {
+                                return 'Klien tidak memiliki kontrak PPN aktif. Aktifkan kontrak PPN terlebih dahulu.';
+                            }
+                        }
+                        
+                        return 'Tambah Faktur Pajak Baru';
+                    })
+                    ->disabled(function () {
+                        // Get the tax report first
+                        $taxReport = $this->getOwnerRecord();
+                        
+                        // If we have a tax report, check the client's contract status
+                        if ($taxReport) {
+                            $client = \App\Models\Client::find($taxReport->client_id);
+                            
+                            // Disable the button if the client doesn't have an active ppn_contract
+                            return !($client && $client->ppn_contract);
+                        }
+                        
+                        return true; // Disable if no tax report is found
+                    })
+                    ->before(function (array $data) {
+                        // Get the tax report
+                        $taxReport = $this->getOwnerRecord();
+                        
+                        if ($taxReport) {
+                            // Double-check the client's contract status as a safeguard
+                            $client = \App\Models\Client::find($taxReport->client_id);
+                            if (!$client || !$client->ppn_contract) {
+                                // Use notification
+                                \Filament\Notifications\Notification::make()
+                                    ->title('Kontrak PPN Tidak Aktif')
+                                    ->body('Klien tidak memiliki kontrak PPN aktif. Aktifkan kontrak PPN terlebih dahulu.')
+                                    ->danger()
+                                    ->send();
+                                
+                                // Throw validation exception to stop the process
+                                throw new \Illuminate\Validation\ValidationException(
+                                    validator: validator([], []),
+                                    response: response()->json([
+                                        'message' => 'Klien tidak memiliki kontrak PPN aktif.',
+                                    ], 422)
+                                );
+                            }
+                        }
+                    }),
             ])
             ->actions([
                 Tables\Actions\ActionGroup::make([
@@ -303,7 +383,35 @@ class InvoicesRelationManager extends RelationManager
                 Tables\Actions\CreateAction::make()
                     ->label('Tambah Faktur Pajak')
                     ->modalWidth('7xl')
-                    ->icon('heroicon-o-plus'),
+                    ->icon('heroicon-o-plus')
+                    ->tooltip(function () {
+                        $taxReport = $this->getOwnerRecord();
+                        
+                        if ($taxReport) {
+                            $client = \App\Models\Client::find($taxReport->client_id);
+                            
+                            if (!$client || !$client->ppn_contract) {
+                                return 'Klien tidak memiliki kontrak PPN aktif. Aktifkan kontrak PPN terlebih dahulu.';
+                            }
+                        }
+                        
+                        return 'Tambah Faktur Pajak';
+                    })
+                    ->disabled(function () {
+                        // Get the tax report
+                        $taxReport = $this->getOwnerRecord();
+                        
+                        // If we have a tax report, check the client's contract status
+                        if ($taxReport) {
+                            $client = \App\Models\Client::find($taxReport->client_id);
+                            
+                            // Disable the button if the client doesn't have an active ppn_contract
+                            return !($client && $client->ppn_contract);
+                        }
+                        
+                        return true; // Disable if no tax report is found
+                    })
+,
             ]);
     }
 
