@@ -123,34 +123,18 @@ class ClientResource extends Resource
                                     ->label('BUPOT Contract')
                                     ->reactive()
                                     ->columnSpan(1),
-                                    
-                                Forms\Components\FileUpload::make('ppn_contract_file')
-                                    ->label('PPN Contract File')
-                                    ->visible(fn (callable $get) => $get('ppn_contract'))
+                                
+                                Forms\Components\FileUpload::make('contract_file')
+                                    ->label('Contract File')
+                                    ->visible(function (callable $get) {
+                                        return $get('ppn_contract') || $get('pph_contract') || $get('bupot_contract');
+                                    })
                                     ->preserveFilenames()
                                     ->openable()
                                     ->downloadable()
                                     ->directory('client-contracts')
                                     ->acceptedFileTypes(['application/pdf'])
-                                    ->columnSpan(1),
-                                Forms\Components\FileUpload::make('pph_contract_file')
-                                    ->label('PPH Contract File')
-                                    ->visible(fn (callable $get) => $get('pph_contract'))
-                                    ->preserveFilenames()
-                                    ->openable()
-                                    ->downloadable()
-                                    ->directory('client-contracts')
-                                    ->acceptedFileTypes(['application/pdf'])
-                                    ->columnSpan(1),
-                                Forms\Components\FileUpload::make('bupot_contract_file')
-                                    ->label('BUPOT Contract File')
-                                    ->visible(fn (callable $get) => $get('bupot_contract'))
-                                    ->preserveFilenames()
-                                    ->openable()
-                                    ->downloadable()
-                                    ->directory('client-contracts')
-                                    ->acceptedFileTypes(['application/pdf'])
-                                    ->columnSpan(1),
+                                    ->columnSpan(3), // Changed to span all columns when visible
                             ]),
                     ])
             ]);

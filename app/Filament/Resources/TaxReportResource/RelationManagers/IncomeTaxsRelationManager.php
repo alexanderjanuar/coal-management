@@ -128,7 +128,8 @@ class IncomeTaxsRelationManager extends RelationManager
                                                     $terAmount = $employeeSalary * $terPercentage;
                                                     $pphAmount = $employeeSalary + $terAmount;
                                                     
-                                                    $set('pph_21_amount', $pphAmount);
+                                                    // Format PPH amount with Indonesian money format
+                                                    $set('pph_21_amount', number_format($pphAmount, 2, '.', ','));
                                                 }
                                             }
                                         }),
@@ -170,7 +171,6 @@ class IncomeTaxsRelationManager extends RelationManager
                                             'manual' => 'Input Manual',
                                         ])
                                         ->native(false)
-                                        ->default('A')
                                         ->required()
                                         ->reactive()
                                         ->afterStateUpdated(function ($state, Forms\Get $get, Forms\Set $set) {
@@ -181,7 +181,10 @@ class IncomeTaxsRelationManager extends RelationManager
                                             if ($employeeId) {
                                                 $employee = Employee::find($employeeId);
                                                 if ($employee) {
-                                                    $employeeSalary = $employee->salary ?? 0;
+                                                    // Clean any potential formatting in the salary
+                                                    $employeeSalary = is_numeric($employee->salary) 
+                                                        ? $employee->salary 
+                                                        : preg_replace('/[^0-9.]/', '', $employee->salary ?? '0');
                                                 }
                                             }
                                             
@@ -193,23 +196,25 @@ class IncomeTaxsRelationManager extends RelationManager
                                                 // Calculate PPH 21 using the formula
                                                 $terAmount = $employeeSalary * ($terPercentage / 100);
                                                 $pphAmount = $employeeSalary + $terAmount;
-                                                $set('pph_21_amount', $pphAmount);
+                                                
+                                                // Format PPH amount with Indonesian money format for display
+                                                // Using number_format with dot as decimal separator and comma as thousands separator
+                                                $set('pph_21_amount', number_format($pphAmount, 2, '.', ','));
                                             }
                                         }),
-                                    
+
                                     Forms\Components\TextInput::make('ter_amount')
                                         ->label('TER (%)')
                                         ->required()
-                                        ->numeric()
                                         ->prefix('%')
                                         ->default(5)
                                         ->minValue(0)
                                         ->maxValue(100)
-                                        ->dehydrated()
                                         ->disabled(fn (Forms\Get $get) => $get('ter_category') !== 'manual')
                                         ->live(onBlur: true)
+                                        ->dehydrated()
                                         ->afterStateUpdated(function ($state, Forms\Get $get, Forms\Set $set) {
-                                            if (is_numeric($state) && $get('ter_category') === 'manual') {
+                                            if ($get('ter_category') === 'manual') {
                                                 // Get employee info for calculation
                                                 $employeeId = $get('employee_id');
                                                 $employeeSalary = 0;
@@ -217,19 +222,26 @@ class IncomeTaxsRelationManager extends RelationManager
                                                 if ($employeeId) {
                                                     $employee = Employee::find($employeeId);
                                                     if ($employee) {
-                                                        $employeeSalary = $employee->salary ?? 0;
+                                                        // Clean any potential formatting in the salary
+                                                        $employeeSalary = is_numeric($employee->salary) 
+                                                            ? $employee->salary 
+                                                            : preg_replace('/[^0-9.]/', '', $employee->salary ?? '0');
                                                     }
                                                 }
                                                 
+                                                // Clean the TER percentage input to ensure it's numeric
+                                                $cleanedTerPercentage = preg_replace('/[^0-9.]/', '', $state);
+                                                
                                                 // Calculate PPH 21 using the formula: Salary + (Salary * TER%)
-                                                $terPercentage = floatval($state) / 100;
+                                                $terPercentage = floatval($cleanedTerPercentage) / 100;
                                                 $terAmount = $employeeSalary * $terPercentage;
                                                 $pphAmount = $employeeSalary + $terAmount;
                                                 
-                                                $set('pph_21_amount', $pphAmount);
+                                                // Format PPH amount with Indonesian money format for display
+                                                $set('pph_21_amount', number_format($pphAmount, 2, '.', ','));
                                             }
                                         }),
-                                    
+
                                     Forms\Components\Placeholder::make('ter_explanation')
                                         ->label('Penjelasan TER')
                                         ->content(function (Forms\Get $get) {
@@ -242,14 +254,19 @@ class IncomeTaxsRelationManager extends RelationManager
                                             
                                             return "TER kategori {$category} sebesar {$terAmount}% dihitung berdasarkan penghasilan bruto bulanan karyawan sesuai PP No. 58 Tahun 2003.";
                                         }),
-                                    
+
                                     Forms\Components\TextInput::make('pph_21_amount')
                                         ->label('Jumlah PPh 21')
                                         ->required()
-                                        ->numeric()
                                         ->prefix('Rp')
+                                        ->placeholder('0.00')
                                         ->mask(RawJs::make('$money($input)'))
-                                        ->stripCharacters(',')
+                                        // Remove numeric validation which conflicts with the mask
+                                        // ->numeric()
+                                        // Add dehydrateStateUsing to clean the formatted value before saving
+                                        ->dehydrateStateUsing(fn ($state) => preg_replace('/[^0-9.]/', '', $state))
+                                        // Use rules instead of numeric validation
+                                        ->rules(['required'])
                                         ->helperText('PPh 21 = Gaji + (Gaji × Tarif TER%)'),
                                 ]),
                         ]),

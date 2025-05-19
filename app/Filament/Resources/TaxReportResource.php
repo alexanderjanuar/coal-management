@@ -2,15 +2,20 @@
 
 namespace App\Filament\Resources;
 
+use App\Filament\Exports\TaxReportExporter;
 use App\Filament\Resources\TaxReportResource\Pages;
 use App\Filament\Resources\TaxReportResource\RelationManagers;
+use App\Filament\Resources\TaxReportResource\RelationManagers\IncomeTaxsRelationManager;
 use App\Models\Client;
 use App\Models\TaxReport;
+use Filament\Tables\Actions\ExportAction;
 use Filament\Forms;
 use Filament\Forms\Form;
 use Filament\Resources\Resource;
 use Filament\Tables;
+use Filament\Tables\Actions\ExportBulkAction;
 use Filament\Tables\Table;
+use Guava\FilamentModalRelationManagers\Actions\Table\RelationManagerAction;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\SoftDeletingScope;
 use Filament\Forms\Components\Section;
@@ -26,6 +31,7 @@ use Illuminate\Validation\Rules\Unique;
 use Filament\Forms\Get;
 use Closure;
 use Filament\Tables\Grouping\Group;
+
 use Filament\Tables\Columns\TextColumn;
 use Filament\Resources\Components\Tab;
 
@@ -299,13 +305,50 @@ class TaxReportResource extends Resource
                     }),
             ])
             ->actions([
-                Tables\Actions\ViewAction::make(),
-                Tables\Actions\EditAction::make(),
+                Tables\Actions\ActionGroup::make([
+                    Tables\Actions\EditAction::make()
+                        ->icon('heroicon-o-pencil')
+                        ->color('info'),
+                    
+                    RelationManagerAction::make('PPN')
+                        ->label(label: 'Lihat PPN')
+                        ->icon('heroicon-o-document-chart-bar')
+                        ->color('primary')
+                        ->modalWidth('7xl')
+                        ->relationManager(RelationManagers\InvoicesRelationManager::make()),
+                    
+                    RelationManagerAction::make('PPh')
+                        ->label('Lihat PPh')
+                        ->icon('heroicon-o-receipt-percent') 
+                        ->color('success')
+                        ->modalWidth('7xl')
+                        ->relationManager(RelationManagers\IncomeTaxsRelationManager::make()),
+                    
+                    RelationManagerAction::make('Bupot')
+                        ->label('Lihat Bupot')
+                        ->icon('heroicon-o-document-check')
+                        ->color('danger')
+                        ->modalWidth('7xl')
+                        ->relationManager(RelationManagers\BupotsRelationManager::make())
+                ])
+                ->icon('heroicon-m-ellipsis-vertical')
+                ->label('Actions')
+                ->size('sm')
+                ->color('gray')
             ])
             ->bulkActions([
                 Tables\Actions\BulkActionGroup::make([
                     Tables\Actions\DeleteBulkAction::make(),
+                    ExportBulkAction::make()
+                        ->label('Ekspor Laporan Pajak (XLSX)')
+                        ->icon('heroicon-o-download')
+                        ->color('success')
+                        ->exporter(\App\Filament\Exports\TaxReportExporter::class),
                 ]),
+            ])
+            ->headerActions([
+                ExportAction::make()
+                    ->exporter(TaxReportExporter::class)
             ])
             ->emptyStateHeading('Belum Ada Laporan Pajak')
             ->emptyStateDescription('Laporan pajak akan muncul di sini setelah Anda membuatnya. Laporan pajak adalah ringkasan dari aktivitas perpajakan bulanan per klien.')

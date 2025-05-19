@@ -61,7 +61,18 @@ class BupotsRelationManager extends RelationManager
                                                 if ($invoice) {
                                                     $set('company_name', $invoice->company_name);
                                                     $set('npwp', $invoice->npwp);
-                                                    $set('dpp', $invoice->dpp);
+                                                    
+                                                    // Clean DPP value from invoice and format it properly
+                                                    $cleanedDpp = preg_replace('/[^0-9.]/', '', $invoice->dpp ?? '0');
+                                                    if (is_numeric($cleanedDpp)) {
+                                                        // Format for display
+                                                        $set('dpp', number_format(floatval($cleanedDpp), 2, '.', ','));
+                                                        
+                                                        // Also calculate and set bupot_amount based on percentage
+                                                        $bupotPercentage = floatval('2'); // Default to 2%
+                                                        $bupotAmount = floatval($cleanedDpp) * ($bupotPercentage / 100);
+                                                        $set('bupot_amount', number_format($bupotAmount, 2, '.', ','));
+                                                    }
                                                     
                                                     // Set bupot type based on invoice type (REVERSED logic as requested)
                                                     if ($invoice->type === 'Faktur Masukan') {
@@ -132,6 +143,7 @@ class BupotsRelationManager extends RelationManager
                                         ->native(false)
                                         ->options([
                                             'PPh 21' => 'PPh 21',
+                                            'PPh 22' => 'PPh 22',
                                             'PPh 23' => 'PPh 23',
                                         ])
                                         ->default('PPh 23'),
@@ -154,19 +166,27 @@ class BupotsRelationManager extends RelationManager
                             Section::make('Detail Nominal')
                                 ->columns(2)
                                 ->schema([
+                                    // In the Nilai Pajak section
                                     Forms\Components\TextInput::make('dpp')
                                         ->label('DPP (Dasar Pengenaan Pajak)')
                                         ->required()
-                                        ->numeric()
                                         ->prefix('Rp')
+                                        ->placeholder('0.00')
                                         ->mask(RawJs::make('$money($input)'))
-                                        ->stripCharacters(',')
+                                        ->dehydrateStateUsing(fn ($state) => preg_replace('/[^0-9.]/', '', $state))
+                                        ->rules(['required'])
                                         ->live(onBlur: true)
                                         ->afterStateUpdated(function ($state, Forms\Get $get, Forms\Set $set) {
-                                            // Auto-calculate bupot amount based on selected percentage
-                                            if (is_numeric($state) && $state > 0) {
+                                            // Clean the input by removing non-numeric characters except decimal point
+                                            $cleanedInput = preg_replace('/[^0-9.]/', '', $state);
+                                            
+                                            if (is_numeric($cleanedInput) && floatval($cleanedInput) > 0) {
+                                                // Get percentage and calculate bupot amount
                                                 $bupotPercentage = floatval($get('bupot_percentage') ?? 2); // Default to 2% if not set
-                                                $set('bupot_amount', floatval($state) * ($bupotPercentage / 100));
+                                                $bupotAmount = floatval($cleanedInput) * ($bupotPercentage / 100);
+                                                
+                                                // Format the calculated amount with Indonesian money format
+                                                $set('bupot_amount', number_format($bupotAmount, 2, '.', ','));
                                             }
                                         }),
                                         
@@ -185,21 +205,25 @@ class BupotsRelationManager extends RelationManager
                                         ->helperText('Pilih persentase bukti potong yang berlaku')
                                         ->afterStateUpdated(function ($state, Forms\Get $get, Forms\Set $set) {
                                             $dpp = $get('dpp');
-                                            if (is_numeric($dpp) && $dpp > 0) {
-                                                // Calculate BUPOT amount based on selected percentage
+                                            
+                                            $cleanedInput = preg_replace('/[^0-9.]/', '', $dpp);
+                                            
+                                            if (is_numeric($cleanedInput) && floatval($cleanedInput) > 0) {
                                                 $percentage = floatval($state) / 100;
-                                                $bupotAmount = floatval($dpp) * $percentage;
-                                                $set('bupot_amount', $bupotAmount);
+                                                $bupotAmount = floatval($cleanedInput) * $percentage;
+                                                
+                                                $set('bupot_amount', number_format($bupotAmount, 2, '.', ','));
                                             }
                                         }),
                                         
                                     Forms\Components\TextInput::make('bupot_amount')
                                         ->label('Nilai Bukti Potong')
                                         ->required()
-                                        ->numeric()
                                         ->prefix('Rp')
+                                        ->placeholder('0.00')
                                         ->mask(RawJs::make('$money($input)'))
-                                        ->stripCharacters(',')
+                                        ->dehydrateStateUsing(fn ($state) => preg_replace('/[^0-9.]/', '', $state))
+                                        ->rules(['required'])
                                         ->helperText(function (Forms\Get $get) {
                                             $percentage = $get('bupot_percentage') ?? '2';
                                             return "Otomatis dihitung sebagai {$percentage}% dari DPP";

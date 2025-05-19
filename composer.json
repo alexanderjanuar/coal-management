@@ -17,7 +17,7 @@
         "eightcedars/filament-inactivity-guard": "^0.2.0",
         "filament/filament": "^3.2",
         "filament/notifications": "^3.2",
-        "guava/filament-modal-relation-managers": "^1.1",
+        "guava/filament-modal-relation-managers": "^1.4",
         "guzzlehttp/guzzle": "^7.2",
         "hugomyb/filament-media-action": "v3.1.1.5",
         "ibrahim-bougaoua/filaprogress": "^0.1.0",

@@ -13,6 +13,7 @@ use Illuminate\Database\Eloquent\SoftDeletingScope;
 use Filament\Forms\Components\Section;
 use Filament\Forms\Components\Grid;
 use Filament\Forms\Components\Tabs;
+
 use Filament\Forms\Components\FileUpload;
 
 class InvoicesRelationManager extends RelationManager
@@ -33,16 +34,26 @@ class InvoicesRelationManager extends RelationManager
                         ->icon('heroicon-o-document-text')
                         ->schema([
                             Section::make('Informasi Faktur Pajak')
-                                ->columns(2)
+                                ->columns(12) // Using 12-column grid for finer control
                                 ->schema([
+                                    // First row - Invoice number and date
                                     Forms\Components\TextInput::make('invoice_number')
                                         ->label('Nomor Faktur')
                                         ->required()
                                         ->unique(ignoreRecord: true)
                                         ->maxLength(255)
                                         ->placeholder('010.000-00.00000000')
-                                        ->helperText('Format: 010.000-00.00000000'),
+                                        ->helperText('Format: 010.000-00.00000000')
+                                        ->columnSpan(6),
                                         
+                                    Forms\Components\DatePicker::make('invoice_date')
+                                        ->label('Tanggal Faktur')
+                                        ->required()
+                                        ->native(false)
+                                        ->default(now())
+                                        ->columnSpan(6),
+                                        
+                                    // Second row - Invoice type with reactive behavior
                                     Forms\Components\Select::make('type')
                                         ->label('Jenis Faktur')
                                         ->native(false)
@@ -52,6 +63,7 @@ class InvoicesRelationManager extends RelationManager
                                         ])
                                         ->required()
                                         ->reactive()
+
                                         ->afterStateUpdated(function (Forms\Get $get, Forms\Set $set, ?string $state) {
                                             if ($state === 'Faktur Masuk') {
                                                 // Get the tax report and its client information
@@ -63,19 +75,23 @@ class InvoicesRelationManager extends RelationManager
                                                     $set('npwp', $taxReport->client->NPWP);
                                                 }
                                             }
-                                        }),
+                                        })
+                                        ->columnSpan(12),
                                         
+                                    // Third row - Company and NPWP
                                     Forms\Components\TextInput::make('company_name')
                                         ->label('Nama Perusahaan')
                                         ->required()
-                                        ->maxLength(255),
+                                        ->maxLength(255)
+                                        ->columnSpan(6),
                                         
                                     Forms\Components\TextInput::make('npwp')
                                         ->label('NPWP')
                                         ->required()
                                         ->placeholder('00.000.000.0-000.000')
                                         ->helperText('Format: 00.000.000.0-000.000')
-                                        ->maxLength(255),
+                                        ->maxLength(255)
+                                        ->columnSpan(6),
                                 ]),
                         ]),
                     
@@ -88,19 +104,26 @@ class InvoicesRelationManager extends RelationManager
                                     Forms\Components\TextInput::make('dpp')
                                         ->label('DPP (Dasar Pengenaan Pajak)')
                                         ->required()
-                                        ->numeric()
                                         ->prefix('Rp')
                                         ->placeholder('0.00')
-                                        ->live(onBlur: true)
+                                        ->mask(RawJs::make('$money($input)'))
+                                        ->live(debounce: 500)
+                                        // Convert to numeric value for storage
+                                        ->dehydrateStateUsing(fn ($state) => preg_replace('/[^0-9.]/', '', $state))
+                                        // This is key - don't use numeric() validator with masked inputs
+                                        ->rules(['required'])
                                         ->afterStateUpdated(function (Forms\Get $get, Forms\Set $set, ?string $state) {
-                                            if (is_numeric($state)) {
+                                            // Clean the input by removing non-numeric characters except decimal point
+                                            $cleanedInput = preg_replace('/[^0-9.]/', '', $state);
+                                            
+                                            if (is_numeric($cleanedInput)) {
                                                 // Get the PPN percentage from the select field
                                                 $ppnPercentage = $get('ppn_percentage') === '12' ? 0.12 : 0.11;
-                                                $ppn = floatval($state) * $ppnPercentage;
-                                                $set('ppn', number_format($ppn, 2, '.', ''));
+                                                $ppn = floatval($cleanedInput) * $ppnPercentage;
+                                                $set('ppn', number_format($ppn, 2, '.', ','));
                                             }
                                         }),
-                                    
+
                                     // New field for PPN percentage selection
                                     Forms\Components\Select::make('ppn_percentage')
                                         ->label('Tarif PPN')
@@ -111,26 +134,33 @@ class InvoicesRelationManager extends RelationManager
                                         ->default('11')
                                         ->native(false)
                                         ->required()
-                                        ->live()
+                                        ->live(debounce: 500)
                                         ->helperText('Pilih tarif PPN yang berlaku')
                                         ->afterStateUpdated(function (Forms\Get $get, Forms\Set $set, ?string $state) {
                                             $dpp = $get('dpp');
-                                            if (is_numeric($dpp)) {
+                                            
+                                            // Clean the input by removing non-numeric characters except decimal point
+                                            $cleanedInput = preg_replace('/[^0-9.]/', '', $dpp);
+                                            
+                                            if (is_numeric($cleanedInput)) {
                                                 // Calculate PPN based on selected percentage
                                                 $ppnPercentage = $state === '12' ? 0.12 : 0.11;
-                                                $ppn = floatval($dpp) * $ppnPercentage;
-                                                $set('ppn', number_format($ppn, 2, '.', ''));
+                                                $ppn = floatval($cleanedInput) * $ppnPercentage;
+                                                $set('ppn', number_format($ppn, 2, '.', ','));
                                             }
                                         }),
-                                    
+
                                     Forms\Components\TextInput::make('ppn')
                                         ->label('PPN')
-                                        ->numeric()
                                         ->prefix('Rp')
                                         ->placeholder('0.00')
                                         ->required()
                                         ->readOnly()
-                                        ->stripCharacters(',')
+                                        ->mask(RawJs::make('$money($input)'))
+                                        // Convert to numeric value for storage
+                                        ->dehydrateStateUsing(fn ($state) => preg_replace('/[^0-9.]/', '', $state))
+                                        // This is key - don't use numeric() validator with masked inputs
+                                        ->rules(['required'])
                                         ->helperText(function (Forms\Get $get) {
                                             $percentage = $get('ppn_percentage') === '12' ? '12%' : '11%';
                                             return "Otomatis terhitung sebesar {$percentage} dari DPP";
