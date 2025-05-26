@@ -31,6 +31,8 @@ use Illuminate\Validation\Rules\Unique;
 use Filament\Forms\Get;
 use Closure;
 use Filament\Tables\Grouping\Group;
+use Swis\Filament\Activitylog\Tables\Actions\ActivitylogAction;
+ 
 
 use Filament\Tables\Columns\TextColumn;
 use Filament\Resources\Components\Tab;
@@ -309,6 +311,8 @@ class TaxReportResource extends Resource
                     Tables\Actions\EditAction::make()
                         ->icon('heroicon-o-pencil')
                         ->color('info'),
+                    
+                    ActivitylogAction::make(),
                     
                     RelationManagerAction::make('PPN')
                         ->label(label: 'Lihat PPN')

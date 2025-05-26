@@ -13,6 +13,9 @@ use Illuminate\Database\Eloquent\SoftDeletingScope;
 use Filament\Support\RawJs;
 use Filament\Forms\Components\Section;
 use Filament\Forms\Components\Wizard;
+use Swis\Filament\Activitylog\Tables\Actions\ActivitylogAction;
+use Filament\Notifications\Notification;
+
 
 class BupotsRelationManager extends RelationManager
 {
@@ -248,6 +251,17 @@ class BupotsRelationManager extends RelationManager
                                         ->helperText('Unggah dokumen bukti potong (PDF atau gambar)')
                                         ->columnSpanFull(),
                                         
+                                    // New field for bukti setor (optional)
+                                    Forms\Components\FileUpload::make('bukti_setor')
+                                        ->label('Bukti Setor (Opsional)')
+                                        ->openable()
+                                        ->downloadable()
+                                        ->disk('public')
+                                        ->directory('bukti-setor/bupots')   
+                                        ->acceptedFileTypes(['application/pdf', 'image/jpeg', 'image/png', 'image/jpg', 'image/webp'])
+                                        ->helperText('Unggah bukti setor pajak jika sudah tersedia (PDF atau gambar)')
+                                        ->columnSpanFull(),
+                                        
                                     Forms\Components\RichEditor::make('notes')
                                         ->label('Catatan')
                                         ->placeholder('Tambahkan catatan relevan tentang bukti potong ini')
@@ -329,6 +343,25 @@ class BupotsRelationManager extends RelationManager
                     ->money('IDR')
                     ->sortable(),
                     
+                // New column for bukti setor
+                Tables\Columns\IconColumn::make('has_bukti_setor')
+                    ->label('Bukti Setor')
+                    ->boolean()
+                    ->getStateUsing(function ($record) {
+                        return !empty($record->bukti_setor);
+                    })
+                    ->trueIcon('heroicon-o-check-circle')
+                    ->falseIcon('heroicon-o-x-circle')
+                    ->trueColor('success')
+                    ->falseColor('danger')
+                    ->tooltip(function ($record) {
+                        if (!empty($record->bukti_setor)) {
+                            return "Bukti setor tersedia";
+                        }
+                        
+                        return "Bukti setor belum diupload";
+                    }),
+                    
                 Tables\Columns\TextColumn::make('invoice.invoice_number')
                     ->label('Faktur Terkait')
                     ->placeholder('-')
@@ -359,6 +392,17 @@ class BupotsRelationManager extends RelationManager
                 Tables\Filters\Filter::make('has_invoice')
                     ->label('Terkait Faktur')
                     ->query(fn (Builder $query): Builder => $query->whereNotNull('invoice_id')),
+                    
+                // New filter for bukti setor
+                Tables\Filters\Filter::make('has_bukti_setor')
+                    ->label('Memiliki Bukti Setor')
+                    ->query(fn (Builder $query): Builder => $query->whereNotNull('bukti_setor')->where('bukti_setor', '!=', '')),
+                    
+                Tables\Filters\Filter::make('no_bukti_setor')
+                    ->label('Belum Ada Bukti Setor')
+                    ->query(fn (Builder $query): Builder => $query->where(function ($q) {
+                        $q->whereNull('bukti_setor')->orWhere('bukti_setor', '');
+                    })),
             ])
             ->headerActions([
                 Tables\Actions\CreateAction::make()
@@ -421,6 +465,7 @@ class BupotsRelationManager extends RelationManager
             ])
             ->actions([
                 Tables\Actions\ActionGroup::make([
+                    ActivitylogAction::make(),
                     Tables\Actions\ViewAction::make()
                         ->label('Lihat')
                         ->modalWidth('7xl'),
@@ -428,6 +473,51 @@ class BupotsRelationManager extends RelationManager
                     Tables\Actions\EditAction::make()
                         ->label('Edit')
                         ->modalWidth('7xl'),
+                    
+                    // New action for uploading bukti setor
+                    Tables\Actions\Action::make('upload_bukti_setor')
+                        ->label('Upload Bukti Setor')
+                        ->icon('heroicon-o-cloud-arrow-up')
+                        ->color('info')
+                        ->visible(fn ($record) => empty($record->bukti_setor))
+                        ->form([
+                            Section::make('Upload Bukti Setor Bupot')
+                                ->description('Upload dokumen bukti setor untuk bukti potong ini')
+                                ->schema([
+                                    Forms\Components\FileUpload::make('bukti_setor')
+                                        ->label('Bukti Setor')
+                                        ->required()
+                                        ->openable()
+                                        ->downloadable()
+                                        ->disk('public')
+                                        ->directory('bukti-setor/bupots')   
+                                        ->acceptedFileTypes(['application/pdf', 'image/jpeg', 'image/png', 'image/jpg', 'image/webp'])
+                                        ->helperText('Unggah dokumen bukti setor bukti potong (PDF atau gambar)')
+                                        ->columnSpanFull(),
+                                ])
+                        ])
+                        ->action(function ($record, array $data) {
+                            $record->update([
+                                'bukti_setor' => $data['bukti_setor']
+                            ]);
+                            
+                            Notification::make()
+                                ->title('Bukti Setor Berhasil Diupload')
+                                ->body('Bukti setor untuk ' . $record->bupot_type . ' ' . $record->company_name . ' berhasil diupload.')
+                                ->success()
+                                ->send();
+                        })
+                        ->modalWidth('2xl'),
+                    
+                    // Action to view/download bukti setor
+                    Tables\Actions\Action::make('view_bukti_setor')
+                        ->label('Lihat Bukti Setor')
+                        ->icon('heroicon-o-eye')
+                        ->color('success')
+                        ->visible(fn ($record) => !empty($record->bukti_setor))
+                        ->url(fn ($record) => asset('storage/' . $record->bukti_setor))
+                        ->openUrlInNewTab()
+                        ->tooltip('Lihat bukti setor bukti potong'),
                         
                     Tables\Actions\Action::make('download')
                         ->label('Unduh Berkas')
@@ -497,26 +587,6 @@ class BupotsRelationManager extends RelationManager
                         return 'Tambah Bukti Potong';
                     }),
                     
-                Tables\Actions\Action::make('link_invoice')
-                    ->label('Kaitkan dengan Faktur')
-                    ->color('gray')
-                    ->icon('heroicon-o-link')
-                    ->visible(function () {
-                        // Only show if there are invoices to link AND client has bupot_contract
-                        $taxReport = $this->getOwnerRecord();
-                        
-                        if ($taxReport) {
-                            $client = \App\Models\Client::find($taxReport->client_id);
-                            $hasInvoices = $taxReport->invoices()->count() > 0;
-                            
-                            return $client && $client->bupot_contract && $hasInvoices;
-                        }
-                        
-                        return false;
-                    })
-                    ->action(function () {
-                        // Placeholder for linking action
-                    }),
                 ]);
     }
 }

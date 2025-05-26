@@ -13,6 +13,8 @@ use Illuminate\Database\Eloquent\SoftDeletingScope;
 use Filament\Forms\Components\Section;
 use Filament\Forms\Components\Grid;
 use Filament\Forms\Components\Tabs;
+use Swis\Filament\Activitylog\Tables\Actions\ActivitylogAction;
+use Filament\Notifications\Notification;
 
 use Filament\Forms\Components\FileUpload;
 
@@ -184,6 +186,17 @@ class InvoicesRelationManager extends RelationManager
                                         ->helperText('Unggah dokumen faktur (PDF atau gambar)')
                                         ->columnSpanFull(),
                                         
+                                    // New field for bukti setor (optional)
+                                    FileUpload::make('bukti_setor')
+                                        ->label('Bukti Setor (Opsional)')
+                                        ->openable()
+                                        ->downloadable()
+                                        ->disk('public')
+                                        ->directory('bukti-setor/invoices')   
+                                        ->acceptedFileTypes(['application/pdf', 'image/jpeg', 'image/png', 'image/jpg', 'image/webp'])
+                                        ->helperText('Unggah bukti setor pajak jika sudah tersedia (PDF atau gambar)')
+                                        ->columnSpanFull(),
+                                        
                                     Forms\Components\RichEditor::make('notes')
                                         ->label('Catatan')
                                         ->placeholder('Tambahkan catatan relevan tentang faktur ini')
@@ -235,13 +248,11 @@ class InvoicesRelationManager extends RelationManager
                             $user = \App\Models\User::find($record->created_by);
                             return $user ? $user->name : 'User #' . $record->created_by;
                         }
-                        return 'System';
+                        return 'No System';
                     })
                     ->defaultImageUrl(asset('images/default-avatar.png'))
-                    ->size(40)
-                    ->tooltip(function ($record): string {
-                        return $record->creator?->name ?? 'System';
-                    }),
+                    ->size(40),
+
                 Tables\Columns\TextColumn::make('invoice_number')
                     ->label('Nomor Faktur')
                     ->searchable()
@@ -271,7 +282,26 @@ class InvoicesRelationManager extends RelationManager
                     ->money('Rp.')
                     ->sortable(),
                     
-                // New column to show related bupots count
+                // New column for bukti setor
+                Tables\Columns\IconColumn::make('has_bukti_setor')
+                    ->label('Bukti Setor')
+                    ->boolean()
+                    ->getStateUsing(function ($record) {
+                        return !empty($record->bukti_setor);
+                    })
+                    ->trueIcon('heroicon-o-check-circle')
+                    ->falseIcon('heroicon-o-x-circle')
+                    ->trueColor('success')
+                    ->falseColor('danger')
+                    ->tooltip(function ($record) {
+                        if (!empty($record->bukti_setor)) {
+                            return "Bukti setor tersedia";
+                        }
+                        
+                        return "Bukti setor belum diupload";
+                    }),
+                    
+                // Existing column for bupots
                 Tables\Columns\IconColumn::make('has_bupots')
                     ->label('Bukti Potong')
                     ->boolean()
@@ -305,6 +335,17 @@ class InvoicesRelationManager extends RelationManager
                         'Faktur Keluaran' => 'Faktur Keluaran',
                         'Faktur Masuk' => 'Faktur Masuk',
                     ]),
+                    
+                // New filter for bukti setor
+                Tables\Filters\Filter::make('has_bukti_setor')
+                    ->label('Memiliki Bukti Setor')
+                    ->query(fn (Builder $query): Builder => $query->whereNotNull('bukti_setor')->where('bukti_setor', '!=', '')),
+                    
+                Tables\Filters\Filter::make('no_bukti_setor')
+                    ->label('Belum Ada Bukti Setor')
+                    ->query(fn (Builder $query): Builder => $query->where(function ($q) {
+                        $q->whereNull('bukti_setor')->orWhere('bukti_setor', '');
+                    })),
             ])
             ->headerActions([
                 Tables\Actions\CreateAction::make()
@@ -373,6 +414,51 @@ class InvoicesRelationManager extends RelationManager
                     Tables\Actions\EditAction::make()
                         ->label('Edit')
                         ->modalWidth('7xl'),
+                    
+                    // New action for uploading bukti setor
+                    Tables\Actions\Action::make('upload_bukti_setor')
+                        ->label('Upload Bukti Setor')
+                        ->icon('heroicon-o-cloud-arrow-up')
+                        ->color('info')
+                        ->visible(fn ($record) => empty($record->bukti_setor))
+                        ->form([
+                            Section::make('Upload Bukti Setor Pajak')
+                                ->description('Upload dokumen bukti setor untuk faktur ini')
+                                ->schema([
+                                    FileUpload::make('bukti_setor')
+                                        ->label('Bukti Setor')
+                                        ->required()
+                                        ->openable()
+                                        ->downloadable()
+                                        ->disk('public')
+                                        ->directory('bukti-setor/invoices')   
+                                        ->acceptedFileTypes(['application/pdf', 'image/jpeg', 'image/png', 'image/jpg', 'image/webp'])
+                                        ->helperText('Unggah dokumen bukti setor pajak (PDF atau gambar)')
+                                        ->columnSpanFull(),
+                                ])
+                        ])
+                        ->action(function ($record, array $data) {
+                            $record->update([
+                                'bukti_setor' => $data['bukti_setor']
+                            ]);
+                            
+                            Notification::make()
+                                ->title('Bukti Setor Berhasil Diupload')
+                                ->body('Bukti setor untuk faktur ' . $record->invoice_number . ' berhasil diupload.')
+                                ->success()
+                                ->send();
+                        })
+                        ->modalWidth('2xl'),
+                    
+                    // Action to view/download bukti setor
+                    Tables\Actions\Action::make('view_bukti_setor')
+                        ->label('Lihat Bukti Setor')
+                        ->icon('heroicon-o-eye')
+                        ->color('success')
+                        ->visible(fn ($record) => !empty($record->bukti_setor))
+                        ->url(fn ($record) => asset('storage/' . $record->bukti_setor))
+                        ->openUrlInNewTab()
+                        ->tooltip('Lihat bukti setor pajak'),
                         
                     Tables\Actions\Action::make('download')
                         ->label('Unduh Berkas')
@@ -440,8 +526,7 @@ class InvoicesRelationManager extends RelationManager
                         }
                         
                         return true; // Disable if no tax report is found
-                    })
-,
+                    }),
             ]);
     }
 
