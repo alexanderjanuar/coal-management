@@ -24,6 +24,10 @@ return new class extends Migration
             $table->string('ar_phone_number')->nullable();
             $table->string('adress')->nullable();
             $table->string('email')->unique()->nullable();
+            $table->string('contract_file')->nullable();
+            $table->boolean('ppn_contract')->default(false);
+            $table->boolean('pph_contract')->default(false);
+            $table->boolean('bupot_contract')->default(false);
             $table->timestamps();
         });
     }

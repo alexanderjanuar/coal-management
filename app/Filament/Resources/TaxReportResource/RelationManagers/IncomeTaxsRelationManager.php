@@ -18,13 +18,14 @@ use Filament\Forms\Components\Actions\Action;
 use Filament\Support\RawJs;
 use Swis\Filament\Activitylog\Tables\Actions\ActivitylogAction;
 use Filament\Notifications\Notification;
+use Filament\Tables\Actions\BulkAction;
+use Illuminate\Database\Eloquent\Model;
 
 class IncomeTaxsRelationManager extends RelationManager
 {
     protected static string $relationship = 'incomeTaxs';
 
     protected static ?string $title = 'PPh';
-
 
     public function isReadOnly(): bool
     {
@@ -113,6 +114,47 @@ class IncomeTaxsRelationManager extends RelationManager
                                                     'Karyawan Tetap' => 'Karyawan Tetap',
                                                 ])
                                                 ->default('Harian'),
+
+                                            // NEW: Add TK/K fields to employee creation form
+                                            Section::make('Status Pajak (TK/K)')
+                                                ->description('Tentukan status perpajakan karyawan untuk perhitungan TER yang akurat')
+                                                ->schema([
+                                                    Forms\Components\Select::make('marital_status')
+                                                        ->label('Status Pernikahan')
+                                                        ->options([
+                                                            'single' => 'Belum Menikah (TK)',
+                                                            'married' => 'Menikah (K)',
+                                                        ])
+                                                        ->default('single')
+                                                        ->required()
+                                                        ->live()
+                                                        ->native(false),
+
+                                                    Forms\Components\Select::make('tk')
+                                                        ->label('Jumlah Tanggungan (TK)')
+                                                        ->options([
+                                                            0 => 'TK/0 - Tidak ada tanggungan',
+                                                            1 => 'TK/1 - 1 tanggungan',
+                                                            2 => 'TK/2 - 2 tanggungan',
+                                                            3 => 'TK/3 - 3 tanggungan atau lebih',
+                                                        ])
+                                                        ->default(0)
+                                                        ->visible(fn (Forms\Get $get) => $get('marital_status') === 'single')
+                                                        ->required(fn (Forms\Get $get) => $get('marital_status') === 'single'),
+
+                                                    Forms\Components\Select::make('k')
+                                                        ->label('Jumlah Tanggungan (K)')
+                                                        ->options([
+                                                            0 => 'K/0 - Tidak ada tanggungan',
+                                                            1 => 'K/1 - 1 tanggungan',
+                                                            2 => 'K/2 - 2 tanggungan',
+                                                            3 => 'K/3 - 3 tanggungan atau lebih',
+                                                        ])
+                                                        ->default(0)
+                                                        ->visible(fn (Forms\Get $get) => $get('marital_status') === 'married')
+                                                        ->required(fn (Forms\Get $get) => $get('marital_status') === 'married'),
+                                                ])
+                                                ->columns(1),
                                         ])
                                         ->createOptionUsing(function (array $data) {
                                             return Employee::create($data)->id;
@@ -122,12 +164,17 @@ class IncomeTaxsRelationManager extends RelationManager
                                             if ($state) {
                                                 $employee = Employee::find($state);
                                                 if ($employee) {
-                                                    // Don't set TER amount, keep it at default 5%
+                                                    // Auto-calculate TER category and percentage based on employee's TK/K status
+                                                    $terCategory = $this->determineTerCategory($employee);
+                                                    $terPercentage = $this->calculateTerPercentage($employee->salary ?? 0, $terCategory);
+                                                    
+                                                    // Set the TER category and amount
+                                                    $set('ter_category', $terCategory);
+                                                    $set('ter_amount', $terPercentage);
                                                     
                                                     // Calculate PPH 21 with the formula: Salary + (Salary * TER%)
                                                     $employeeSalary = $employee->salary ?? 0;
-                                                    $terPercentage = 5 / 100; // Default 5%
-                                                    $terAmount = $employeeSalary * $terPercentage;
+                                                    $terAmount = $employeeSalary * ($terPercentage / 100);
                                                     $pphAmount = $employeeSalary + $terAmount;
                                                     
                                                     // Format PPH amount with Indonesian money format
@@ -149,15 +196,19 @@ class IncomeTaxsRelationManager extends RelationManager
                                                 return 'Karyawan tidak ditemukan';
                                             }
                                             
+                                            // NEW: Display TK/K status in employee info
+                                            $taxStatus = $this->getEmployeeTaxStatus($employee);
+                                            
                                             return view('components.tax-reports.employee-card', [
                                                 'employee' => $employee,
+                                                'taxStatus' => $taxStatus,
                                             ]);
                                         })
                                         ->columnSpanFull(),
                                 ]),
                         ]),
                         
-                    // In the Detail Pajak Penghasilan section
+                    // UPDATED: Improved Detail Pajak Penghasilan section
                     Wizard\Step::make('Detail Pajak Penghasilan')
                         ->icon('heroicon-o-currency-dollar')
                         ->schema([
@@ -200,7 +251,6 @@ class IncomeTaxsRelationManager extends RelationManager
                                                 $pphAmount = $employeeSalary + $terAmount;
                                                 
                                                 // Format PPH amount with Indonesian money format for display
-                                                // Using number_format with dot as decimal separator and comma as thousands separator
                                                 $set('pph_21_amount', number_format($pphAmount, 2, '.', ','));
                                             }
                                         }),
@@ -244,6 +294,27 @@ class IncomeTaxsRelationManager extends RelationManager
                                             }
                                         }),
 
+                                    // NEW: Display employee's actual TK/K status
+                                    Forms\Components\Placeholder::make('employee_tax_status')
+                                        ->label('Status Pajak Karyawan')
+                                        ->content(function (Forms\Get $get) {
+                                            $employeeId = $get('employee_id');
+                                            if (!$employeeId) {
+                                                return 'Pilih karyawan terlebih dahulu';
+                                            }
+                                            
+                                            $employee = Employee::find($employeeId);
+                                            if (!$employee) {
+                                                return 'Karyawan tidak ditemukan';
+                                            }
+                                            
+                                            $taxStatus = $this->getEmployeeTaxStatus($employee);
+                                            $recommendedCategory = $this->determineTerCategory($employee);
+                                            
+                                            return "Status: {$taxStatus} | Kategori TER yang disarankan: {$recommendedCategory}";
+                                        })
+                                        ->columnSpanFull(),
+
                                     Forms\Components\Placeholder::make('ter_explanation')
                                         ->label('Penjelasan TER')
                                         ->content(function (Forms\Get $get) {
@@ -255,7 +326,8 @@ class IncomeTaxsRelationManager extends RelationManager
                                             }
                                             
                                             return "TER kategori {$category} sebesar {$terAmount}% dihitung berdasarkan penghasilan bruto bulanan karyawan sesuai PP No. 58 Tahun 2003.";
-                                        }),
+                                        })
+                                        ->columnSpanFull(),
 
                                     Forms\Components\TextInput::make('pph_21_amount')
                                         ->label('Jumlah PPh 21')
@@ -263,13 +335,10 @@ class IncomeTaxsRelationManager extends RelationManager
                                         ->prefix('Rp')
                                         ->placeholder('0.00')
                                         ->mask(RawJs::make('$money($input)'))
-                                        // Remove numeric validation which conflicts with the mask
-                                        // ->numeric()
-                                        // Add dehydrateStateUsing to clean the formatted value before saving
                                         ->dehydrateStateUsing(fn ($state) => preg_replace('/[^0-9.]/', '', $state))
-                                        // Use rules instead of numeric validation
                                         ->rules(['required'])
-                                        ->helperText('PPh 21 = Gaji + (Gaji × Tarif TER%)'),
+                                        ->helperText('PPh 21 = Gaji + (Gaji × Tarif TER%)')
+                                        ->columnSpanFull(),
                                 ]),
                         ]),
                         
@@ -314,19 +383,37 @@ class IncomeTaxsRelationManager extends RelationManager
             ]);
     }
 
-    private function calculatePph21($amount, $employeeType)
+    // NEW: Helper method to determine TER category based on employee's TK/K status
+    private function determineTerCategory(Employee $employee): string
     {
-        // Simplified PPh 21 calculation - adjust based on actual tax rules
-        if ($employeeType === 'Karyawan Tetap') {
-            // Example: 5% tax for permanent employees
-            return $amount * 0.05;
+        if ($employee->marital_status === 'single') {
+            // TK status
+            if (in_array($employee->tk, [0, 1])) {
+                return 'A'; // TK/0, TK/1
+            } else {
+                return 'B'; // TK/2, TK/3
+            }
         } else {
-            // Example: 2.5% tax for daily workers
-            return $amount * 0.025;
+            // K status (married)
+            if ($employee->k == 0) {
+                return 'A'; // K/0
+            } elseif (in_array($employee->k, [1, 2])) {
+                return 'B'; // K/1, K/2
+            } else {
+                return 'C'; // K/3
+            }
         }
     }
 
-    
+    // NEW: Helper method to get formatted tax status string
+    private function getEmployeeTaxStatus(Employee $employee): string
+    {
+        if ($employee->marital_status === 'single') {
+            return "TK/{$employee->tk}";
+        } else {
+            return "K/{$employee->k}";
+        }
+    }
 
     public function table(Table $table): Table
     {
@@ -354,12 +441,31 @@ class IncomeTaxsRelationManager extends RelationManager
                             return $user ? $user->name : 'User #' . $record->created_by;
                         }
                         return 'System';
-                    })
-                    ->defaultImageUrl(asset('images/default-avatar.png'))
-                    ->size(40),
+                    }),
+
                 Tables\Columns\TextColumn::make('employee.name')
                     ->label('Nama Karyawan')
                     ->searchable()
+                    ->sortable(),
+
+                // Add TK/K status column
+                Tables\Columns\BadgeColumn::make('employee_tax_status')
+                    ->label('Status Pajak')
+                    ->getStateUsing(function ($record) {
+                        $employee = $record->employee;
+                        if (!$employee) return 'N/A';
+                        
+                        if ($employee->marital_status === 'single') {
+                            return "TK/{$employee->tk}";
+                        } else {
+                            return "K/{$employee->k}";
+                        }
+                    })
+                    ->colors([
+                        'primary' => fn ($state) => str_starts_with($state, 'TK/'),
+                        'success' => fn ($state) => str_starts_with($state, 'K/'),
+                        'gray' => 'N/A',
+                    ])
                     ->sortable(),
                     
                 Tables\Columns\TextColumn::make('employee.npwp')
@@ -449,6 +555,25 @@ class IncomeTaxsRelationManager extends RelationManager
                         'active' => 'Aktif',
                         'inactive' => 'Tidak Aktif',
                     ]),
+
+                // Add filter for TK/K status
+                Tables\Filters\SelectFilter::make('employee.marital_status')
+                    ->label('Status Pernikahan')
+                    ->options([
+                        'single' => 'TK (Belum Menikah)',
+                        'married' => 'K (Menikah)',
+                    ]),
+
+                // Filter for bukti setor status
+                Tables\Filters\TernaryFilter::make('has_bukti_setor')
+                    ->label('Status Bukti Setor')
+                    ->placeholder('Semua')
+                    ->trueLabel('Sudah Upload')
+                    ->falseLabel('Belum Upload')
+                    ->queries(
+                        true: fn (Builder $query) => $query->whereNotNull('bukti_setor')->where('bukti_setor', '!=', ''),
+                        false: fn (Builder $query) => $query->whereNull('bukti_setor')->orWhere('bukti_setor', ''),
+                    ),
             ])
             ->headerActions([
                 Tables\Actions\CreateAction::make()
@@ -580,6 +705,7 @@ class IncomeTaxsRelationManager extends RelationManager
                         ->url(fn ($record) => asset('storage/' . $record->bukti_setor))
                         ->openUrlInNewTab()
                         ->tooltip('Lihat bukti setor PPh 21'),
+
                     Tables\Actions\EditAction::make()
                         ->label('Edit')
                         ->modalWidth('7xl'),
@@ -605,6 +731,104 @@ class IncomeTaxsRelationManager extends RelationManager
                         ->label('Hapus')
                         ->modalHeading('Hapus Data Pajak Penghasilan Terpilih')
                         ->modalDescription('Apakah Anda yakin ingin menghapus data pajak penghasilan yang terpilih? Tindakan ini tidak dapat dibatalkan.'),
+
+                    // Enhanced Bulk Upload Bukti Setor Action
+                Tables\Actions\BulkAction::make('bulk_upload_bukti_setor')
+                        ->label('Upload Bukti Setor')
+                        ->icon('heroicon-o-cloud-arrow-up')
+                        ->color('info')
+                        ->requiresConfirmation(false)
+                        ->modalHeading(function ($records) {
+                            $count = $records->filter(fn ($record) => empty($record->bukti_setor))->count();
+                            return "Upload Bukti Setor ({$count} karyawan)";
+                        })
+                        ->modalDescription('Upload dokumen bukti setor untuk beberapa karyawan sekaligus. Hanya karyawan yang belum memiliki bukti setor yang akan ditampilkan.')
+                        ->modalWidth('5xl')
+                        
+                        ->action(function ($records, array $data) {
+                            $successCount = 0;
+                            $errors = [];
+                            $processedEmployees = [];
+                            
+                            // Process each record
+                            foreach ($data['records'] as $recordId => $recordData) {
+                                try {
+                                    $record = $records->find($recordId);
+                                    
+                                    if ($record && !empty($recordData['bukti_setor'])) {
+                                        // Update the record
+                                        $updateData = [
+                                            'bukti_setor' => $recordData['bukti_setor']
+                                        ];
+                                        
+                                        // Add notes to the main notes field if provided
+                                        if (!empty($recordData['notes'])) {
+                                            $existingNotes = $record->notes ?? '';
+                                            $newNote = "\n[Bukti Setor] " . $recordData['notes'];
+                                            $updateData['notes'] = $existingNotes . $newNote;
+                                        }
+                                        
+                                        $record->update($updateData);
+                                        
+                                        $successCount++;
+                                        $processedEmployees[] = $record->employee->name;
+                                        
+                                        // Log activity if you have activity logging
+                                        if (class_exists('\Spatie\Activitylog\Models\Activity')) {
+                                            activity()
+                                                ->performedOn($record)
+                                                ->causedBy(auth()->user())
+                                                ->withProperties([
+                                                    'action' => 'bulk_upload_bukti_setor',
+                                                    'employee_name' => $record->employee->name,
+                                                    'file_uploaded' => !empty($recordData['bukti_setor']),
+                                                ])
+                                                ->log('Bukti setor uploaded via bulk action');
+                                        }
+                                    }
+                                } catch (\Exception $e) {
+                                    $employeeName = $records->find($recordId)->employee->name ?? "ID: {$recordId}";
+                                    $errors[] = "Error untuk {$employeeName}: " . $e->getMessage();
+                                }
+                            }
+                            
+                            // Show comprehensive notification
+                            if ($successCount > 0) {
+                                $employeeList = count($processedEmployees) > 3 
+                                    ? implode(', ', array_slice($processedEmployees, 0, 3)) . " dan " . (count($processedEmployees) - 3) . " lainnya"
+                                    : implode(', ', $processedEmployees);
+                                    
+                                Notification::make()
+                                    ->title('Bukti Setor Berhasil Diupload')
+                                    ->body("Berhasil mengupload bukti setor untuk {$successCount} karyawan: {$employeeList}")
+                                    ->success()
+                                    ->duration(5000)
+                                    ->send();
+                            }
+                            
+                            // Show error notification if any
+                            if (!empty($errors)) {
+                                Notification::make()
+                                    ->title('Beberapa Upload Gagal')
+                                    ->body(implode('<br>', array_slice($errors, 0, 5)) . (count($errors) > 5 ? '<br>... dan ' . (count($errors) - 5) . ' error lainnya' : ''))
+                                    ->warning()
+                                    ->duration(8000)
+                                    ->send();
+                            }
+                            
+                            // If no files were uploaded
+                            if ($successCount === 0 && empty($errors)) {
+                                Notification::make()
+                                    ->title('Tidak Ada File yang Diupload')
+                                    ->body('Silakan pilih file bukti setor untuk setiap karyawan.')
+                                    ->warning()
+                                    ->send();
+                            }
+                        })
+                        ->deselectRecordsAfterCompletion()
+                        ->tooltip('Upload bukti setor untuk beberapa karyawan sekaligus')
+                        ->modalSubmitActionLabel('Upload Semua Bukti Setor')
+                        ->modalCancelActionLabel('Batal'),
                         
                     Tables\Actions\BulkAction::make('export')
                         ->label('Ekspor ke Excel')
@@ -651,13 +875,6 @@ class IncomeTaxsRelationManager extends RelationManager
                         
                         return 'Tambah Data PPh 21';
                     }),
-                    
-                // Tables\Actions\Action::make('register_employee')
-                //     ->label('Daftarkan Karyawan Baru')
-                //     ->url(route('filament.admin.resources.employees.create'))
-                //     ->icon('heroicon-o-user-plus')
-                //     ->color('gray')
-                //     ->openUrlInNewTab(),
             ]);
     }
 

@@ -109,7 +109,6 @@ class InvoicesRelationManager extends RelationManager
                                         ->prefix('Rp')
                                         ->placeholder('0.00')
                                         ->mask(RawJs::make('$money($input)'))
-                                        ->live(debounce: 500)
                                         // Convert to numeric value for storage
                                         ->dehydrateStateUsing(fn ($state) => preg_replace('/[^0-9.]/', '', $state))
                                         // This is key - don't use numeric() validator with masked inputs
@@ -124,7 +123,8 @@ class InvoicesRelationManager extends RelationManager
                                                 $ppn = floatval($cleanedInput) * $ppnPercentage;
                                                 $set('ppn', number_format($ppn, 2, '.', ','));
                                             }
-                                        }),
+                                        })                                       
+                                        ->live(2000),
 
                                     // New field for PPN percentage selection
                                     Forms\Components\Select::make('ppn_percentage')

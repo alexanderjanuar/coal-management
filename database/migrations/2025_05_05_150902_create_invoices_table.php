@@ -15,6 +15,7 @@ return new class extends Migration
         Schema::create('invoices', function (Blueprint $table) {
             $table->id();
             $table->string('invoice_number')->unique();
+            $table->date('invoice_date')->nullable();
             $table->foreignId('tax_report_id')->constrained()->onDelete('cascade');
             $table->string('npwp');
             $table->string('company_name');
