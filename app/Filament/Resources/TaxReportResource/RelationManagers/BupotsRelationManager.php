@@ -15,6 +15,8 @@ use Filament\Forms\Components\Section;
 use Filament\Forms\Components\Wizard;
 use Swis\Filament\Activitylog\Tables\Actions\ActivitylogAction;
 use Filament\Notifications\Notification;
+use Illuminate\Support\Str;
+use Livewire\Features\SupportFileUploads\TemporaryUploadedFile;
 
 
 class BupotsRelationManager extends RelationManager
@@ -26,6 +28,81 @@ class BupotsRelationManager extends RelationManager
         return false;
     }
     protected static ?string $title = 'Bupot';
+
+    /**
+     * Generate dynamic directory path for file uploads
+     */
+    private function generateDirectoryPath($get): string
+    {
+        // Get tax report to access client information
+        $taxReportId = $get('tax_report_id') ?? $this->getOwnerRecord()->id;
+        $taxReport = \App\Models\TaxReport::with('client')->find($taxReportId);
+        
+        // Default values
+        $clientName = 'unknown-client';
+        $monthName = 'unknown-month';
+        
+        if ($taxReport && $taxReport->client) {
+            // Clean client name for folder structure
+            $clientName = Str::slug($taxReport->client->name);
+            
+            // Convert month from tax report to Indonesian month name
+            $monthName = $this->convertToIndonesianMonth($taxReport->month);
+        }
+        
+        return "clients/{$clientName}/SPT/{$monthName}/Bupot";
+    }
+
+    /**
+     * Generate filename for Bupot documents
+     */
+    private function generateFileName($get, $originalFileName, $prefix = 'Bupot'): string
+    {
+        $companyName = $get('company_name') ?? 'Unknown Company';
+        $bupotType = $get('bupot_type') ?? 'Unknown Type';
+        $pphType = $get('pph_type') ?? 'Unknown PPh';
+        
+        // Clean company name for filename
+        $cleanCompanyName = Str::slug($companyName);
+        $cleanBupotType = Str::slug($bupotType);
+        $cleanPphType = Str::slug($pphType);
+        
+        // Get file extension
+        $extension = pathinfo($originalFileName, PATHINFO_EXTENSION);
+        
+        return "{$prefix}-{$cleanPphType}-{$cleanBupotType}-{$cleanCompanyName}.{$extension}";
+    }
+
+    /**
+     * Convert month format to Indonesian month names
+     */
+    private function convertToIndonesianMonth($month): string
+    {
+        // Handle different month formats
+        $monthNames = [
+            '01' => 'Januari', '1' => 'Januari', 'january' => 'Januari', 'jan' => 'Januari',
+            '02' => 'Februari', '2' => 'Februari', 'february' => 'Februari', 'feb' => 'Februari',
+            '03' => 'Maret', '3' => 'Maret', 'march' => 'Maret', 'mar' => 'Maret',
+            '04' => 'April', '4' => 'April', 'april' => 'April', 'apr' => 'April',
+            '05' => 'Mei', '5' => 'Mei', 'may' => 'Mei',
+            '06' => 'Juni', '6' => 'Juni', 'june' => 'Juni', 'jun' => 'Juni',
+            '07' => 'Juli', '7' => 'Juli', 'july' => 'Juli', 'jul' => 'Juli',
+            '08' => 'Agustus', '8' => 'Agustus', 'august' => 'Agustus', 'aug' => 'Agustus',
+            '09' => 'September', '9' => 'September', 'september' => 'September', 'sep' => 'September',
+            '10' => 'Oktober', 'october' => 'Oktober', 'oct' => 'Oktober',
+            '11' => 'November', 'november' => 'November', 'nov' => 'November',
+            '12' => 'Desember', 'december' => 'Desember', 'dec' => 'Desember',
+        ];
+
+        $cleanMonth = strtolower(trim($month));
+        
+        // If it's a date format like "2025-01", extract the month part
+        if (preg_match('/\d{4}-(\d{1,2})/', $month, $matches)) {
+            $cleanMonth = $matches[1];
+        }
+        
+        return $monthNames[$cleanMonth] ?? Str::title($cleanMonth);
+    }
 
     public function form(Form $form): Form
     {
@@ -245,22 +322,38 @@ class BupotsRelationManager extends RelationManager
                                         ->disk('public')
                                         ->openable()
                                         ->downloadable()
-                                        ->preserveFilenames()
-                                        ->directory('bupot-documents')
+                                        ->directory(function (Forms\Get $get) {
+                                            return $this->generateDirectoryPath($get);
+                                        })
+                                        ->getUploadedFileNameForStorageUsing(function (TemporaryUploadedFile $file, Forms\Get $get): string {
+                                            return $this->generateFileName($get, $file->getClientOriginalName(), 'Bupot');
+                                        })
                                         ->acceptedFileTypes(['application/pdf', 'image/jpeg', 'image/png', 'image/jpg', 'image/webp'])
-                                        ->helperText('Unggah dokumen bukti potong (PDF atau gambar)')
+                                        ->helperText(function (Forms\Get $get) {
+                                            $path = $this->generateDirectoryPath($get);
+                                            return "Akan disimpan di: storage/{$path}/Bupot-[PPh Type]-[Bupot Type]-[Company].[ext]";
+                                        })
                                         ->columnSpanFull(),
                                         
                                     // New field for bukti setor (optional)
-                                    Forms\Components\FileUpload::make('bukti_setor')
-                                        ->label('Bukti Setor (Opsional)')
-                                        ->openable()
-                                        ->downloadable()
-                                        ->disk('public')
-                                        ->directory('bukti-setor/bupots')   
-                                        ->acceptedFileTypes(['application/pdf', 'image/jpeg', 'image/png', 'image/jpg', 'image/webp'])
-                                        ->helperText('Unggah bukti setor pajak jika sudah tersedia (PDF atau gambar)')
-                                        ->columnSpanFull(),
+                                        Forms\Components\FileUpload::make('bukti_setor')
+                                            ->label('Bukti Setor (Opsional)')
+                                            ->openable()
+                                            ->downloadable()
+                                            ->disk('public')
+                                            ->directory(function (Forms\Get $get) {
+                                                $basePath = $this->generateDirectoryPath($get);
+                                                return $basePath . '/Bukti-Setor';
+                                            })
+                                            ->getUploadedFileNameForStorageUsing(function (TemporaryUploadedFile $file, Forms\Get $get): string {
+                                                return $this->generateFileName($get, $file->getClientOriginalName(), 'Bukti-Setor-Bupot');
+                                            })
+                                            ->acceptedFileTypes(['application/pdf', 'image/jpeg', 'image/png', 'image/jpg', 'image/webp'])
+                                            ->helperText(function (Forms\Get $get) {
+                                                $path = $this->generateDirectoryPath($get);
+                                                return "Akan disimpan di: storage/{$path}/Bukti-Setor/";
+                                            })
+                                            ->columnSpanFull(),
                                         
                                     Forms\Components\RichEditor::make('notes')
                                         ->label('Catatan')
@@ -480,22 +573,37 @@ class BupotsRelationManager extends RelationManager
                         ->icon('heroicon-o-cloud-arrow-up')
                         ->color('info')
                         ->visible(fn ($record) => empty($record->bukti_setor))
-                        ->form([
-                            Section::make('Upload Bukti Setor Bupot')
-                                ->description('Upload dokumen bukti setor untuk bukti potong ini')
-                                ->schema([
-                                    Forms\Components\FileUpload::make('bukti_setor')
-                                        ->label('Bukti Setor')
-                                        ->required()
-                                        ->openable()
-                                        ->downloadable()
-                                        ->disk('public')
-                                        ->directory('bukti-setor/bupots')   
-                                        ->acceptedFileTypes(['application/pdf', 'image/jpeg', 'image/png', 'image/jpg', 'image/webp'])
-                                        ->helperText('Unggah dokumen bukti setor bukti potong (PDF atau gambar)')
-                                        ->columnSpanFull(),
-                                ])
-                        ])
+                        ->form(function ($record) {
+                            return [
+                                Section::make('Upload Bukti Setor Bupot')
+                                    ->description('Upload dokumen bukti setor untuk bukti potong ini')
+                                    ->schema([
+                                        Forms\Components\FileUpload::make('bukti_setor')
+                                            ->label('Bukti Setor')
+                                            ->required()
+                                            ->openable()
+                                            ->downloadable()
+                                            ->disk('public')
+                                            ->directory(function () use ($record) {
+                                                // Generate path for existing record
+                                                $taxReport = $record->taxReport;
+                                                $clientName = Str::slug($taxReport->client->name);
+                                                $monthName = $this->convertToIndonesianMonth($taxReport->month);
+                                                return "clients/{$clientName}/SPT/{$monthName}/Bupot/Bukti-Setor";
+                                            })
+                                            ->getUploadedFileNameForStorageUsing(function (TemporaryUploadedFile $file) use ($record): string {
+                                                $cleanCompanyName = Str::slug($record->company_name);
+                                                $cleanBupotType = Str::slug($record->bupot_type);
+                                                $cleanPphType = Str::slug($record->pph_type);
+                                                $extension = pathinfo($file->getClientOriginalName(), PATHINFO_EXTENSION);
+                                                return "Bukti-Setor-Bupot-{$cleanPphType}-{$cleanBupotType}-{$cleanCompanyName}.{$extension}";
+                                            })
+                                            ->acceptedFileTypes(['application/pdf', 'image/jpeg', 'image/png', 'image/jpg', 'image/webp'])
+                                            ->helperText('Unggah dokumen bukti setor bukti potong (PDF atau gambar)')
+                                            ->columnSpanFull(),
+                                    ])
+                            ];
+                        })
                         ->action(function ($record, array $data) {
                             $record->update([
                                 'bukti_setor' => $data['bukti_setor']

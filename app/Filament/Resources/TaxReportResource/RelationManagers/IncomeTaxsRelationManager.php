@@ -20,6 +20,9 @@ use Swis\Filament\Activitylog\Tables\Actions\ActivitylogAction;
 use Filament\Notifications\Notification;
 use Filament\Tables\Actions\BulkAction;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Str;
+use Livewire\Features\SupportFileUploads\TemporaryUploadedFile;
+use Illuminate\Support\Facades\Storage;
 
 class IncomeTaxsRelationManager extends RelationManager
 {
@@ -30,6 +33,82 @@ class IncomeTaxsRelationManager extends RelationManager
     public function isReadOnly(): bool
     {
         return false;
+    }
+
+    /**
+     * Generate dynamic directory path for file uploads
+     */
+    private function generateDirectoryPath($get): string
+    {
+        // Get tax report to access client information
+        $taxReportId = $get('tax_report_id') ?? $this->getOwnerRecord()->id;
+        $taxReport = \App\Models\TaxReport::with('client')->find($taxReportId);
+        
+        // Default values
+        $clientName = 'unknown-client';
+        $monthName = 'unknown-month';
+        
+        if ($taxReport && $taxReport->client) {
+            // Clean client name for folder structure
+            $clientName = Str::slug($taxReport->client->name);
+            
+            // Convert month from tax report to Indonesian month name
+            $monthName = $this->convertToIndonesianMonth($taxReport->month);
+        }
+        
+        return "clients/{$clientName}/SPT/{$monthName}/PPH";
+    }
+
+    /**
+     * Generate filename for PPH documents
+     */
+    private function generateFileName($get, $originalFileName, $prefix = 'PPH-21'): string
+    {
+        $employeeId = $get('employee_id');
+        $employeeName = 'Unknown Employee';
+        
+        if ($employeeId) {
+            $employee = Employee::find($employeeId);
+            if ($employee) {
+                $employeeName = Str::slug($employee->name);
+            }
+        }
+        
+        // Get file extension
+        $extension = pathinfo($originalFileName, PATHINFO_EXTENSION);
+        
+        return "{$prefix}-{$employeeName}.{$extension}";
+    }
+
+    /**
+     * Convert month format to Indonesian month names
+     */
+    private function convertToIndonesianMonth($month): string
+    {
+        // Handle different month formats
+        $monthNames = [
+            '01' => 'Januari', '1' => 'Januari', 'january' => 'Januari', 'jan' => 'Januari',
+            '02' => 'Februari', '2' => 'Februari', 'february' => 'Februari', 'feb' => 'Februari',
+            '03' => 'Maret', '3' => 'Maret', 'march' => 'Maret', 'mar' => 'Maret',
+            '04' => 'April', '4' => 'April', 'april' => 'April', 'apr' => 'April',
+            '05' => 'Mei', '5' => 'Mei', 'may' => 'Mei',
+            '06' => 'Juni', '6' => 'Juni', 'june' => 'Juni', 'jun' => 'Juni',
+            '07' => 'Juli', '7' => 'Juli', 'july' => 'Juli', 'jul' => 'Juli',
+            '08' => 'Agustus', '8' => 'Agustus', 'august' => 'Agustus', 'aug' => 'Agustus',
+            '09' => 'September', '9' => 'September', 'september' => 'September', 'sep' => 'September',
+            '10' => 'Oktober', 'october' => 'Oktober', 'oct' => 'Oktober',
+            '11' => 'November', 'november' => 'November', 'nov' => 'November',
+            '12' => 'Desember', 'december' => 'Desember', 'dec' => 'Desember',
+        ];
+
+        $cleanMonth = strtolower(trim($month));
+        
+        // If it's a date format like "2025-01", extract the month part
+        if (preg_match('/\d{4}-(\d{1,2})/', $month, $matches)) {
+            $cleanMonth = $matches[1];
+        }
+        
+        return $monthNames[$cleanMonth] ?? Str::title($cleanMonth);
     }
 
     public function form(Form $form): Form
@@ -353,9 +432,17 @@ class IncomeTaxsRelationManager extends RelationManager
                                         ->disk('public')
                                         ->openable()
                                         ->downloadable()
-                                        ->directory('income-tax-documents')
+                                        ->directory(function (Forms\Get $get) {
+                                            return $this->generateDirectoryPath($get);
+                                        })
+                                        ->getUploadedFileNameForStorageUsing(function (TemporaryUploadedFile $file, Forms\Get $get): string {
+                                            return $this->generateFileName($get, $file->getClientOriginalName(), 'PPH-21');
+                                        })
                                         ->acceptedFileTypes(['application/pdf', 'image/jpeg', 'image/png', 'image/jpg', 'image/webp'])
-                                        ->helperText('Unggah dokumen bukti potong PPh 21 (PDF atau gambar)')
+                                        ->helperText(function (Forms\Get $get) {
+                                            $path = $this->generateDirectoryPath($get);
+                                            return "Akan disimpan di: storage/{$path}/PPH-21-[Nama Karyawan].[ext]";
+                                        })
                                         ->columnSpanFull(),
 
                                     Forms\Components\FileUpload::make('bukti_setor')
@@ -363,9 +450,18 @@ class IncomeTaxsRelationManager extends RelationManager
                                         ->openable()
                                         ->downloadable()
                                         ->disk('public')
-                                        ->directory('bukti-setor/income-tax')   
+                                        ->directory(function (Forms\Get $get) {
+                                            $basePath = $this->generateDirectoryPath($get);
+                                            return $basePath . '/Bukti-Setor';
+                                        })
+                                        ->getUploadedFileNameForStorageUsing(function (TemporaryUploadedFile $file, Forms\Get $get): string {
+                                            return $this->generateFileName($get, $file->getClientOriginalName(), 'Bukti-Setor-PPH-21');
+                                        })
                                         ->acceptedFileTypes(['application/pdf', 'image/jpeg', 'image/png', 'image/jpg', 'image/webp'])
-                                        ->helperText('Unggah bukti setor pajak jika sudah tersedia (PDF atau gambar)')
+                                        ->helperText(function (Forms\Get $get) {
+                                            $path = $this->generateDirectoryPath($get);
+                                            return "Akan disimpan di: storage/{$path}/Bukti-Setor/";
+                                        })
                                         ->columnSpanFull(),
                                     
                                     Forms\Components\RichEditor::make('notes')
@@ -668,22 +764,36 @@ class IncomeTaxsRelationManager extends RelationManager
                         ->icon('heroicon-o-cloud-arrow-up')
                         ->color('info')
                         ->visible(fn ($record) => empty($record->bukti_setor))
-                        ->form([
-                            Section::make('Upload Bukti Setor PPh 21')
-                                ->description('Upload dokumen bukti setor untuk PPh 21 ini')
-                                ->schema([
-                                    Forms\Components\FileUpload::make('bukti_setor')
-                                        ->label('Bukti Setor')
-                                        ->required()
-                                        ->openable()
-                                        ->downloadable()
-                                        ->disk('public')
-                                        ->directory('bukti-setor/income-tax')   
-                                        ->acceptedFileTypes(['application/pdf', 'image/jpeg', 'image/png', 'image/jpg', 'image/webp'])
-                                        ->helperText('Unggah dokumen bukti setor PPh 21 (PDF atau gambar)')
-                                        ->columnSpanFull(),
-                                ])
-                        ])
+                        ->form(function ($record) {
+                            return [
+                                Section::make('Upload Bukti Setor PPh 21')
+                                    ->description('Upload dokumen bukti setor untuk PPh 21 ini')
+                                    ->schema([
+                                        Forms\Components\FileUpload::make('bukti_setor')
+                                            ->label('Bukti Setor')
+                                            ->required()
+                                            ->openable()
+                                            ->downloadable()
+                                            ->disk('public')
+                                            ->directory(function () use ($record) {
+                                                // Generate path for existing record
+
+                                                $taxReport = $record->taxReport;
+                                                $clientName = Str::slug($taxReport->client->name);
+                                                $monthName = $this->convertToIndonesianMonth($taxReport->month);
+                                                return "clients/{$clientName}/SPT/{$monthName}/PPH/Bukti-Setor";
+                                            })
+                                            ->getUploadedFileNameForStorageUsing(function (TemporaryUploadedFile $file) use ($record): string {
+                                                $employeeName = Str::slug($record->employee->name);
+                                                $extension = pathinfo($file->getClientOriginalName(), PATHINFO_EXTENSION);
+                                                return "Bukti-Setor-PPH-21-{$employeeName}.{$extension}";
+                                            })
+                                            ->acceptedFileTypes(['application/pdf', 'image/jpeg', 'image/png', 'image/jpg', 'image/webp'])
+                                            ->helperText('Unggah dokumen bukti setor PPh 21 (PDF atau gambar)')
+                                            ->columnSpanFull(),
+                                    ])
+                            ];
+                        })
                         ->action(function ($record, array $data) {
                             $record->update([
                                 'bukti_setor' => $data['bukti_setor']
@@ -694,8 +804,7 @@ class IncomeTaxsRelationManager extends RelationManager
                                 ->body('Bukti setor untuk PPh 21 ' . $record->employee->name . ' berhasil diupload.')
                                 ->success()
                                 ->send();
-                        })
-                        ->modalWidth('2xl'),
+                        }),
 
                     Tables\Actions\Action::make('view_bukti_setor')
                         ->label('Lihat Bukti Setor')

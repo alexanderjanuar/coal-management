@@ -13,6 +13,8 @@ use Illuminate\Database\Eloquent\SoftDeletingScope;
 use Filament\Forms\Components\Section;
 use Filament\Forms\Components\Grid;
 use Filament\Forms\Components\Tabs;
+use Illuminate\Support\Str;
+use Livewire\Features\SupportFileUploads\TemporaryUploadedFile;
 use Swis\Filament\Activitylog\Tables\Actions\ActivitylogAction;
 use Filament\Notifications\Notification;
 
@@ -24,6 +26,78 @@ class InvoicesRelationManager extends RelationManager
 
     protected static ?string $title = 'PPN';
 
+
+    /**
+     * Generate dynamic directory path for file uploads
+     */
+    private function generateDirectoryPath($get): string
+    {
+        // Get tax report to access client information
+        $taxReportId = $get('tax_report_id') ?? $this->getOwnerRecord()->id;
+        $taxReport = \App\Models\TaxReport::with('client')->find($taxReportId);
+        
+        // Default values
+        $clientName = 'unknown-client';
+        $monthName = 'unknown-month';
+        
+        if ($taxReport && $taxReport->client) {
+            // Clean client name for folder structure
+            $clientName = Str::slug($taxReport->client->name);
+            
+            // Convert month from tax report to Indonesian month name
+            $monthName = $this->convertToIndonesianMonth($taxReport->month);
+        }
+        
+        return "clients/{$clientName}/SPT/{$monthName}/Invoice";
+    }
+
+    /**
+     * Generate filename with invoice type and number
+     */
+    private function generateFileName($get, $originalFileName): string
+    {
+        $invoiceType = $get('type') ?? 'Unknown Type';
+        $invoiceNumber = $get('invoice_number') ?? 'Unknown Number';
+        
+        // Clean invoice number for filename (remove special characters)
+        $cleanInvoiceNumber = Str::slug($invoiceNumber);
+        
+        // Get file extension
+        $extension = pathinfo($originalFileName, PATHINFO_EXTENSION);
+        
+        return "{$invoiceType}-{$cleanInvoiceNumber}.{$extension}";
+    }
+
+    /**
+     * Convert month format to Indonesian month names
+     */
+    private function convertToIndonesianMonth($month): string
+    {
+        // Handle different month formats
+        $monthNames = [
+            '01' => 'Januari', '1' => 'Januari', 'january' => 'Januari', 'jan' => 'Januari',
+            '02' => 'Februari', '2' => 'Februari', 'february' => 'Februari', 'feb' => 'Februari',
+            '03' => 'Maret', '3' => 'Maret', 'march' => 'Maret', 'mar' => 'Maret',
+            '04' => 'April', '4' => 'April', 'april' => 'April', 'apr' => 'April',
+            '05' => 'Mei', '5' => 'Mei', 'may' => 'Mei',
+            '06' => 'Juni', '6' => 'Juni', 'june' => 'Juni', 'jun' => 'Juni',
+            '07' => 'Juli', '7' => 'Juli', 'july' => 'Juli', 'jul' => 'Juli',
+            '08' => 'Agustus', '8' => 'Agustus', 'august' => 'Agustus', 'aug' => 'Agustus',
+            '09' => 'September', '9' => 'September', 'september' => 'September', 'sep' => 'September',
+            '10' => 'Oktober', 'october' => 'Oktober', 'oct' => 'Oktober',
+            '11' => 'November', 'november' => 'November', 'nov' => 'November',
+            '12' => 'Desember', 'december' => 'Desember', 'dec' => 'Desember',
+        ];
+
+        $cleanMonth = strtolower(trim($month));
+        
+        // If it's a date format like "2025-01", extract the month part
+        if (preg_match('/\d{4}-(\d{1,2})/', $month, $matches)) {
+            $cleanMonth = $matches[1];
+        }
+        
+        return $monthNames[$cleanMonth] ?? Str::title($cleanMonth);
+    }
 
     public function form(Form $form): Form
     {
@@ -46,7 +120,8 @@ class InvoicesRelationManager extends RelationManager
                                         ->maxLength(255)
                                         ->placeholder('010.000-00.00000000')
                                         ->helperText('Format: 010.000-00.00000000')
-                                        ->columnSpan(6),
+                                        ->columnSpan(6)
+                                        ->live(debounce: 500), // Add live update for filename generation
                                         
                                     Forms\Components\DatePicker::make('invoice_date')
                                         ->label('Tanggal Faktur')
@@ -65,7 +140,7 @@ class InvoicesRelationManager extends RelationManager
                                         ])
                                         ->required()
                                         ->reactive()
-
+                                        ->live(debounce: 500) // Add live update for filename generation
                                         ->afterStateUpdated(function (Forms\Get $get, Forms\Set $set, ?string $state) {
                                             if ($state === 'Faktur Masuk') {
                                                 // Get the tax report and its client information
@@ -177,13 +252,20 @@ class InvoicesRelationManager extends RelationManager
                                 ->schema([
                                     FileUpload::make('file_path')
                                         ->label('Berkas Faktur')
-                                        ->required()
                                         ->openable()
                                         ->downloadable()
                                         ->disk('public')
-                                        ->directory('invoices')   
+                                        ->directory(function (Forms\Get $get) {
+                                            return $this->generateDirectoryPath($get);
+                                        })
+                                        ->getUploadedFileNameForStorageUsing(function (TemporaryUploadedFile $file, Forms\Get $get): string {
+                                            return $this->generateFileName($get, $file->getClientOriginalName());
+                                        })
                                         ->acceptedFileTypes(['application/pdf', 'image/jpeg', 'image/png', 'image/jpg', 'image/webp'])
-                                        ->helperText('Unggah dokumen faktur (PDF atau gambar)')
+                                        ->helperText(function (Forms\Get $get) {
+                                            $path = $this->generateDirectoryPath($get);
+                                            return "Akan disimpan di: storage/{$path}/[Jenis Faktur]-[Nomor Invoice].[ext]";
+                                        })
                                         ->columnSpanFull(),
                                         
                                     // New field for bukti setor (optional)
@@ -192,9 +274,23 @@ class InvoicesRelationManager extends RelationManager
                                         ->openable()
                                         ->downloadable()
                                         ->disk('public')
-                                        ->directory('bukti-setor/invoices')   
+                                        ->directory(function (Forms\Get $get) {
+                                            $basePath = $this->generateDirectoryPath($get);
+                                            return $basePath . '/Bukti-Setor';
+                                        })
+                                        ->getUploadedFileNameForStorageUsing(function (TemporaryUploadedFile $file, Forms\Get $get): string {
+                                            $invoiceType = $get('type') ?? 'Unknown Type';
+                                            $invoiceNumber = $get('invoice_number') ?? 'Unknown Number';
+                                            $cleanInvoiceNumber = Str::slug($invoiceNumber);
+                                            $extension = pathinfo($file->getClientOriginalName(), PATHINFO_EXTENSION);
+                                            
+                                            return "Bukti-Setor-{$invoiceType}-{$cleanInvoiceNumber}.{$extension}";
+                                        })
                                         ->acceptedFileTypes(['application/pdf', 'image/jpeg', 'image/png', 'image/jpg', 'image/webp'])
-                                        ->helperText('Unggah bukti setor pajak jika sudah tersedia (PDF atau gambar)')
+                                        ->helperText(function (Forms\Get $get) {
+                                            $path = $this->generateDirectoryPath($get);
+                                            return "Akan disimpan di: storage/{$path}/Bukti-Setor/";
+                                        })
                                         ->columnSpanFull(),
                                         
                                     Forms\Components\RichEditor::make('notes')
@@ -348,6 +444,73 @@ class InvoicesRelationManager extends RelationManager
                     })),
             ])
             ->headerActions([
+                Tables\Actions\Action::make('export_all')
+                    ->label('Ekspor ke Excel')
+                    ->icon('heroicon-o-document-arrow-down')
+                    ->color('success')
+                    ->action(function () {
+                        $taxReport = $this->getOwnerRecord();
+                        $monthYear = $this->convertToIndonesianMonth($taxReport->month) . '_' . date('Y');
+                        $filename = 'Faktur_' . $monthYear . '.xlsx';
+                        
+                        return \Maatwebsite\Excel\Facades\Excel::download(
+                            new \App\Exports\TaxReportInvoicesExport($taxReport),
+                            $filename
+                        );
+                    })
+                    ->tooltip('Ekspor semua faktur ke format Excel'),
+                Tables\Actions\Action::make('invoice_tax_status')
+                    ->label(function () {
+                        $taxReport = $this->getOwnerRecord();
+                        $status = $taxReport->invoice_tax_status ?? 'Belum Ditentukan';
+                        
+                        // Map status values to display text
+                        $statusMap = [
+                            'Lebih Bayar' => 'Lebih Bayar',
+                            'kurang_bayar' => 'Kurang Bayar',
+                            'nihil' => 'Nihil',
+                            'belum_ditentukan' => 'Belum Ditentukan'
+                        ];
+                        
+                        return 'Status: ' . ($statusMap[$status] ?? $status);
+                    })
+                    ->color(function () {
+                        $taxReport = $this->getOwnerRecord();
+                        $status = $taxReport->invoice_tax_status ?? 'belum_ditentukan';
+                        
+                        // Color mapping based on status
+                        return match($status) {
+                            'Lebih Bayar' => 'success',
+                            'Kurang Bayar' => 'danger', 
+                            'Nihil' => 'warning',
+                            default => 'gray'
+                        };
+                    })
+                    ->icon(function () {
+                        $taxReport = $this->getOwnerRecord();
+                        $status = $taxReport->invoice_tax_status ?? 'belum_ditentukan';
+                        
+                        // Icon mapping based on status
+                        return match($status) {
+                            'Lebih Bayar' => 'heroicon-o-arrow-trending-up',
+                            'Kurang Bayar' => 'heroicon-o-arrow-trending-down',
+                            'nihil' => 'heroicon-o-minus-circle',
+                            default => 'heroicon-o-question-mark-circle'
+                        };
+                    })
+                    ->disabled(true)
+                    ->tooltip(function () {
+                        $taxReport = $this->getOwnerRecord();
+                        $status = $taxReport->invoice_tax_status ?? 'belum_ditentukan';
+                        
+                        // Tooltip explanations
+                        return match($status) {
+                            'Lebih Bayar' => 'Pajak yang dibayar lebih besar dari kewajiban pajak',
+                            'Kurang Bayar' => 'Pajak yang dibayar kurang dari kewajiban pajak',
+                            'nihil' => 'Tidak ada kewajiban pajak atau sudah seimbang',
+                            default => 'Status laporan pajak belum ditentukan'
+                        };
+                 }),
                 Tables\Actions\CreateAction::make()
                     ->label('Faktur Baru')
                     ->successNotificationTitle('Faktur berhasil dibuat')
@@ -421,22 +584,46 @@ class InvoicesRelationManager extends RelationManager
                         ->icon('heroicon-o-cloud-arrow-up')
                         ->color('info')
                         ->visible(fn ($record) => empty($record->bukti_setor))
-                        ->form([
-                            Section::make('Upload Bukti Setor Pajak')
-                                ->description('Upload dokumen bukti setor untuk faktur ini')
-                                ->schema([
-                                    FileUpload::make('bukti_setor')
-                                        ->label('Bukti Setor')
-                                        ->required()
-                                        ->openable()
-                                        ->downloadable()
-                                        ->disk('public')
-                                        ->directory('bukti-setor/invoices')   
-                                        ->acceptedFileTypes(['application/pdf', 'image/jpeg', 'image/png', 'image/jpg', 'image/webp'])
-                                        ->helperText('Unggah dokumen bukti setor pajak (PDF atau gambar)')
-                                        ->columnSpanFull(),
-                                ])
-                        ])
+                        ->form(function ($record) {
+                            return [
+                                Section::make('Upload Bukti Setor Pajak')
+                                    ->description('Upload dokumen bukti setor untuk faktur ini')
+                                    ->schema([
+                                        FileUpload::make('bukti_setor')
+                                            ->label('Bukti Setor')
+                                            ->required()
+                                            ->openable()
+                                            ->downloadable()
+                                            ->disk('public')
+                                            ->directory(function () use ($record) {
+                                                // Generate path for existing record
+                                                $taxReport = $record->taxReport;
+                                                $clientName = Str::slug($taxReport->client->name);
+                                                $monthName = $this->convertToIndonesianMonth($taxReport->month);
+                                                return "clients/{$clientName}/SPT/{$monthName}/Invoice/Bukti-Setor";
+                                            })
+                                            ->getUploadedFileNameForStorageUsing(function (TemporaryUploadedFile $file) use ($record): string {
+                                                $cleanInvoiceNumber = Str::slug($record->invoice_number);
+                                                $extension = pathinfo($file->getClientOriginalName(), PATHINFO_EXTENSION);
+                                                return "Bukti-Setor-{$record->type}-{$cleanInvoiceNumber}.{$extension}";
+                                            })
+                                            ->acceptedFileTypes(['application/pdf', 'image/jpeg', 'image/png', 'image/jpg', 'image/webp'])
+                                            ->helperText('Unggah dokumen bukti setor pajak (PDF atau gambar)')
+                                            ->columnSpanFull(),
+                                    ])
+                            ];
+                        })
+                        ->action(function ($record, array $data) {
+                            $record->update([
+                                'bukti_setor' => $data['bukti_setor']
+                            ]);
+                            
+                            Notification::make()
+                                ->title('Bukti Setor Berhasil Diupload')
+                                ->body('Bukti setor untuk faktur ' . $record->invoice_number . ' berhasil diupload.')
+                                ->success()
+                                ->send();
+                        })
                         ->action(function ($record, array $data) {
                             $record->update([
                                 'bukti_setor' => $data['bukti_setor']

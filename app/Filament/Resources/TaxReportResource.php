@@ -8,6 +8,7 @@ use App\Filament\Resources\TaxReportResource\RelationManagers;
 use App\Filament\Resources\TaxReportResource\RelationManagers\IncomeTaxsRelationManager;
 use App\Models\Client;
 use App\Models\TaxReport;
+use App\Models\TaxCompensation;
 use Filament\Tables\Actions\ExportAction;
 use Filament\Forms;
 use Filament\Forms\Form;
@@ -24,15 +25,17 @@ use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
 use Filament\Forms\Components\Select;
+use Filament\Forms\Components\Repeater;
+use Filament\Forms\Components\Grid;
 use Filament\Support\RawJs;
 use Filament\Notifications\Actions\Action;
 use Filament\Notifications\Notification;
 use Illuminate\Validation\Rules\Unique;
 use Filament\Forms\Get;
+use Filament\Forms\Set;
 use Closure;
 use Filament\Tables\Grouping\Group;
 use Swis\Filament\Activitylog\Tables\Actions\ActivitylogAction;
- 
 
 use Filament\Tables\Columns\TextColumn;
 use Filament\Resources\Components\Tab;
@@ -44,7 +47,6 @@ class TaxReportResource extends Resource
     protected static ?string $navigationIcon = 'heroicon-o-document-currency-dollar';
 
     protected static ?string $modelLabel = 'Laporan Pajak';
-
 
     protected static ?string $navigationGroup = 'Tax';
 
@@ -104,8 +106,30 @@ class TaxReportResource extends Resource
                                 'November' => 'November',
                                 'December' => 'December',
                             ]),
+                        
+                        // Show current compensation info if exists
+                        Forms\Components\Placeholder::make('current_compensation_info')
+                            ->label('Informasi Kompensasi')
+                            ->content(function ($record) {
+                                if (!$record || !$record->exists) {
+                                    return view('components.tax-reports.tax-compensation-information', [
+                                        'record' => null,
+                                        'showTitle' => false,
+                                        'variant' => 'default'
+                                    ]);
+                                }
+                                
+                                return view('components.tax-reports.tax-compensation-information', [
+                                    'record' => $record,
+                                    'showTitle' => false, // Since the placeholder already has a label
+                                    'variant' => 'default'
+                                ]);
+                            })
+                            ->visible(function ($record) {
+                                return $record && $record->exists;
+                            })
+                            ->columnSpanFull(),
                     ]),
-                
             ]);
     }
 
@@ -125,8 +149,34 @@ class TaxReportResource extends Resource
                     ->badge()
                     ->color('info')
                     ->sortable(),
-                    
-                TextColumn::make('invoices_sum')
+
+                // NEW: Invoice Tax Status Column
+                Tables\Columns\BadgeColumn::make('invoice_tax_status')
+                    ->label('Status Pembayaran')
+                    ->colors([
+                        'success' => 'Lebih Bayar',
+                        'warning' => 'Kurang Bayar',
+                        'gray' => 'Nihil',
+                    ])
+                    ->formatStateUsing(function (TaxReport $record): string {
+                        if (!$record->invoice_tax_status) {
+                            return 'Belum Dihitung';
+                        }
+                        return $record->getStatusWithAmount();
+                    })
+                    ->tooltip(function (TaxReport $record): string {
+                        $totalMasuk = $record->getTotalPpnMasuk();
+                        $totalKeluar = $record->getTotalPpnKeluar();
+                        $selisih = $record->getSelisihPpn();
+                        
+                        return "Faktur Masuk: Rp " . number_format($totalMasuk, 0, ',', '.') . "\n" .
+                            "Faktur Keluar: Rp " . number_format($totalKeluar, 0, ',', '.') . "\n" .
+                            "Selisih: Rp " . number_format($selisih, 0, ',', '.');
+                    })
+                    ->sortable(),
+
+                // Enhanced Invoices Column with Input/Output breakdown
+                TextColumn::make('invoices_breakdown')
                     ->label('Faktur (PPN)')
                     ->state(function (TaxReport $record): string {
                         $totalPPN = $record->invoices()->sum('ppn');
@@ -134,12 +184,85 @@ class TaxReportResource extends Resource
                     })
                     ->tooltip(function (TaxReport $record): string {
                         $invoicesCount = $record->invoices()->count();
-                        return "Total {$invoicesCount} faktur";
+                        $ppnMasuk = $record->getTotalPpnMasuk();
+                        $ppnKeluar = $record->getTotalPpnKeluar();
+                        $masukCount = $record->invoices()->where('type', 'Faktur Masuk')->count();
+                        $keluarCount = $record->invoices()->where('type', 'Faktur Keluaran')->count();
+                        
+                        return "Total {$invoicesCount} faktur\n" .
+                            "Masuk ({$masukCount}): Rp " . number_format($ppnMasuk, 0, ',', '.') . "\n" .
+                            "Keluar ({$keluarCount}): Rp " . number_format($ppnKeluar, 0, ',', '.');
                     })
                     ->sortable(query: function (Builder $query, string $direction): Builder {
                         return $query
                             ->withSum('invoices', 'ppn')
                             ->orderBy('invoices_sum_ppn', $direction);
+                    })
+                    ->toggleable(isToggledHiddenByDefault: true),
+
+                // NEW: PPN Difference Column (Faktur Keluar - Faktur Masuk)
+                TextColumn::make('ppn_difference')
+                    ->label('Selisih PPN')
+                    ->state(function (TaxReport $record): string {
+                            $selisih = $record->getSelisihPpn();
+                            
+                            if ($selisih == 0) {
+                                return 'Rp 0';
+                            }
+                            
+                            if ($record->invoice_tax_status === 'Lebih Bayar') {
+                                return '+Rp ' . number_format(abs($selisih), 0, ',', '.');
+                            } elseif ($record->invoice_tax_status === 'Kurang Bayar') {
+                                return '-Rp ' . number_format(abs($selisih), 0, ',', '.');
+                            }
+                            
+                            // Fallback: use the actual calculation if status not set
+                            if ($selisih > 0) {
+                                return '-Rp ' . number_format($selisih, 0, ',', '.'); // Positive selisih = need to pay more
+                            } else {
+                                return '+Rp ' . number_format(abs($selisih), 0, ',', '.'); // Negative selisih = overpaid
+                            }
+                        })
+                    ->color(function (TaxReport $record): string {
+                        $selisih = $record->getSelisihPpn();
+                        
+                        if ($selisih > 0) {
+                            return 'warning'; // Orange - need to pay
+                        } elseif ($selisih < 0) {
+                            return 'success'; // Green - overpaid/refund
+                        } else {
+                            return 'gray'; // Gray - balanced
+                        }
+                    })
+                    ->weight('bold')
+                    ->tooltip(function (TaxReport $record): string {
+                        $ppnMasuk = $record->getTotalPpnMasuk();
+                        $ppnKeluar = $record->getTotalPpnKeluar();
+                        $selisih = $record->getSelisihPpn();
+                        
+                        $status = '';
+                        if ($selisih > 0) {
+                            $status = 'Kurang bayar - perlu bayar tambahan';
+                        } elseif ($selisih < 0) {
+                            $status = 'Lebih bayar - bisa klaim restitusi';
+                        } else {
+                            $status = 'Seimbang - nihil';
+                        }
+                        
+                        return "Faktur Keluar: Rp " . number_format($ppnKeluar, 0, ',', '.') . "\n" .
+                            "Faktur Masuk: Rp " . number_format($ppnMasuk, 0, ',', '.') . "\n" .
+                            "Selisih: Rp " . number_format($selisih, 0, ',', '.') . "\n" .
+                            $status;
+                    })
+                    ->sortable(query: function (Builder $query, string $direction): Builder {
+                        return $query
+                            ->withSum(['invoices as ppn_keluar_sum' => function ($query) {
+                                $query->where('type', 'Faktur Keluaran');
+                            }], 'ppn')
+                            ->withSum(['invoices as ppn_masuk_sum' => function ($query) {
+                                $query->where('type', 'Faktur Masuk');
+                            }], 'ppn')
+                            ->orderByRaw("(COALESCE(ppn_keluar_sum, 0) - COALESCE(ppn_masuk_sum, 0)) {$direction}");
                     }),
                     
                 TextColumn::make('income_taxes_sum')
@@ -150,13 +273,17 @@ class TaxReportResource extends Resource
                     })
                     ->tooltip(function (TaxReport $record): string {
                         $taxesCount = $record->incomeTaxs()->count();
-                        return "Total {$taxesCount} PPh 21";
+                        $withBuktiSetor = $record->incomeTaxs()->whereNotNull('bukti_setor')->where('bukti_setor', '!=', '')->count();
+                        
+                        return "Total {$taxesCount} PPh 21\n" .
+                            "Dengan Bukti Setor: {$withBuktiSetor}";
                     })
                     ->sortable(query: function (Builder $query, string $direction): Builder {
                         return $query
                             ->withSum('incomeTaxs', 'pph_21_amount')
                             ->orderBy('income_taxs_sum_pph_21_amount', $direction);
-                    }),
+                    })
+                    ->toggleable(isToggledHiddenByDefault: true),
                     
                 TextColumn::make('bupots_sum')
                     ->label('Bukti Potong')
@@ -166,13 +293,17 @@ class TaxReportResource extends Resource
                     })
                     ->tooltip(function (TaxReport $record): string {
                         $bupotsCount = $record->bupots()->count();
-                        return "Total {$bupotsCount} bukti potong";
+                        $withBuktiSetor = $record->bupots()->whereNotNull('bukti_setor')->where('bukti_setor', '!=', '')->count();
+                        
+                        return "Total {$bupotsCount} bukti potong\n" .
+                            "Dengan Bukti Setor: {$withBuktiSetor}";
                     })
                     ->sortable(query: function (Builder $query, string $direction): Builder {
                         return $query
                             ->withSum('bupots', 'bupot_amount')
                             ->orderBy('bupots_sum_bupot_amount', $direction);
-                    }),
+                    })
+                    ->toggleable(isToggledHiddenByDefault: true),
                     
                 TextColumn::make('total_tax')
                     ->label('Total Pajak')
@@ -189,15 +320,68 @@ class TaxReportResource extends Resource
                     ->weight('bold')
                     ->tooltip('Jumlah total dari PPN + PPh 21 + Bukti Potong')
                     ->searchable(false)
-                    ->sortable(false),
+                    ->sortable(false)
+                    ->toggleable(isToggledHiddenByDefault: true),
+
+                // NEW: Completion Status Column
+                Tables\Columns\IconColumn::make('completion_status')
+                    ->label('Kelengkapan')
+                    ->state(function (TaxReport $record): string {
+                        $hasInvoices = $record->invoices()->exists();
+                        $hasIncomeTax = $record->incomeTaxs()->exists();
+                        $hasBupots = $record->bupots()->exists();
+                        
+                        // Consider complete if has at least invoices (minimum requirement)
+                        $isComplete = $hasInvoices;
+                        
+                        return $isComplete ? 'complete' : 'incomplete';
+                    })
+                    ->icons([
+                        'heroicon-o-check-circle' => 'complete',
+                        'heroicon-o-exclamation-triangle' => 'incomplete',
+                    ])
+                    ->colors([
+                        'success' => 'complete',
+                        'warning' => 'incomplete',
+                    ])
+                    ->tooltip(function (TaxReport $record): string {
+                        $hasInvoices = $record->invoices()->exists();
+                        $hasIncomeTax = $record->incomeTaxs()->exists();
+                        $hasBupots = $record->bupots()->exists();
+                        
+                        $status = [];
+                        $status[] = $hasInvoices ? '✓ Faktur' : '✗ Faktur';
+                        $status[] = $hasIncomeTax ? '✓ PPh 21' : '✗ PPh 21';
+                        $status[] = $hasBupots ? '✓ Bukti Potong' : '✗ Bukti Potong';
+                        
+                        return implode("\n", $status);
+                    }),
                     
                 TextColumn::make('created_at')
                     ->label('Created At')
                     ->dateTime('d M Y')
-                    ->sortable(),
+                    ->sortable()
+                    ->toggleable(isToggledHiddenByDefault: true),
+
+                // NEW: Created by user
+                TextColumn::make('created_by')
+                    ->label('Dibuat Oleh')
+                    ->state(function (TaxReport $record): string {
+                        if ($record->created_by) {
+                            $user = \App\Models\User::find($record->created_by);
+                            return $user ? $user->name : 'User #' . $record->created_by;
+                        }
+                        return 'System';
+                    })
+                    ->toggleable(isToggledHiddenByDefault: true),
             ])
             ->groups([
-                'client.name',
+                Group::make('client.name')
+                    ->label('Client'),
+                Group::make('month')
+                    ->label('Month'),
+                Group::make('invoice_tax_status')
+                    ->label('Payment Status'),
             ])
             ->filters([
                 // Client filter
@@ -206,6 +390,16 @@ class TaxReportResource extends Resource
                     ->relationship('client', 'name')
                     ->searchable()
                     ->preload()
+                    ->multiple(),
+
+                // NEW: Invoice Tax Status Filter
+                Tables\Filters\SelectFilter::make('invoice_tax_status')
+                    ->label('Status Pembayaran')
+                    ->options([
+                        'Lebih Bayar' => 'Lebih Bayar',
+                        'Kurang Bayar' => 'Kurang Bayar',
+                        'Nihil' => 'Nihil',
+                    ])
                     ->multiple(),
                     
                 // Month/Period filter
@@ -252,6 +446,23 @@ class TaxReportResource extends Resource
                                 fn (Builder $query, $years): Builder => $query->whereYear('created_at', $years)
                             );
                     }),
+
+                // NEW: Completion Status Filter
+                Tables\Filters\SelectFilter::make('completion_status')
+                    ->label('Status Kelengkapan')
+                    ->options([
+                        'complete' => 'Lengkap',
+                        'incomplete' => 'Belum Lengkap',
+                    ])
+                    ->query(function (Builder $query, array $data): Builder {
+                        return $query->when($data['value'], function (Builder $query, $status) {
+                            if ($status === 'complete') {
+                                return $query->has('invoices');
+                            } else {
+                                return $query->doesntHave('invoices');
+                            }
+                        });
+                    }),
                     
                 // Has data filters
                 Tables\Filters\Filter::make('has_invoices')
@@ -265,6 +476,26 @@ class TaxReportResource extends Resource
                 Tables\Filters\Filter::make('has_bupots')
                     ->label('Memiliki Bukti Potong')
                     ->query(fn (Builder $query): Builder => $query->has('bupots')),
+
+                // NEW: Missing Bukti Setor Filter
+                Tables\Filters\Filter::make('missing_bukti_setor')
+                    ->label('Kurang Bukti Setor')
+                    ->query(function (Builder $query): Builder {
+                        return $query->where(function ($query) {
+                            $query->whereHas('incomeTaxs', function ($query) {
+                                $query->where(function ($query) {
+                                    $query->whereNull('bukti_setor')
+                                        ->orWhere('bukti_setor', '');
+                                });
+                            })
+                            ->orWhereHas('bupots', function ($query) {
+                                $query->where(function ($query) {
+                                    $query->whereNull('bukti_setor')
+                                        ->orWhere('bukti_setor', '');
+                                });
+                            });
+                        });
+                    }),
                     
                 // Date range filter
                 Tables\Filters\Filter::make('created_at')
@@ -312,6 +543,394 @@ class TaxReportResource extends Resource
                         ->icon('heroicon-o-pencil')
                         ->color('info'),
                     
+                    // NEW: Apply Compensation Action
+                    Tables\Actions\Action::make('apply_compensation')
+                        ->label(function (TaxReport $record): string {
+                            $availableCompensations = self::getAvailableCompensations($record);
+                            $currentSelisih = $record->getSelisihPpn();
+                            $hasExistingCompensation = ($record->ppn_dikompensasi_dari_masa_sebelumnya ?? 0) > 0;
+                            
+                            // If already has compensation
+                            if ($hasExistingCompensation) {
+                                return 'Kelola Kompensasi';
+                            }
+                            
+                            // If no compensation available
+                            if ($availableCompensations->isEmpty()) {
+                                return 'Tidak Ada Kompensasi';
+                            }
+                            
+                            // If current report doesn't need compensation (nihil or lebih bayar)
+                            if ($currentSelisih <= 0) {
+                                return 'Tidak Perlu Kompensasi';
+                            }
+                            
+                            // If compensation is available and needed
+                            return 'Terapkan Kompensasi';
+                        })
+                        ->icon(function (TaxReport $record): string {
+                            $availableCompensations = self::getAvailableCompensations($record);
+                            $currentSelisih = $record->getSelisihPpn();
+                            $hasExistingCompensation = ($record->ppn_dikompensasi_dari_masa_sebelumnya ?? 0) > 0;
+                            
+                            if ($hasExistingCompensation) {
+                                return 'heroicon-o-cog-6-tooth';
+                            }
+                            
+                            if ($availableCompensations->isEmpty() || $currentSelisih <= 0) {
+                                return 'heroicon-o-x-circle';
+                            }
+                            
+                            return 'heroicon-o-currency-dollar';
+                        })
+                        ->color(function (TaxReport $record): string {
+                            $availableCompensations = self::getAvailableCompensations($record);
+                            $currentSelisih = $record->getSelisihPpn();
+                            $hasExistingCompensation = ($record->ppn_dikompensasi_dari_masa_sebelumnya ?? 0) > 0;
+                            
+                            if ($hasExistingCompensation) {
+                                return 'info';
+                            }
+                            
+                            if ($availableCompensations->isEmpty() || $currentSelisih <= 0) {
+                                return 'gray';
+                            }
+                            
+                            return 'success';
+                        })
+                        ->disabled(function (TaxReport $record): bool {
+                            $availableCompensations = self::getAvailableCompensations($record);
+                            $currentSelisih = $record->getSelisihPpn();
+                            $hasExistingCompensation = ($record->ppn_dikompensasi_dari_masa_sebelumnya ?? 0) > 0;
+                            
+                            // Enable if has existing compensation (for management)
+                            if ($hasExistingCompensation) {
+                                return false;
+                            }
+                            
+                            // Disable if no compensation available or not needed
+                            return $availableCompensations->isEmpty() || $currentSelisih <= 0;
+                        })
+                        ->tooltip(function (TaxReport $record): string {
+                            $availableCompensations = self::getAvailableCompensations($record);
+                            $currentSelisih = $record->getSelisihPpn();
+                            $hasExistingCompensation = ($record->ppn_dikompensasi_dari_masa_sebelumnya ?? 0) > 0;
+                            
+                            if ($hasExistingCompensation) {
+                                $compensation = number_format($record->ppn_dikompensasi_dari_masa_sebelumnya, 0, ',', '.');
+                                return "Sudah ada kompensasi: Rp {$compensation}. Klik untuk mengelola.";
+                            }
+                            
+                            if ($availableCompensations->isEmpty()) {
+                                return "Tidak ada periode sebelumnya dengan status 'Lebih Bayar' yang dapat dikompensasikan.";
+                            }
+                            
+                            if ($currentSelisih <= 0) {
+                                $status = $currentSelisih < 0 ? 'Lebih Bayar' : 'Nihil';
+                                return "Periode ini berstatus '{$status}', tidak memerlukan kompensasi.";
+                            }
+                            
+                            $availableCount = $availableCompensations->count();
+                            $totalAvailable = $availableCompensations->sum('available_amount');
+                            return "Tersedia {$availableCount} periode dengan total kompensasi Rp " . number_format($totalAvailable, 0, ',', '.');
+                        })
+                        ->form(function (TaxReport $record): array {
+                            $availableCompensations = self::getAvailableCompensations($record);
+                            $currentSelisih = $record->getSelisihPpn();
+                            $currentCompensation = $record->ppn_dikompensasi_dari_masa_sebelumnya ?? 0;
+                            $effectiveAmount = $currentSelisih - $currentCompensation;
+                            
+                            // Get existing compensations for this record
+                            $existingCompensations = $record->compensationsReceived()
+                                ->with('sourceTaxReport')
+                                ->get()
+                                ->map(function ($compensation) use ($availableCompensations) {
+                                    $sourceReport = $compensation->sourceTaxReport;
+                                    $availableData = $availableCompensations->firstWhere('id', $sourceReport->id);
+                                    
+                                    return [
+                                        'source_tax_report_id' => $sourceReport->id,
+                                        'amount' => $compensation->amount_compensated,
+                                        'available_amount' => $availableData ? $availableData['available_amount'] + $compensation->amount_compensated : $compensation->amount_compensated,
+                                        'max_amount' => $availableData ? $availableData['available_amount'] + $compensation->amount_compensated : $compensation->amount_compensated,
+                                        'notes' => $compensation->notes,
+                                        'existing_compensation_id' => $compensation->id
+                                    ];
+                                })
+                                ->toArray();
+
+                            
+                            return [
+                                Section::make('Informasi Periode Saat Ini')
+                                    ->schema([
+                                        Forms\Components\Placeholder::make('current_info')
+                                            ->content(function () use ($record, $currentSelisih, $currentCompensation, $effectiveAmount) {
+                                                return view('components.tax-reports.tax-compensation-period', [
+                                                    'record' => $record,
+                                                    'currentSelisih' => $currentSelisih,
+                                                    'currentCompensation' => $currentCompensation,
+                                                    'effectiveAmount' => $effectiveAmount,
+                                                    'showTitle' => false // Since Section already has title
+                                                ]);
+                                            })
+                                            ->columnSpanFull(),
+                                    ]),
+                                
+                                Section::make('Periode dengan Kelebihan Bayar')
+                                    ->description('Pilih periode mana yang ingin dikompensasikan')
+                                    ->schema([
+                                        Repeater::make('compensations')
+                                            ->label('')
+                                            ->schema([
+                                                Grid::make(3)
+                                                    ->schema([
+                                                        Select::make('source_tax_report_id')
+                                                            ->label('Periode Sumber')
+                                                            ->options($availableCompensations->pluck('label', 'id'))
+                                                            ->required()
+                                                            ->reactive()
+                                                            ->afterStateUpdated(function (Set $set, Get $get, $state) use ($availableCompensations, $effectiveAmount) {
+                                                                
+                                                                if ($state) {
+                                                                    $selected = $availableCompensations->firstWhere('id', $state);
+                                                                    $availableAmount = $selected['available_amount'] ?? 0;
+                                                                    
+                                                                    $set('available_amount', $availableAmount);
+                                                                    $set('max_amount', $availableAmount);
+                                                                    
+                                                                    // Auto-fill with full available amount
+                                                                    $set('amount', $availableAmount);
+                                                                }
+                                                            }),
+                                                        
+                                                        Forms\Components\Placeholder::make('available_amount')
+                                                            ->label('Tersedia')
+                                                            ->content(function (Get $get) {
+                                                                $amount = $get('available_amount') ?? 0;
+                                                                return 'Rp ' . number_format($amount, 0, ',', '.');
+                                                            }),
+                                                        
+                                                        TextInput::make('amount')
+                                                            ->label('Jumlah Kompensasi')
+                                                            ->numeric()
+                                                            ->prefix('Rp')
+                                                            ->required()
+                                                            ->reactive()
+                                                            ->rules([
+                                                                fn (Get $get): Closure => function (string $attribute, $value, Closure $fail) use ($get) {
+                                                                    $maxAmount = $get('max_amount') ?? 0;
+                                                                    if ($value > $maxAmount) {
+                                                                        $fail("Jumlah tidak boleh lebih dari Rp " . number_format($maxAmount, 0, ',', '.'));
+                                                                    }
+                                                                }
+                                                            ]),
+                                                        
+                                                        Forms\Components\Hidden::make('max_amount'),
+                                                    ]),
+                                                
+                                                Textarea::make('notes')
+                                                    ->label('Catatan')
+                                                    ->placeholder('Catatan tambahan untuk kompensasi ini...')
+                                                    ->rows(2)
+                                                    ->columnSpanFull(),
+                                            ])
+                                            ->default($existingCompensations)
+                                            ->defaultItems(max(1, count($existingCompensations)))
+                                            ->addActionLabel('Tambah Kompensasi Lain')
+                                            ->reorderable(false)
+                                            ->collapsible()
+                                            ->itemLabel(function (array $state): ?string {
+                                                if (!$state['source_tax_report_id']) {
+                                                    return 'Kompensasi Baru';
+                                                }
+                                                
+                                                $amount = $state['amount'] ?? 0;
+                                                $isExisting = !empty($state['existing_compensation_id']);
+                                                $prefix = $isExisting ? '📝 Edit: ' : '➕ Baru: ';
+                                                
+                                                return $prefix . 'Rp ' . number_format($amount, 0, ',', '.');
+                                            }),
+                                    ]),
+                                
+                                Section::make('Ringkasan Kompensasi')
+                                    ->schema([
+                                        Forms\Components\Placeholder::make('compensation_summary')
+                                            ->content(function (Get $get) use ($effectiveAmount, $currentCompensation) {
+                                                $compensations = $get('compensations') ?? [];
+                                                $totalNewCompensation = (float) collect($compensations)->sum('amount');
+                                                $finalAmount = $effectiveAmount - $totalNewCompensation;
+                                                
+                                                return view('components.tax-reports.tax-compensation-summary', [
+                                                    'effectiveAmount' => $effectiveAmount,
+                                                    'currentCompensation' => $currentCompensation,
+                                                    'totalNewCompensation' => $totalNewCompensation,
+                                                    'finalAmount' => $finalAmount,
+                                                    'showTitle' => false // Since Section already has title
+                                                ]);
+                                            })
+                                            ->columnSpanFull(),
+                                    ]),
+                            ];
+                        })
+                        ->action(function (TaxReport $record, array $data): void {
+                            $totalCompensationApplied = 0;
+                            $compensationNotes = [];
+                            $processedCompensations = [];
+                            
+                            foreach ($data['compensations'] as $compensation) {
+                                if (empty($compensation['source_tax_report_id']) || empty($compensation['amount'])) {
+                                    continue;
+                                }
+                                
+                                $sourceReport = TaxReport::find($compensation['source_tax_report_id']);
+                                if (!$sourceReport) {
+                                    continue;
+                                }
+                                
+                                $requestedAmount = (float) $compensation['amount'];
+                                $existingCompensationId = $compensation['existing_compensation_id'] ?? null;
+                                
+                                // Handle existing compensation update
+                                if ($existingCompensationId) {
+                                    $existingCompensation = TaxCompensation::find($existingCompensationId);
+                                    if ($existingCompensation) {
+                                        $oldAmount = $existingCompensation->amount_compensated;
+                                        $amountDifference = $requestedAmount - $oldAmount;
+                                        
+                                        // Check if we have enough available amount for the increase
+                                        $currentlyUsed = $sourceReport->ppn_sudah_dikompensasi;
+                                        $available = $sourceReport->ppn_lebih_bayar_dibawa_ke_masa_depan - $currentlyUsed + $oldAmount;
+                                        
+                                        if ($requestedAmount <= $available) {
+                                            // Update existing compensation
+                                            $existingCompensation->update([
+                                                'amount_compensated' => $requestedAmount,
+                                                'notes' => $compensation['notes'] ?? $existingCompensation->notes
+                                            ]);
+                                            
+                                            // Update source report
+                                            $sourceReport->increment('ppn_sudah_dikompensasi', $amountDifference);
+                                            
+                                            $totalCompensationApplied += $amountDifference;
+                                            $compensationNotes[] = "Diperbarui: Rp " . number_format($requestedAmount, 0, ',', '.') . " dari {$sourceReport->month}";
+                                        }
+                                    }
+                                } else {
+                                    // Create new compensation
+                                    $availableAmount = $sourceReport->ppn_lebih_bayar_dibawa_ke_masa_depan - $sourceReport->ppn_sudah_dikompensasi;
+                                    $actualAmount = min($requestedAmount, $availableAmount);
+                                    
+                                    if ($actualAmount > 0) {
+                                        // Check if compensation already exists for this combination
+                                        $existingRecord = TaxCompensation::where('source_tax_report_id', $sourceReport->id)
+                                            ->where('target_tax_report_id', $record->id)
+                                            ->first();
+                                        
+                                        if ($existingRecord) {
+                                            // Update existing record
+                                            $oldAmount = $existingRecord->amount_compensated;
+                                            $amountDifference = $actualAmount - $oldAmount;
+                                            
+                                            $existingRecord->update([
+                                                'amount_compensated' => $actualAmount,
+                                                'notes' => $compensation['notes'] ?? "Kompensasi dari periode {$sourceReport->month}"
+                                            ]);
+                                            
+                                            $sourceReport->increment('ppn_sudah_dikompensasi', $amountDifference);
+                                            $totalCompensationApplied += $amountDifference;
+                                            $compensationNotes[] = "Diperbarui: Rp " . number_format($actualAmount, 0, ',', '.') . " dari {$sourceReport->month}";
+                                        } else {
+                                            // Create new compensation record
+                                            TaxCompensation::create([
+                                                'source_tax_report_id' => $sourceReport->id,
+                                                'target_tax_report_id' => $record->id,
+                                                'amount_compensated' => $actualAmount,
+                                                'notes' => $compensation['notes'] ?? "Kompensasi dari periode {$sourceReport->month}"
+                                            ]);
+                                            
+                                            $sourceReport->increment('ppn_sudah_dikompensasi', $actualAmount);
+                                            $totalCompensationApplied += $actualAmount;
+                                            $compensationNotes[] = "Rp " . number_format($actualAmount, 0, ',', '.') . " dari {$sourceReport->month}";
+                                        }
+                                    }
+                                }
+                                
+                                $processedCompensations[] = $sourceReport->id;
+                            }
+                            
+                            // Recalculate total compensation for the target record
+                            $newTotalCompensation = $record->compensationsReceived()->sum('amount_compensated');
+                            
+                            // Update current report compensation
+                            $record->update([
+                                'ppn_dikompensasi_dari_masa_sebelumnya' => $newTotalCompensation,
+                                'kompensasi_notes' => "Dikompensasi: " . implode(', ', $compensationNotes)
+                            ]);
+                            
+                            // Recalculate invoice tax status based on new compensation
+                            $ppnKeluar = (float) $record->getTotalPpnKeluar();
+                            $ppnMasuk = (float) $record->getTotalPpnMasuk();
+                            $selisihPpn = $ppnKeluar - $ppnMasuk;
+                            $effectivePayment = $selisihPpn - $newTotalCompensation;
+                            
+                            // Determine new status based on effective payment after compensation
+                            $newStatus = 'Nihil';
+                            if ($effectivePayment > 0) {
+                                $newStatus = 'Kurang Bayar';
+                            } elseif ($effectivePayment < 0) {
+                                $newStatus = 'Lebih Bayar';
+                                // If becomes Lebih Bayar, set amount available for future compensation
+                                $record->update([
+                                    'ppn_lebih_bayar_dibawa_ke_masa_depan' => abs($effectivePayment),
+                                    'ppn_sudah_dikompensasi' => 0 // Reset since this is a new Lebih Bayar status
+                                ]);
+                            } else {
+                                // If Nihil, reset future compensation fields
+                                $record->update([
+                                    'ppn_lebih_bayar_dibawa_ke_masa_depan' => 0,
+                                    'ppn_sudah_dikompensasi' => 0
+                                ]);
+                            }
+                            
+                            // Update the invoice tax status
+                            $record->update(['invoice_tax_status' => $newStatus]);
+                            
+                            // Prepare status message
+                            $statusMessage = '';
+                            $statusColor = 'success';
+                            
+                            switch ($newStatus) {
+                                case 'Nihil':
+                                    $statusMessage = "Status berubah menjadi <strong>Nihil</strong> - tidak ada kewajiban tersisa.";
+                                    $statusColor = 'info';
+                                    break;
+                                case 'Lebih Bayar':
+                                    $statusMessage = "Status berubah menjadi <strong>Lebih Bayar</strong> - kelebihan Rp " . number_format(abs($effectivePayment), 0, ',', '.') . " dapat dikompensasikan ke periode berikutnya.";
+                                    $statusColor = 'success';
+                                    break;
+                                case 'Kurang Bayar':
+                                    $statusMessage = "Status tetap <strong>Kurang Bayar</strong> - masih harus bayar Rp " . number_format($effectivePayment, 0, ',', '.') . ".";
+                                    $statusColor = 'warning';
+                                    break;
+                            }
+                            
+                            Notification::make()
+                                ->title('Kompensasi Berhasil Dikelola')
+                                ->body("
+                                    <div class='space-y-2'>
+                                        <div>✅ Total kompensasi <strong>Rp " . number_format($newTotalCompensation, 0, ',', '.') . "</strong> telah diterapkan.</div>
+                                        <div>📊 {$statusMessage}</div>
+                                    </div>
+                                ")
+                                ->color($statusColor)
+                                ->duration(8000)
+                                ->send();
+                        })
+                        ->modalHeading('Terapkan Kompensasi PPN')
+                        ->modalDescription('Terapkan kompensasi dari periode sebelumnya yang memiliki kelebihan bayar ke periode ini.')
+                        ->modalWidth('7xl')
+                        ->slideOver(),
+                        
                     ActivitylogAction::make(),
                     
                     RelationManagerAction::make('PPN')
@@ -343,6 +962,45 @@ class TaxReportResource extends Resource
             ->bulkActions([
                 Tables\Actions\BulkActionGroup::make([
                     Tables\Actions\DeleteBulkAction::make(),
+
+                    // NEW: Bulk Recalculate Status Action
+                    Tables\Actions\BulkAction::make('bulk_recalculate_status')
+                        ->label('Hitung Ulang Status')
+                        ->icon('heroicon-o-calculator')
+                        ->color('warning')
+                        ->action(function ($records) {
+                            $successCount = 0;
+                            $errors = [];
+                            
+                            foreach ($records as $record) {
+                                try {
+                                    $record->recalculateStatus();
+                                    $successCount++;
+                                } catch (\Exception $e) {
+                                    $errors[] = "Error untuk {$record->client->name}: " . $e->getMessage();
+                                }
+                            }
+                            
+                            if ($successCount > 0) {
+                                Notification::make()
+                                    ->title('Status Berhasil Dihitung Ulang')
+                                    ->body("Berhasil menghitung ulang status untuk {$successCount} laporan pajak.")
+                                    ->success()
+                                    ->send();
+                            }
+                            
+                            if (!empty($errors)) {
+                                Notification::make()
+                                    ->title('Beberapa Gagal Dihitung')
+                                    ->body(implode('<br>', array_slice($errors, 0, 3)))
+                                    ->warning()
+                                    ->send();
+                            }
+                        })
+                        ->requiresConfirmation()
+                        ->modalHeading('Hitung Ulang Status Pembayaran')
+                        ->modalDescription('Apakah Anda yakin ingin menghitung ulang status pembayaran untuk semua laporan pajak yang dipilih?'),
+
                     ExportBulkAction::make()
                         ->label('Ekspor Laporan Pajak (XLSX)')
                         ->icon('heroicon-o-download')
@@ -352,8 +1010,10 @@ class TaxReportResource extends Resource
             ])
             ->headerActions([
                 ExportAction::make()
-                    ->exporter(TaxReportExporter::class)
+                    ->exporter(TaxReportExporter::class),
             ])
+                
+        
             ->emptyStateHeading('Belum Ada Laporan Pajak')
             ->emptyStateDescription('Laporan pajak akan muncul di sini setelah Anda membuatnya. Laporan pajak adalah ringkasan dari aktivitas perpajakan bulanan per klien.')
             ->emptyStateIcon('heroicon-o-document-text')
@@ -373,6 +1033,29 @@ class TaxReportResource extends Resource
             ]);
     }
 
+    /**
+     * Get available compensations for a tax report
+     */
+    protected static function getAvailableCompensations(TaxReport $record)
+    {
+        return TaxReport::where('client_id', $record->client_id)
+            ->where('created_at', '<', $record->created_at ?? now())
+            ->where('invoice_tax_status', 'Lebih Bayar')
+            ->whereRaw('ppn_lebih_bayar_dibawa_ke_masa_depan > ppn_sudah_dikompensasi')
+            ->get()
+            ->map(function ($report) {
+                $available = $report->ppn_lebih_bayar_dibawa_ke_masa_depan - $report->ppn_sudah_dikompensasi;
+                return [
+                    'id' => $report->id,
+                    'month' => $report->month,
+                    'total_lebih_bayar' => $report->ppn_lebih_bayar_dibawa_ke_masa_depan,
+                    'already_used' => $report->ppn_sudah_dikompensasi,
+                    'available_amount' => $available,
+                    'label' => "{$report->month} - Tersedia: Rp " . number_format($available, 0, ',', '.') . " (Total: Rp " . number_format($report->ppn_lebih_bayar_dibawa_ke_masa_depan, 0, ',', '.') . ")"
+                ];
+            });
+    }
+
     public static function getRelations(): array
     {
         return [
@@ -381,8 +1064,6 @@ class TaxReportResource extends Resource
             RelationManagers\BupotsRelationManager::class,
         ];
     }
-
-    
 
     public static function getPages(): array
     {

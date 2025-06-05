@@ -11,9 +11,6 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::table('tax_reports', function (Blueprint $table) {
-            $table->string('tax_report_status')->nullable()->after('month');
-        });
 
         Schema::table('income_taxes', function (Blueprint $table) {
             // First add the new column
@@ -36,10 +33,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::table('tax_reports', function (Blueprint $table) {
-            $table->dropColumn('tax_report_status');
-        });
-
         Schema::table('income_taxes', function (Blueprint $table) {
             $table->dropColumn('bukti_setor');
         });

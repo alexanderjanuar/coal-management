@@ -28,7 +28,7 @@ class Bupot extends Model
         'created_by'
     ];
 
-    public function taxreport()
+    public function taxReport()
     {
         return $this->belongsTo(TaxReport::class);
     }
