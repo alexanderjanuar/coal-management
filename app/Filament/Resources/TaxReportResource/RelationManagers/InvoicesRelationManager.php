@@ -551,7 +551,7 @@ class InvoicesRelationManager extends RelationManager
                             $client = \App\Models\Client::find($taxReport->client_id);
                             if (!$client || !$client->ppn_contract) {
                                 // Use notification
-                                \Filament\Notifications\Notification::make()
+                                Notification::make()
                                     ->title('Kontrak PPN Tidak Aktif')
                                     ->body('Klien tidak memiliki kontrak PPN aktif. Aktifkan kontrak PPN terlebih dahulu.')
                                     ->danger()
@@ -612,17 +612,6 @@ class InvoicesRelationManager extends RelationManager
                                             ->columnSpanFull(),
                                     ])
                             ];
-                        })
-                        ->action(function ($record, array $data) {
-                            $record->update([
-                                'bukti_setor' => $data['bukti_setor']
-                            ]);
-                            
-                            Notification::make()
-                                ->title('Bukti Setor Berhasil Diupload')
-                                ->body('Bukti setor untuk faktur ' . $record->invoice_number . ' berhasil diupload.')
-                                ->success()
-                                ->send();
                         })
                         ->action(function ($record, array $data) {
                             $record->update([

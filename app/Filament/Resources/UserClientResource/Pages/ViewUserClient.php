@@ -28,7 +28,7 @@ class ViewUserClient extends ViewRecord
         }
         
         // Get the first user_client record for this user
-        // or create a temporary one with just the user ID
+        // or create a temporary one with just the user IDp
         $userClient = UserClient::where('user_id', $user->id)->first();
         
         if (!$userClient) {
