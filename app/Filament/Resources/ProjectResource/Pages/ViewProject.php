@@ -169,7 +169,7 @@ class ViewProject extends ViewRecord
     protected function getHeaderActions(): array
     {
         // Check if current user has the required role
-        $hasRequiredRole = auth()->user()->hasAnyRole(['direktur', 'project-manager', 'super-admin']);
+        $hasRequiredRole = auth()->user()->hasAnyRole(['direktur', 'project-manager', 'super-admin','verificator']);
         
         if (!$hasRequiredRole) {
             return [

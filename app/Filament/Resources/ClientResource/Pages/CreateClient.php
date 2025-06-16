@@ -19,6 +19,7 @@ class CreateClient extends CreateRecord
         $directors = User::role('direktur')->get();
         $staffMembers = User::role('staff')->get();
         $projectManagers = User::role('project-manager')->get();
+        $verificator = User::role('verificator')->get();
 
         // Count how many users we're assigning for the notification
         $assignedCount = 0;
@@ -45,6 +46,14 @@ class CreateClient extends CreateRecord
         foreach ($projectManagers as $manager) {
             UserClient::create([
                 'user_id' => $manager->id,
+                'client_id' => $this->record->id
+            ]);
+            $assignedCount++;
+        }
+
+        foreach ($verificator as $verif) {
+            UserClient::create([
+                'user_id' => $verif->id,
                 'client_id' => $this->record->id
             ]);
             $assignedCount++;
