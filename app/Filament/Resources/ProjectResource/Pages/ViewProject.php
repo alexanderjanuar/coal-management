@@ -315,7 +315,7 @@ class ViewProject extends ViewRecord
     {
         // Get users assigned to this project who are directors or project managers
         $projectManagers = \App\Models\User::whereHas('roles', function($query) {
-            $query->whereIn('name', ['director', 'project-manager']);
+            $query->whereIn('name', ['director', 'project-manager','verificator']);
         })
         ->whereHas('userProjects', function($query) {
             $query->where('project_id', $this->record->id);
@@ -325,7 +325,7 @@ class ViewProject extends ViewRecord
         // If no project managers are assigned, get all project managers/directors in the system
         if ($projectManagers->isEmpty()) {
             $projectManagers = \App\Models\User::whereHas('roles', function($query) {
-                $query->whereIn('name', ['director', 'project-manager', 'super-admin']);
+                $query->whereIn('name', ['director', 'project-manager', 'super-admin','verificator']);
             })->get();
         }
         
