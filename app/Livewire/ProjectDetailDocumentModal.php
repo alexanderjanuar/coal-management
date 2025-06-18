@@ -130,15 +130,6 @@ class ProjectDetailDocumentModal extends Component implements HasForms
             $oldStatus = $this->document->status;
             $this->document->status = $status;
             $this->document->save();
-
-            // Create a comment about status change if transitioning
-            Comment::create([
-                'user_id' => auth()->id(),
-                'commentable_type' => RequiredDocument::class,
-                'commentable_id' => $this->document->id,
-                'content' => "Document status automatically changed from <strong>{$oldStatus}</strong> to <strong>{$status}</strong>",
-                'status' => 'approved'
-            ]);
         }
     }
 
@@ -592,18 +583,6 @@ class ProjectDetailDocumentModal extends Component implements HasForms
             $submission->status = 'pending_review';
             $submission->save();
 
-            // Create a system comment
-            Comment::create([
-                'user_id' => auth()->id(),
-                'commentable_type' => SubmittedDocument::class,
-                'commentable_id' => $submission->id,
-                'content' => sprintf(
-                    "Document status automatically changed from <strong>%s</strong> to <strong>pending_review</strong> when viewed by <strong>%s</strong>",
-                    $oldStatus,
-                    auth()->user()->name
-                ),
-                'status' => 'approved'
-            ]);
 
             // Recalculate the overall document status
             $this->calculateOverallStatus();

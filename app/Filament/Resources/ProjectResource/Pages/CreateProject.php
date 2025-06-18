@@ -9,10 +9,10 @@ use Carbon\Carbon;
 use Filament\Notifications\Notification;
 use Filament\Notifications\Actions\Action;
 use App\Models\User;
+
 class CreateProject extends CreateRecord
 {
     protected static string $resource = ProjectResource::class;
-
 
     protected function mutateFormDataBeforeCreate(array $data): array
     {
@@ -36,17 +36,19 @@ class CreateProject extends CreateRecord
     {
         $project = $this->record;
 
-        // Get all directors
-        $directors = User::role('direktur')->get();
+        // Get all users with required roles (directors, project managers, and verificators)
+        $requiredRoleUsers = User::whereHas('roles', function($query) {
+            $query->whereIn('name', ['direktur', 'project-manager', 'verificator']);
+        })->get();
 
-        // Get existing user IDs
+        // Get existing user IDs from form data
         $existingUserIds = collect($this->userProjectData)->pluck('user_id')->toArray();
 
-        // Add directors to userProject data
-        foreach ($directors as $director) {
-            if (!in_array($director->id, $existingUserIds)) {
+        // Add users with required roles to userProject data if not already included
+        foreach ($requiredRoleUsers as $user) {
+            if (!in_array($user->id, $existingUserIds)) {
                 $this->userProjectData[] = [
-                    'user_id' => $director->id
+                    'user_id' => $user->id
                 ];
             }
         }
@@ -57,6 +59,14 @@ class CreateProject extends CreateRecord
                 'user_id' => $userData['user_id']
             ]);
         }
+
+        // Log the assignment
+        \Log::info('Project assigned to users', [
+            'project_id' => $project->id,
+            'project_name' => $project->name,
+            'assigned_users' => collect($this->userProjectData)->pluck('user_id')->toArray(),
+            'auto_assigned_roles' => ['direktur', 'project-manager', 'verificator']
+        ]);
 
         // Send notifications
         $client = $project->client;
@@ -74,6 +84,17 @@ class CreateProject extends CreateRecord
             'success',
             'View Project'
         );
+
+        // Show success notification with assignment details
+        $assignedCount = count($this->userProjectData);
+        $rolesAssigned = $requiredRoleUsers->pluck('roles.*.name')->flatten()->unique()->implode(', ');
+        
+        Notification::make()
+            ->title('Project Created Successfully')
+            ->body("Project has been assigned to {$assignedCount} users with roles: {$rolesAssigned}")
+            ->success()
+            ->duration(5000)
+            ->send();
     }
 
     protected $userProjectData = [];

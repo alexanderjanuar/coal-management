@@ -34,6 +34,7 @@ use Filament\Infolists\Components\Grid;
 use Filament\Infolists\Infolist;
 use Filament\Infolists\Components\Section as InfoSection;
 use Filament\Support\Enums\FontWeight;
+
 class ClientResource extends Resource
 {
     protected static ?string $model = Client::class;
@@ -43,11 +44,9 @@ class ClientResource extends Resource
 
     protected static ?string $navigationGroup = 'Master Data';
 
-
     public static function form(Form $form): Form
     {
         return $form
-
             ->schema([
                 Section::make('Client Profile')
                     ->description('Detail dari Client')
@@ -73,6 +72,7 @@ class ClientResource extends Resource
                             ->columnSpanFull()
                     ])
                     ->columns(2),
+                
                 Section::make('Client Tax')
                     ->description('Detail of Client Tax')
                     ->icon('heroicon-o-building-office-2')
@@ -100,7 +100,32 @@ class ClientResource extends Resource
                                 'MADYA BALIKPAPAN' => 'Madya Balikpapan',
                                 'BONTANG' => 'Bontang',
                                 'BANJARBARU' => 'Banjarbaru',
+                            ]),
+                            
+                        // NEW PKP STATUS FIELD
+                        Select::make('pkp_status')
+                            ->label('Status PKP')
+                            ->options([
+                                'Non-PKP' => 'Non-PKP',
+                                'PKP' => 'PKP (Pengusaha Kena Pajak)',
                             ])
+                            ->default('Non-PKP')
+                            ->required()
+                            ->live()
+                            ->afterStateUpdated(function (Forms\Get $get, Forms\Set $set, ?string $state) {
+                                // Auto-disable PPN contract if Non-PKP is selected
+                                if ($state === 'Non-PKP') {
+                                    $set('ppn_contract', false);
+                                }
+                            })
+                            ->helperText(function (Forms\Get $get) {
+                                $status = $get('pkp_status');
+                                if ($status === 'PKP') {
+                                    return '✅ Client dapat membuat faktur pajak dan memungut PPN';
+                                } else {
+                                    return 'ℹ️ Client tidak dapat membuat faktur pajak (otomatis menonaktifkan kontrak PPN)';
+                                }
+                            })
                             ->columnSpanFull(),
                     ])
                     ->columns(2),
@@ -114,11 +139,20 @@ class ClientResource extends Resource
                                 Forms\Components\Toggle::make('ppn_contract')
                                     ->label('PPN Contract')
                                     ->reactive()
+                                    ->disabled(fn (Forms\Get $get) => $get('pkp_status') === 'Non-PKP')
+                                    ->helperText(function (Forms\Get $get) {
+                                        if ($get('pkp_status') === 'Non-PKP') {
+                                            return 'Tidak tersedia untuk Non-PKP';
+                                        }
+                                        return 'Kontrak untuk pengelolaan PPN';
+                                    })
                                     ->columnSpan(1),
+                                    
                                 Forms\Components\Toggle::make('pph_contract')
                                     ->label('PPH Contract')
                                     ->reactive()
                                     ->columnSpan(1),
+                                    
                                 Forms\Components\Toggle::make('bupot_contract')
                                     ->label('BUPOT Contract')
                                     ->reactive()
@@ -151,6 +185,51 @@ class ClientResource extends Resource
                     ->searchable(),
                 Tables\Columns\TextColumn::make('NPWP')
                     ->searchable(),
+                    
+                // NEW PKP STATUS COLUMN
+                Tables\Columns\BadgeColumn::make('pkp_status')
+                    ->label('Status PKP')
+                    ->colors([
+                        'success' => 'PKP',
+                        'warning' => 'Non-PKP',
+                    ])
+                    ->icons([
+                        'heroicon-o-check-circle' => 'PKP',
+                        'heroicon-o-x-circle' => 'Non-PKP',
+                    ])
+                    ->sortable(),
+                    
+                // CONTRACT STATUS INDICATORS
+                Tables\Columns\IconColumn::make('ppn_contract')
+                    ->label('PPN')
+                    ->boolean()
+                    ->trueIcon('heroicon-o-check-circle')
+                    ->falseIcon('heroicon-o-x-circle')
+                    ->trueColor('success')
+                    ->falseColor('danger')
+                    ->tooltip(function ($record) {
+                        if ($record->pkp_status === 'Non-PKP') {
+                            return 'Non-PKP tidak dapat memiliki kontrak PPN';
+                        }
+                        return $record->ppn_contract ? 'Memiliki kontrak PPN' : 'Tidak memiliki kontrak PPN';
+                    }),
+                    
+                Tables\Columns\IconColumn::make('pph_contract')
+                    ->label('PPh')
+                    ->boolean()
+                    ->trueIcon('heroicon-o-check-circle')
+                    ->falseIcon('heroicon-o-x-circle')
+                    ->trueColor('success')
+                    ->falseColor('danger'),
+                    
+                Tables\Columns\IconColumn::make('bupot_contract')
+                    ->label('Bupot')
+                    ->boolean()
+                    ->trueIcon('heroicon-o-check-circle')
+                    ->falseIcon('heroicon-o-x-circle')
+                    ->trueColor('success')
+                    ->falseColor('danger'),
+                    
                 Tables\Columns\TextColumn::make('created_at')
                     ->dateTime()
                     ->sortable()
@@ -161,7 +240,26 @@ class ClientResource extends Resource
                     ->toggleable(isToggledHiddenByDefault: true),
             ])
             ->filters([
-                //
+                // PKP STATUS FILTER
+                Tables\Filters\SelectFilter::make('pkp_status')
+                    ->label('Status PKP')
+                    ->options([
+                        'PKP' => 'PKP',
+                        'Non-PKP' => 'Non-PKP',
+                    ]),
+                    
+                // CONTRACT FILTERS
+                Tables\Filters\Filter::make('has_ppn_contract')
+                    ->label('Memiliki Kontrak PPN')
+                    ->query(fn (Builder $query): Builder => $query->where('ppn_contract', true)),
+                    
+                Tables\Filters\Filter::make('active_contracts')
+                    ->label('Memiliki Kontrak Aktif')
+                    ->query(fn (Builder $query): Builder => $query->where(function ($q) {
+                        $q->where('ppn_contract', true)
+                          ->orWhere('pph_contract', true)
+                          ->orWhere('bupot_contract', true);
+                    })),
             ])
             ->headerActions([
                 ImportAction::make()
@@ -191,8 +289,6 @@ class ClientResource extends Resource
                 ]),
             ]);
     }
-
-
 
     public static function getGloballySearchableAttributes(): array
     {

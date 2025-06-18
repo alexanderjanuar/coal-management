@@ -35,6 +35,9 @@ class ViewProject extends ViewRecord
     {
         parent::mount($record);
         
+        // Update required document statuses first
+        $this->updateRequiredDocumentStatuses();
+        
         // Update project and step statuses when page loads
         $this->updateProjectStepStatus();
         $this->updateProjectStatus();
@@ -48,6 +51,64 @@ class ViewProject extends ViewRecord
             'steps' => $this->record->steps,
             'progressPercentage' => $this->calculateProgress(),
         ];
+    }
+
+    /**
+     * Update required document statuses based on submitted documents
+     */
+    private function updateRequiredDocumentStatuses(): void
+    {
+        foreach ($this->record->steps as $step) {
+            foreach ($step->requiredDocuments as $requiredDocument) {
+                $submittedDocs = $requiredDocument->submittedDocuments;
+                
+                if ($submittedDocs->isEmpty()) {
+                    // No submitted documents, keep as draft
+                    if ($requiredDocument->status !== 'draft') {
+                        $requiredDocument->status = 'draft';
+                        $requiredDocument->save();
+                    }
+                    continue;
+                }
+                
+                // Get all submitted document statuses
+                $submittedStatuses = $submittedDocs->pluck('status')->toArray();
+                
+                // Determine the required document status based on submitted documents
+                $newStatus = $this->determineRequiredDocumentStatus($submittedStatuses);
+                
+                if ($requiredDocument->status !== $newStatus) {
+                    $requiredDocument->status = $newStatus;
+                    $requiredDocument->save();
+                }
+            }
+        }
+    }
+
+    /**
+     * Determine required document status based on submitted document statuses
+     */
+    private function determineRequiredDocumentStatus(array $submittedStatuses): string
+    {
+        // Priority order: uploaded > pending_review > approved/rejected
+        // If any document is uploaded, the required document should be "uploaded"
+        if (in_array('uploaded', $submittedStatuses)) {
+            return 'uploaded';
+        }
+        
+        // If any document is pending review, the required document should be "pending_review"
+        if (in_array('pending_review', $submittedStatuses)) {
+            return 'pending_review';
+        }
+        
+        // If all documents are approved or rejected, the required document should be "approved"
+        $onlyApprovedOrRejected = !array_diff($submittedStatuses, ['approved', 'rejected']);
+        if ($onlyApprovedOrRejected && !empty($submittedStatuses)) {
+            return 'approved';
+        }
+        
+        // Default fallback
+        return 'draft';
     }
 
     private function updateProjectStatus(): void
@@ -76,16 +137,16 @@ class ViewProject extends ViewRecord
             }
 
             $tasksCompleted = $tasks->every(fn($task) => $task->status === 'completed');
-            $documentsCompleted = $documents->every(fn($doc) => $doc->status === 'approved' || $doc->status === 'rejected');
             
-            // Only check for pending_review on documents that aren't rejected
-            $pendingReviewCount = $documents->filter(function($doc) {
-                return $doc->status === 'pending_review' && $doc->status !== 'rejected';
-            })->count();
+            // Updated logic: step is completed only if all required documents are approved
+            $documentsCompleted = $documents->every(fn($doc) => $doc->status === 'approved');
+            
+            // Check for documents that are still in progress
+            $hasDocumentsInProgress = $documents->whereIn('status', ['uploaded', 'pending_review'])->count() > 0;
 
             if (
                 $tasks->where('status', 'in_progress')->count() > 0 ||
-                $pendingReviewCount > 0
+                $hasDocumentsInProgress
             ) {
                 $step->status = 'in_progress';
             } elseif ($tasksCompleted && $documentsCompleted) {
@@ -187,27 +248,17 @@ class ViewProject extends ViewRecord
             ];
         }
         
-        // Check if all documents are either approved or rejected
+        // Update the document completion check logic
         $allDocumentsResolved = true;
         $unfinishedItems = [];
         
         foreach ($this->record->steps as $step) {
-            // Check for documents not in approved/rejected status
             foreach ($step->requiredDocuments as $document) {
-                if ($document->status === 'draft') {
-                    $unfinishedItems[] = "Document: {$document->name} (Draft)";
+                // Check if document is not approved
+                if ($document->status !== 'approved') {
+                    $statusLabel = ucfirst(str_replace('_', ' ', $document->status));
+                    $unfinishedItems[] = "Document: {$document->name} ({$statusLabel})";
                     $allDocumentsResolved = false;
-                }
-                
-                $submittedDocs = $document->submittedDocuments;
-                if ($submittedDocs->count() > 0) {
-                    foreach ($submittedDocs as $doc) {
-                        if (!in_array($doc->status, ['approved', 'rejected'])) {
-                            $unfinishedItems[] = "Submitted Document for {$document->name} needs review";
-                            $allDocumentsResolved = false;
-                            break;
-                        }
-                    }
                 }
             }
         }
@@ -233,11 +284,6 @@ class ViewProject extends ViewRecord
         // Conditions for showing complete button
         $canComplete = $requirementsMet && $this->record->status !== 'completed';
         
-        // Check if this is the first time the button is available 
-        if ($canComplete && !$this->completionNotificationSent) {
-            $this->notifyProjectReadyForCompletion();
-            $this->completionNotificationSent = true;
-        }
 
         return [
             Actions\Action::make('completeProject')
@@ -329,33 +375,6 @@ class ViewProject extends ViewRecord
             })->get();
         }
         
-        // Create a database notification for each manager
-        foreach ($projectManagers as $manager) {
-            // Skip sending to current user if they're a manager
-            if ($manager->id === auth()->id()) {
-                continue;
-            }
-            
-            Notification::make()
-                ->title('Project Ready for Completion')
-                ->body(sprintf(
-                    'Project "%s" for client "%s" is ready to be marked as completed. All tasks and documents have been resolved.',
-                    $this->record->name,
-                    $this->record->client->name
-                ))
-                ->actions([
-                    \Filament\Notifications\Actions\Action::make('view')
-                        ->label('View Project')
-                        ->url(ProjectResource::getUrl('view', ['record' => $this->record]))
-                        ->markAsRead(),
-                    \Filament\Notifications\Actions\Action::make('dismiss')
-                        ->label('Dismiss')
-                        ->markAsRead(),
-                ])
-                ->icon('heroicon-o-check-circle')
-                ->color('success')
-                ->sendToDatabase($manager);
-        }
         
         // Also create an activity log entry for the project
         Comment::create([
@@ -389,6 +408,8 @@ class ViewProject extends ViewRecord
 
         $this->dispatch('close-modal', ['id' => "confirm-status-modal-{$this->selectedTaskId}"]);
 
+        // Update statuses in the correct order
+        $this->updateRequiredDocumentStatuses();
         $this->updateProjectStepStatus();
         $this->updateProjectStatus();
     }

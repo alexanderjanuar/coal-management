@@ -415,19 +415,6 @@ class DocumentModalManager extends Component implements HasForms
             $submission->status = 'pending_review';
             $submission->save();
 
-            // Create a system comment
-            Comment::create([
-                'user_id' => auth()->id(),
-                'commentable_type' => SubmittedDocument::class,
-                'commentable_id' => $submission->id,
-                'content' => sprintf(
-                    "Document status automatically changed from <strong>%s</strong> to <strong>pending_review</strong> when viewed by <strong>%s</strong>",
-                    $oldStatus,
-                    auth()->user()->name
-                ),
-                'status' => 'approved'
-            ]);
-
             // Recalculate the overall document status
             $this->calculateOverallStatus();
         }

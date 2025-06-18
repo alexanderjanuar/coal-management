@@ -17,6 +17,8 @@ use Illuminate\Support\Str;
 use Livewire\Features\SupportFileUploads\TemporaryUploadedFile;
 use Swis\Filament\Activitylog\Tables\Actions\ActivitylogAction;
 use Filament\Notifications\Notification;
+use Filament\Tables\Grouping\Group;
+use Filament\Tables\Columns\Summarizers\Sum;
 
 use Filament\Forms\Components\FileUpload;
 
@@ -376,6 +378,7 @@ class InvoicesRelationManager extends RelationManager
                 Tables\Columns\TextColumn::make('ppn')
                     ->label('PPN')
                     ->money('Rp.')
+                    ->summarize(Sum::make()->label('Total PPN')->money('Rp.'))
                     ->sortable(),
                     
                 // New column for bukti setor
@@ -422,6 +425,9 @@ class InvoicesRelationManager extends RelationManager
                     ->label('Tanggal Dibuat')
                     ->dateTime('d M Y')
                     ->sortable(),
+            ])
+            ->groups([
+                'type',
             ])
             ->defaultSort('created_at', 'desc')
             ->filters([
