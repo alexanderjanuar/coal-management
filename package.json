@@ -19,6 +19,9 @@
         "vite": "^5.0.0"
     },
     "dependencies": {
+        "@google/generative-ai": "^0.24.1",
+        "genai": "^0.0.18",
+        "google": "^2.1.0",
         "openai": "^5.3.0",
         "tributejs": "^5.1.3"
     }
