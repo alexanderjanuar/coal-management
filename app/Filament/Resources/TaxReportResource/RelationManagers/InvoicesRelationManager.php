@@ -159,7 +159,6 @@ class InvoicesRelationManager extends RelationManager
                                                     return empty($file) || $status === 'processing';
                                                 })
                                                 ->action(function (Forms\Get $get, Forms\Set $set) {
-                                                    // TODO: Implement AI processing logic here
                                                     $file = $get('ai_upload_file');
                                                     
                                                     if (!$file) {
@@ -849,10 +848,8 @@ class InvoicesRelationManager extends RelationManager
 
 
     /**
-     * Process invoice with AI (placeholder method)
-     * TODO: Implement actual AI processing logic
+     * Process invoice with AI using the AI Service
      */
-
     private function processInvoiceWithAI($file, Forms\Get $get, Forms\Set $set)
     {
         try {
@@ -864,6 +861,7 @@ class InvoicesRelationManager extends RelationManager
             $taxReportId = $get('tax_report_id') ?? $this->getOwnerRecord()->id;
             $taxReport = \App\Models\TaxReport::with('client')->find($taxReportId);
             
+
             $clientName = 'unknown-client';
             $monthName = 'unknown-month';
             
@@ -872,203 +870,42 @@ class InvoicesRelationManager extends RelationManager
                 $monthName = $this->convertToIndonesianMonth($taxReport->month);
             }
             
-            // Get the file path - $file is the relative path from storage/app/public
-            $filePath = $file;
+            // Use the AI service
+            $aiService = new \App\Services\InvoiceAIService();
+            $result = $aiService->processInvoice($file, $clientName, $monthName);
             
-            // Path to the Node.js script in resources/scripts (normalize path separators)
-            $scriptPath = resource_path('scripts' . DIRECTORY_SEPARATOR . 'ai-invoice-processor.js');
+            // Format and display output
+            $output = $aiService->formatOutput($result);
+            $set('ai_output', $output);
             
-            // Normalize path for Windows/Unix compatibility
-            $scriptPath = str_replace(['/', '\\'], DIRECTORY_SEPARATOR, $scriptPath);
-            
-            // Check if script exists
-            if (!file_exists($scriptPath)) {
-                // Debug: List files in the directory
-                $scriptsDir = resource_path('scripts');
-                $files = is_dir($scriptsDir) ? scandir($scriptsDir) : ['Directory does not exist'];
+            if ($result['success'] && !$result['debug']) {
+                // Store extracted data for later use
+                $set('ai_extracted_data', json_encode($result['data']));
+                $set('ai_processing_status', 'completed');
                 
-                throw new \Exception('AI processor script not found at: ' . $scriptPath . '. Files in scripts directory: ' . implode(', ', $files));
-            }
-            
-            // Check if node is available (Windows and Unix compatible)
-            $nodeCheck = PHP_OS_FAMILY === 'Windows' 
-                ? shell_exec('where node 2>NUL') 
-                : shell_exec('which node 2>/dev/null');
+                Notification::make()
+                    ->title('AI Processing Selesai')
+                    ->body('Data faktur berhasil diekstrak. Silakan tinjau hasil dan terapkan ke form.')
+                    ->success()
+                    ->send();
+            } elseif ($result['debug']) {
+                $set('ai_processing_status', 'completed');
                 
-            if (empty(trim($nodeCheck))) {
-                throw new \Exception('Node.js is not installed or not in PATH. Please install Node.js first.');
-            }
-            
-            // Check if package.json and node_modules exist (normalize paths)
-            $packageJsonPath = resource_path('scripts' . DIRECTORY_SEPARATOR . 'package.json');
-            $nodeModulesPath = resource_path('scripts' . DIRECTORY_SEPARATOR . 'node_modules');
-            
-            if (!file_exists($packageJsonPath)) {
-                throw new \Exception('package.json not found at: ' . $packageJsonPath);
-            }
-            
-            if (!is_dir($nodeModulesPath)) {
-                throw new \Exception('Node modules not installed at: ' . $nodeModulesPath . '. Please run "npm install" in resources/scripts/');
-            }
-            
-            // Prepare command with Windows/Unix compatibility
-            $scriptsDir = resource_path('scripts');
-            $scriptFile = 'ai-invoice-processor.js';
-            
-            if (PHP_OS_FAMILY === 'Windows') {
-                // Windows command
-                $command = sprintf(
-                    'cd /d %s && set "GOOGLE_GEMINI_API=%s" && node %s %s %s %s 2>&1',
-                    escapeshellarg($scriptsDir),
-                    escapeshellarg(config('services.gemini.api_key', env('GOOGLE_GEMINI_API'))),
-                    escapeshellarg($scriptFile),
-                    escapeshellarg($filePath),
-                    escapeshellarg($clientName),
-                    escapeshellarg($monthName)
-                );
+                Notification::make()
+                    ->title('Debug Mode Aktif')
+                    ->body('Menampilkan informasi debug. Periksa response structure.')
+                    ->warning()
+                    ->send();
             } else {
-                // Unix/Linux command
-                $command = sprintf(
-                    'cd %s && GOOGLE_GEMINI_API=%s node %s %s %s %s 2>&1',
-                    escapeshellarg($scriptsDir),
-                    escapeshellarg(config('services.gemini.api_key', env('GOOGLE_GEMINI_API'))),
-                    escapeshellarg($scriptFile),
-                    escapeshellarg($filePath),
-                    escapeshellarg($clientName),
-                    escapeshellarg($monthName)
-                );
-            }
-            
-            // Log the command for debugging (remove in production)
-            \Log::info('AI Processing Command: ' . $command);
-            
-            // Execute the command with timeout
-            $descriptorspec = [
-                0 => ["pipe", "r"],  // stdin
-                1 => ["pipe", "w"],  // stdout
-                2 => ["pipe", "w"]   // stderr
-            ];
-            
-            $process = proc_open($command, $descriptorspec, $pipes);
-            
-            if (!is_resource($process)) {
-                throw new \Exception('Failed to start AI processing script');
-            }
-            
-            // Close stdin
-            fclose($pipes[0]);
-            
-            // Read stdout and stderr with timeout
-            $output = '';
-            $error = '';
-            $timeout = 120; // 2 minutes timeout
-            $start = time();
-            
-            stream_set_blocking($pipes[1], false);
-            stream_set_blocking($pipes[2], false);
-            
-            while (time() - $start < $timeout) {
-                $read = [$pipes[1], $pipes[2]];
-                $write = null;
-                $except = null;
+                $set('ai_processing_status', 'error');
                 
-                if (stream_select($read, $write, $except, 1)) {
-                    if (in_array($pipes[1], $read)) {
-                        $output .= fread($pipes[1], 8192);
-                    }
-                    if (in_array($pipes[2], $read)) {
-                        $error .= fread($pipes[2], 8192);
-                    }
-                }
-                
-                // Check if process is still running
-                $status = proc_get_status($process);
-                if (!$status['running']) {
-                    break;
-                }
+                Notification::make()
+                    ->title('Error AI Processing')
+                    ->body('Terjadi kesalahan: ' . $result['error'])
+                    ->danger()
+                    ->send();
             }
             
-            // Read any remaining output
-            $output .= stream_get_contents($pipes[1]);
-            $error .= stream_get_contents($pipes[2]);
-            
-            fclose($pipes[1]);
-            fclose($pipes[2]);
-            
-            $exit_code = proc_close($process);
-            
-            // Check for timeout
-            if (time() - $start >= $timeout) {
-                throw new \Exception('AI processing timed out after 2 minutes');
-            }
-            
-            // Check exit code
-            if ($exit_code !== 0) {
-                $errorMessage = !empty($error) ? $error : $output;
-                throw new \Exception('AI processing failed: ' . $errorMessage);
-            }
-            
-            // Log output for debugging (remove in production)
-            \Log::info('AI Processing Output: ' . $output);
-            if (!empty($error)) {
-                \Log::warning('AI Processing Stderr: ' . $error);
-            }
-            
-            // Parse the JSON response
-            $result = json_decode(trim($output), true);
-            
-            if (json_last_error() !== JSON_ERROR_NONE) {
-                throw new \Exception('Invalid JSON response from AI processor: ' . json_last_error_msg() . '. Output: ' . $output);
-            }
-            
-            if (!$result || !is_array($result)) {
-                throw new \Exception('Invalid response format from AI processor. Output: ' . $output);
-            }
-            
-            if (!$result['success']) {
-                throw new \Exception($result['error'] ?? 'Unknown error from AI processor');
-            }
-            
-            if (!isset($result['data']) || !is_array($result['data'])) {
-                throw new \Exception('No data returned from AI processor');
-            }
-            
-            $extractedData = $result['data'];
-            
-            // Validate required fields
-            $requiredFields = ['invoice_number', 'company_name', 'dpp', 'ppn'];
-            foreach ($requiredFields as $field) {
-                if (!isset($extractedData[$field]) || empty($extractedData[$field])) {
-                    throw new \Exception("Missing required field from AI extraction: {$field}");
-                }
-            }
-            
-            // Set the processing status and output
-            $set('ai_processing_status', 'completed');
-            
-            $formattedOutput = "✅ **Ekstraksi Data Berhasil**\n\n";
-            $formattedOutput .= "**Data yang ditemukan:**\n";
-            $formattedOutput .= "• Nomor Faktur: {$extractedData['invoice_number']}\n";
-            $formattedOutput .= "• Tanggal Faktur: {$extractedData['invoice_date']}\n";
-            $formattedOutput .= "• Nama Perusahaan: {$extractedData['company_name']}\n";
-            $formattedOutput .= "• NPWP: {$extractedData['npwp']}\n";
-            $formattedOutput .= "• Jenis Faktur: {$extractedData['type']}\n";
-            $formattedOutput .= "• DPP: Rp " . number_format((int)$extractedData['dpp'], 0, ',', '.') . "\n";
-            $formattedOutput .= "• Tarif PPN: {$extractedData['ppn_percentage']}%\n";
-            $formattedOutput .= "• PPN: Rp " . number_format((int)$extractedData['ppn'], 0, ',', '.') . "\n\n";
-            $formattedOutput .= "📋 Klik tombol **'Terapkan Data AI ke Form'** untuk mengisi form secara otomatis.";
-            
-            $set('ai_output', $formattedOutput);
-            
-            // Store extracted data for later use
-            $set('ai_extracted_data', json_encode($extractedData));
-            
-            Notification::make()
-                ->title('AI Processing Selesai')
-                ->body('Data faktur berhasil diekstrak. Silakan tinjau hasil dan terapkan ke form.')
-                ->success()
-                ->send();
-                
         } catch (\Exception $e) {
             // Handle errors
             $set('ai_processing_status', 'error');
@@ -1079,30 +916,33 @@ class InvoicesRelationManager extends RelationManager
                 ->body('Terjadi kesalahan: ' . $e->getMessage())
                 ->danger()
                 ->send();
-                
-            // Log the error for debugging
-            \Log::error('AI Invoice Processing Error: ' . $e->getMessage(), [
-                'file' => $file ?? 'unknown',
-                'client' => $clientName ?? 'unknown',
-                'month' => $monthName ?? 'unknown'
-            ]);
         }
     }
+
     /**
      * Apply AI extracted data to form fields
-     * TODO: Implement logic to populate form fields with AI data
      */
     private function applyAIDataToForm(Forms\Get $get, Forms\Set $set)
     {
         $extractedDataJson = $get('ai_extracted_data');
         
         if (!$extractedDataJson) {
+            Notification::make()
+                ->title('Tidak Ada Data')
+                ->body('Tidak ada data AI yang tersimpan untuk diterapkan.')
+                ->warning()
+                ->send();
             return;
         }
         
         $data = json_decode($extractedDataJson, true);
         
         if (!$data) {
+            Notification::make()
+                ->title('Data Tidak Valid')
+                ->body('Data AI yang tersimpan tidak valid.')
+                ->warning()
+                ->send();
             return;
         }
         
@@ -1111,7 +951,14 @@ class InvoicesRelationManager extends RelationManager
             $set($field, $value);
         }
         
-        // Add hidden field to store AI extracted data
+        // Clear the stored AI data
         $set('ai_extracted_data', '');
+        
+        Notification::make()
+            ->title('Data Diterapkan')
+            ->body('Data AI berhasil diterapkan ke form.')
+            ->success()
+            ->send();
     }
+
 }
