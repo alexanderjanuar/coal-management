@@ -142,9 +142,12 @@ class InvoicesRelationManager extends RelationManager
                                                     $set('ai_processing_status', 'ready');
                                                 }
                                             })
+                                            ->dehydrated(false)
                                             ->columnSpanFull(),
                                             
                                         Forms\Components\Hidden::make('ai_processing_status')
+                                            ->dehydrated(false)
+
                                             ->default('idle'), // idle, ready, processing, completed, error
                                             
                                         Forms\Components\Actions::make([
@@ -201,10 +204,13 @@ class InvoicesRelationManager extends RelationManager
                                             ->columnSpanFull()
                                             ->extraAttributes([
                                                 'class' => 'bg-gray-50 dark:bg-gray-800 p-4 rounded-lg border min-h-[120px]'
-                                            ]),
+                                            ])
+                                            ->dehydrated(false)
+                                            ,
                                             
                                         Forms\Components\Hidden::make('ai_output')
-                                            ->default(''),
+                                            ->default('')
+                                            ->dehydrated(false),
                                             
                                         Forms\Components\Actions::make([
                                             Forms\Components\Actions\Action::make('apply_ai_data')
@@ -861,7 +867,6 @@ class InvoicesRelationManager extends RelationManager
             $taxReportId = $get('tax_report_id') ?? $this->getOwnerRecord()->id;
             $taxReport = \App\Models\TaxReport::with('client')->find($taxReportId);
             
-
             $clientName = 'unknown-client';
             $monthName = 'unknown-month';
             
