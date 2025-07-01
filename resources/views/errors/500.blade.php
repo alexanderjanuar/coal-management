@@ -1,7 +1,6 @@
 <!-- resources/views/errors/500.blade.php -->
 <!DOCTYPE html>
 <html lang="id">
-
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -10,85 +9,55 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <style>
-        body {
-            font-family: 'Inter', sans-serif;
-        }
-
-        .floating {
-            animation: float 3s ease-in-out infinite;
-        }
-
+        body { font-family: 'Inter', sans-serif; }
+        .floating { animation: float 3s ease-in-out infinite; }
         @keyframes float {
-
-            0%,
-            100% {
-                transform: translateY(0px);
-            }
-
-            50% {
-                transform: translateY(-8px);
-            }
+            0%, 100% { transform: translateY(0px); }
+            50% { transform: translateY(-8px); }
         }
-
-        .fade-in {
-            animation: fadeIn 1s ease-out;
-        }
-
+        .fade-in { animation: fadeIn 1s ease-out; }
         @keyframes fadeIn {
-            0% {
-                opacity: 0;
-                transform: translateY(30px);
-            }
-
-            100% {
-                opacity: 1;
-                transform: translateY(0);
-            }
+            0% { opacity: 0; transform: translateY(30px); }
+            100% { opacity: 1; transform: translateY(0); }
         }
-
         .glass-card {
             background: rgba(255, 255, 255, 0.05);
             backdrop-filter: blur(10px);
             -webkit-backdrop-filter: blur(10px);
             border: 1px solid rgba(255, 255, 255, 0.1);
         }
-
         .button-hover {
             transition: all 0.3s ease;
         }
-
         .button-hover:hover {
             transform: translateY(-2px);
             box-shadow: 0 8px 25px rgba(0, 0, 0, 0.2);
         }
     </style>
 </head>
-
-<body
-    class="bg-gradient-to-br from-slate-800 via-slate-900 to-gray-900 min-h-screen flex items-center justify-center p-4">
+<body class="bg-gradient-to-br from-slate-800 via-slate-900 to-gray-900 min-h-screen flex items-center justify-center p-4">
 
     <div class="max-w-md w-full">
         <!-- Error Card -->
         <div class="glass-card rounded-2xl p-8 text-center shadow-xl fade-in">
-
+            
             <!-- Icon -->
             <div class="mb-6">
-                <div
-                    class="mx-auto w-20 h-20 bg-red-500/20 rounded-full flex items-center justify-center floating border border-red-500/30">
+                <div class="mx-auto w-20 h-20 bg-red-500/20 rounded-full flex items-center justify-center floating border border-red-500/30">
                     <i class="fas fa-exclamation-triangle text-red-400 text-3xl"></i>
                 </div>
             </div>
-
+            
             <!-- Error Message -->
             <h1 class="text-3xl font-bold text-white mb-3">
-                Wah, Ada Yang Error!
+                Wah, Ada Yang Error! 
             </h1>
             <p class="text-gray-300 mb-6 text-base leading-relaxed">
-                Maaf nih, sistemnya lagi ngadat.
+                Maaf nih, sistemnya lagi ngadat. 
                 <br>Tim kita udah tau masalahnya dan lagi benerin.
                 <br><span class="text-blue-300">Coba refresh halaman atau tunggu sebentar ya! 😊</span>
             </p>
-
+            
             <!-- Error Code -->
             <div class="bg-white/5 rounded-lg p-4 mb-6 border border-white/10">
                 <div class="text-red-300 font-mono text-sm font-medium">
@@ -102,7 +71,7 @@
                 </div>
                 @endif
             </div>
-
+            
             <!-- Fun Error Messages -->
             <div class="bg-white/5 rounded-lg p-3 mb-6 border border-white/10">
                 <div class="text-yellow-300 text-sm">
@@ -110,28 +79,29 @@
                     <span id="funMessage">Server lagi istirahat sebentar...</span>
                 </div>
             </div>
-
+            
             <!-- Actions -->
             <div class="space-y-3">
-                <button onclick="reloadWithAnimation()"
-                    class="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-3 px-6 rounded-lg button-hover flex items-center justify-center gap-2">
+                <button onclick="reloadWithAnimation()" 
+                        class="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-3 px-6 rounded-lg button-hover flex items-center justify-center gap-2">
                     <i class="fas fa-redo-alt"></i>
                     <span>Coba Lagi</span>
                 </button>
-
-                <a href="{{ url('/') }}"
-                    class="w-full bg-white/10 hover:bg-white/20 text-white font-medium py-3 px-6 rounded-lg button-hover flex items-center justify-center gap-2 border border-white/20">
+                
+                <a href="{{ url('/') }}" 
+                   class="w-full bg-white/10 hover:bg-white/20 text-white font-medium py-3 px-6 rounded-lg button-hover flex items-center justify-center gap-2 border border-white/20">
                     <i class="fas fa-home"></i>
                     <span>Ke Beranda</span>
                 </a>
-
-                <a href="mailto:{{ config('mail.from.address', 'support@example.com') }}"
-                    class="w-full bg-white/5 hover:bg-white/10 text-gray-300 font-medium py-2 px-6 rounded-lg button-hover flex items-center justify-center gap-2 border border-white/10 text-sm">
-                    <i class="fas fa-envelope"></i>
-                    <span>Lapor Admin</span>
+                
+                <a href="https://wa.me/6281253721672?text=Halo%20Admin,%20ada%20error%20di%20website%20nih.%20Error%20Code:%20{{ $status ?? '500' }}%20-%20{{ urlencode(request()->url()) }}" 
+                   target="_blank"
+                   class="w-full bg-green-600 hover:bg-green-700 text-white font-medium py-2 px-6 rounded-lg button-hover flex items-center justify-center gap-2 text-sm">
+                    <i class="fab fa-whatsapp"></i>
+                    <span>Chat Admin via WhatsApp</span>
                 </a>
             </div>
-
+            
             <!-- Debug Info (only in development) -->
             @if(config('app.debug') && isset($exception))
             <div class="mt-6 p-4 bg-red-500/10 border border-red-400/20 rounded-lg text-left">
@@ -147,7 +117,7 @@
             </div>
             @endif
         </div>
-
+        
         <!-- Footer -->
         <div class="text-center mt-6 text-gray-400 text-sm">
             <p>{{ config('app.name') }} &copy; {{ date('Y') }}</p>
@@ -208,5 +178,4 @@
         document.head.appendChild(style);
     </script>
 </body>
-
 </html>
