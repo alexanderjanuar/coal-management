@@ -128,16 +128,15 @@ class FilamentNotificationSounds {
         
         // Check if the notification contains "New Documents Uploaded"
         if (notificationText.includes('New Documents Uploaded')) {
-            console.log('Playing success sound for: New Documents Uploaded'); // Debug log
             this.playSound('success');
         } 
-        // Check if the notification contains "Document Rejected"
         else if (notificationText.includes('Document Rejected')) {
-            console.log('Playing error sound for: Document Rejected'); // Debug log
             this.playSound('danger');
-        } else {
-            console.log('Playing info sound for other notifications'); // Debug log
+        } 
+        else if (notificationText.includes('New Comment') || notificationText.includes('Document Notes Updated')) {
             this.playSound('info');
+        } else {
+            return; // Silent for all other notifications
         }
     }
 
