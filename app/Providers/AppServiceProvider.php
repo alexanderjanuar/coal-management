@@ -16,6 +16,7 @@ use Illuminate\Support\Facades\Blade;
 use Filament\Notifications\Livewire\DatabaseNotifications;
 use App\Models\Invoice;
 use App\Observers\InvoiceObserver;
+
 class AppServiceProvider extends ServiceProvider
 {
     /**
@@ -38,6 +39,9 @@ class AppServiceProvider extends ServiceProvider
 
         DatabaseNotifications::trigger('filament.notifications.database-notifications-trigger');
 
+        FilamentAsset::register([
+            Js::make('filament-notification-sounds', __DIR__ . '/../../resources/js/filament-notification-sounds.js'),
+        ]);
 
         FilamentView::registerRenderHook(
             PanelsRenderHook::BODY_END,

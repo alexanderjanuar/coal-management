@@ -6,7 +6,7 @@ class FilamentNotificationSounds {
         this.volume = this.getVolumePreference();
         this.sounds = {};
         this.lastNotificationTime = 0;
-        this.cooldownPeriod = 1000; // 1 second cooldown
+        this.cooldownPeriod = 10000; // 1 second cooldown
         
         this.init();
     }
@@ -130,10 +130,14 @@ class FilamentNotificationSounds {
         if (notificationText.includes('New Documents Uploaded')) {
             console.log('Playing success sound for: New Documents Uploaded'); // Debug log
             this.playSound('success');
+        } 
+        // Check if the notification contains "Document Rejected"
+        else if (notificationText.includes('Document Rejected')) {
+            console.log('Playing error sound for: Document Rejected'); // Debug log
+            this.playSound('danger');
         } else {
-            console.log('Notification text does not match criteria, skipping sound'); // Debug log
-            // Don't play any sound for other notifications
-            return;
+            console.log('Playing info sound for other notifications'); // Debug log
+            this.playSound('info');
         }
     }
 
@@ -253,6 +257,18 @@ class FilamentNotificationSounds {
         this.playSound('success');
     }
 
+    // Test sound method - specific for document rejected
+    testDocumentRejectedSound() {
+        console.log('Testing document rejected sound'); // Debug log
+        this.playSound('danger');
+    }
+
+    // Test sound method - specific for info notifications
+    testInfoSound() {
+        console.log('Testing info sound'); // Debug log
+        this.playSound('info');
+    }
+
     // Test sound method (general)
     testSound(type) {
         console.log('Testing general sound:', type); // Debug log
@@ -267,6 +283,19 @@ class FilamentNotificationSounds {
         const fakeNotification = document.createElement('div');
         fakeNotification.className = 'fi-no-notification';
         fakeNotification.textContent = 'New Documents Uploaded';
+        
+        // Handle it as if it was a real notification
+        this.handleNotification(fakeNotification);
+    }
+
+    // Simulate a document rejected notification for testing
+    simulateDocumentRejectedNotification() {
+        console.log('Simulating "Document Rejected" notification'); // Debug log
+        
+        // Create a fake notification element
+        const fakeNotification = document.createElement('div');
+        fakeNotification.className = 'fi-no-notification';
+        fakeNotification.textContent = 'Document Rejected';
         
         // Handle it as if it was a real notification
         this.handleNotification(fakeNotification);
