@@ -103,7 +103,7 @@
             </div>
             
             <!-- Debug Info (only in development) -->
-            @if(config('app.debug') && isset($exception))
+
             <div class="mt-6 p-4 bg-red-500/10 border border-red-400/20 rounded-lg text-left">
                 <div class="text-red-300 font-medium text-sm mb-2 flex items-center">
                     <i class="fas fa-code mr-2"></i>
@@ -115,7 +115,6 @@
                     <div><strong>Line:</strong> {{ $exception->getLine() }}</div>
                 </div>
             </div>
-            @endif
         </div>
         
         <!-- Footer -->
