@@ -642,6 +642,13 @@ class InvoicesRelationManager extends RelationManager
                                                 $taxReport = $record->taxReport;
                                                 return FileManagementService::generateBuktiSetorDirectoryPath($taxReport);
                                             })
+                                            ->getUploadedFileNameForStorageUsing(function (TemporaryUploadedFile $file) use ($record): string {
+                                                return FileManagementService::generateBuktiSetorFileName(
+                                                    $record->type, 
+                                                    $record->invoice_number, 
+                                                    $file->getClientOriginalName()
+                                                );
+                                            })
                                             ->acceptedFileTypes(FileManagementService::getAcceptedFileTypes())
                                             ->helperText('Unggah dokumen bukti setor pajak (PDF atau gambar)')
                                             ->columnSpanFull(),

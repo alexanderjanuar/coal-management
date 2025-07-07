@@ -94,7 +94,35 @@
                     <span>Ke Beranda</span>
                 </a>
                 
-                <a href="https://wa.me/6281253721672?text=Halo%20Admin,%20ada%20error%20di%20website%20nih.%20Error%20Code:%20{{ $status ?? '500' }}%20-%20{{ urlencode(request()->url()) }}" 
+                @php
+                    // Prepare debug message for WhatsApp
+                    $debugMessage = "🚨 *ERROR REPORT* 🚨\n\n";
+                    $debugMessage .= "📍 *URL:* " . request()->url() . "\n";
+                    $debugMessage .= "🔢 *Error Code:* " . ($status ?? '500') . "\n";
+                    $debugMessage .= "⏰ *Waktu:* " . now()->format('d M Y, H:i:s') . " WIB\n";
+                    $debugMessage .= "🌐 *User Agent:* " . request()->userAgent() . "\n";
+                    $debugMessage .= "📱 *IP Address:* " . request()->ip() . "\n\n";
+                    
+                    if(isset($exception)) {
+                        $debugMessage .= "🐛 *DETAIL ERROR:*\n";
+                        $debugMessage .= "💬 *Message:* " . $exception->getMessage() . "\n";
+                        $debugMessage .= "📂 *File:* " . $exception->getFile() . "\n";
+                        $debugMessage .= "📍 *Line:* " . $exception->getLine() . "\n\n";
+                        
+                        // Get the first few lines of stack trace
+                        $trace = $exception->getTraceAsString();
+                        $traceLines = explode("\n", $trace);
+                        $shortTrace = implode("\n", array_slice($traceLines, 0, 3));
+                        $debugMessage .= "📜 *Stack Trace (3 lines):*\n" . $shortTrace . "\n\n";
+                    }
+                    
+                    $debugMessage .= "Tolong dicek ya admin! 🙏";
+                    
+                    // URL encode the message
+                    $whatsappMessage = urlencode($debugMessage);
+                @endphp
+                
+                <a href="https://wa.me/6281253721672?text={{ $whatsappMessage }}" 
                    target="_blank"
                    class="w-full bg-green-600 hover:bg-green-700 text-white font-medium py-2 px-6 rounded-lg button-hover flex items-center justify-center gap-2 text-sm">
                     <i class="fab fa-whatsapp"></i>
@@ -103,7 +131,7 @@
             </div>
             
             <!-- Debug Info (only in development) -->
-
+            @if(config('app.debug') && isset($exception))
             <div class="mt-6 p-4 bg-red-500/10 border border-red-400/20 rounded-lg text-left">
                 <div class="text-red-300 font-medium text-sm mb-2 flex items-center">
                     <i class="fas fa-code mr-2"></i>
@@ -115,6 +143,7 @@
                     <div><strong>Line:</strong> {{ $exception->getLine() }}</div>
                 </div>
             </div>
+            @endif
         </div>
         
         <!-- Footer -->
