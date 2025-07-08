@@ -11,6 +11,7 @@ use App\Filament\Resources\ProjectStepResource\RelationManagers\RequiredDocument
 use Filament\Forms\Components\Section;
 use App\Filament\Resources\ClientResource\RelationManagers;
 use App\Models\Client;
+use App\Models\Pic;
 use Filament\Forms;
 use Filament\Forms\Form;
 use Filament\Resources\Resource;
@@ -34,6 +35,7 @@ use Filament\Infolists\Components\Grid;
 use Filament\Infolists\Infolist;
 use Filament\Infolists\Components\Section as InfoSection;
 use Filament\Support\Enums\FontWeight;
+use Filament\Infolists\Components\ViewEntry;
 
 class ClientResource extends Resource
 {
@@ -48,6 +50,13 @@ class ClientResource extends Resource
     {
         return $form
             ->schema([
+                // Hero Section for View Mode
+                Forms\Components\Placeholder::make('client_hero')
+                    ->label('')
+                    ->content(fn (?Client $record) => $record ? view('filament.components.client-hero', ['record' => $record]) : '')
+                    ->hiddenOn('create')
+                    ->columnSpanFull(),
+
                 Section::make('Client Profile')
                     ->description('Detail dari Client')
                     ->icon('heroicon-o-building-office-2')
@@ -62,9 +71,46 @@ class ClientResource extends Resource
                             ->label('Client Email')
                             ->maxLength(255),
                         Forms\Components\TextInput::make('adress')
-                            ->label('Adress'),
-                        Forms\Components\TextInput::make('person_in_charge')
-                            ->label('Person In Charge'),
+                            ->label('Address'),
+                        Select::make('pic_id')
+                            ->label('Person In Charge (PIC)')
+                            ->relationship('pic', 'name')
+                            ->searchable()
+                            ->preload()
+                            ->createOptionForm([
+                                Forms\Components\TextInput::make('name')
+                                    ->required()
+                                    ->maxLength(255),
+                                Forms\Components\TextInput::make('nik')
+                                    ->label('NIK')
+                                    ->required()
+                                    ->unique()
+                                    ->length(16)
+                                    ->numeric(),
+                                Forms\Components\TextInput::make('email')
+                                    ->email(),
+                                Forms\Components\TextInput::make('password')
+                                    ->password()
+                                    ->required()
+                                    ->minLength(8),
+                                Forms\Components\Select::make('status')
+                                    ->options([
+                                        'active' => 'Active',
+                                        'inactive' => 'Inactive',
+                                    ])
+                                    ->default('active')
+                                    ->required(),
+                            ])
+                            ->helperText('Select or create a new PIC for this client'),
+                        Select::make('status')
+                            ->label('Client Status')
+                            ->options([
+                                'Active' => 'Active',
+                                'Inactive' => 'Inactive',
+                            ])
+                            ->default('Active')
+                            ->required()
+                            ->native(false),
                         FileUpload::make('logo')
                             ->label('Client Logo')
                             ->openable()
@@ -72,37 +118,90 @@ class ClientResource extends Resource
                             ->columnSpanFull()
                     ])
                     ->columns(2),
+
+                // PIC Information Display for View Mode
+                Forms\Components\Placeholder::make('pic_info')
+                    ->label('')
+                    ->content(fn (?Client $record) => $record && $record->pic ? view('filament.components.client-pic-info', ['record' => $record]) : '')
+                    ->hiddenOn(['create', 'edit'])
+                    ->columnSpanFull(),
+
+                Section::make('Core Tax Account')
+                    ->description('Client credentials for Core Tax application access')
+                    ->icon('heroicon-o-key')
+                    ->schema([
+                        Forms\Components\TextInput::make('core_tax_user_id')
+                            ->label('Core Tax User ID')
+                            ->maxLength(255)
+                            ->placeholder('Enter Core Tax User ID')
+                            ->helperText('Unique identifier for Core Tax application login')
+                            ->suffixIcon('heroicon-o-identification'),
+                        Forms\Components\TextInput::make('core_tax_password')
+                            ->label('Core Tax Password')
+                            ->maxLength(255)
+                            ->placeholder('Enter Core Tax Password')
+                            ->helperText('Password for Core Tax application access')
+                            ->suffixIcon('heroicon-o-lock-closed'),
+                        Forms\Components\Placeholder::make('core_tax_status')
+                            ->label('Account Status')
+                            ->content(function (Forms\Get $get, ?Client $record) {
+                                if ($record) {
+                                    return view('filament.components.client-core-tax-status', ['record' => $record]);
+                                }
+                                
+                                $userId = $get('core_tax_user_id');
+                                $password = $get('core_tax_password');
+                                
+                                if ($userId && $password) {
+                                    return view('filament.components.core-tax-status-preview', ['status' => 'complete']);
+                                } elseif ($userId || $password) {
+                                    return view('filament.components.core-tax-status-preview', ['status' => 'incomplete']);
+                                } else {
+                                    return view('filament.components.core-tax-status-preview', ['status' => 'empty']);
+                                }
+                            })
+                            ->columnSpanFull(),
+                    ])
+                    ->columns(2)
+                    ->collapsible(),
                 
-                Section::make('Client Tax')
-                    ->description('Detail of Client Tax')
-                    ->icon('heroicon-o-building-office-2')
+                Section::make('Client Tax Information')
+                    ->description('Tax registration and compliance details')
+                    ->icon('heroicon-o-document-text')
                     ->schema([
                         Forms\Components\TextInput::make('NPWP')
                             ->label('NPWP')
-                            ->required(),
+                            ->required()
+                            ->placeholder('XX.XXX.XXX.X-XXX.XXX'),
                         Forms\Components\TextInput::make('EFIN')
-                            ->label('EFIN'),
+                            ->label('EFIN')
+                            ->placeholder('Electronic Filing Identification Number'),
                         Forms\Components\TextInput::make('account_representative')
                             ->label('Account Representative (AR)')
-                            ->maxLength(255),
+                            ->maxLength(255)
+                            ->placeholder('AR Name'),
                         Forms\Components\TextInput::make('ar_phone_number')
-                            ->label('AR Phone Number'),
+                            ->label('AR Phone Number')
+                            ->tel()
+                            ->placeholder('+62 XXX XXXX XXXX'),
                         Select::make('KPP')
-                            ->label('KPP')
+                            ->label('Kantor Pelayanan Pajak (KPP)')
                             ->native(false)
+                            ->searchable()
                             ->options([
-                                'SAMARINDA ULU' => 'Samarinda Ulu',
-                                'SAMARINDA ILIR' => 'Samarinda Ilir',
-                                'TENGGARONG' => 'Tenggarong',
-                                'BALIKPAPAN BARAT' => 'Balikpapan Barat',
-                                'BALIKPAPAN TIMUR' => 'Balikpapan Timur',
-                                'MADYA DUA JAKARTA BARAT' => 'Madya Dua Jakarta Barat',
-                                'MADYA BALIKPAPAN' => 'Madya Balikpapan',
-                                'BONTANG' => 'Bontang',
-                                'BANJARBARU' => 'Banjarbaru',
-                            ]),
+                                'SAMARINDA ULU' => 'KPP Samarinda Ulu',
+                                'SAMARINDA ILIR' => 'KPP Samarinda Ilir',
+                                'TENGGARONG' => 'KPP Tenggarong',
+                                'BALIKPAPAN BARAT' => 'KPP Balikpapan Barat',
+                                'BALIKPAPAN TIMUR' => 'KPP Balikpapan Timur',
+                                'MADYA DUA JAKARTA BARAT' => 'KPP Madya Dua Jakarta Barat',
+                                'MADYA BALIKPAPAN' => 'KPP Madya Balikpapan',
+                                'BONTANG' => 'KPP Bontang',
+                                'BANJARBARU' => 'KPP Banjarbaru',
+                            ])
+                            ->placeholder('Select KPP'),
                             
-                        // NEW PKP STATUS FIELD
+                        // PKP STATUS FIELD
                         Select::make('pkp_status')
                             ->label('Status PKP')
                             ->options([
@@ -129,10 +228,17 @@ class ClientResource extends Resource
                             ->columnSpanFull(),
                     ])
                     ->columns(2),
+
+                // Tax Information Display for View Mode
+                Forms\Components\Placeholder::make('tax_info_display')
+                    ->label('')
+                    ->content(fn (?Client $record) => $record ? view('filament.components.client-tax-info', ['record' => $record]) : '')
+                    ->hiddenOn(['create', 'edit'])
+                    ->columnSpanFull(),
                 
-                Section::make('Contract Documents')
-                    ->description('Manage client contract documents')
-                    ->icon('heroicon-o-document-text')
+                Section::make('Contract Management')
+                    ->description('Tax service contracts and agreements')
+                    ->icon('heroicon-o-document-check')
                     ->schema([
                         Forms\Components\Grid::make(3)
                             ->schema([
@@ -149,17 +255,19 @@ class ClientResource extends Resource
                                     ->columnSpan(1),
                                     
                                 Forms\Components\Toggle::make('pph_contract')
-                                    ->label('PPH Contract')
+                                    ->label('PPh Contract')
                                     ->reactive()
+                                    ->helperText('Kontrak untuk pengelolaan PPh')
                                     ->columnSpan(1),
                                     
                                 Forms\Components\Toggle::make('bupot_contract')
-                                    ->label('BUPOT Contract')
+                                    ->label('Bupot Contract')
                                     ->reactive()
+                                    ->helperText('Kontrak untuk bukti potong')
                                     ->columnSpan(1),
                                 
                                 Forms\Components\FileUpload::make('contract_file')
-                                    ->label('Contract File')
+                                    ->label('Contract Document')
                                     ->visible(function (callable $get) {
                                         return $get('ppn_contract') || $get('pph_contract') || $get('bupot_contract');
                                     })
@@ -167,10 +275,26 @@ class ClientResource extends Resource
                                     ->openable()
                                     ->downloadable()
                                     ->directory('client-contracts')
-                                    ->acceptedFileTypes(['application/pdf'])
-                                    ->columnSpan(3), // Changed to span all columns when visible
+                                    ->acceptedFileTypes(['application/pdf', 'image/*'])
+                                    ->helperText('Upload signed contract document (PDF or image)')
+                                    ->columnSpan(3),
                             ]),
+
+                        // Contract Status Display for View Mode
+                        Forms\Components\Placeholder::make('contracts_display')
+                            ->label('')
+                            ->content(fn (?Client $record) => $record ? view('filament.components.client-contracts-status', ['record' => $record]) : '')
+                            ->hiddenOn(['create', 'edit'])
+                            ->columnSpanFull(),
                     ])
+                    ->collapsible(),
+
+                // System Information Display for View Mode
+                Forms\Components\Placeholder::make('system_info')
+                    ->label('')
+                    ->content(fn (?Client $record) => $record ? view('filament.components.client-system-info', ['record' => $record]) : '')
+                    ->hiddenOn(['create', 'edit'])
+                    ->columnSpanFull(),
             ]);
     }
 
@@ -179,16 +303,43 @@ class ClientResource extends Resource
         return $table
             ->columns([
                 ImageColumn::make('logo')
-                    ->circular(),
+                    ->circular()
+                    ->defaultImageUrl('/images/default-avatar.png'),
                 Tables\Columns\TextColumn::make('name')
                     ->label('Client')
-                    ->searchable(),
-                Tables\Columns\TextColumn::make('NPWP')
-                    ->searchable(),
+                    ->searchable()
+                    ->sortable()
                     
-                // NEW PKP STATUS COLUMN
+                    ->weight(FontWeight::Medium),
+                    
+                Tables\Columns\TextColumn::make('pic.name')
+                    ->label('PIC')
+                    ->searchable()
+                    ->sortable()
+                    ->badge()
+                    ->color('info')
+                    ->placeholder('No PIC assigned'),
+                    
+                Tables\Columns\TextColumn::make('NPWP')
+                    ->searchable()
+                    ->copyable()
+                    ->copyMessage('NPWP copied!')
+                    ->fontFamily('mono'),
+                    
+                Tables\Columns\TextColumn::make('core_tax_user_id')
+                    ->label('Core Tax ID')
+                    ->searchable()
+                    ->copyable()
+                    ->badge()
+                    ->color('gray')
+                    ->copyMessage('Core Tax ID copied!')
+                    ->placeholder('Not configured')
+                    ->formatStateUsing(fn ($state) => $state ?: '—'),
+                    
+                    
+                // PKP STATUS COLUMN
                 Tables\Columns\BadgeColumn::make('pkp_status')
-                    ->label('Status PKP')
+                    ->label('PKP Status')
                     ->colors([
                         'success' => 'PKP',
                         'warning' => 'Non-PKP',
@@ -198,38 +349,7 @@ class ClientResource extends Resource
                         'heroicon-o-x-circle' => 'Non-PKP',
                     ])
                     ->sortable(),
-                    
-                // CONTRACT STATUS INDICATORS
-                Tables\Columns\IconColumn::make('ppn_contract')
-                    ->label('PPN')
-                    ->boolean()
-                    ->trueIcon('heroicon-o-check-circle')
-                    ->falseIcon('heroicon-o-x-circle')
-                    ->trueColor('success')
-                    ->falseColor('danger')
-                    ->tooltip(function ($record) {
-                        if ($record->pkp_status === 'Non-PKP') {
-                            return 'Non-PKP tidak dapat memiliki kontrak PPN';
-                        }
-                        return $record->ppn_contract ? 'Memiliki kontrak PPN' : 'Tidak memiliki kontrak PPN';
-                    }),
-                    
-                Tables\Columns\IconColumn::make('pph_contract')
-                    ->label('PPh')
-                    ->boolean()
-                    ->trueIcon('heroicon-o-check-circle')
-                    ->falseIcon('heroicon-o-x-circle')
-                    ->trueColor('success')
-                    ->falseColor('danger'),
-                    
-                Tables\Columns\IconColumn::make('bupot_contract')
-                    ->label('Bupot')
-                    ->boolean()
-                    ->trueIcon('heroicon-o-check-circle')
-                    ->falseIcon('heroicon-o-x-circle')
-                    ->trueColor('success')
-                    ->falseColor('danger'),
-                    
+                                     
                 Tables\Columns\TextColumn::make('created_at')
                     ->dateTime()
                     ->sortable()
@@ -240,12 +360,41 @@ class ClientResource extends Resource
                     ->toggleable(isToggledHiddenByDefault: true),
             ])
             ->filters([
+                Tables\Filters\SelectFilter::make('pic_id')
+                    ->label('Filter by PIC')
+                    ->relationship('pic', 'name')
+                    ->searchable()
+                    ->preload(),
+                    
+                Tables\Filters\Filter::make('has_core_tax_credentials')
+                    ->label('Has Core Tax Credentials')
+                    ->query(fn (Builder $query): Builder => 
+                        $query->whereNotNull('core_tax_user_id')
+                              ->whereNotNull('core_tax_password')
+                    ),
+                    
+                Tables\Filters\Filter::make('missing_core_tax_credentials')
+                    ->label('Missing Core Tax Credentials')
+                    ->query(fn (Builder $query): Builder => 
+                        $query->where(function ($query) {
+                            $query->whereNull('core_tax_user_id')
+                                  ->orWhereNull('core_tax_password');
+                        })
+                    ),
+                    
                 // PKP STATUS FILTER
                 Tables\Filters\SelectFilter::make('pkp_status')
                     ->label('Status PKP')
                     ->options([
                         'PKP' => 'PKP',
                         'Non-PKP' => 'Non-PKP',
+                    ]),
+                    
+                Tables\Filters\SelectFilter::make('status')
+                    ->label('Client Status')
+                    ->options([
+                        'Active' => 'Active',
+                        'Inactive' => 'Inactive',
                     ]),
                     
                 // CONTRACT FILTERS
@@ -274,25 +423,238 @@ class ClientResource extends Resource
                     ->fileName(fn(Export $export): string => "client-{$export->getKey()}")
             ])
             ->actions([
-                RelationManagerAction::make('progress-relation-manager')
-                    ->label('Legal Documents')
-                    ->icon('heroicon-o-folder')
+            // Existing Core Tax action
+            Tables\Actions\Action::make('view_core_tax_credentials')
+                ->label('')
+                ->icon('heroicon-o-key')
+                ->color('info')
+                ->modalHeading('Core Tax Credentials')
+                ->modalContent(fn ($record) => view('filament.modals.client-core-tax-credentials', ['record' => $record]))
+                ->modalActions([
+                    Tables\Actions\Action::make('close')
+                        ->label('Close')
+                        ->color('gray')
+                        ->close(),
+                ])
+                ->visible(fn ($record) => $record->core_tax_user_id || $record->core_tax_password),
+
+            // PIC Management Actions Group
+            Tables\Actions\ActionGroup::make([
+                // Assign PIC (when no PIC assigned)
+                Tables\Actions\Action::make('assign_pic')
+                    ->label('Assign PIC')
+                    ->icon('heroicon-o-user-plus')
+                    ->color('success')
+                    ->visible(fn ($record) => !$record->pic_id)
+                    ->form([
+                        Select::make('pic_id')
+                            ->label('Select PIC')
+                            ->relationship('pic', 'name')
+                            ->searchable()
+                            ->preload()
+                            ->required()
+                            ->createOptionForm([
+                                Forms\Components\TextInput::make('name')
+                                    ->required()
+                                    ->maxLength(255)
+                                    ->placeholder('Enter PIC name'),
+                                Forms\Components\TextInput::make('nik')
+                                    ->label('NIK')
+                                    ->required()
+                                    ->unique()
+                                    ->length(16)
+                                    ->numeric()
+                                    ->placeholder('16-digit NIK'),
+                                Forms\Components\TextInput::make('email')
+                                    ->email()
+                                    ->placeholder('email@example.com'),
+                                Forms\Components\TextInput::make('password')
+                                    ->password()
+                                    ->required()
+                                    ->minLength(8)
+                                    ->placeholder('Minimum 8 characters'),
+                                Forms\Components\Select::make('status')
+                                    ->options([
+                                        'active' => 'Active',
+                                        'inactive' => 'Inactive',
+                                    ])
+                                    ->default('active')
+                                    ->required(),
+                            ])
+                            ->createOptionAction(function (Forms\Components\Actions\Action $action) {
+                                return $action
+                                    ->modalHeading('Create New PIC')
+                                    ->modalSubmitActionLabel('Create PIC')
+                                    ->modalWidth('lg');
+                            })
+                            ->helperText('Select an existing PIC or create a new one'),
+                    ])
+                    ->action(function ($record, array $data) {
+                        $record->update(['pic_id' => $data['pic_id']]);
+                        
+                        $pic = \App\Models\Pic::find($data['pic_id']);
+                        
+                        \Filament\Notifications\Notification::make()
+                            ->title('PIC Assigned Successfully')
+                            ->body("PIC '{$pic->name}' has been assigned to client '{$record->name}'.")
+                            ->success()
+                            ->send();
+                    })
+                    ->modalHeading('Assign PIC to Client')
+                    ->modalSubmitActionLabel('Assign PIC')
+                    ->modalWidth('md'),
+
+                // Change PIC (when PIC is assigned)
+                Tables\Actions\Action::make('change_pic')
+                    ->label('Change PIC')
+                    ->icon('heroicon-o-arrow-path')
                     ->color('warning')
-                    ->modalWidth('7xl') // This makes it wider
-                    ->relationManager(ClientDocumentsRelationManager::make()),
-                Tables\Actions\ViewAction::make(),
-                Tables\Actions\EditAction::make(),
+                    ->visible(fn ($record) => $record->pic_id)
+                    ->form([
+                        Forms\Components\Placeholder::make('current_pic')
+                            ->label('Current PIC')
+                            ->content(fn ($record) => $record->pic ? $record->pic->name : 'None assigned'),
+                        
+                        Select::make('pic_id')
+                            ->label('New PIC')
+                            ->relationship('pic', 'name')
+                            ->searchable()
+                            ->preload()
+                            ->required()
+                            ->createOptionForm([
+                                Forms\Components\TextInput::make('name')
+                                    ->required()
+                                    ->maxLength(255)
+                                    ->placeholder('Enter PIC name'),
+                                Forms\Components\TextInput::make('nik')
+                                    ->label('NIK')
+                                    ->required()
+                                    ->unique()
+                                    ->length(16)
+                                    ->numeric()
+                                    ->placeholder('16-digit NIK'),
+                                Forms\Components\TextInput::make('email')
+                                    ->email()
+                                    ->placeholder('email@example.com'),
+                                Forms\Components\TextInput::make('password')
+                                    ->password()
+                                    ->required()
+                                    ->minLength(8)
+                                    ->placeholder('Minimum 8 characters'),
+                                Forms\Components\Select::make('status')
+                                    ->options([
+                                        'active' => 'Active',
+                                        'inactive' => 'Inactive',
+                                    ])
+                                    ->default('active')
+                                    ->required(),
+                            ])
+                            ->createOptionAction(function (Forms\Components\Actions\Action $action) {
+                                return $action
+                                    ->modalHeading('Create New PIC')
+                                    ->modalSubmitActionLabel('Create PIC')
+                                    ->modalWidth('lg');
+                            })
+                            ->helperText('Select a different PIC or create a new one'),
+                    ])
+                    ->action(function ($record, array $data) {
+                        $oldPic = $record->pic;
+                        $record->update(['pic_id' => $data['pic_id']]);
+                        
+                        $newPic = \App\Models\Pic::find($data['pic_id']);
+                        
+                        \Filament\Notifications\Notification::make()
+                            ->title('PIC Changed Successfully')
+                            ->body("Client '{$record->name}' has been reassigned from '{$oldPic?->name}' to '{$newPic->name}'.")
+                            ->success()
+                            ->send();
+                    })
+                    ->modalHeading('Change PIC Assignment')
+                    ->modalSubmitActionLabel('Change PIC')
+                    ->modalWidth('md'),
+
+                // View PIC Details (when PIC is assigned)
+                Tables\Actions\Action::make('view_pic_details')
+                    ->label('PIC Details')
+                    ->icon('heroicon-o-identification')
+                    ->color('info')
+                    ->visible(fn ($record) => $record->pic_id)
+                    ->modalHeading('PIC Information')
+                    ->modalContent(fn ($record) => view('filament.modals.pic-details', ['record' => $record]))
+                    ->modalActions([
+                        Tables\Actions\Action::make('close')
+                            ->label('Close')
+                            ->color('gray')
+                            ->close(),
+                    ])
+                    ->modalWidth('md'),
+
+                // Unassign PIC (when PIC is assigned)
+                Tables\Actions\Action::make('unassign_pic')
+                    ->label('Unassign PIC')
+                    ->icon('heroicon-o-user-minus')
+                    ->color('danger')
+                    ->visible(fn ($record) => $record->pic_id)
+                    ->requiresConfirmation()
+                    ->modalHeading('Unassign PIC from Client')
+                    ->modalDescription(fn ($record) => "Are you sure you want to unassign PIC '{$record->pic?->name}' from client '{$record->name}'? This action can be reversed later.")
+                    ->modalSubmitActionLabel('Yes, Unassign PIC')
+                    ->action(function ($record) {
+                        $picName = $record->pic?->name;
+                        $record->update(['pic_id' => null]);
+                        
+                        \Filament\Notifications\Notification::make()
+                            ->title('PIC Unassigned Successfully')
+                            ->body("PIC '{$picName}' has been unassigned from client '{$record->name}'.")
+                            ->success()
+                            ->send();
+                    }),
             ])
+            ->label('PIC Management')
+            ->icon('heroicon-o-users')
+            ->color('primary'),
+
+            // Existing actions
+            RelationManagerAction::make('progress-relation-manager')
+                ->label('')
+                ->icon('heroicon-o-folder')
+                ->color('warning')
+                ->modalWidth('7xl')
+                ->relationManager(ClientDocumentsRelationManager::make()),
+        ])
             ->bulkActions([
                 Tables\Actions\BulkActionGroup::make([
                     Tables\Actions\DeleteBulkAction::make(),
+                    
+                    Tables\Actions\BulkAction::make('assign_pic')
+                        ->label('Assign PIC')
+                        ->icon('heroicon-o-user-plus')
+                        ->color('info')
+                        ->form([
+                            Select::make('pic_id')
+                                ->label('Select PIC')
+                                ->relationship('pic', 'name')
+                                ->searchable()
+                                ->preload()
+                                ->required(),
+                        ])
+                        ->action(function (array $data, $records) {
+                            foreach ($records as $record) {
+                                $record->update(['pic_id' => $data['pic_id']]);
+                            }
+                        })
+                        ->requiresConfirmation()
+                        ->modalHeading('Assign PIC to Selected Clients')
+                        ->modalDescription('Select a PIC to assign to all selected clients.'),
                 ]),
             ]);
     }
 
+
+
     public static function getGloballySearchableAttributes(): array
     {
-        return ['name', 'email'];
+        return ['name', 'email', 'NPWP', 'core_tax_user_id'];
     }
 
     public static function getRelations(): array
