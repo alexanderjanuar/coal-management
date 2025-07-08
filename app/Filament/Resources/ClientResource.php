@@ -662,7 +662,6 @@ class ClientResource extends Resource
         return [
             ProgressRelationManager::class,
             ClientDocumentsRelationManager::class,
-            ApplicationsRelationManager::class,
         ];
     }
 
