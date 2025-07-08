@@ -59,6 +59,7 @@ class PicResource extends Resource
                 Forms\Components\Section::make('Account Settings')
                     ->schema([
                         Forms\Components\TextInput::make('password')
+                            ->default('Samarinda#1')
                             ->required(fn (string $context): bool => $context === 'create')
                             ->dehydrated(fn ($state) => filled($state))
                             ->dehydrateStateUsing(fn ($state) => Hash::make($state))
