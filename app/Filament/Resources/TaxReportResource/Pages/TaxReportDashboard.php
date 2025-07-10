@@ -50,24 +50,19 @@ class TaxReportDashboard extends Page
     
     public function getTopClients()
     {
-        // First, we get clients with basic counts
         $clients = Client::withCount(['taxreports', 'projects'])
             ->orderByDesc('taxreports_count')
             ->limit(5)
             ->get();
         
-        // Then, for each client, we calculate the sum of PPN from related invoices
         foreach ($clients as $client) {
-            // Find all tax reports for this client
             $taxReportIds = $client->taxreports()->pluck('id')->toArray();
             
-            // Calculate sum of PPN from invoices related to these tax reports
             $ppnSum = 0;
             if (!empty($taxReportIds)) {
                 $ppnSum = Invoice::whereIn('tax_report_id', $taxReportIds)->sum('ppn');
             }
             
-            // Add the calculated sum as an attribute
             $client->invoices_sum_ppn = $ppnSum;
         }
         
@@ -79,7 +74,6 @@ class TaxReportDashboard extends Page
         $currentYear = date('Y');
         $chartData = [];
         
-        // Initialize data for all months
         for ($i = 1; $i <= 12; $i++) {
             $chartData[] = [
                 'x' => Carbon::create()->month($i)->format('M'),
@@ -87,7 +81,6 @@ class TaxReportDashboard extends Page
             ];
         }
         
-        // Get the appropriate data based on tax type
         switch ($taxType) {
             case 'ppn':
                 $monthlyData = Invoice::selectRaw('MONTH(created_at) as month, SUM(ppn) as total')
@@ -120,7 +113,6 @@ class TaxReportDashboard extends Page
                 return json_encode($chartData);
         }
         
-        // Merge the data with the initialized array
         foreach ($monthlyData as $month => $data) {
             if (isset($chartData[$month-1])) {
                 $chartData[$month-1]['y'] = (float)$data->total;
@@ -132,15 +124,12 @@ class TaxReportDashboard extends Page
     
     public function getTaxTypeDistribution()
     {
-        // Make sure all values are numeric and defaulting to 0 if null
         $ppnTotal = floatval(Invoice::sum('ppn')) ?: 0;
         $pph21Total = floatval(IncomeTax::sum('pph_21_amount')) ?: 0;
         $bupotsTotal = floatval(Bupot::sum('bupot_amount')) ?: 0;
         
-        // Check if all values are zero
         $allZero = ($ppnTotal == 0 && $pph21Total == 0 && $bupotsTotal == 0);
         
-        // If all values are zero, return a dataset with placeholder values
         if ($allZero) {
             return [
                 ['name' => 'PPN', 'value' => 1],
@@ -149,7 +138,6 @@ class TaxReportDashboard extends Page
             ];
         }
         
-        // Otherwise return the actual values
         return [
             ['name' => 'PPN', 'value' => $ppnTotal],
             ['name' => 'PPh 21', 'value' => $pph21Total],
@@ -169,11 +157,97 @@ class TaxReportDashboard extends Page
     {
         $year = date('Y');
         
+        // Calculate pending reports (reports with any "Belum Lapor" status)
+        $pendingReports = TaxReport::where(function($query) {
+            $query->where('ppn_report_status', 'Belum Lapor')
+                  ->orWhere('pph_report_status', 'Belum Lapor')
+                  ->orWhere('bupot_report_status', 'Belum Lapor');
+        })->count();
+        
         return [
             'total_reports' => TaxReport::count(),
             'total_this_year' => TaxReport::whereYear('created_at', $year)->count(),
             'total_tax' => Invoice::sum('ppn') + IncomeTax::sum('pph_21_amount') + Bupot::sum('bupot_amount'),
-            'unpaid_reports' => 0, // Placeholder, add logic if you track payment status
+            'pending_reports' => $pendingReports,
         ];
+    }
+
+    /**
+     * Get report status statistics for the status overview cards
+     */
+    public function getReportStatusStats()
+    {
+        return [
+            'ppn' => [
+                'sudah_lapor' => TaxReport::where('ppn_report_status', 'Sudah Lapor')->count(),
+                'belum_lapor' => TaxReport::where('ppn_report_status', 'Belum Lapor')->count(),
+                'total' => TaxReport::count(),
+            ],
+            'pph' => [
+                'sudah_lapor' => TaxReport::where('pph_report_status', 'Sudah Lapor')->count(),
+                'belum_lapor' => TaxReport::where('pph_report_status', 'Belum Lapor')->count(),
+                'total' => TaxReport::count(),
+            ],
+            'bupot' => [
+                'sudah_lapor' => TaxReport::where('bupot_report_status', 'Sudah Lapor')->count(),
+                'belum_lapor' => TaxReport::where('bupot_report_status', 'Belum Lapor')->count(),
+                'total' => TaxReport::count(),
+            ],
+        ];
+    }
+
+    /**
+     * Get monthly report completion rate
+     */
+    public function getMonthlyCompletionRate()
+    {
+        $currentYear = date('Y');
+        $monthlyData = [];
+        
+        for ($i = 1; $i <= 12; $i++) {
+            $monthName = Carbon::create()->month($i)->format('M');
+            
+            $totalReports = TaxReport::whereYear('created_at', $currentYear)
+                ->whereMonth('created_at', $i)
+                ->count();
+            
+            $completedReports = TaxReport::whereYear('created_at', $currentYear)
+                ->whereMonth('created_at', $i)
+                ->where('ppn_report_status', 'Sudah Lapor')
+                ->where('pph_report_status', 'Sudah Lapor')
+                ->where('bupot_report_status', 'Sudah Lapor')
+                ->count();
+            
+            $completionRate = $totalReports > 0 ? ($completedReports / $totalReports) * 100 : 0;
+            
+            $monthlyData[] = [
+                'x' => $monthName,
+                'y' => round($completionRate, 1),
+                'total' => $totalReports,
+                'completed' => $completedReports
+            ];
+        }
+        
+        return json_encode($monthlyData);
+    }
+
+    /**
+     * Get overdue reports (reports that should have been filed)
+     */
+    public function getOverdueReports()
+    {
+        // Reports older than 1 month that haven't been filed
+        $cutoffDate = Carbon::now()->subMonth();
+        
+        return TaxReport::where('created_at', '<', $cutoffDate)
+            ->where(function($query) {
+                $query->where('ppn_report_status', 'Belum Lapor')
+                      ->orWhere('pph_report_status', 'Belum Lapor')
+                      ->orWhere('bupot_report_status', 'Belum Lapor');
+            })
+            ->with('client')
+            ->latest()
+            ->limit(10)
+            ->get();
     }
 }

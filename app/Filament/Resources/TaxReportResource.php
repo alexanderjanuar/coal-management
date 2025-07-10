@@ -290,6 +290,99 @@ class TaxReportResource extends Resource
                     ->color('info')
                     ->weight('medium'),
 
+                Tables\Columns\IconColumn::make('ppn_report_status')
+                    ->label('Status PPN')
+                    ->boolean()
+                    ->trueIcon('heroicon-o-check-circle')
+                    ->falseIcon('heroicon-o-x-circle')
+                    ->trueColor('success')
+                    ->falseColor('danger')
+                    ->getStateUsing(fn (TaxReport $record): bool => $record->ppn_report_status === 'Sudah Lapor')
+                    ->tooltip(fn (TaxReport $record): string => 
+                        $record->ppn_report_status === 'Sudah Lapor' 
+                            ? 'PPN sudah dilaporkan' . ($record->ppn_reported_at ? ' pada ' . \Carbon\Carbon::parse($record->ppn_reported_at)->format('d M Y') : '')
+                            : 'PPN belum dilaporkan'
+                    )
+                    ->alignCenter()
+                    ->sortable(),
+
+                Tables\Columns\IconColumn::make('pph_report_status')
+                    ->label('Status PPh')
+                    ->boolean()
+                    ->trueIcon('heroicon-o-check-circle')
+                    ->falseIcon('heroicon-o-x-circle')
+                    ->trueColor('success')
+                    ->falseColor('danger')
+                    ->getStateUsing(fn (TaxReport $record): bool => $record->pph_report_status === 'Sudah Lapor')
+                    ->tooltip(fn (TaxReport $record): string => 
+                        $record->pph_report_status === 'Sudah Lapor' 
+                            ? 'PPh sudah dilaporkan' . ($record->pph_reported_at ? ' pada ' . \Carbon\Carbon::parse($record->pph_reported_at)->format('d M Y') : '')
+                            : 'PPh belum dilaporkan'
+                    )
+                    ->alignCenter()
+                    ->sortable(),
+
+                Tables\Columns\IconColumn::make('bupot_report_status')
+                    ->label('Status Bupot')
+                    ->boolean()
+                    ->trueIcon('heroicon-o-check-circle')
+                    ->falseIcon('heroicon-o-x-circle')
+                    ->trueColor('success')
+                    ->falseColor('danger')
+                    ->getStateUsing(fn (TaxReport $record): bool => $record->bupot_report_status === 'Sudah Lapor')
+                    ->tooltip(fn (TaxReport $record): string => 
+                        $record->bupot_report_status === 'Sudah Lapor' 
+                            ? 'Bupot sudah dilaporkan' . ($record->bupot_reported_at ? ' pada ' . \Carbon\Carbon::parse($record->bupot_reported_at)->format('d M Y') : '')
+                            : 'Bupot belum dilaporkan'
+                    )
+                    ->alignCenter()
+                    ->sortable(),
+
+                // Alternative: Even safer version with try-catch:
+
+                Tables\Columns\IconColumn::make('ppn_report_status')
+                    ->label('Status PPN')
+                    ->boolean()
+                    ->trueIcon('heroicon-o-check-circle')
+                    ->falseIcon('heroicon-o-x-circle')
+                    ->trueColor('success')
+                    ->falseColor('danger')
+                    ->getStateUsing(fn (TaxReport $record): bool => $record->ppn_report_status === 'Sudah Lapor')
+                    ->tooltip(function (TaxReport $record): string {
+                        if ($record->ppn_report_status === 'Sudah Lapor') {
+                            $dateText = '';
+                            if ($record->ppn_reported_at) {
+                                try {
+                                    $dateText = ' pada ' . \Carbon\Carbon::parse($record->ppn_reported_at)->format('d M Y');
+                                } catch (\Exception $e) {
+                                    $dateText = ' pada ' . $record->ppn_reported_at;
+                                }
+                            }
+                            return 'PPN sudah dilaporkan' . $dateText;
+                        }
+                        return 'PPN belum dilaporkan';
+                    })
+                    ->alignCenter()
+                    ->sortable(),
+                
+                TextColumn::make('ppn_reported_at')
+                    ->label('Tgl Lapor PPN')
+                    ->date('d M Y')
+                    ->placeholder('Belum dilaporkan')
+                    ->toggleable(isToggledHiddenByDefault: true),
+
+                TextColumn::make('pph_reported_at')
+                    ->label('Tgl Lapor PPh')
+                    ->date('d M Y')
+                    ->placeholder('Belum dilaporkan')
+                    ->toggleable(isToggledHiddenByDefault: true),
+
+                TextColumn::make('bupot_reported_at')
+                    ->label('Tgl Lapor Bupot')
+                    ->date('d M Y')
+                    ->placeholder('Belum dilaporkan')
+                    ->toggleable(isToggledHiddenByDefault: true),
+
                 // Optimized: Use preloaded flag
                 Tables\Columns\IconColumn::make('has_compensation')
                     ->label('Kompensasi')
@@ -404,6 +497,27 @@ class TaxReportResource extends Resource
                     ->label('Payment Status'),
             ])
             ->filters([
+
+                Tables\Filters\SelectFilter::make('ppn_report_status')
+                    ->label('Status Laporan PPN')
+                    ->options([
+                        'Belum Lapor' => 'Belum Lapor',
+                        'Sudah Lapor' => 'Sudah Lapor',
+                    ]),
+
+                Tables\Filters\SelectFilter::make('pph_report_status')
+                    ->label('Status Laporan PPh')
+                    ->options([
+                        'Belum Lapor' => 'Belum Lapor',
+                        'Sudah Lapor' => 'Sudah Lapor',
+                    ]),
+
+                Tables\Filters\SelectFilter::make('bupot_report_status')
+                    ->label('Status Laporan Bupot')
+                    ->options([
+                        'Belum Lapor' => 'Belum Lapor',
+                        'Sudah Lapor' => 'Sudah Lapor',
+                    ]),
                 // Client filter
                 Tables\Filters\SelectFilter::make('client_id')
                     ->label('Client')
@@ -765,26 +879,131 @@ class TaxReportResource extends Resource
                         ->modalWidth('4xl')
                         ->slideOver(),
 
-                    RelationManagerAction::make('PPN')
-                        ->label(label: 'Lihat PPN')
-                        ->icon('heroicon-o-document-chart-bar')
-                        ->color('primary')
-                        ->modalWidth('7xl')
-                        ->relationManager(RelationManagers\InvoicesRelationManager::make()),
-
-                    RelationManagerAction::make('PPh')
-                        ->label('Lihat PPh')
-                        ->icon('heroicon-o-receipt-percent')
-                        ->color('success')
-                        ->modalWidth('7xl')
-                        ->relationManager(RelationManagers\IncomeTaxsRelationManager::make()),
-
-                    RelationManagerAction::make('Bupot')
-                        ->label('Lihat Bupot')
+                    Tables\Actions\Action::make('update_ppn_status')
+                        ->label('Update Status PPN')
                         ->icon('heroicon-o-document-check')
-                        ->color('danger')
-                        ->modalWidth('7xl')
-                        ->relationManager(RelationManagers\BupotsRelationManager::make())
+                        ->color(function (TaxReport $record): string {
+                            return $record->ppn_report_status === 'Sudah Lapor' ? 'success' : 'warning';
+                        })
+                        ->form([
+                            Select::make('ppn_report_status')
+                                ->label('Status Laporan PPN')
+                                ->options([
+                                    'Belum Lapor' => 'Belum Lapor',
+                                    'Sudah Lapor' => 'Sudah Lapor',
+                                ])
+                                ->required()
+                                ->native(false)
+                                ->reactive(),
+                            
+                            Forms\Components\DatePicker::make('ppn_reported_at')
+                                ->label('Tanggal Pelaporan')
+                                ->visible(fn(Get $get): bool => $get('ppn_report_status') === 'Sudah Lapor')
+                                ->required(fn(Get $get): bool => $get('ppn_report_status') === 'Sudah Lapor')
+                                ->default(now()),
+                        ])
+                        ->fillForm(fn(TaxReport $record): array => [
+                            'ppn_report_status' => $record->ppn_report_status,
+                            'ppn_reported_at' => $record->ppn_reported_at,
+                        ])
+                        ->action(function (TaxReport $record, array $data): void {
+                            $record->update([
+                                'ppn_report_status' => $data['ppn_report_status'],
+                                'ppn_reported_at' => $data['ppn_report_status'] === 'Sudah Lapor' ? $data['ppn_reported_at'] : null,
+                            ]);
+
+                            Notification::make()
+                                ->title('Status PPN Berhasil Diupdate')
+                                ->body("Status PPN diubah menjadi: {$data['ppn_report_status']}")
+                                ->success()
+                                ->send();
+                        })
+                        ->modalHeading('Update Status Laporan PPN')
+                        ->modalWidth('md'),
+
+                    Tables\Actions\Action::make('update_pph_status')
+                        ->label('Update Status PPh')
+                        ->icon('heroicon-o-receipt-percent')
+                        ->color(function (TaxReport $record): string {
+                            return $record->pph_report_status === 'Sudah Lapor' ? 'success' : 'warning';
+                        })
+                        ->form([
+                            Select::make('pph_report_status')
+                                ->label('Status Laporan PPh')
+                                ->options([
+                                    'Belum Lapor' => 'Belum Lapor',
+                                    'Sudah Lapor' => 'Sudah Lapor',
+                                ])
+                                ->native(false)
+                                ->required()
+                                ->reactive(),
+                            
+                            Forms\Components\DatePicker::make('pph_reported_at')
+                                ->label('Tanggal Pelaporan')
+                                ->visible(fn(Get $get): bool => $get('pph_report_status') === 'Sudah Lapor')
+                                ->required(fn(Get $get): bool => $get('pph_report_status') === 'Sudah Lapor')
+                                ->default(now()),
+                        ])
+                        ->fillForm(fn(TaxReport $record): array => [
+                            'pph_report_status' => $record->pph_report_status,
+                            'pph_reported_at' => $record->pph_reported_at,
+                        ])
+                        ->action(function (TaxReport $record, array $data): void {
+                            $record->update([
+                                'pph_report_status' => $data['pph_report_status'],
+                                'pph_reported_at' => $data['pph_report_status'] === 'Sudah Lapor' ? $data['pph_reported_at'] : null,
+                            ]);
+
+                            Notification::make()
+                                ->title('Status PPh Berhasil Diupdate')
+                                ->body("Status PPh diubah menjadi: {$data['pph_report_status']}")
+                                ->success()
+                                ->send();
+                        })
+                        ->modalHeading('Update Status Laporan PPh')
+                        ->modalWidth('md'),
+
+                    Tables\Actions\Action::make('update_bupot_status')
+                        ->label('Update Status Bupot')
+                        ->icon('heroicon-o-document-text')
+                        ->color(function (TaxReport $record): string {
+                            return $record->bupot_report_status === 'Sudah Lapor' ? 'success' : 'warning';
+                        })
+                        ->form([
+                            Select::make('bupot_report_status')
+                                ->label('Status Laporan Bupot')
+                                ->options([
+                                    'Belum Lapor' => 'Belum Lapor',
+                                    'Sudah Lapor' => 'Sudah Lapor',
+                                ])
+                                ->native(false)
+                                ->required()
+                                ->reactive(),
+                            
+                            Forms\Components\DatePicker::make('bupot_reported_at')
+                                ->label('Tanggal Pelaporan')
+                                ->visible(fn(Get $get): bool => $get('bupot_report_status') === 'Sudah Lapor')
+                                ->required(fn(Get $get): bool => $get('bupot_report_status') === 'Sudah Lapor')
+                                ->default(now()),
+                        ])
+                        ->fillForm(fn(TaxReport $record): array => [
+                            'bupot_report_status' => $record->bupot_report_status,
+                            'bupot_reported_at' => $record->bupot_reported_at,
+                        ])
+                        ->action(function (TaxReport $record, array $data): void {
+                            $record->update([
+                                'bupot_report_status' => $data['bupot_report_status'],
+                                'bupot_reported_at' => $data['bupot_report_status'] === 'Sudah Lapor' ? $data['bupot_reported_at'] : null,
+                            ]);
+
+                            Notification::make()
+                                ->title('Status Bupot Berhasil Diupdate')
+                                ->body("Status Bupot diubah menjadi: {$data['bupot_report_status']}")
+                                ->success()
+                                ->send();
+                        })
+                        ->modalHeading('Update Status Laporan Bupot')
+                        ->modalWidth('md'),
                 ])
                     ->icon('heroicon-m-ellipsis-vertical')
                     ->label('Actions')
@@ -794,6 +1013,65 @@ class TaxReportResource extends Resource
             ->bulkActions([
                 Tables\Actions\BulkActionGroup::make([
                     Tables\Actions\DeleteBulkAction::make(),
+                    Tables\Actions\BulkAction::make('bulk_update_status')
+                        ->label('Update Status Laporan')
+                        ->icon('heroicon-o-document-check')
+                        ->color('info')
+                        ->form([
+                            Select::make('report_type')
+                                ->label('Jenis Laporan')
+                                ->options([
+                                    'ppn' => 'PPN',
+                                    'pph' => 'PPh',
+                                    'bupot' => 'Bupot',
+                                ])
+                                ->required()
+                                ->reactive(),
+                            
+                            Select::make('status')
+                                ->label('Status Baru')
+                                ->options([
+                                    'Belum Lapor' => 'Belum Lapor',
+                                    'Sudah Lapor' => 'Sudah Lapor',
+                                ])
+                                ->required()
+                                ->native(false)
+                                ->reactive(),
+                            
+                            Forms\Components\DatePicker::make('reported_at')
+                                ->label('Tanggal Pelaporan')
+                                ->visible(fn(Get $get): bool => $get('status') === 'Sudah Lapor')
+                                ->required(fn(Get $get): bool => $get('status') === 'Sudah Lapor')
+                                ->default(now()),
+                        ])
+                        ->action(function (\Illuminate\Support\Collection $records, array $data): void {
+                            $reportType = $data['report_type'];
+                            $status = $data['status'];
+                            $reportedAt = $status === 'Sudah Lapor' ? $data['reported_at'] : null;
+                            
+                            $updateData = [
+                                "{$reportType}_report_status" => $status,
+                                "{$reportType}_reported_at" => $reportedAt,
+                            ];
+                            
+                            $count = $records->count();
+                            TaxReport::whereIn('id', $records->pluck('id'))->update($updateData);
+                            
+                            $reportTypeLabel = match($reportType) {
+                                'ppn' => 'PPN',
+                                'pph' => 'PPh', 
+                                'bupot' => 'Bupot'
+                            };
+                            
+                            Notification::make()
+                                ->title('Status Berhasil Diupdate')
+                                ->body("Status laporan {$reportTypeLabel} untuk {$count} record berhasil diubah menjadi: {$status}")
+                                ->success()
+                                ->send();
+                        })
+                        ->deselectRecordsAfterCompletion()
+                        ->modalHeading('Update Status Laporan (Bulk)')
+                        ->modalWidth('md'),
                     Tables\Actions\BulkAction::make('export_selected')
                         ->label('Ekspor Terpilih ke Excel')
                         ->icon('heroicon-o-document-arrow-down')
