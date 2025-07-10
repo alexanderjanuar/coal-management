@@ -276,6 +276,7 @@ class TaxReportResource extends Resource
                 
                 TextColumn::make('peredaran_bruto')
                     ->label('Peredaran Bruto')
+                    ->badge()
                     ->state(function (TaxReport $record): string {
                         $peredaranBruto = $record->peredaran_bruto_sum ?? 0;
                         return "Rp " . number_format($peredaranBruto, 0, ',', '.');
