@@ -11,9 +11,10 @@
     $compensation = $hasCompensation ? $record->ppn_dikompensasi_dari_masa_sebelumnya : 0;
     $notes = $hasCompensation ? $record->kompensasi_notes : null;
     
-    // Basic metrics for all tax reports
-    $ppnKeluar = $record && $record->exists ? $record->getTotalPpnKeluar() : 0;
-    $ppnMasuk = $record && $record->exists ? $record->getTotalPpnMasuk() : 0;
+    // Updated metrics with new filtering logic
+    $ppnKeluar = $record && $record->exists ? $record->getTotalPpnKeluarFiltered() : 0;
+    $ppnMasuk = $record && $record->exists ? $record->getTotalPpnMasukFiltered() : 0;
+    $peredaranBruto = $record && $record->exists ? $record->getPeredaranBruto() : 0;
     $selisihPpn = $ppnKeluar - $ppnMasuk;
     $effectivePayment = $selisihPpn - $compensation;
     $status = $record && $record->exists ? ($record->invoice_tax_status ?? 'Belum Dihitung') : 'Belum Dihitung';
@@ -23,25 +24,45 @@
     x-data="{ 
         isOpen: false,
         currentAmount: 0,
-        targetAmount: {{ $compensation }}
+        targetAmount: {{ $compensation }},
+        currentPeredaran: 0,
+        targetPeredaran: {{ $peredaranBruto }}
     }"
     x-init="
         if (targetAmount > 0) {
             let duration = 800;
             let start = Date.now();
             
-            function animate() {
+            function animateCompensation() {
                 let elapsed = Date.now() - start;
                 let progress = Math.min(elapsed / duration, 1);
                 currentAmount = Math.floor(targetAmount * progress);
                 
                 if (progress < 1) {
-                    requestAnimationFrame(animate);
+                    requestAnimationFrame(animateCompensation);
                 } else {
                     currentAmount = targetAmount;
                 }
             }
-            animate();
+            animateCompensation();
+        }
+        
+        if (targetPeredaran > 0) {
+            let duration = 1000;
+            let start = Date.now();
+            
+            function animatePeredaran() {
+                let elapsed = Date.now() - start;
+                let progress = Math.min(elapsed / duration, 1);
+                currentPeredaran = Math.floor(targetPeredaran * progress);
+                
+                if (progress < 1) {
+                    requestAnimationFrame(animatePeredaran);
+                } else {
+                    currentPeredaran = targetPeredaran;
+                }
+            }
+            animatePeredaran();
         }
     "
     {{ $attributes->merge(['class' => 'bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-sm overflow-hidden transition-colors duration-200']) }}
@@ -63,7 +84,7 @@
                 </div>
                 
                 <div class="min-w-0 flex-1">
-                    <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100">Ringkasan PPN</h3>
+                    <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100">Ringkasan PPN & Peredaran</h3>
                     <div class="flex items-center space-x-4 mt-1">
                         <p class="text-sm text-gray-600 dark:text-gray-400">{{ $record && $record->client ? $record->client->name : 'Tax Report' }} • {{ $record ? $record->month : 'N/A' }}</p>
                         
@@ -139,12 +160,42 @@
         class="border-t border-gray-200 dark:border-gray-700"
     >
         <div class="px-6 py-5 space-y-6">
+            {{-- Peredaran Bruto Section (New) --}}
+            <div class="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
+                <div class="flex items-center justify-between">
+                    <div class="flex items-center space-x-3">
+                        <div class="w-10 h-10 bg-blue-100 dark:bg-blue-900/30 rounded-lg flex items-center justify-center">
+                            <svg class="w-5 h-5 text-blue-600 dark:text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1"></path>
+                            </svg>
+                        </div>
+                        <div>
+                            <h4 class="text-sm font-semibold text-blue-800 dark:text-blue-300">Peredaran Bruto</h4>
+                            <p class="text-xs text-blue-600 dark:text-blue-400">Total DPP faktur keluaran (tanpa filter)</p>
+                        </div>
+                    </div>
+                    <div class="text-right">
+                        <div class="text-2xl font-bold text-blue-700 dark:text-blue-300">
+                            Rp <span x-text="currentPeredaran.toLocaleString('id-ID')">{{ number_format($peredaranBruto, 0, ',', '.') }}</span>
+                        </div>
+                        <div class="text-xs text-blue-600 dark:text-blue-400">
+                            {{ $record ? $record->invoices()->where('type', 'Faktur Keluaran')->count() : 0 }} faktur keluaran
+                        </div>
+                    </div>
+                </div>
+            </div>
+
             {{-- PPN Breakdown --}}
             <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div class="bg-gray-50 dark:bg-gray-700/50 rounded-lg p-4">
                     <div class="flex items-center justify-between">
                         <div>
-                            <p class="text-sm font-medium text-gray-600 dark:text-gray-400">PPN Keluar</p>
+                            <div class="flex items-center space-x-2">
+                                <p class="text-sm font-medium text-gray-600 dark:text-gray-400">PPN Keluar</p>
+                                <span class="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-300" title="Tidak termasuk nomor faktur 02, 03, 07, 08">
+                                    Filtered
+                                </span>
+                            </div>
                             <p class="text-xl font-semibold text-gray-900 dark:text-gray-100 mt-1">Rp {{ number_format($ppnKeluar, 0, ',', '.') }}</p>
                         </div>
                         <div class="w-8 h-8 bg-red-100 dark:bg-red-900/30 rounded-lg flex items-center justify-center">
@@ -153,7 +204,7 @@
                             </svg>
                         </div>
                     </div>
-                    <p class="text-xs text-gray-500 dark:text-gray-400 mt-2">Pajak dari penjualan</p>
+                    <p class="text-xs text-gray-500 dark:text-gray-400 mt-2">Pajak dari penjualan*</p>
                 </div>
 
                 <div class="bg-gray-50 dark:bg-gray-700/50 rounded-lg p-4">
@@ -199,6 +250,29 @@
                 </div>
             </div>
 
+            {{-- Filter Information Alert --}}
+            <div class="bg-orange-50 dark:bg-orange-900/20 border border-orange-200 dark:border-orange-800 rounded-lg p-4">
+                <div class="flex items-start space-x-3">
+                    <div class="flex-shrink-0">
+                        <svg class="w-5 h-5 text-orange-600 dark:text-orange-400 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
+                            <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd"></path>
+                        </svg>
+                    </div>
+                    <div class="flex-1">
+                        <h4 class="text-sm font-semibold text-orange-800 dark:text-orange-300">Filter Nomor Faktur</h4>
+                        <p class="text-sm text-orange-700 dark:text-orange-400 mt-1">
+                            Perhitungan PPN mengecualikan faktur dengan nomor berawalan: <strong>02, 03, 07, 08</strong>
+                        </p>
+                        <div class="text-xs text-orange-600 dark:text-orange-400 mt-2 space-y-1">
+                            <div>• 02: Ekspor BKP</div>
+                            <div>• 03: Ekspor BKP dengan fasilitas</div>
+                            <div>• 07: Penyerahan yang PPN-nya tidak dipungut</div>
+                            <div>• 08: Penyerahan yang dibebaskan dari PPN</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
             {{-- Compensation Section (if exists) --}}
             @if($hasCompensation)
                 <div class="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg p-4">
@@ -233,7 +307,7 @@
                 {{-- Formula Display --}}
                 <div class="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded p-3 mb-4">
                     <div class="text-sm text-gray-600 dark:text-gray-400 text-center font-mono">
-                        PPN Keluar - PPN Masuk 
+                        PPN Keluar* - PPN Masuk* 
                         @if($hasCompensation)
                             - Kompensasi 
                         @endif
@@ -245,6 +319,9 @@
                             - {{ number_format($compensation, 0, ',', '.') }} 
                         @endif
                         = {{ number_format($effectivePayment, 0, ',', '.') }}
+                    </div>
+                    <div class="text-xs text-gray-500 dark:text-gray-400 text-center mt-2">
+                        *Filter hanya berlaku untuk PPN Keluar, tidak untuk PPN Masuk
                     </div>
                 </div>
 
@@ -265,19 +342,24 @@
                 </div>
             </div>
 
-            {{-- Additional Information --}}
+            {{-- Summary Information --}}
             <div class="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
-                <h5 class="text-sm font-semibold text-blue-800 dark:text-blue-300 mb-2">Informasi</h5>
-                <div class="text-sm text-blue-700 dark:text-blue-300 space-y-1">
-                    @if($hasCompensation)
-                        <p>• Kompensasi sebesar <strong>Rp {{ number_format($compensation, 0, ',', '.') }}</strong> telah mengurangi kewajiban PPN</p>
-                        <p>• Kompensasi berasal dari kelebihan pembayaran periode sebelumnya</p>
-                    @else
-                        <p>• Tidak ada kompensasi untuk periode ini</p>
-                        <p>• Perhitungan berdasarkan selisih PPN Keluar dan PPN Masuk</p>
-                    @endif
-                    <p>• Total {{ $record ? $record->invoices()->count() : 0 }} faktur telah diperhitungkan</p>
-                    <p>• Status: <strong>{{ $status }}</strong></p>
+                <h5 class="text-sm font-semibold text-blue-800 dark:text-blue-300 mb-2">Ringkasan Informasi</h5>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm text-blue-700 dark:text-blue-300">
+                    <div class="space-y-1">
+                        <p>• <strong>Peredaran Bruto:</strong> Rp {{ number_format($peredaranBruto, 0, ',', '.') }}</p>
+                        <p>• <strong>Total Faktur:</strong> {{ $record ? $record->invoices()->count() : 0 }} faktur</p>
+                        @if($hasCompensation)
+                            <p>• <strong>Kompensasi:</strong> Rp {{ number_format($compensation, 0, ',', '.') }}</p>
+                        @else
+                            <p>• <strong>Kompensasi:</strong> Tidak ada</p>
+                        @endif
+                    </div>
+                    <div class="space-y-1">
+                        <p>• <strong>Status Akhir:</strong> {{ $status }}</p>
+                        <p>• <strong>Filter Aktif:</strong> Mengecualikan nomor 02,03,07,08</p>
+                        <p>• <strong>Perhitungan:</strong> Otomatis berdasarkan data faktur</p>
+                    </div>
                 </div>
             </div>
         </div>
@@ -295,9 +377,9 @@
                 </span>
                 <span class="flex items-center">
                     <svg class="w-3 h-3 mr-1" fill="currentColor" viewBox="0 0 20 20">
-                        <path fill-rule="evenodd" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" clip-rule="evenodd"></path>
+                        <path fill-rule="evenodd" d="M3 3a1 1 0 000 2v8a2 2 0 002 2h2.586l-1.293 1.293a1 1 0 101.414 1.414L10 15.414l2.293 2.293a1 1 0 001.414-1.414L12.414 15H15a2 2 0 002-2V5a1 1 0 100-2H3zm11.707 4.707a1 1 0 00-1.414-1.414L10 9.586 8.707 8.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"></path>
                     </svg>
-                    Otomatis dihitung
+                    Dengan filter nomor faktur
                 </span>
             </div>
             @if($record && $record->updated_at)
@@ -318,16 +400,6 @@
     
     /* Dark mode scrollbar styling */
     @media (prefers-color-scheme: dark) {
-        .tax-compensation-info ::-webkit-scrollbar {
-            width: 8px;
-            height: 8px;
-        }
-        
-        .tax-compensation-info ::-webkit-scrollbar-track {
-            background: rgb(55 65 81);
-            border-radius: 4px;
-        }
-        
         .tax-compensation-info ::-webkit-scrollbar-thumb {
             background: rgb(75 85 99);
             border-radius: 4px;
@@ -347,6 +419,10 @@
     /* Mobile responsiveness */
     @media (max-width: 768px) {
         .tax-compensation-info .md\\:grid-cols-3 {
+            grid-template-columns: 1fr;
+        }
+        
+        .tax-compensation-info .md\\:grid-cols-2 {
             grid-template-columns: 1fr;
         }
         
@@ -412,6 +488,66 @@
         .tax-compensation-info * {
             transition: none !important;
             animation: none !important;
+        }
+    }
+    
+    /* Filter badge pulse animation */
+    @keyframes pulse-orange {
+        0%, 100% {
+            opacity: 1;
+        }
+        50% {
+            opacity: 0.8;
+        }
+    }
+    
+    .tax-compensation-info .filter-badge {
+        animation: pulse-orange 2s ease-in-out infinite;
+    }
+    
+    /* Custom scrollbar for content areas */
+    .tax-compensation-info .overflow-auto {
+        scrollbar-width: thin;
+        scrollbar-color: rgb(156 163 175) rgb(243 244 246);
+    }
+    
+    .dark .tax-compensation-info .overflow-auto {
+        scrollbar-color: rgb(75 85 99) rgb(55 65 81);
+    }
+    
+    /* Enhanced hover effects */
+    .tax-compensation-info .hover\\:scale-105:hover {
+        transform: scale(1.05);
+        transition: transform 0.2s ease-in-out;
+    }
+    
+    /* Smooth transitions for all interactive elements */
+    .tax-compensation-info button,
+    .tax-compensation-info .transition-all {
+        transition: all 0.2s ease-in-out;
+    }
+    
+    /* Enhanced card shadows */
+    .tax-compensation-info .shadow-enhanced {
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+    }
+    
+    .dark .tax-compensation-info .shadow-enhanced {
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3), 0 2px 4px -1px rgba(0, 0, 0, 0.2);
+    }
+    
+    /* Print styles */
+    @media print {
+        .tax-compensation-info {
+            break-inside: avoid;
+        }
+        
+        .tax-compensation-info [x-show] {
+            display: block !important;
+        }
+        
+        .tax-compensation-info .no-print {
+            display: none !important;
         }
     }
 </style>

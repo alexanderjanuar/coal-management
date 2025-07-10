@@ -21,7 +21,7 @@ class TaxReportDashboard extends Page
 
     protected static ?string $navigationGroup = 'Tax';
 
-    protected static ?string $navigationLabel = 'Dashboard';
+    protected static ?string $navigationLabel = 'Dashboard Pajak';
 
     protected static string $view = 'filament.resources.tax-report-resource.pages.tax-report-dashboard';
     

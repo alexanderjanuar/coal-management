@@ -138,7 +138,7 @@ class TaxReportResource extends Resource
     {
         return $table
             // CRITICAL: Add eager loading to prevent N+1 queries
-            ->modifyQueryUsing(function (Builder $query) {
+           ->modifyQueryUsing(function (Builder $query) {
                 return $query
                     ->with([
                         'client:id,name', // Only load necessary client fields
@@ -154,9 +154,21 @@ class TaxReportResource extends Resource
                     ], 'ppn')
                     ->withSum([
                         'invoices as ppn_keluar_sum' => function ($query) {
-                            $query->where('type', 'Faktur Keluaran');
+                            $query->where('type', 'Faktur Keluaran')
+                                ->where(function ($q) {
+                                    $q->where('invoice_number', 'NOT LIKE', '02%')
+                                        ->where('invoice_number', 'NOT LIKE', '03%')
+                                        ->where('invoice_number', 'NOT LIKE', '07%')
+                                        ->where('invoice_number', 'NOT LIKE', '08%');
+                                });
                         }
                     ], 'ppn')
+                    // Tambahan untuk Peredaran Bruto - semua faktur keluaran DPP tanpa filter nomor
+                    ->withSum([
+                        'invoices as peredaran_bruto_sum' => function ($query) {
+                            $query->where('type', 'Faktur Keluaran');
+                        }
+                    ], 'dpp')
                     ->withSum('incomeTaxs', 'pph_21_amount')
                     ->withSum('bupots', 'bupot_amount')
                     ->withCount([
@@ -213,8 +225,8 @@ class TaxReportResource extends Resource
                             return 'Belum Dihitung';
                         }
                         
-                        // Use preloaded sums instead of method calls
-                        $ppnMasuk = $record->ppn_masuk_sum ?? 0;
+                        // Use preloaded sums dengan filter nomor faktur untuk PPN masuk
+                        $ppnMasuk = $record->ppn_masuk_sum ?? 0; // Sudah filtered di query
                         $ppnKeluar = $record->ppn_keluar_sum ?? 0;
                         $selisih = $ppnKeluar - $ppnMasuk;
                         
@@ -226,16 +238,18 @@ class TaxReportResource extends Resource
                         return $record->invoice_tax_status . ' (Rp ' . $amount . ')';
                     })
                     ->tooltip(function (TaxReport $record): string {
-                        // Use preloaded sums
-                        $totalMasuk = $record->ppn_masuk_sum ?? 0;
+                        // Use preloaded sums dengan penjelasan filter
+                        $totalMasuk = $record->ppn_masuk_sum ?? 0; // Sudah exclude 02,03,07,08
                         $totalKeluar = $record->ppn_keluar_sum ?? 0;
                         $selisih = $totalKeluar - $totalMasuk;
 
                         return "Faktur Masuk: Rp " . number_format($totalMasuk, 0, ',', '.') . "\n" .
-                            "Faktur Keluar: Rp " . number_format($totalKeluar, 0, ',', '.') . "\n" .
-                            "Selisih: Rp " . number_format($selisih, 0, ',', '.');
+                            "Faktur Keluar*: Rp " . number_format($totalKeluar, 0, ',', '.') . "\n" .
+                            "Selisih: Rp " . number_format($selisih, 0, ',', '.') . "\n\n" .
+                            "*Tidak termasuk nomor faktur 02, 03, 07, 08";
                     })
                     ->sortable(),
+
 
                 // Optimized: Use preloaded sums
                 TextColumn::make('invoices_breakdown')
@@ -259,6 +273,22 @@ class TaxReportResource extends Resource
                         return $query->orderBy('invoices_sum_ppn', $direction);
                     })
                     ->toggleable(isToggledHiddenByDefault: true),
+                
+                TextColumn::make('peredaran_bruto')
+                    ->label('Peredaran Bruto')
+                    ->state(function (TaxReport $record): string {
+                        $peredaranBruto = $record->peredaran_bruto_sum ?? 0;
+                        return "Rp " . number_format($peredaranBruto, 0, ',', '.');
+                    })
+                    ->tooltip(function (TaxReport $record): string {
+                        $invoicesCount = $record->invoices_keluar_count ?? 0;
+                        return "Total DPP dari {$invoicesCount} faktur keluaran (tanpa filter)";
+                    })
+                    ->sortable(query: function (Builder $query, string $direction): Builder {
+                        return $query->orderBy('peredaran_bruto_sum', $direction);
+                    })
+                    ->color('info')
+                    ->weight('medium'),
 
                 // Optimized: Use preloaded flag
                 Tables\Columns\IconColumn::make('has_compensation')
@@ -482,7 +512,7 @@ class TaxReportResource extends Resource
                     Tables\Actions\Action::make('apply_compensation')
                         ->label(function (TaxReport $record): string {
                             $availableCompensations = self::getAvailableCompensations($record);
-                            $currentSelisih = ($record->ppn_keluar_sum ?? 0) - ($record->ppn_masuk_sum ?? 0);
+                            $currentSelisih = $record->getSelisihPpnWithFilter();
                             $hasExistingCompensation = ($record->compensation_amount ?? 0) > 0;
 
                             if ($hasExistingCompensation) {
@@ -721,11 +751,11 @@ class TaxReportResource extends Resource
                             Notification::make()
                                 ->title('Kompensasi Berhasil Diterapkan')
                                 ->body("
-                <div class='space-y-2'>
-                    <div>✅ Kompensasi <strong>Rp " . number_format($compensationAmount, 0, ',', '.') . "</strong> dari periode {$sourceReport->month} berhasil diterapkan.</div>
-                    <div>📊 {$statusMessage}</div>
-                </div>
-            ")
+                                        <div class='space-y-2'>
+                                            <div>✅ Kompensasi <strong>Rp " . number_format($compensationAmount, 0, ',', '.') . "</strong> dari periode {$sourceReport->month} berhasil diterapkan.</div>
+                                            <div>📊 {$statusMessage}</div>
+                                        </div>
+                                    ")
                                 ->color($statusColor)
                                 ->duration(8000)
                                 ->send();
@@ -939,6 +969,22 @@ class TaxReportResource extends Resource
             ->where('created_at', '<', $record->created_at ?? now())
             ->where('invoice_tax_status', 'Lebih Bayar')
             ->whereRaw('ppn_lebih_bayar_dibawa_ke_masa_depan > ppn_sudah_dikompensasi')
+            ->withSum([
+                'invoices as ppn_masuk_filtered' => function ($query) {
+                    $query->where('type', 'Faktur Masuk');
+                }
+            ], 'ppn')
+            ->withSum([
+                'invoices as ppn_keluar_sum' => function ($query) {
+                    $query->where('type', 'Faktur Keluaran')
+                        ->where(function ($q) {
+                            $q->where('invoice_number', 'NOT LIKE', '02%')
+                                ->where('invoice_number', 'NOT LIKE', '03%')
+                                ->where('invoice_number', 'NOT LIKE', '07%')
+                                ->where('invoice_number', 'NOT LIKE', '08%');
+                        });
+                }
+            ], 'ppn')
             ->select([
                 'id',
                 'month',
