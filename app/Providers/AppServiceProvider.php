@@ -53,6 +53,8 @@ class AppServiceProvider extends ServiceProvider
             fn(): string => Blade::render('@livewire(\'notification.notification-button\')'),
         );
 
+        
+
 
     }
 }
