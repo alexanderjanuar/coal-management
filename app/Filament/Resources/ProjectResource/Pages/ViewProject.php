@@ -14,9 +14,13 @@ use App\Models\Comment;
 use App\Models\Task;
 use App\Models\RequiredDocument;
 use Filament\Notifications\Notification;
+use Nben\FilamentRecordNav\Concerns\WithRecordNavigation;
+use Nben\FilamentRecordNav\Actions\NextRecordAction;
+use Nben\FilamentRecordNav\Actions\PreviousRecordAction;
 
 class ViewProject extends ViewRecord
 {
+    use WithRecordNavigation;
     protected static string $resource = ProjectResource::class;
     protected static string $view = 'filament.pages.project-details';
 
@@ -245,6 +249,7 @@ class ViewProject extends ViewRecord
                     ->label('View Activity Log')
                     ->icon('heroicon-o-clock')
                     ->url(fn() => ProjectResource::getUrl('activity', ['record' => $this->record])),
+
             ];
         }
         
@@ -351,6 +356,9 @@ class ViewProject extends ViewRecord
                 ->label('View Activity Log')
                 ->icon('heroicon-o-clock')
                 ->url(fn() => ProjectResource::getUrl('activity', ['record' => $this->record])),
+
+            PreviousRecordAction::make(),
+            NextRecordAction::make(),
         ];
     }
 

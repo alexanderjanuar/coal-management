@@ -88,7 +88,6 @@
                 </div>
                 @endforeach
             </div>
-
             <!-- Tax Event Modal -->
             @if($isModalOpen)
             <div class="fixed inset-0 z-50 overflow-y-auto" aria-labelledby="modal-title" role="dialog"

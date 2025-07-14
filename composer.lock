@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "5b5a8723d87b456e021008cb6db305e0",
+    "content-hash": "9af59ec53f3d45597ce3f183ba3fcd5e",
     "packages": [
         {
             "name": "anourvalar/eloquent-serialize",
@@ -6801,6 +6801,67 @@
                 "source": "https://github.com/jmespath/jmespath.php/tree/2.8.0"
             },
             "time": "2024-09-04T18:46:31+00:00"
+        },
+        {
+            "name": "nben/filament-record-nav",
+            "version": "v1.0.0",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/nb3n/filament-record-nav.git",
+                "reference": "0f6efc4cbd566ec24ae7b437a6b4874e8842a0fe"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/nb3n/filament-record-nav/zipball/0f6efc4cbd566ec24ae7b437a6b4874e8842a0fe",
+                "reference": "0f6efc4cbd566ec24ae7b437a6b4874e8842a0fe",
+                "shasum": ""
+            },
+            "require": {
+                "php": "^8.2"
+            },
+            "require-dev": {
+                "filament/filament": "^3.2"
+            },
+            "type": "library",
+            "extra": {
+                "laravel": {
+                    "aliases": {
+                        "FilamentRecordNav": "Nben\\FilamentRecordNav\\Facades\\FilamentRecordNav"
+                    },
+                    "providers": [
+                        "Nben\\FilamentRecordNav\\FilamentRecordNavServiceProvider"
+                    ]
+                }
+            },
+            "autoload": {
+                "psr-4": {
+                    "Nben\\FilamentRecordNav\\": "src/"
+                }
+            },
+            "notification-url": "https://packagist.org/downloads/",
+            "license": [
+                "MIT"
+            ],
+            "authors": [
+                {
+                    "name": "nb3n",
+                    "email": "hello@nben.com.np",
+                    "role": "Developer"
+                }
+            ],
+            "description": "Next/Previous record navigation for Filament PHP",
+            "homepage": "https://github.com/nb3n/filament-record-nav",
+            "keywords": [
+                "filament",
+                "laravel",
+                "navigation",
+                "records"
+            ],
+            "support": {
+                "issues": "https://github.com/nb3n/filament-record-nav/issues",
+                "source": "https://github.com/nb3n/filament-record-nav"
+            },
+            "time": "2025-05-27T13:41:23+00:00"
         },
         {
             "name": "nesbot/carbon",

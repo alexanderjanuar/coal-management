@@ -674,24 +674,6 @@
 
             const distributionChart = new ApexCharts(document.querySelector("#tax-distribution-chart"), distributionOptions);
             distributionChart.render();
-
-            // Listen for theme changes
-            const observer = new MutationObserver(function(mutations) {
-                mutations.forEach(function(mutation) {
-                    if (mutation.type === 'attributes' && mutation.attributeName === 'class') {
-                        const nowDarkMode = document.documentElement.classList.contains('dark');
-                        if (nowDarkMode !== isDarkMode) {
-                            // Reload charts with new theme
-                            location.reload();
-                        }
-                    }
-                });
-            });
-
-            observer.observe(document.documentElement, {
-                attributes: true,
-                attributeFilter: ['class']
-            });
         });
     </script>
 </x-filament-panels::page>
