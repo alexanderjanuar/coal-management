@@ -196,7 +196,7 @@ class TaxCalendar extends Component
                 'title' => 'Batas Akhir Lapor SPT Masa PPN',
                 'description' => "Batas akhir lapor SPT Masa PPN periode {$targetMonthName}",
                 'actionText' => 'Kelola PPN',
-                'actionLink' => route('filament.admin.resources.tax-reports.index'),
+                'actionLink' => '',
                 'type' => 'report',
                 'priority' => 'high'
             ],
@@ -205,7 +205,7 @@ class TaxCalendar extends Component
                 'title' => 'Batas Akhir Setor PPh dan PPN',
                 'description' => "Batas akhir setor PPh dan PPN periode {$targetMonthName}",
                 'actionText' => 'Kelola Pembayaran',
-                'actionLink' => route('filament.admin.resources.tax-reports.index'),
+                'actionLink' => '',
                 'type' => 'payment',
                 'priority' => 'high'
             ],
@@ -214,7 +214,7 @@ class TaxCalendar extends Component
                 'title' => 'Batas Akhir Lapor SPT Masa PPh 21',
                 'description' => "Batas akhir lapor SPT Masa PPh 21 periode {$targetMonthName}",
                 'actionText' => 'Kelola PPh 21',
-                'actionLink' => route('filament.admin.resources.tax-reports.index'),
+                'actionLink' => '',
                 'type' => 'report',
                 'priority' => 'medium'
             ],

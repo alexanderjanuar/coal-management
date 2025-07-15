@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources;
 
+use App\Filament\Clusters\LaporanPajak;
 use App\Filament\Exports\TaxReportExporter;
 use App\Filament\Resources\TaxReportResource\Pages;
 use App\Filament\Resources\TaxReportResource\RelationManagers;
@@ -45,11 +46,9 @@ class TaxReportResource extends Resource
 {
     protected static ?string $model = TaxReport::class;
 
-    protected static ?string $navigationIcon = 'heroicon-o-document-currency-dollar';
+    protected static ?string $modelLabel = 'Semua Laporan';
 
-    protected static ?string $modelLabel = 'Laporan Pajak';
-
-    protected static ?string $navigationGroup = 'Tax';
+    protected static ?string $cluster = LaporanPajak::class;
 
     public static function shouldRegisterNavigation(): bool
     {
@@ -1226,7 +1225,6 @@ class TaxReportResource extends Resource
             ->emptyStateActions([
                 Tables\Actions\Action::make('create')
                     ->label('Buat Laporan Pajak')
-                    ->url(route('filament.admin.resources.tax-reports.create'))
                     ->icon('heroicon-o-plus')
                     ->button(),
 

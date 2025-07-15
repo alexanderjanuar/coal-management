@@ -1,34 +1,27 @@
 <?php
 
-namespace App\Filament\Resources\TaxReportResource\Pages;
+namespace App\Filament\Pages;
 
-use App\Filament\Clusters\LaporanPajak;
-use App\Filament\Resources\TaxReportResource;
 use App\Models\Bupot;
 use App\Models\Client;
 use App\Models\IncomeTax;
 use App\Models\Invoice;
 use App\Models\TaxReport;
 use Carbon\Carbon;
-use Filament\Resources\Pages\Page;
+use Filament\Pages\Page;
 
-class TaxReportDashboard extends Page
+class DashboardTaxReport extends Page
 {
-    protected static string $resource = TaxReportResource::class;
+    protected static ?string $navigationIcon = 'heroicon-o-document-text';
 
-    protected static ?string $navigationIcon = 'heroicon-o-chart-pie';
-
-    protected static ?string $modelLabel = 'Dashboard Pajak';
+    protected static ?string $modelLabel = 'Dashboard';
 
     protected static ?string $navigationGroup = 'Tax';
 
-    protected static ?string $navigationLabel = 'Dashboard Pajak';
+    protected static ?string $navigationLabel = 'Dashboard';
 
-    protected static ?string $cluster = LaporanPajak::class;
+    protected static string $view = 'filament.pages.dashboard-tax-report';
 
-
-    protected static string $view = 'filament.resources.tax-report-resource.pages.tax-report-dashboard';
-    
     public function getMonthlyInvoicesData()
     {
         $currentYear = date('Y');
