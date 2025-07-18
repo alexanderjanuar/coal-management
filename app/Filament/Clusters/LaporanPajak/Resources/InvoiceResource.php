@@ -458,200 +458,190 @@ class InvoiceResource extends Resource
     public static function table(Table $table): Table
     {
         return $table
-            ->recordTitleAttribute('company_name')
+            ->query(
+                // Get tax reports with preloaded aggregated invoice data
+                \App\Models\TaxReport::query()
+                    ->with(['client'])
+                    ->withSum([
+                        'invoices as ppn_keluar_sum' => function ($query) {
+                            $query->where('type', 'Faktur Keluaran')
+                                ->where('invoice_number', 'NOT LIKE', '02%')
+                                ->where('invoice_number', 'NOT LIKE', '03%')
+                                ->where('invoice_number', 'NOT LIKE', '07%')
+                                ->where('invoice_number', 'NOT LIKE', '08%');
+                        }
+                    ], 'ppn')
+                    ->withSum([
+                        'invoices as ppn_masuk_sum' => function ($query) {
+                            $query->where('type', 'Faktur Masuk');
+                        }
+                    ], 'ppn')
+                    ->withSum([
+                        'invoices as peredaran_bruto_sum' => function ($query) {
+                            $query->where('type', 'Faktur Keluaran');
+                        }
+                    ], 'dpp')
+                    ->withCount([
+                        'invoices as total_invoices'
+                    ])
+                    ->withCount([
+                        'invoices as invoices_keluar_count' => function ($query) {
+                            $query->where('type', 'Faktur Keluaran');
+                        }
+                    ])
+                    ->withCount([
+                        'invoices as invoices_masuk_count' => function ($query) {
+                            $query->where('type', 'Faktur Masuk');
+                        }
+                    ])
+                    ->withCount([
+                        'invoices as invoices_with_bukti_setor' => function ($query) {
+                            $query->whereNotNull('bukti_setor')->where('bukti_setor', '!=', '');
+                        }
+                    ])
+                    ->withCount([
+                        'invoices as nihil_invoices' => function ($query) {
+                            $query->where('nihil', 1);
+                        }
+                    ])
+            )
             ->columns([
-                Tables\Columns\ImageColumn::make('user_avatar')
-                    ->label('Dibuat Oleh')
-                    ->circular()
-                    ->state(function ($record) {
-                        if ($record->created_by) {
-                            $user = \App\Models\User::find($record->created_by);
-                            if ($user && method_exists($user, 'getAvatarUrl')) {
-                                return $user->getAvatarUrl();
-                            }
-                        }
-                        return null;
-                    })
-                    ->defaultImageUrl(asset('images/default-avatar.png'))
-                    ->size(40)
-                    ->tooltip(function ($record): string {
-                        if ($record->created_by) {
-                            $user = \App\Models\User::find($record->created_by);
-                            return $user ? $user->name : 'User #' . $record->created_by;
-                        }
-                        return 'No System';
-                    }),
-
-                // Tax Report Column - STANDALONE SPECIFIC
-                Tables\Columns\TextColumn::make('taxReport.client.name')
+                // Tax Report Information
+                Tables\Columns\TextColumn::make('client.name')
                     ->label('Client')
                     ->badge()
                     ->color('indigo')
                     ->searchable()
-                    ->sortable(),
-                    
-                Tables\Columns\TextColumn::make('taxReport.month')
-                    ->label('Periode')
-                    ->badge()
-                    ->color('blue')
-                    ->sortable(),
+                    ->sortable()
+                    ->description(fn ($record) => "NPWP: " . ($record->client->NPWP ?? 'N/A')),
 
-                Tables\Columns\TextColumn::make('invoice_number')
-                    ->label('Nomor Faktur')
-                    ->searchable()
-                    ->sortable(),
-                    
-                Tables\Columns\BadgeColumn::make('client_type')
-                    ->label('Tipe Client')
-                    ->colors([
-                        'success' => 'Swasta',
-                        'info' => 'Pemerintah', 
-                        'warning' => 'BUMN',
-                        'danger' => 'Swasta (SKB)',
-                    ])
-                    ->sortable(),
-                    
-                Tables\Columns\IconColumn::make('has_ppn')
-                    ->label('PPN')
-                    ->boolean()
-                    ->trueIcon('heroicon-o-check-circle')
-                    ->falseIcon('heroicon-o-x-circle')
-                    ->trueColor('success')
-                    ->falseColor('danger')
-                    ->tooltip(fn ($record) => $record->has_ppn ? 'Subject PPN' : 'Tidak subject PPN'),
-                    
-                Tables\Columns\TextColumn::make('company_name')
-                    ->label('Nama Perusahaan')
+                // Invoice Counts
+                Tables\Columns\TextColumn::make('total_invoices')
+                    ->label('Total Faktur')
                     ->badge()
                     ->color('gray')
-                    ->searchable()
+                    ->alignCenter()
                     ->sortable(),
-                    
-                Tables\Columns\BadgeColumn::make('type')
-                    ->label('Jenis Faktur')
-                    ->colors([
-                        'success' => 'Faktur Keluaran',
-                        'warning' => 'Faktur Masuk',
-                    ]),
-                    
-                Tables\Columns\TextColumn::make('ppn_percentage')
-                    ->label('Tarif PPN')
-                    ->suffix('%')
+
+                Tables\Columns\TextColumn::make('invoices_keluar_count')
+                    ->label('Faktur Keluaran')
                     ->badge()
-                    ->color(fn (?string $state): string => match ($state) {
-                        '11' => 'success',
-                        '12' => 'warning',
-                        null => 'gray',
-                        default => 'gray',
-                    })
-                    ->getStateUsing(fn ($record) => $record->ppn_percentage ?? '11')
+                    ->color('success')
+                    ->alignCenter()
                     ->sortable(),
 
-                Tables\Columns\TextColumn::make('dpp_nilai_lainnya')
-                    ->label('DPP Nilai Lainnya')
-                    ->money('Rp.')
-                    ->sortable()
-                    ->toggleable(isToggledHiddenByDefault: true)
-                    ->visible(fn ($record) => ($record->ppn_percentage ?? '11') === '12')
-                    ->tooltip('DPP Nilai Lainnya - untuk tarif 12%'),
+                Tables\Columns\TextColumn::make('invoices_masuk_count')
+                    ->label('Faktur Masukan')
+                    ->badge()
+                    ->color('warning')
+                    ->alignCenter()
+                    ->sortable(),
 
-                Tables\Columns\TextColumn::make('dpp')
-                    ->label('DPP')
-                    ->money('Rp.')
-                    ->sortable()
-                    ->description(function ($record) {
-                        if (($record->ppn_percentage ?? '11') === '12' && ($record->dpp_nilai_lainnya ?? 0) > 0) {
-                            return 'Dihitung dari DPP Nilai Lainnya';
+                // Status Pembayaran with filtered calculations
+                Tables\Columns\BadgeColumn::make('invoice_tax_status')
+                    ->label('Status Pembayaran')
+                    ->colors([
+                        'success' => 'Lebih Bayar',
+                        'warning' => 'Kurang Bayar',
+                        'gray' => 'Nihil',
+                    ])
+                    ->formatStateUsing(function (\App\Models\TaxReport $record): string {
+                        if (!$record->invoice_tax_status) {
+                            return 'Belum Dihitung';
                         }
-                        return null;
-                    }),
+                        
+                        // Use preloaded sums dengan filter nomor faktur untuk PPN keluar
+                        $ppnMasuk = $record->ppn_masuk_sum ?? 0;
+                        $ppnKeluar = $record->ppn_keluar_sum ?? 0; // Sudah filtered di query
+                        $selisih = $ppnKeluar - $ppnMasuk;
+                        
+                        if ($selisih == 0) {
+                            return 'Nihil';
+                        }
+                        
+                        $amount = number_format(abs($selisih), 0, ',', '.');
+                        return $record->invoice_tax_status . ' (Rp ' . $amount . ')';
+                    })
+                    ->tooltip(function (\App\Models\TaxReport $record): string {
+                        // Use preloaded sums dengan penjelasan filter
+                        $totalMasuk = $record->ppn_masuk_sum ?? 0;
+                        $totalKeluar = $record->ppn_keluar_sum ?? 0; // Sudah exclude 02,03,07,08
+                        $selisih = $totalKeluar - $totalMasuk;
 
-                Tables\Columns\TextColumn::make('ppn')
-                    ->label('PPN')
-                    ->money('Rp.')
+                        return "Faktur Masuk: Rp " . number_format($totalMasuk, 0, ',', '.') . "\n" .
+                            "Faktur Keluar*: Rp " . number_format($totalKeluar, 0, ',', '.') . "\n" .
+                            "Selisih: Rp " . number_format($selisih, 0, ',', '.') . "\n\n" .
+                            "*Tidak termasuk nomor faktur 02, 03, 07, 08";
+                    })
                     ->sortable(),
-                
-                Tables\Columns\IconColumn::make('has_bukti_setor')
-                    ->label('Bukti Setor')
-                    ->boolean()
-                    ->getStateUsing(fn ($record) => !empty($record->bukti_setor))
-                    ->trueIcon('heroicon-o-check-circle')
-                    ->falseIcon('heroicon-o-x-circle')
-                    ->trueColor('success')
-                    ->falseColor('danger')
-                    ->tooltip(fn ($record) => !empty($record->bukti_setor) ? "Bukti setor tersedia" : "Bukti setor belum diupload"),
-                    
-                Tables\Columns\IconColumn::make('has_bupots')
-                    ->label('Bukti Potong')
-                    ->boolean()
-                    ->getStateUsing(fn ($record) => $record->bupots()->count() > 0)
-                    ->trueIcon('heroicon-o-check-circle')
-                    ->falseIcon('heroicon-o-x-circle')
-                    ->trueColor('success')
-                    ->falseColor('danger')
-                    ->tooltip(function ($record) {
-                        $count = $record->bupots()->count();
-                        return $count > 0 
-                            ? "Faktur ini memiliki {$count} bukti potong terkait"
-                            : "Faktur ini tidak memiliki bukti potong";
-                    }),
-                    
-                Tables\Columns\IconColumn::make('nihil')
-                    ->label('Nihil')
-                    ->boolean()
-                    ->trueIcon('heroicon-o-minus-circle')
-                    ->falseIcon('heroicon-o-check-circle')
-                    ->trueColor('warning')
-                    ->falseColor('success')
-                    ->tooltip(fn ($record) => $record->nihil ? 'Faktur Nihil' : 'Faktur Normal'),
-                    
-                Tables\Columns\TextColumn::make('created_at')
-                    ->label('Tanggal Dibuat')
-                    ->dateTime('d M Y')
+
+                // Status PPN from Tax Report
+                Tables\Columns\BadgeColumn::make('ppn_report_status')
+                    ->label('Status PPN')
+                    ->colors([
+                        'success' => 'Sudah Lapor',
+                        'danger' => 'Belum Lapor',
+                    ])
                     ->sortable(),
+
+                // Peredaran Bruto
+                Tables\Columns\TextColumn::make('peredaran_bruto')
+                    ->label('Peredaran Bruto')
+                    ->badge()
+                    ->state(function (\App\Models\TaxReport $record): string {
+                        $peredaranBruto = $record->peredaran_bruto_sum ?? 0;
+                        return "Rp " . number_format($peredaranBruto, 0, ',', '.');
+                    })
+                    ->tooltip(function (\App\Models\TaxReport $record): string {
+                        $invoicesCount = $record->invoices_keluar_count ?? 0;
+                        return "Total DPP dari {$invoicesCount} faktur keluaran (tanpa filter)";
+                    })
+                    ->sortable(query: function (Builder $query, string $direction): Builder {
+                        return $query->orderBy('peredaran_bruto_sum', $direction);
+                    })
+                    ->color('info')
+                    ->weight('medium'),
             ])
             ->defaultSort('created_at', 'desc')
             ->filters([
-                // Tax Report Filter - STANDALONE SPECIFIC
-                Tables\Filters\SelectFilter::make('tax_report_id')
-                    ->label('Laporan Pajak')
-                    ->relationship('taxReport', 'id')
-                    ->getOptionLabelFromRecordUsing(fn ($record) => "{$record->client->name} - {$record->month}")
-                    ->searchable(['client.name', 'month'])
+                // Client Filter
+                Tables\Filters\SelectFilter::make('client_id')
+                    ->label('Client')
+                    ->relationship('client', 'name')
+                    ->searchable()
                     ->preload(),
-                    
-                Tables\Filters\SelectFilter::make('type')
-                    ->label('Jenis Faktur')
+
+                // Month/Period Filter
+                Tables\Filters\Filter::make('period')
+                    ->form([
+                        Forms\Components\TextInput::make('month')
+                            ->label('Periode (Bulan)')
+                            ->placeholder('January 2024')
+                    ])
+                    ->query(function (Builder $query, array $data): Builder {
+                        return $query
+                            ->when(
+                                $data['month'],
+                                fn (Builder $query, $month): Builder => $query->where('month', 'like', "%{$month}%"),
+                            );
+                    }),
+
+                // Filter by PPN Status
+                Tables\Filters\SelectFilter::make('invoice_tax_status')
+                    ->label('Status Pembayaran')
                     ->options([
-                        'Faktur Keluaran' => 'Faktur Keluaran',
-                        'Faktur Masuk' => 'Faktur Masuk',
+                        'Kurang Bayar' => 'Kurang Bayar',
+                        'Lebih Bayar' => 'Lebih Bayar',
+                        'Nihil' => 'Nihil',
                     ]),
-                    
-                Tables\Filters\SelectFilter::make('client_type')
-                    ->label('Tipe Client')
-                    ->options(ClientTypeService::getClientTypeOptions()),
 
-                Tables\Filters\Filter::make('has_ppn')
-                    ->label('Subject PPN')
-                    ->query(fn (Builder $query): Builder => $query->where('has_ppn', true)),
-
-                Tables\Filters\Filter::make('no_ppn')
-                    ->label('Tidak Subject PPN')
-                    ->query(fn (Builder $query): Builder => $query->where('has_ppn', false)),
-                    
-                Tables\Filters\Filter::make('has_bukti_setor')
-                    ->label('Memiliki Bukti Setor')
-                    ->query(fn (Builder $query): Builder => $query->whereNotNull('bukti_setor')->where('bukti_setor', '!=', '')),
-                    
-                Tables\Filters\Filter::make('no_bukti_setor')
-                    ->label('Belum Ada Bukti Setor')
-                    ->query(fn (Builder $query): Builder => $query->where(function ($q) {
-                        $q->whereNull('bukti_setor')->orWhere('bukti_setor', '');
-                    })),
-                    
-                Tables\Filters\Filter::make('nihil')
-                    ->label('Faktur Nihil')
-                    ->query(fn (Builder $query): Builder => $query->where('nihil', true)),
+                // Filter by PPN Report Status
+                Tables\Filters\SelectFilter::make('ppn_report_status')
+                    ->label('Status Laporan PPN')
+                    ->options([
+                        'Sudah Lapor' => 'Sudah Lapor',
+                        'Belum Lapor' => 'Belum Lapor',
+                    ]),
             ])
             ->headerActions([
                 Tables\Actions\Action::make('export_all')
@@ -672,16 +662,16 @@ class InvoiceResource extends Resource
                         }
                         
                         // Generate filename with current date
-                        $filename = 'Laporan_Pajak_' . date('Y-m-d_H-i-s') . '.xlsx';
+                        $filename = 'Laporan_Pajak_Ringkasan_' . date('Y-m-d_H-i-s') . '.xlsx';
                         
                         return \Maatwebsite\Excel\Facades\Excel::download(new \App\Exports\TaxReportExporter($taxReports), $filename);
                     })
-                    ->tooltip('Ekspor semua laporan pajak ke Excel dengan sheet terpisah per periode')
+                    ->tooltip('Ekspor ringkasan laporan pajak ke Excel')
                     ->requiresConfirmation()
-                    ->modalHeading('Ekspor Laporan Pajak')
-                    ->modalDescription('Akan mengekspor semua laporan pajak yang tersedia ke file Excel dengan sheet terpisah untuk setiap periode/klien.')
+                    ->modalHeading('Ekspor Ringkasan Laporan Pajak')
+                    ->modalDescription('Akan mengekspor ringkasan semua laporan pajak yang tersedia ke file Excel.')
                     ->modalSubmitActionLabel('Ya, Ekspor'),
-                    
+
                 Tables\Actions\CreateAction::make()
                     ->label('Faktur Baru')
                     ->successNotificationTitle('Faktur berhasil dibuat')
@@ -689,80 +679,95 @@ class InvoiceResource extends Resource
             ])
             ->actions([
                 Tables\Actions\ActionGroup::make([
-                    Tables\Actions\ViewAction::make()
-                        ->label('Lihat')
-                        ->modalWidth('7xl'),
-                        
-                    Tables\Actions\EditAction::make()
-                        ->label('Edit')
-                        ->modalWidth('7xl'),
-                    
-                    Tables\Actions\Action::make('upload_bukti_setor')
-                        ->label('Upload Bukti Setor')
-                        ->icon('heroicon-o-cloud-arrow-up')
+                    Tables\Actions\Action::make('view_invoices')
+                        ->label('Lihat Detail Faktur')
+                        ->icon('heroicon-o-eye')
                         ->color('info')
-                        ->visible(fn ($record) => empty($record->bukti_setor))
-                        ->form(function ($record) {
-                            return [
-                                Section::make('Upload Bukti Setor Pajak')
-                                    ->description('Upload dokumen bukti setor untuk faktur ini')
-                                    ->schema([
-                                        FileUpload::make('bukti_setor')
-                                            ->label('Bukti Setor')
-                                            ->required()
-                                            ->openable()
-                                            ->downloadable()
-                                            ->disk('public')
-                                            ->directory(function () use ($record) {
-                                                $taxReport = $record->taxReport;
-                                                return FileManagementService::generateBuktiSetorDirectoryPath($taxReport);
-                                            })
-                                            ->getUploadedFileNameForStorageUsing(function (TemporaryUploadedFile $file) use ($record): string {
-                                                return FileManagementService::generateBuktiSetorFileName(
-                                                    $record->type, 
-                                                    $record->invoice_number, 
-                                                    $file->getClientOriginalName()
-                                                );
-                                            })
-                                            ->acceptedFileTypes(FileManagementService::getAcceptedFileTypes())
-                                            ->helperText('Unggah dokumen bukti setor pajak (PDF atau gambar)')
-                                            ->columnSpanFull(),
-                                    ])
-                            ];
+                        ->url(function ($record) {
+                            // Navigate to a detailed view of invoices for this tax report
+                            return route('filament.admin.laporan-pajak.resources.invoices.index', [
+                                'tableFilters' => [
+                                    'tax_report_id' => ['value' => $record->id]
+                                ]
+                            ]);
                         })
-                        ->action(function ($record, array $data) {
-                            $record->update(['bukti_setor' => $data['bukti_setor']]);
+                        ->tooltip('Lihat semua faktur dalam laporan pajak ini'),
+                    Tables\Actions\Action::make('export_report')
+                        ->label('Ekspor Laporan')
+                        ->icon('heroicon-o-document-arrow-down')
+                        ->color('success')
+                        ->action(function ($record) {
+                            $taxReport = \App\Models\TaxReport::with(['client', 'invoices', 'incomeTaxs', 'bupots'])->find($record->id);
+                            
+                            if (!$taxReport) {
+                                Notification::make()
+                                    ->title('Data Tidak Ditemukan')
+                                    ->body('Laporan pajak tidak ditemukan.')
+                                    ->danger()
+                                    ->send();
+                                return;
+                            }
+                            
+                            $filename = 'Laporan_Pajak_' . Str::slug($taxReport->client->name) . '_' . $taxReport->month . '_' . date('Y-m-d') . '.xlsx';
+                            
+                            return \Maatwebsite\Excel\Facades\Excel::download(
+                                new \App\Exports\TaxReportExporter(collect([$taxReport])), 
+                                $filename
+                            );
+                        })
+                        ->tooltip('Ekspor laporan pajak khusus periode ini'),
+
+                    Tables\Actions\Action::make('mark_as_reported')
+                        ->label('Tandai Sudah Lapor')
+                        ->icon('heroicon-o-check-circle')
+                        ->color('success')
+                        ->visible(fn ($record) => $record->ppn_report_status === 'Belum Lapor')
+                        ->requiresConfirmation()
+                        ->modalHeading('Konfirmasi Pelaporan PPN')
+                        ->modalDescription(function ($record) {
+                            return 'Apakah Anda yakin ingin menandai laporan PPN untuk ' . $record->client->name . ' periode ' . $record->month . ' sebagai "Sudah Lapor"?';
+                        })
+                        ->modalSubmitActionLabel('Ya, Tandai Sudah Lapor')
+                        ->modalCancelActionLabel('Batal')
+                        ->action(function ($record) {
+                            $record->update([
+                                'ppn_report_status' => 'Sudah Lapor',
+                                'ppn_reported_at' => now(),
+                            ]);
                             
                             Notification::make()
-                                ->title('Bukti Setor Berhasil Diupload')
-                                ->body('Bukti setor untuk faktur ' . $record->invoice_number . ' berhasil diupload.')
+                                ->title('Status Berhasil Diperbarui')
+                                ->body('Laporan PPN untuk ' . $record->client->name . ' periode ' . $record->month . ' telah ditandai sebagai "Sudah Lapor".')
                                 ->success()
                                 ->send();
                         })
-                        ->modalWidth('2xl'),
-                    
-                    Tables\Actions\Action::make('view_bukti_setor')
-                        ->label('Lihat Bukti Setor')
-                        ->icon('heroicon-o-eye')
-                        ->color('success')
-                        ->visible(fn ($record) => !empty($record->bukti_setor))
-                        ->url(fn ($record) => asset('storage/' . $record->bukti_setor))
-                        ->openUrlInNewTab()
-                        ->tooltip('Lihat bukti setor pajak'),
-                        
-                    Tables\Actions\Action::make('download')
-                        ->label('Unduh Berkas')
-                        ->icon('heroicon-o-arrow-down-tray')
-                        ->color('success')
-                        ->url(fn ($record) => $record->file_path ? asset('storage/' . $record->file_path) : null)
-                        ->openUrlInNewTab()
-                        ->visible(fn ($record) => $record->file_path)
-                        ->tooltip('Unduh berkas faktur pajak'),
-                        
-                    Tables\Actions\DeleteAction::make()
-                        ->label('Hapus')
-                        ->modalHeading('Hapus Faktur')
-                        ->modalDescription('Apakah Anda yakin ingin menghapus faktur ini? Tindakan ini tidak dapat dibatalkan.'),
+                        ->tooltip('Tandai laporan PPN sebagai sudah dilaporkan'),
+
+                    Tables\Actions\Action::make('mark_as_not_reported')
+                        ->label('Tandai Belum Lapor')
+                        ->icon('heroicon-o-x-circle')
+                        ->color('danger')
+                        ->visible(fn ($record) => $record->ppn_report_status === 'Sudah Lapor')
+                        ->requiresConfirmation()
+                        ->modalHeading('Konfirmasi Pembatalan Pelaporan PPN')
+                        ->modalDescription(function ($record) {
+                            return 'Apakah Anda yakin ingin menandai laporan PPN untuk ' . $record->client->name . ' periode ' . $record->month . ' sebagai "Belum Lapor"?';
+                        })
+                        ->modalSubmitActionLabel('Ya, Tandai Belum Lapor')
+                        ->modalCancelActionLabel('Batal')
+                        ->action(function ($record) {
+                            $record->update([
+                                'ppn_report_status' => 'Belum Lapor',
+                                'ppn_reported_at' => null,
+                            ]);
+                            
+                            Notification::make()
+                                ->title('Status Berhasil Diperbarui')
+                                ->body('Laporan PPN untuk ' . $record->client->name . ' periode ' . $record->month . ' telah ditandai sebagai "Belum Lapor".')
+                                ->success()
+                                ->send();
+                        })
+                        ->tooltip('Tandai laporan PPN sebagai belum dilaporkan'),
                 ]),
             ])
             ->bulkActions([
@@ -772,34 +777,32 @@ class InvoiceResource extends Resource
                         ->icon('heroicon-o-document-arrow-down')
                         ->color('success')
                         ->action(function (Collection $records) {
-                            $selectedIds = $records->pluck('id')->toArray();
-                            $filename = 'Faktur_Terpilih_' . count($selectedIds) . '_items_' . date('Y-m-d_H-i-s') . '.xlsx';
+                            $taxReportIds = $records->pluck('id')->toArray();
+                            $taxReports = \App\Models\TaxReport::with(['client', 'invoices', 'incomeTaxs', 'bupots'])
+                                ->whereIn('id', $taxReportIds)
+                                ->get();
+                            
+                            $filename = 'Laporan_Pajak_Terpilih_' . count($taxReportIds) . '_periods_' . date('Y-m-d_H-i-s') . '.xlsx';
                             
                             return \Maatwebsite\Excel\Facades\Excel::download(
-                                new TaxReportExporter($selectedIds), // Create this export class
+                                new TaxReportExporter($taxReports), 
                                 $filename
                             );
                         })
                         ->requiresConfirmation()
-                        ->modalHeading('Ekspor Faktur Terpilih')
+                        ->modalHeading('Ekspor Laporan Terpilih')
                         ->modalDescription(function (Collection $records) {
                             $count = $records->count();
-                            return "Apakah Anda yakin ingin mengekspor {$count} faktur yang terpilih ke Excel?";
+                            return "Apakah Anda yakin ingin mengekspor {$count} laporan pajak yang terpilih ke Excel?";
                         })
                         ->modalSubmitActionLabel('Ya, Ekspor')
                         ->deselectRecordsAfterCompletion(),
-                        
-                    Tables\Actions\DeleteBulkAction::make()
-                        ->label('Hapus')
-                        ->modalHeading('Hapus Faktur Terpilih')
-                        ->modalDescription('Apakah Anda yakin ingin menghapus faktur yang terpilih? Tindakan ini tidak dapat dibatalkan.'),
                 ]),
             ])
-            ->emptyStateHeading('Belum Ada Faktur Pajak')
-            ->emptyStateDescription('Faktur pajak akan muncul di sini. Tambahkan faktur masukan dan keluaran untuk melacak PPN.')
+            ->emptyStateHeading('Belum Ada Laporan Pajak')
+            ->emptyStateDescription('Laporan pajak akan muncul di sini setelah ada faktur yang dibuat untuk berbagai periode.')
             ->emptyStateIcon('heroicon-o-document-duplicate');
     }
-
     public function isReadOnly(): bool
     {
         return false;

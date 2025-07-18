@@ -62,7 +62,6 @@ class PicResource extends Resource
                             ->default('Samarinda#1')
                             ->required(fn (string $context): bool => $context === 'create')
                             ->dehydrated(fn ($state) => filled($state))
-                            ->dehydrateStateUsing(fn ($state) => Hash::make($state))
                             ->placeholder('Enter password'),
 
                         Forms\Components\Select::make('status')

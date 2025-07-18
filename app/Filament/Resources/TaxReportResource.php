@@ -211,84 +211,59 @@ class TaxReportResource extends Resource
                     ->color('info')
                     ->sortable(),
 
-                // Optimized: Use preloaded data instead of method calls
-                Tables\Columns\BadgeColumn::make('invoice_tax_status')
-                    ->label('Status Pembayaran')
-                    ->colors([
-                        'success' => 'Lebih Bayar',
-                        'warning' => 'Kurang Bayar',
-                        'gray' => 'Nihil',
-                    ])
-                    ->formatStateUsing(function (TaxReport $record): string {
-                        if (!$record->invoice_tax_status) {
-                            return 'Belum Dihitung';
-                        }
+                // // Optimized: Use preloaded data instead of method calls
+                // Tables\Columns\BadgeColumn::make('invoice_tax_status')
+                //     ->label('Status Pembayaran')
+                //     ->colors([
+                //         'success' => 'Lebih Bayar',
+                //         'warning' => 'Kurang Bayar',
+                //         'gray' => 'Nihil',
+                //     ])
+                //     ->formatStateUsing(function (TaxReport $record): string {
+                //         if (!$record->invoice_tax_status) {
+                //             return 'Belum Dihitung';
+                //         }
                         
-                        // Use preloaded sums dengan filter nomor faktur untuk PPN masuk
-                        $ppnMasuk = $record->ppn_masuk_sum ?? 0; // Sudah filtered di query
-                        $ppnKeluar = $record->ppn_keluar_sum ?? 0;
-                        $selisih = $ppnKeluar - $ppnMasuk;
+                //         // Use preloaded sums dengan filter nomor faktur untuk PPN masuk
+                //         $ppnMasuk = $record->ppn_masuk_sum ?? 0; // Sudah filtered di query
+                //         $ppnKeluar = $record->ppn_keluar_sum ?? 0;
+                //         $selisih = $ppnKeluar - $ppnMasuk;
                         
-                        if ($selisih == 0) {
-                            return 'Nihil';
-                        }
+                //         if ($selisih == 0) {
+                //             return 'Nihil';
+                //         }
                         
-                        $amount = number_format(abs($selisih), 0, ',', '.');
-                        return $record->invoice_tax_status . ' (Rp ' . $amount . ')';
-                    })
-                    ->tooltip(function (TaxReport $record): string {
-                        // Use preloaded sums dengan penjelasan filter
-                        $totalMasuk = $record->ppn_masuk_sum ?? 0; // Sudah exclude 02,03,07,08
-                        $totalKeluar = $record->ppn_keluar_sum ?? 0;
-                        $selisih = $totalKeluar - $totalMasuk;
+                //         $amount = number_format(abs($selisih), 0, ',', '.');
+                //         return $record->invoice_tax_status . ' (Rp ' . $amount . ')';
+                //     })
+                //     ->tooltip(function (TaxReport $record): string {
+                //         // Use preloaded sums dengan penjelasan filter
+                //         $totalMasuk = $record->ppn_masuk_sum ?? 0; // Sudah exclude 02,03,07,08
+                //         $totalKeluar = $record->ppn_keluar_sum ?? 0;
+                //         $selisih = $totalKeluar - $totalMasuk;
 
-                        return "Faktur Masuk: Rp " . number_format($totalMasuk, 0, ',', '.') . "\n" .
-                            "Faktur Keluar*: Rp " . number_format($totalKeluar, 0, ',', '.') . "\n" .
-                            "Selisih: Rp " . number_format($selisih, 0, ',', '.') . "\n\n" .
-                            "*Tidak termasuk nomor faktur 02, 03, 07, 08";
-                    })
-                    ->sortable(),
-
-
-                // Optimized: Use preloaded sums
-                TextColumn::make('invoices_breakdown')
-                    ->label('Faktur (PPN)')
-                    ->state(function (TaxReport $record): string {
-                        $totalPPN = $record->invoices_sum_ppn ?? 0;
-                        return "Rp " . number_format($totalPPN, 0, ',', '.');
-                    })
-                    ->tooltip(function (TaxReport $record): string {
-                        $invoicesCount = $record->total_invoices_count ?? 0;
-                        $ppnMasuk = $record->ppn_masuk_sum ?? 0;
-                        $ppnKeluar = $record->ppn_keluar_sum ?? 0;
-                        $masukCount = $record->invoices_masuk_count ?? 0;
-                        $keluarCount = $record->invoices_keluar_count ?? 0;
-
-                        return "Total {$invoicesCount} faktur\n" .
-                            "Masuk ({$masukCount}): Rp " . number_format($ppnMasuk, 0, ',', '.') . "\n" .
-                            "Keluar ({$keluarCount}): Rp " . number_format($ppnKeluar, 0, ',', '.');
-                    })
-                    ->sortable(query: function (Builder $query, string $direction): Builder {
-                        return $query->orderBy('invoices_sum_ppn', $direction);
-                    })
-                    ->toggleable(isToggledHiddenByDefault: true),
-                
-                TextColumn::make('peredaran_bruto')
-                    ->label('Peredaran Bruto')
-                    ->badge()
-                    ->state(function (TaxReport $record): string {
-                        $peredaranBruto = $record->peredaran_bruto_sum ?? 0;
-                        return "Rp " . number_format($peredaranBruto, 0, ',', '.');
-                    })
-                    ->tooltip(function (TaxReport $record): string {
-                        $invoicesCount = $record->invoices_keluar_count ?? 0;
-                        return "Total DPP dari {$invoicesCount} faktur keluaran (tanpa filter)";
-                    })
-                    ->sortable(query: function (Builder $query, string $direction): Builder {
-                        return $query->orderBy('peredaran_bruto_sum', $direction);
-                    })
-                    ->color('info')
-                    ->weight('medium'),
+                //         return "Faktur Masuk: Rp " . number_format($totalMasuk, 0, ',', '.') . "\n" .
+                //             "Faktur Keluar*: Rp " . number_format($totalKeluar, 0, ',', '.') . "\n" .
+                //             "Selisih: Rp " . number_format($selisih, 0, ',', '.') . "\n\n" .
+                //             "*Tidak termasuk nomor faktur 02, 03, 07, 08";
+                //     })
+                //     ->sortable(),                
+                // TextColumn::make('peredaran_bruto')
+                //     ->label('Peredaran Bruto')
+                //     ->badge()
+                //     ->state(function (TaxReport $record): string {
+                //         $peredaranBruto = $record->peredaran_bruto_sum ?? 0;
+                //         return "Rp " . number_format($peredaranBruto, 0, ',', '.');
+                //     })
+                //     ->tooltip(function (TaxReport $record): string {
+                //         $invoicesCount = $record->invoices_keluar_count ?? 0;
+                //         return "Total DPP dari {$invoicesCount} faktur keluaran (tanpa filter)";
+                //     })
+                //     ->sortable(query: function (Builder $query, string $direction): Builder {
+                //         return $query->orderBy('peredaran_bruto_sum', $direction);
+                //     })
+                //     ->color('info')
+                //     ->weight('medium'),
 
                 Tables\Columns\IconColumn::make('ppn_report_status')
                     ->label('Status PPN')
