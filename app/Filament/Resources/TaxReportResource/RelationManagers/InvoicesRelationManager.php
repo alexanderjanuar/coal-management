@@ -9,6 +9,7 @@ use Filament\Support\RawJs;
 use Filament\Tables;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Query\Builder as QueryBuilder;
 use Filament\Forms\Components\Section;
 use Filament\Forms\Components\Grid;
 use Illuminate\Support\Str;
@@ -167,22 +168,28 @@ class InvoicesRelationManager extends RelationManager
                     ->sortable()
                     ->summarize(
                         Sum::make()
-                            ->label('Peredaran Bruto')
                             ->money('Rp.')
-                            ->using(function ($query) {
-                                // Get all invoices in current view
-                                $allInvoices = $query->get();
-                                
-                                // Group by original invoice to get latest versions only
-                                $latestVersions = $allInvoices->groupBy(function ($invoice) {
-                                    return $invoice->is_revision ? $invoice->original_invoice_id : $invoice->id;
-                                })->map(function ($group) {
-                                    // Return the latest version (highest revision_number or original if no revisions)
-                                    return $group->sortByDesc('revision_number')->first();
+                            ->label('Peredaran Bruto')
+                            ->query(fn (QueryBuilder $query) => $query->where(function ($q) {
+                                // Include original invoices that don't have any revisions
+                                $q->where('is_revision', false)
+                                ->whereNotExists(function ($subQuery) {
+                                    $subQuery->select(\DB::raw(1))
+                                            ->from('invoices as revisions')
+                                            ->whereColumn('revisions.original_invoice_id', 'invoices.id')
+                                            ->where('revisions.is_revision', true);
                                 });
-                                
-                                return $latestVersions->sum('dpp');
-                            })
+                            })->orWhere(function ($q) {
+                                // Include only the latest revision for each original invoice
+                                $q->where('is_revision', true)
+                                ->whereIn('id', function ($subQuery) {
+                                    $subQuery->selectRaw('MAX(id)')
+                                            ->from('invoices as latest_revisions')
+                                            ->where('latest_revisions.is_revision', true)
+                                            ->whereNotNull('latest_revisions.original_invoice_id')
+                                            ->groupBy('latest_revisions.original_invoice_id');
+                                });
+                            }))
                     )
                     ->description(function ($record) {
                         if (($record->ppn_percentage ?? '11') === '12' && ($record->dpp_nilai_lainnya ?? 0) > 0) {
@@ -194,26 +201,32 @@ class InvoicesRelationManager extends RelationManager
                 Tables\Columns\TextColumn::make('ppn')
                     ->label('PPN')
                     ->money('Rp.')
+                    ->sortable()
                     ->summarize(
                         Sum::make()
-                            ->label('Total PPN')
                             ->money('Rp.')
-                            ->using(function ($query) {
-                                // Get all invoices in current view
-                                $allInvoices = $query->get();
-                                
-                                // Group by original invoice to get latest versions only
-                                $latestVersions = $allInvoices->groupBy(function ($invoice) {
-                                    return $invoice->is_revision ? $invoice->original_invoice_id : $invoice->id;
-                                })->map(function ($group) {
-                                    // Return the latest version (highest revision_number or original if no revisions)
-                                    return $group->sortByDesc('revision_number')->first();
+                            ->label('Total PPN')
+                            ->query(fn (QueryBuilder $query) => $query->where(function ($q) {
+                                // Include original invoices that don't have any revisions
+                                $q->where('is_revision', false)
+                                ->whereNotExists(function ($subQuery) {
+                                    $subQuery->select(\DB::raw(1))
+                                            ->from('invoices as revisions')
+                                            ->whereColumn('revisions.original_invoice_id', 'invoices.id')
+                                            ->where('revisions.is_revision', true);
                                 });
-                                
-                                return $latestVersions->sum('ppn');
-                            })
-                    )
-                    ->sortable(),
+                            })->orWhere(function ($q) {
+                                // Include only the latest revision for each original invoice
+                                $q->where('is_revision', true)
+                                ->whereIn('id', function ($subQuery) {
+                                    $subQuery->selectRaw('MAX(id)')
+                                            ->from('invoices as latest_revisions')
+                                            ->where('latest_revisions.is_revision', true)
+                                            ->whereNotNull('latest_revisions.original_invoice_id')
+                                            ->groupBy('latest_revisions.original_invoice_id');
+                                });
+                            }))
+                    ),
                     
                 Tables\Columns\IconColumn::make('has_bupots')
                     ->label('Bukti Potong')
@@ -413,12 +426,19 @@ class InvoicesRelationManager extends RelationManager
                         ->icon('heroicon-o-document')
                         ->color('primary')
                         ->visible(fn ($record) => $record && $record->is_revision)
-                        ->action(function ($record) {
+                        ->modalContent(function ($record) {
                             if ($record->originalInvoice) {
-                                $this->mountTableAction('view', $record->originalInvoice->id);
+                                return view('components.invoices.original-invoice-modal', [
+                                    'originalInvoice' => $record->originalInvoice
+                                ]);
                             }
+                            return view('components.invoices.original-invoice-not-found');
                         })
-                        ->tooltip('Lihat faktur asli yang direvisi'),
+                        ->modalHeading(fn ($record) => 'Faktur Asli: ' . ($record->originalInvoice ? $record->originalInvoice->invoice_number : 'Tidak Ditemukan'))
+                        ->modalSubmitAction(false)
+                        ->modalCancelActionLabel('Tutup')
+                        ->modalWidth('7xl')
+                        ->tooltip('Lihat detail lengkap faktur asli yang direvisi'),
                     
                     Tables\Actions\Action::make('upload_bukti_setor')
                         ->label('Upload Bukti Setor')
