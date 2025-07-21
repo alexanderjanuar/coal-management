@@ -17,13 +17,17 @@ use Filament\Notifications\Notification;
 use Filament\Tables\Columns\Summarizers\Sum;
 use Filament\Forms\Components\FileUpload;
 use Illuminate\Support\Collection;
-// Import our new services
+// Import our services
 use App\Services\ClientTypeService;
 use App\Services\TaxCalculationService;
 use App\Services\FileManagementService;
+// Import the trait
+use App\Traits\InvoiceFormTrait;
 
 class InvoicesRelationManager extends RelationManager
 {
+    use InvoiceFormTrait;
+    
     protected static string $relationship = 'invoices';
     protected static ?string $title = 'PPN';
 
@@ -51,356 +55,7 @@ class InvoicesRelationManager extends RelationManager
 
     public function form(Form $form): Form
     {
-        return $form
-            ->schema([
-                Forms\Components\Hidden::make('created_by')
-                    ->default(auth()->id()),
-                Forms\Components\Wizard::make([
-                    Forms\Components\Wizard\Step::make('AI Assistant (Opsional)')
-                        ->icon('heroicon-o-sparkles')
-                        ->description('Upload faktur untuk ekstraksi data otomatis menggunakan AI')
-                        ->schema([
-                            Section::make('Ekstraksi Data Faktur dengan AI')
-                                ->description('Upload dokumen faktur dan biarkan AI mengisi data secara otomatis')
-                                ->icon('heroicon-o-cpu-chip')
-                                ->collapsible()
-                                ->schema([
-                                    Grid::make(1)
-                                        ->schema([
-                                            FileUpload::make('ai_upload_file')
-                                                ->label('Upload Faktur untuk AI')
-                                                ->placeholder('Pilih file faktur (PDF atau gambar)')
-                                                ->disk('public')
-                                                ->directory('temp/ai-processing')
-                                                ->acceptedFileTypes(FileManagementService::getAcceptedFileTypes())
-                                                ->maxSize(FileManagementService::getMaxFileSize())
-                                                ->helperText('Format yang didukung: PDF, JPG, PNG, WEBP (Maksimal 10MB)')
-                                                ->live()
-                                                ->afterStateUpdated(function (Forms\Set $set, $state) {
-                                                    if ($state) {
-                                                        $set('ai_output', '');
-                                                        $set('ai_processing_status', 'ready');
-                                                    }
-                                                })
-                                                ->dehydrated(false)
-                                                ->columnSpanFull(),
-                                                
-                                            Forms\Components\Hidden::make('ai_processing_status')
-                                                ->dehydrated(false)
-                                                ->default('idle'),
-                                                
-                                            Forms\Components\Actions::make([
-                                                Forms\Components\Actions\Action::make('process_with_ai')
-                                                    ->label('Proses dengan AI')
-                                                    ->icon('heroicon-o-cpu-chip')
-                                                    ->color('primary')
-                                                    ->size('lg')
-                                                    ->disabled(function (Forms\Get $get) {
-                                                        $file = $get('ai_upload_file');
-                                                        $status = $get('ai_processing_status');
-                                                        return empty($file) || $status === 'processing';
-                                                    })
-                                                    ->action(function (Forms\Get $get, Forms\Set $set) {
-                                                        $file = $get('ai_upload_file');
-                                                        
-                                                        if (!$file) {
-                                                            Notification::make()
-                                                                ->title('File Diperlukan')
-                                                                ->body('Silakan upload file faktur terlebih dahulu.')
-                                                                ->warning()
-                                                                ->send();
-                                                            return;
-                                                        }
-                                                        
-                                                        $this->processInvoiceWithAI($file, $get, $set);
-                                                    })
-                                                    ->button()
-                                                    ->extraAttributes(['class' => 'w-full justify-center']),
-                                            ])
-                                            ->columnSpanFull()
-                                            ->alignCenter(),
-                                            
-                                            Forms\Components\Placeholder::make('ai_output')
-                                                ->label('Hasil Ekstraksi AI')
-                                                ->content(function (Forms\Get $get) {
-                                                    $output = $get('ai_output');
-                                                    $status = $get('ai_processing_status');
-                                                    $extractedDataJson = $get('ai_extracted_data');
-                                                    
-                                                    // Parse extracted data if available
-                                                    $data = null;
-                                                    $error = null;
-                                                    
-                                                    if ($extractedDataJson) {
-                                                        $data = json_decode($extractedDataJson, true);
-                                                    }
-                                                    
-                                                    // Handle error status
-                                                    if ($status === 'error' && $output) {
-                                                        if (strpos($output, '❌ **Error:**') !== false) {
-                                                            $error = str_replace(['❌ **Error:**', '*'], '', $output);
-                                                        } else {
-                                                            $error = $output;
-                                                        }
-                                                    }
-                                                    
-                                                    return view('components.tax-reports.ai-result-display', [
-                                                        'status' => $status ?: 'idle',
-                                                        'data' => $data,
-                                                        'error' => $error,
-                                                        'output' => $output
-                                                    ]);
-                                                })
-                                                ->columnSpanFull()
-                                                ->dehydrated(false),
-                                                
-                                            Forms\Components\Hidden::make('ai_output')
-                                                ->default('')
-                                                ->dehydrated(false),
-                                                
-                                            Forms\Components\Actions::make([
-                                                Forms\Components\Actions\Action::make('apply_ai_data')
-                                                    ->label('Terapkan Data AI ke Form')
-                                                    ->icon('heroicon-o-arrow-right')
-                                                    ->color('success')
-                                                    ->size('lg')
-                                                    ->visible(fn (Forms\Get $get) => $get('ai_processing_status') === 'completed')
-                                                    ->action(function (Forms\Get $get, Forms\Set $set) {
-                                                        $this->applyAIDataToForm($get, $set);
-                                                        
-                                                        Notification::make()
-                                                            ->title('Data Berhasil Diterapkan')
-                                                            ->body('Data hasil ekstraksi AI telah diterapkan ke form.')
-                                                            ->success()
-                                                            ->send();
-                                                    })
-                                                    ->button()
-                                                    ->extraAttributes(['class' => 'w-full justify-center']),
-                                            ])
-                                            ->columnSpanFull()
-                                            ->alignCenter(),
-                                        ]),
-                                ]),
-                        ]),
-                        
-                    Forms\Components\Wizard\Step::make('Informasi Dasar')
-                        ->icon('heroicon-o-document-text')
-                        ->schema([
-                            Section::make('Informasi Faktur Pajak')
-                                ->columns(12)
-                                ->schema([
-                                    Forms\Components\TextInput::make('invoice_number')
-                                        ->label('Nomor Faktur')
-                                        ->required()
-                                        ->unique(ignoreRecord: true)
-                                        ->maxLength(255)
-                                        ->placeholder('010.000-00.00000000')
-                                        ->helperText('Format: 010.000-00.00000000')
-                                        ->columnSpan(6)
-                                        ->live(debounce: 500)
-                                        ->afterStateUpdated(function (Forms\Get $get, Forms\Set $set, ?string $state) {
-                                            if ($state && strlen($state) >= 2) {
-                                                $clientTypeData = ClientTypeService::getClientTypeFromInvoiceNumber($state);
-                                                $set('client_type', $clientTypeData['type']);
-                                                $set('has_ppn', $clientTypeData['has_ppn']);
-                                            }
-                                        }),
-                                        
-                                    Forms\Components\DatePicker::make('invoice_date')
-                                        ->label('Tanggal Faktur')
-                                        ->required()
-                                        ->native(false)
-                                        ->default(now())
-                                        ->columnSpan(6),
-                                        
-                                    Forms\Components\Select::make('client_type')
-                                        ->label('Tipe Client')
-                                        ->options(ClientTypeService::getClientTypeOptions())
-                                        ->required()
-                                        ->native(false)
-                                        ->disabled()
-                                        ->helperText('Otomatis terdeteksi dari 2 digit awal nomor faktur')
-                                        ->columnSpan(8),
-                                        
-                                    Forms\Components\Toggle::make('has_ppn')
-                                        ->label('Subject PPN')
-                                        ->disabled()
-                                        ->helperText('Otomatis terdeteksi berdasarkan tipe client')
-                                        ->columnSpan(4),
-                                        
-                                    Forms\Components\Select::make('type')
-                                        ->label('Jenis Faktur')
-                                        ->native(false)
-                                        ->options([
-                                            'Faktur Keluaran' => 'Faktur Keluaran',
-                                            'Faktur Masuk' => 'Faktur Masuk',
-                                        ])
-                                        ->required()
-                                        ->reactive()
-                                        ->live(debounce: 500)
-                                        ->afterStateUpdated(function (Forms\Get $get, Forms\Set $set, ?string $state) {
-                                            if ($state === 'Faktur Masuk') {
-                                                $taxReportId = $get('tax_report_id') ?? $this->getOwnerRecord()->id;
-                                                $taxReport = \App\Models\TaxReport::with('client')->find($taxReportId);
-                                                
-                                                if ($taxReport && $taxReport->client) {
-                                                    $set('company_name', $taxReport->client->name);
-                                                    $set('npwp', $taxReport->client->NPWP);
-                                                }
-                                            }
-                                        })
-                                        ->columnSpan(12),
-                                        
-                                    Forms\Components\TextInput::make('company_name')
-                                        ->label('Nama Perusahaan')
-                                        ->required()
-                                        ->maxLength(255)
-                                        ->columnSpan(6),
-                                        
-                                    Forms\Components\TextInput::make('npwp')
-                                        ->label('NPWP')
-                                        ->required()
-                                        ->placeholder('00.000.000.0-000.000')
-                                        ->helperText('Format: 00.000.000.0-000.000')
-                                        ->maxLength(255)
-                                        ->columnSpan(6),
-                                ]),
-                        ]),
-
-                    Forms\Components\Wizard\Step::make('Rincian Keuangan')
-                        ->icon('heroicon-o-currency-dollar')
-                        ->schema([
-                            Section::make('Detail Perpajakan')
-                                ->columns(2)
-                                ->schema([
-                                    Forms\Components\Select::make('ppn_percentage')
-                                        ->label('Tarif PPN')
-                                        ->options(TaxCalculationService::getPPNPercentageOptions())
-                                        ->default('11')
-                                        ->native(false)
-                                        ->required()
-                                        ->live(debounce: 500)
-                                        ->helperText('Pilih tarif PPN yang berlaku')
-                                        ->afterStateUpdated(function (Forms\Get $get, Forms\Set $set, ?string $state) {
-                                            if ($state === '11') {
-                                                $set('dpp_nilai_lainnya', '0.00');
-                                            } else {
-                                                $set('dpp', '0.00');
-                                            }
-                                            $set('ppn', '0.00');
-                                        })
-                                        ->columnSpan(2),
-
-                                    Forms\Components\TextInput::make('dpp_nilai_lainnya')
-                                        ->label('DPP Nilai Lainnya')
-                                        ->required(fn (Forms\Get $get) => $get('ppn_percentage') === '12')
-                                        ->prefix('Rp')
-                                        ->placeholder('0.00')
-                                        ->mask(RawJs::make('$money($input)'))
-                                        ->dehydrateStateUsing(fn ($state) => TaxCalculationService::cleanMonetaryInput($state))
-                                        ->default('0.00')
-                                        ->helperText('Nilai DPP untuk perhitungan pajak 12%')
-                                        ->visible(fn (Forms\Get $get) => $get('ppn_percentage') === '12')
-                                        ->afterStateUpdated(function (Forms\Get $get, Forms\Set $set, ?string $state) {
-                                            $this->calculateFromDppNilaiLainnya($get, $set, $state);
-                                        })
-                                        ->live(2000)
-                                        ->columnSpan(2),
-
-                                    Forms\Components\TextInput::make('dpp')
-                                        ->label(function (Forms\Get $get) {
-                                            return $get('ppn_percentage') === '12' 
-                                                ? 'DPP (Dihitung Otomatis)' 
-                                                : 'DPP (Dasar Pengenaan Pajak)';
-                                        })
-                                        ->required()
-                                        ->prefix('Rp')
-                                        ->placeholder('0.00')
-                                        ->mask(RawJs::make('$money($input)'))
-                                        ->dehydrateStateUsing(fn ($state) => TaxCalculationService::cleanMonetaryInput($state))
-                                        ->rules(['required'])
-                                        ->readOnly(fn (Forms\Get $get) => $get('ppn_percentage') === '12')
-                                        ->helperText(function (Forms\Get $get) {
-                                            return $get('ppn_percentage') === '12' 
-                                                ? 'Otomatis dihitung dari DPP Nilai Lainnya × 12/11'
-                                                : 'Masukkan nilai DPP';
-                                        })
-                                        ->afterStateUpdated(function (Forms\Get $get, Forms\Set $set, ?string $state) {
-                                            if ($get('ppn_percentage') === '11') {
-                                                $this->calculatePPNFromDpp($get, $set, $state);
-                                            }
-                                        })
-                                        ->live(2000),
-
-                                    Forms\Components\TextInput::make('ppn')
-                                        ->label('PPN')
-                                        ->prefix('Rp')
-                                        ->placeholder('0.00')
-                                        ->required()
-                                        ->readOnly()
-                                        ->mask(RawJs::make('$money($input)'))
-                                        ->dehydrateStateUsing(fn ($state) => TaxCalculationService::cleanMonetaryInput($state))
-                                        ->rules(['required'])
-                                        ->helperText('Otomatis terhitung sebesar 11% dari DPP'),
-                                ]),
-                        ]),
-                    
-                    Forms\Components\Wizard\Step::make('Dokumen & Catatan')
-                        ->icon('heroicon-o-paper-clip')
-                        ->schema([
-                            Section::make('Dokumen Pendukung')
-                                ->schema([
-                                    FileUpload::make('file_path')
-                                        ->label('Berkas Faktur')
-                                        ->openable()
-                                        ->downloadable()
-                                        ->disk('public')
-                                        ->directory(fn (Forms\Get $get) => $this->generateDirectoryPath($get))
-                                        ->getUploadedFileNameForStorageUsing(fn (TemporaryUploadedFile $file, Forms\Get $get): string => $this->generateFileName($get, $file->getClientOriginalName()))
-                                        ->acceptedFileTypes(FileManagementService::getAcceptedFileTypes())
-                                        ->helperText(function (Forms\Get $get) {
-                                            $path = $this->generateDirectoryPath($get);
-                                            return "Akan disimpan di: storage/{$path}/[Jenis Faktur]-[Nomor Invoice].[ext]";
-                                        })
-                                        ->columnSpanFull(),
-                                        
-                                    FileUpload::make('bukti_setor')
-                                        ->label('Bukti Setor (Opsional)')
-                                        ->openable()
-                                        ->downloadable()
-                                        ->disk('public')
-                                        ->directory(function (Forms\Get $get) {
-                                            $basePath = $this->generateDirectoryPath($get);
-                                            return $basePath . '/Bukti-Setor';
-                                        })
-                                        ->getUploadedFileNameForStorageUsing(function (TemporaryUploadedFile $file, Forms\Get $get): string {
-                                            $invoiceType = $get('type') ?? 'Unknown Type';
-                                            $invoiceNumber = $get('invoice_number') ?? 'Unknown Number';
-                                            
-                                            return FileManagementService::generateBuktiSetorFileName($invoiceType, $invoiceNumber, $file->getClientOriginalName());
-                                        })
-                                        ->acceptedFileTypes(FileManagementService::getAcceptedFileTypes())
-                                        ->helperText(function (Forms\Get $get) {
-                                            $path = $this->generateDirectoryPath($get);
-                                            return "Akan disimpan di: storage/{$path}/Bukti-Setor/";
-                                        })
-                                        ->columnSpanFull(),
-                                        
-                                    Forms\Components\RichEditor::make('notes')
-                                        ->label('Catatan')
-                                        ->placeholder('Tambahkan catatan relevan tentang faktur ini')
-                                        ->toolbarButtons([
-                                            'blockquote', 'bold', 'bulletList', 'h2', 'h3', 
-                                            'italic', 'link', 'orderedList', 'redo', 'strike', 'undo',
-                                        ])
-                                        ->columnSpanFull(),
-                                ]),
-                        ]),
-                ])
-                ->skippable()
-                ->persistStepInQueryString('invoice-wizard-step')
-                ->columnSpanFull(),
-            ]);
+        return $form->schema($this->getInvoiceFormSchema());
     }
 
     public function table(Table $table): Table
@@ -433,26 +88,43 @@ class InvoicesRelationManager extends RelationManager
                 Tables\Columns\TextColumn::make('invoice_number')
                     ->label('Nomor Faktur')
                     ->searchable()
-                    ->sortable(),
+                    ->sortable()
+                    ->description(function ($record) {
+                        if (!$record) return null;
+                        
+                        if ($record->is_revision) {
+                            return "Revisi #{$record->revision_number}";
+                        }
+                        if ($record->hasRevisions()) {
+                            $revisionCount = $record->revisions()->count();
+                            return "Memiliki {$revisionCount} revisi";
+                        }
+                        return null;
+                    }),
                     
-                Tables\Columns\BadgeColumn::make('client_type')
-                    ->label('Tipe Client')
+                Tables\Columns\BadgeColumn::make('revision_status')
+                    ->label('Status')
+                    ->getStateUsing(function ($record) {
+                        if (!$record) return 'Asli';
+                        
+                        if ($record->is_revision) {
+                            return 'Revisi';
+                        }
+                        if ($record->hasRevisions()) {
+                            return 'Direvisi';
+                        }
+                        return 'Asli';
+                    })
                     ->colors([
-                        'success' => 'Swasta',
-                        'info' => 'Pemerintah', 
-                        'warning' => 'BUMN',
-                        'danger' => 'Swasta (SKB)',
+                        'warning' => 'Revisi',
+                        'info' => 'Direvisi',
+                        'success' => 'Asli',
                     ])
-                    ->sortable(),
-                    
-                Tables\Columns\IconColumn::make('has_ppn')
-                    ->label('PPN')
-                    ->boolean()
-                    ->trueIcon('heroicon-o-check-circle')
-                    ->falseIcon('heroicon-o-x-circle')
-                    ->trueColor('success')
-                    ->falseColor('danger')
-                    ->tooltip(fn ($record) => $record->has_ppn ? 'Subject PPN' : 'Tidak subject PPN'),
+                    ->icons([
+                        'heroicon-o-arrow-path' => 'Revisi',
+                        'heroicon-o-document-duplicate' => 'Direvisi',
+                        'heroicon-o-document' => 'Asli',
+                    ]),
                     
                 Tables\Columns\TextColumn::make('company_name')
                     ->label('Nama Perusahaan')
@@ -493,6 +165,25 @@ class InvoicesRelationManager extends RelationManager
                     ->label('DPP')
                     ->money('Rp.')
                     ->sortable()
+                    ->summarize(
+                        Sum::make()
+                            ->label('Peredaran Bruto')
+                            ->money('Rp.')
+                            ->using(function ($query) {
+                                // Get all invoices in current view
+                                $allInvoices = $query->get();
+                                
+                                // Group by original invoice to get latest versions only
+                                $latestVersions = $allInvoices->groupBy(function ($invoice) {
+                                    return $invoice->is_revision ? $invoice->original_invoice_id : $invoice->id;
+                                })->map(function ($group) {
+                                    // Return the latest version (highest revision_number or original if no revisions)
+                                    return $group->sortByDesc('revision_number')->first();
+                                });
+                                
+                                return $latestVersions->sum('dpp');
+                            })
+                    )
                     ->description(function ($record) {
                         if (($record->ppn_percentage ?? '11') === '12' && ($record->dpp_nilai_lainnya ?? 0) > 0) {
                             return 'Dihitung dari DPP Nilai Lainnya';
@@ -503,18 +194,26 @@ class InvoicesRelationManager extends RelationManager
                 Tables\Columns\TextColumn::make('ppn')
                     ->label('PPN')
                     ->money('Rp.')
-                    ->summarize(Sum::make()->label('Total PPN')->money('Rp.'))
+                    ->summarize(
+                        Sum::make()
+                            ->label('Total PPN')
+                            ->money('Rp.')
+                            ->using(function ($query) {
+                                // Get all invoices in current view
+                                $allInvoices = $query->get();
+                                
+                                // Group by original invoice to get latest versions only
+                                $latestVersions = $allInvoices->groupBy(function ($invoice) {
+                                    return $invoice->is_revision ? $invoice->original_invoice_id : $invoice->id;
+                                })->map(function ($group) {
+                                    // Return the latest version (highest revision_number or original if no revisions)
+                                    return $group->sortByDesc('revision_number')->first();
+                                });
+                                
+                                return $latestVersions->sum('ppn');
+                            })
+                    )
                     ->sortable(),
-                
-                Tables\Columns\IconColumn::make('has_bukti_setor')
-                    ->label('Bukti Setor')
-                    ->boolean()
-                    ->getStateUsing(fn ($record) => !empty($record->bukti_setor))
-                    ->trueIcon('heroicon-o-check-circle')
-                    ->falseIcon('heroicon-o-x-circle')
-                    ->trueColor('success')
-                    ->falseColor('danger')
-                    ->tooltip(fn ($record) => !empty($record->bukti_setor) ? "Bukti setor tersedia" : "Bukti setor belum diupload"),
                     
                 Tables\Columns\IconColumn::make('has_bupots')
                     ->label('Bukti Potong')
@@ -558,6 +257,14 @@ class InvoicesRelationManager extends RelationManager
                     ->label('Tidak Subject PPN')
                     ->query(fn (Builder $query): Builder => $query->where('has_ppn', false)),
                     
+                Tables\Filters\Filter::make('is_revision')
+                    ->label('Hanya Revisi')
+                    ->query(fn (Builder $query): Builder => $query->where('is_revision', true)),
+                    
+                Tables\Filters\Filter::make('originals_only')
+                    ->label('Hanya Asli')
+                    ->query(fn (Builder $query): Builder => $query->where('is_revision', false)),
+                    
                 Tables\Filters\Filter::make('has_bukti_setor')
                     ->label('Memiliki Bukti Setor')
                     ->query(fn (Builder $query): Builder => $query->whereNotNull('bukti_setor')->where('bukti_setor', '!=', '')),
@@ -569,6 +276,7 @@ class InvoicesRelationManager extends RelationManager
                     })),
             ])
             ->headerActions([
+                    
                 Tables\Actions\Action::make('export_all')
                     ->label('Ekspor Semua ke Excel')
                     ->icon('heroicon-o-document-arrow-down')
@@ -579,11 +287,12 @@ class InvoicesRelationManager extends RelationManager
                         $filename = 'Faktur_' . $monthYear . '.xlsx';
                         
                         return \Maatwebsite\Excel\Facades\Excel::download(
-                            new \App\Exports\TaxReportInvoicesExport($taxReport), // No selection = export all
+                            new \App\Exports\TaxReportInvoicesExport($taxReport),
                             $filename
                         );
                     })
                     ->tooltip('Ekspor semua faktur ke format Excel'),                                    
+                    
                 Tables\Actions\CreateAction::make()
                     ->label('Faktur Baru')
                     ->successNotificationTitle('Faktur berhasil dibuat')
@@ -622,11 +331,100 @@ class InvoicesRelationManager extends RelationManager
                         ->label('Edit')
                         ->modalWidth('7xl'),
                     
+                    Tables\Actions\Action::make('create_revision')
+                        ->label('Buat Revisi')
+                        ->icon('heroicon-o-arrow-path')
+                        ->color('warning')
+                        ->visible(fn ($record) => $record && !$record->is_revision)
+                        ->form(function ($record) {
+                            $nextRevisionNumber = $record->revisions()->max('revision_number') + 1;
+                            $revisionInvoiceNumber = $record->invoice_number . '-REV' . $nextRevisionNumber;
+                            
+                            return $this->getInvoiceFormSchema(true, $record);
+                        })
+                        ->fillForm(function ($record) {
+                            $nextRevisionNumber = $record->revisions()->max('revision_number') + 1;
+                            $revisionInvoiceNumber = $record->invoice_number . '-REV' . $nextRevisionNumber;
+                            
+                            return [
+                                'is_revision' => true,
+                                'original_invoice_id' => $record->id,
+                                'revision_number' => $nextRevisionNumber,
+                                'revision_reason' => '',
+                                'invoice_number' => $revisionInvoiceNumber,
+                                'invoice_date' => $record->invoice_date instanceof \Carbon\Carbon 
+                                    ? $record->invoice_date->format('Y-m-d') 
+                                    : $record->invoice_date,
+                                'company_name' => $record->company_name,
+                                'npwp' => $record->npwp,
+                                'type' => $record->type,
+                                'client_type' => $record->client_type,
+                                'has_ppn' => $record->has_ppn,
+                                'ppn_percentage' => $record->ppn_percentage ?? '11',
+                                'dpp' => number_format($record->dpp, 2, '.', ''),
+                                'dpp_nilai_lainnya' => number_format($record->dpp_nilai_lainnya ?? 0, 2, '.', ''),
+                                'ppn' => number_format($record->ppn, 2, '.', ''),
+                                'nihil' => $record->nihil,
+                                'notes' => $record->notes,
+                                'created_by' => auth()->id(),
+                            ];
+                        })
+                        ->action(function ($record, array $data) {
+                            // Create the revision
+                            $revision = new \App\Models\Invoice();
+                            $revision->fill($data);
+                            $revision->tax_report_id = $this->getOwnerRecord()->id;
+                            $revision->save();
+                            
+                            Notification::make()
+                                ->title('Revisi Berhasil Dibuat')
+                                ->body("Revisi #{$data['revision_number']} untuk faktur {$record->invoice_number} berhasil dibuat dengan nomor {$data['invoice_number']}.")
+                                ->success()
+                                ->send();
+                        })
+                        ->modalHeading(fn ($record) => 'Buat Revisi untuk Faktur: ' . $record->invoice_number)
+                        ->modalSubmitActionLabel('Simpan Revisi')
+                        ->modalWidth('7xl')
+                        ->tooltip('Buat revisi dari faktur ini dengan form lengkap'),
+                    
+                    Tables\Actions\Action::make('view_revisions')
+                        ->label('Lihat Revisi')
+                        ->icon('heroicon-o-document-duplicate')
+                        ->color('info')
+                        ->visible(fn ($record) => $record && !$record->is_revision && $record->hasRevisions())
+                        ->modalContent(function ($record) {
+                            $revisions = $record->revisions()->orderBy('revision_number')->get();
+                            return view('components.invoices.revisions-modal', [
+                                'originalInvoice' => $record,
+                                'revisions' => $revisions
+                            ]);
+                        })
+                        ->modalHeading(fn ($record) => 'Revisi Faktur: ' . $record->invoice_number)
+                        ->modalSubmitAction(false)
+                        ->modalCancelActionLabel('Tutup')
+                        ->modalWidth('7xl')
+                        ->tooltip(function ($record) {
+                            $count = $record->revisions()->count();
+                            return "Lihat {$count} revisi dari faktur ini";
+                        }),
+                    
+                    Tables\Actions\Action::make('view_original')
+                        ->label('Lihat Faktur Asli')
+                        ->icon('heroicon-o-document')
+                        ->color('primary')
+                        ->visible(fn ($record) => $record && $record->is_revision)
+                        ->action(function ($record) {
+                            if ($record->originalInvoice) {
+                                $this->mountTableAction('view', $record->originalInvoice->id);
+                            }
+                        })
+                        ->tooltip('Lihat faktur asli yang direvisi'),
+                    
                     Tables\Actions\Action::make('upload_bukti_setor')
                         ->label('Upload Bukti Setor')
                         ->icon('heroicon-o-cloud-arrow-up')
                         ->color('info')
-                        ->visible(fn ($record) => empty($record->bukti_setor))
+                        ->visible(fn ($record) => $record && empty($record->bukti_setor))
                         ->form(function ($record) {
                             return [
                                 Section::make('Upload Bukti Setor Pajak')
@@ -670,7 +468,7 @@ class InvoicesRelationManager extends RelationManager
                         ->label('Lihat Bukti Setor')
                         ->icon('heroicon-o-eye')
                         ->color('success')
-                        ->visible(fn ($record) => !empty($record->bukti_setor))
+                        ->visible(fn ($record) => $record && !empty($record->bukti_setor))
                         ->url(fn ($record) => asset('storage/' . $record->bukti_setor))
                         ->openUrlInNewTab()
                         ->tooltip('Lihat bukti setor pajak'),
@@ -679,9 +477,9 @@ class InvoicesRelationManager extends RelationManager
                         ->label('Unduh Berkas')
                         ->icon('heroicon-o-arrow-down-tray')
                         ->color('success')
-                        ->url(fn ($record) => $record->file_path ? asset('storage/' . $record->file_path) : null)
+                        ->url(fn ($record) => $record && $record->file_path ? asset('storage/' . $record->file_path) : null)
                         ->openUrlInNewTab()
-                        ->visible(fn ($record) => $record->file_path)
+                        ->visible(fn ($record) => $record && $record->file_path)
                         ->tooltip('Unduh berkas faktur pajak'),
                         
                     Tables\Actions\DeleteAction::make()
