@@ -320,12 +320,6 @@ class ClientsRelationManager extends RelationManager
                             ->success()
                             ->send();
                     }),
-
-                Tables\Actions\DeleteAction::make()
-                    ->requiresConfirmation()
-                    ->modalHeading('Delete Client')
-                    ->modalDescription('Are you sure you want to delete this client? This action cannot be undone.')
-                    ->modalSubmitActionLabel('Yes, delete it'),
             ])
             ->bulkActions([
                 Tables\Actions\BulkActionGroup::make([
