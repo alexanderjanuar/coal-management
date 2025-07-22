@@ -124,7 +124,7 @@ class TaxReportInvoicesExport implements FromArray, WithStyles, WithColumnWidths
                 $index + 1,
                 $invoice->company_name,
                 $invoice->invoice_number, // Keep original invoice number without any modifications
-                date('n/j/Y', strtotime($invoice->invoice_date)),
+                date('d/m/Y', strtotime($invoice->invoice_date)),
                 $displayValues['dpp_nilai_lainnya'] > 0 ? 'Rp ' . number_format($displayValues['dpp_nilai_lainnya'], 0, ',', ',') : 'Rp 0',
                 $displayValues['dpp'] > 0 ? 'Rp ' . number_format($displayValues['dpp'], 0, ',', ',') : 'Rp 0',
                 $displayValues['ppn'] > 0 ? 'Rp ' . number_format($displayValues['ppn'], 0, ',', ',') : 'Rp 0',
@@ -180,7 +180,7 @@ class TaxReportInvoicesExport implements FromArray, WithStyles, WithColumnWidths
                 $index + 1,
                 $invoice->company_name,
                 $invoice->invoice_number, // Keep original invoice number without any modifications
-                date('n/j/Y', strtotime($invoice->invoice_date)),
+                date('d/m/Y', strtotime($invoice->invoice_date)),
                 $displayValues['dpp_nilai_lainnya'] > 0 ? 'Rp ' . number_format($displayValues['dpp_nilai_lainnya'], 0, ',', ',') : 'Rp 0',
                 $displayValues['dpp'] > 0 ? 'Rp ' . number_format($displayValues['dpp'], 0, ',', ',') : 'Rp 0',
                 $displayValues['ppn'] > 0 ? 'Rp ' . number_format($displayValues['ppn'], 0, ',', ',') : 'Rp 0',
@@ -366,11 +366,25 @@ class TaxReportInvoicesExport implements FromArray, WithStyles, WithColumnWidths
                     $displayValues = $this->getDisplayValues($invoice);
                     
                     if ($displayValues['is_revised']) {
-                        // Gray out revised original invoices with subtle styling
+                        // Light gray background for revised original invoices
                         $sheet->getStyle("B{$row}:H{$row}")->applyFromArray([
                             'fill' => [
                                 'fillType' => Fill::FILL_SOLID,
-                                'color' => ['rgb' => 'E8E8E8']
+                                'color' => ['rgb' => 'F5F5F5']
+                            ],
+                            'font' => [
+                                'color' => ['rgb' => '999999']
+                            ]
+                        ]);
+                        
+                        // Keep company name (column C) with normal background and text
+                        $sheet->getStyle("C{$row}")->applyFromArray([
+                            'fill' => [
+                                'fillType' => Fill::FILL_SOLID,
+                                'color' => ['rgb' => 'FFFFFF']
+                            ],
+                            'font' => [
+                                'color' => ['rgb' => '000000']
                             ]
                         ]);
                     }
@@ -464,11 +478,25 @@ class TaxReportInvoicesExport implements FromArray, WithStyles, WithColumnWidths
                     $displayValues = $this->getDisplayValues($invoice);
                     
                     if ($displayValues['is_revised']) {
-                        // Gray out revised original invoices with subtle styling
+                        // Light gray background for revised original invoices
                         $sheet->getStyle("B{$row}:H{$row}")->applyFromArray([
                             'fill' => [
                                 'fillType' => Fill::FILL_SOLID,
-                                'color' => ['rgb' => 'E8E8E8']
+                                'color' => ['rgb' => 'F5F5F5']
+                            ],
+                            'font' => [
+                                'color' => ['rgb' => '999999']
+                            ]
+                        ]);
+                        
+                        // Keep company name (column C) with normal background and text
+                        $sheet->getStyle("C{$row}")->applyFromArray([
+                            'fill' => [
+                                'fillType' => Fill::FILL_SOLID,
+                                'color' => ['rgb' => 'FFFFFF']
+                            ],
+                            'font' => [
+                                'color' => ['rgb' => '000000']
                             ]
                         ]);
                     }

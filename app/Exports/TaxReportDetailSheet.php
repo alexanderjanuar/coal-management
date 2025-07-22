@@ -25,6 +25,52 @@ class TaxReportDetailSheet implements FromArray, WithStyles, WithColumnWidths, W
         $this->taxReport = $taxReport;
     }
 
+    /**
+     * Filter invoices to get only latest versions (excluding revised originals)
+     */
+    private function getLatestVersionInvoices($baseQuery)
+    {
+        // Get all invoices
+        $allInvoices = $baseQuery->get();
+        
+        // Group by original invoice to get latest versions only
+        $latestVersions = $allInvoices->groupBy(function ($invoice) {
+            return $invoice->is_revision ? $invoice->original_invoice_id : $invoice->id;
+        })->map(function ($group) {
+            // Return the latest version (highest revision_number or original if no revisions)
+            return $group->sortByDesc('revision_number')->first();
+        });
+        
+        return $latestVersions->values();
+    }
+
+    /**
+     * Get display values for invoice (0 if revised, actual values if latest)
+     */
+    private function getDisplayValues($invoice)
+    {
+        // Check if this invoice has been revised
+        $hasRevisions = $invoice->revisions()->exists();
+        
+        if ($hasRevisions && !$invoice->is_revision) {
+            // Original invoice with revisions - show 0 values
+            return [
+                'dpp_nilai_lainnya' => 0,
+                'dpp' => 0,
+                'ppn' => 0,
+                'is_revised' => true
+            ];
+        } else {
+            // Latest revision or original without revisions - show actual values
+            return [
+                'dpp_nilai_lainnya' => $invoice->dpp_nilai_lainnya ?? 0,
+                'dpp' => $invoice->dpp,
+                'ppn' => $invoice->ppn,
+                'is_revised' => false
+            ];
+        }
+    }
+
     public function array(): array
     {
         $data = [];
@@ -38,16 +84,23 @@ class TaxReportDetailSheet implements FromArray, WithStyles, WithColumnWidths, W
         $data[] = ['', 'LAPORAN PAJAK ' . $clientName . ' - ' . $monthYear, '', '', '', '', '', ''];
         $data[] = ['', '', '', '', '', '', '', ''];
 
-        // Get invoice data
-        $fakturKeluaran = $this->taxReport->invoices()
+        // Get invoice data for display (ALL invoices including revised originals)
+        $fakturKeluaranAll = $this->taxReport->invoices()
             ->where('type', 'Faktur Keluaran')
             ->orderBy('invoice_date')
             ->get();
             
-        $fakturMasukan = $this->taxReport->invoices()
+        $fakturMasukanAll = $this->taxReport->invoices()
             ->where('type', 'Faktur Masuk')
             ->orderBy('invoice_date')
             ->get();
+
+        // Get latest versions for calculations
+        $fakturKeluaranQuery = $this->taxReport->invoices()->where('type', 'Faktur Keluaran');
+        $fakturMasukanQuery = $this->taxReport->invoices()->where('type', 'Faktur Masuk');
+        
+        $fakturKeluaranLatest = $this->getLatestVersionInvoices($fakturKeluaranQuery);
+        $fakturMasukanLatest = $this->getLatestVersionInvoices($fakturMasukanQuery);
 
         // FAKTUR KELUARAN section
         $data[] = ['', 'FAKTUR KELUARAN', '', '', '', '', '', ''];
@@ -57,20 +110,25 @@ class TaxReportDetailSheet implements FromArray, WithStyles, WithColumnWidths, W
         $totalDppKeluaran = 0;
         $totalPpnKeluaran = 0;
 
-        foreach ($fakturKeluaran as $index => $invoice) {
-            $dppNilaiLainnya = $invoice->dpp_nilai_lainnya ?? 0;
+        // Display ALL invoices but show 0 values for revised
+        foreach ($fakturKeluaranAll as $index => $invoice) {
+            $displayValues = $this->getDisplayValues($invoice);
+            
             $data[] = [
                 '',
                 $index + 1,
                 $invoice->company_name,
-                $invoice->invoice_number,
-                date('n/j/Y', strtotime($invoice->invoice_date)),
-                'Rp ' . number_format($dppNilaiLainnya, 0, ',', '.'),
-                'Rp ' . number_format($invoice->dpp, 0, ',', '.'),
-                'Rp ' . number_format($invoice->ppn, 0, ',', '.'),
+                $invoice->invoice_number, // Keep original invoice number
+                date('d/m/Y', strtotime($invoice->invoice_date)),
+                $displayValues['dpp_nilai_lainnya'] > 0 ? 'Rp ' . number_format($displayValues['dpp_nilai_lainnya'], 0, ',', '.') : 'Rp 0',
+                $displayValues['dpp'] > 0 ? 'Rp ' . number_format($displayValues['dpp'], 0, ',', '.') : 'Rp 0',
+                $displayValues['ppn'] > 0 ? 'Rp ' . number_format($displayValues['ppn'], 0, ',', '.') : 'Rp 0',
             ];
+        }
 
-            $totalDppNilaiLainnyaKeluaran += $dppNilaiLainnya;
+        // Calculate totals from latest versions only
+        foreach ($fakturKeluaranLatest as $invoice) {
+            $totalDppNilaiLainnyaKeluaran += $invoice->dpp_nilai_lainnya ?? 0;
             $totalDppKeluaran += $invoice->dpp;
             $totalPpnKeluaran += $invoice->ppn;
         }
@@ -99,20 +157,25 @@ class TaxReportDetailSheet implements FromArray, WithStyles, WithColumnWidths, W
         $totalDppMasukan = 0;
         $totalPpnMasukan = 0;
 
-        foreach ($fakturMasukan as $index => $invoice) {
-            $dppNilaiLainnya = $invoice->dpp_nilai_lainnya ?? 0;
+        // Display ALL invoices but show 0 values for revised
+        foreach ($fakturMasukanAll as $index => $invoice) {
+            $displayValues = $this->getDisplayValues($invoice);
+            
             $data[] = [
                 '',
                 $index + 1,
                 $invoice->company_name,
-                $invoice->invoice_number,
-                date('n/j/Y', strtotime($invoice->invoice_date)),
-                'Rp ' . number_format($dppNilaiLainnya, 0, ',', '.'),
-                'Rp ' . number_format($invoice->dpp, 0, ',', '.'),
-                'Rp ' . number_format($invoice->ppn, 0, ',', '.'),
+                $invoice->invoice_number, // Keep original invoice number
+                date('d/m/Y', strtotime($invoice->invoice_date)),
+                $displayValues['dpp_nilai_lainnya'] > 0 ? 'Rp ' . number_format($displayValues['dpp_nilai_lainnya'], 0, ',', '.') : 'Rp 0',
+                $displayValues['dpp'] > 0 ? 'Rp ' . number_format($displayValues['dpp'], 0, ',', '.') : 'Rp 0',
+                $displayValues['ppn'] > 0 ? 'Rp ' . number_format($displayValues['ppn'], 0, ',', '.') : 'Rp 0',
             ];
+        }
 
-            $totalDppNilaiLainnyaMasukan += $dppNilaiLainnya;
+        // Calculate totals from latest versions only
+        foreach ($fakturMasukanLatest as $invoice) {
+            $totalDppNilaiLainnyaMasukan += $invoice->dpp_nilai_lainnya ?? 0;
             $totalDppMasukan += $invoice->dpp;
             $totalPpnMasukan += $invoice->ppn;
         }
@@ -136,6 +199,7 @@ class TaxReportDetailSheet implements FromArray, WithStyles, WithColumnWidths, W
         // REKAP KURANG ATAU LEBIH BAYAR PAJAK section
         $data[] = ['', 'REKAP KURANG ATAU LEBIH BAYAR PAJAK', '', '', '', '', '', ''];
 
+        // Use calculated totals from latest versions
         $kurangLebihBayar = $totalPpnKeluaran - $totalPpnMasukan;
         $ppnDikompensasi = $this->taxReport->ppn_dikompensasi_dari_masa_sebelumnya ?? 0;
         $finalAmount = $kurangLebihBayar - $ppnDikompensasi;
@@ -167,11 +231,44 @@ class TaxReportDetailSheet implements FromArray, WithStyles, WithColumnWidths, W
         $data[] = ['', 'TOTAL BUKTI POTONG', '', '', '', '', '', 'Rp ' . number_format($totalBupot, 0, ',', '.')];
         $data[] = ['', 'GRAND TOTAL SEMUA PAJAK', '', '', '', '', '', 'Rp ' . number_format($totalPpnKeluaran + $totalPpnMasukan + $totalPph21 + $totalBupot, 0, ',', '.')];
 
-        // Store data for styling
-        $this->fakturKeluaranData = $fakturKeluaran;
-        $this->fakturMasukanData = $fakturMasukan;
+        // Store data for styling (use ALL invoices for proper display)
+        $this->fakturKeluaranData = $fakturKeluaranAll;
+        $this->fakturMasukanData = $fakturMasukanAll;
 
         return $data;
+    }
+
+    /**
+     * Apply company name merging for repeated company names
+     */
+    private function applyCompanyNameMerging(Worksheet $sheet, int $startRow, Collection $invoices, string $column): void
+    {
+        if ($invoices->isEmpty()) {
+            return;
+        }
+
+        $currentRow = $startRow;
+        $groupedInvoices = $invoices->groupBy('company_name');
+
+        foreach ($groupedInvoices as $companyName => $companyInvoices) {
+            $groupSize = $companyInvoices->count();
+            
+            if ($groupSize > 1) {
+                // Merge cells for this company
+                $endRow = $currentRow + $groupSize - 1;
+                $sheet->mergeCells("{$column}{$currentRow}:{$column}{$endRow}");
+                
+                // Center the merged cell content vertically
+                $sheet->getStyle("{$column}{$currentRow}:{$column}{$endRow}")->applyFromArray([
+                    'alignment' => [
+                        'horizontal' => Alignment::HORIZONTAL_LEFT,
+                        'vertical' => Alignment::VERTICAL_CENTER
+                    ]
+                ]);
+            }
+            
+            $currentRow += $groupSize;
+        }
     }
 
     public function styles(Worksheet $sheet)
@@ -209,15 +306,19 @@ class TaxReportDetailSheet implements FromArray, WithStyles, WithColumnWidths, W
         $infoDataEnd = $infoDataStart + 2;
 
         // Apply styles for each section
-        $this->applySectionStyles($sheet, $keluaranSectionRow, $keluaranHeaderRow, $keluaranDataStart, $keluaranDataEnd, $keluaranJumlahRow);
-        $this->applySectionStyles($sheet, $masukanSectionRow, $masukanHeaderRow, $masukanDataStart, $masukanDataEnd, $masukanJumlahRow);
+        $this->applySectionStyles($sheet, $keluaranSectionRow, $keluaranHeaderRow, $keluaranDataStart, $keluaranDataEnd, $keluaranJumlahRow, $this->fakturKeluaranData);
+        $this->applySectionStyles($sheet, $masukanSectionRow, $masukanHeaderRow, $masukanDataStart, $masukanDataEnd, $masukanJumlahRow, $this->fakturMasukanData);
         $this->applyRekapStyles($sheet, $rekapSectionRow, $rekapDataStart, $rekapDataEnd, $statusRow);
         $this->applyInfoStyles($sheet, $infoSectionRow, $infoDataStart, $infoDataEnd);
+
+        // Apply company name merging
+        $this->applyCompanyNameMerging($sheet, $keluaranDataStart, $this->fakturKeluaranData, 'C');
+        $this->applyCompanyNameMerging($sheet, $masukanDataStart, $this->fakturMasukanData, 'C');
 
         return [];
     }
 
-    private function applySectionStyles($sheet, $sectionRow, $headerRow, $dataStart, $dataEnd, $jumlahRow)
+    private function applySectionStyles($sheet, $sectionRow, $headerRow, $dataStart, $dataEnd, $jumlahRow, $invoices = null)
     {
         // Section header
         $sheet->mergeCells("B{$sectionRow}:H{$sectionRow}");
@@ -239,16 +340,72 @@ class TaxReportDetailSheet implements FromArray, WithStyles, WithColumnWidths, W
         // Data rows
         if ($dataStart <= $dataEnd) {
             $sheet->getStyle("B{$dataStart}:H{$dataEnd}")->applyFromArray([
-                'borders' => ['allBorders' => ['borderStyle' => Border::BORDER_THIN]]
+                'borders' => ['allBorders' => ['borderStyle' => Border::BORDER_THIN]],
+                'alignment' => ['vertical' => Alignment::VERTICAL_CENTER]
+            ]);
+
+            // Apply special styling for revised invoices (gray background)
+            if ($invoices) {
+                for ($row = $dataStart; $row <= $dataEnd; $row++) {
+                    $invoiceIndex = $row - $dataStart;
+                    if (isset($invoices[$invoiceIndex])) {
+                        $invoice = $invoices[$invoiceIndex];
+                        $displayValues = $this->getDisplayValues($invoice);
+                        
+                        if ($displayValues['is_revised']) {
+                            // Light gray background for revised original invoices
+                            $sheet->getStyle("B{$row}:H{$row}")->applyFromArray([
+                                'fill' => [
+                                    'fillType' => Fill::FILL_SOLID,
+                                    'color' => ['rgb' => 'F5F5F5']
+                                ],
+                                'font' => [
+                                    'color' => ['rgb' => '999999']
+                                ]
+                            ]);
+                            
+                            // Keep company name (column C) with normal background and text
+                            $sheet->getStyle("C{$row}")->applyFromArray([
+                                'fill' => [
+                                    'fillType' => Fill::FILL_SOLID,
+                                    'color' => ['rgb' => 'FFFFFF']
+                                ],
+                                'font' => [
+                                    'color' => ['rgb' => '000000']
+                                ]
+                            ]);
+                        }
+                    }
+                }
+            }
+
+            // Align text columns to left (Nama Penjual, Nomor Seri Faktur, and Tanggal)
+            $sheet->getStyle("C{$dataStart}:E{$dataEnd}")->applyFromArray([
+                'alignment' => ['horizontal' => Alignment::HORIZONTAL_LEFT]
+            ]);
+
+            // Align numbers to the right (DPP Nilai Lainnya, DPP, PPN)
+            $sheet->getStyle("F{$dataStart}:H{$dataEnd}")->applyFromArray([
+                'alignment' => ['horizontal' => Alignment::HORIZONTAL_RIGHT]
+            ]);
+
+            // Center the No column
+            $sheet->getStyle("B{$dataStart}:B{$dataEnd}")->applyFromArray([
+                'alignment' => ['horizontal' => Alignment::HORIZONTAL_CENTER]
             ]);
         }
 
         // Jumlah row
         $sheet->getStyle("B{$jumlahRow}:H{$jumlahRow}")->applyFromArray([
             'font' => ['bold' => true, 'color' => ['rgb' => 'FFFFFF']],
-            'alignment' => ['horizontal' => Alignment::HORIZONTAL_CENTER],
+            'alignment' => ['horizontal' => Alignment::HORIZONTAL_CENTER, 'vertical' => Alignment::VERTICAL_CENTER],
             'fill' => ['fillType' => Fill::FILL_SOLID, 'color' => ['rgb' => '4472C4']],
             'borders' => ['allBorders' => ['borderStyle' => Border::BORDER_THIN]]
+        ]);
+
+        // Align JUMLAH amounts to the right
+        $sheet->getStyle("F{$jumlahRow}:H{$jumlahRow}")->applyFromArray([
+            'alignment' => ['horizontal' => Alignment::HORIZONTAL_RIGHT]
         ]);
     }
 
@@ -265,16 +422,22 @@ class TaxReportDetailSheet implements FromArray, WithStyles, WithColumnWidths, W
 
         // Data rows
         $sheet->getStyle("B{$dataStart}:H{$dataEnd}")->applyFromArray([
-            'borders' => ['allBorders' => ['borderStyle' => Border::BORDER_THIN]]
+            'borders' => ['allBorders' => ['borderStyle' => Border::BORDER_THIN]],
+            'alignment' => ['vertical' => Alignment::VERTICAL_CENTER]
         ]);
 
-        // Merge description columns
+        // Merge description columns and align right
         for ($row = $dataStart; $row <= $dataEnd; $row++) {
             $sheet->mergeCells("B{$row}:G{$row}");
             $sheet->getStyle("B{$row}:G{$row}")->applyFromArray([
-                'alignment' => ['horizontal' => Alignment::HORIZONTAL_RIGHT]
+                'alignment' => ['horizontal' => Alignment::HORIZONTAL_RIGHT, 'vertical' => Alignment::VERTICAL_CENTER]
             ]);
         }
+
+        // Align amounts to the right
+        $sheet->getStyle("H{$dataStart}:H{$dataEnd}")->applyFromArray([
+            'alignment' => ['horizontal' => Alignment::HORIZONTAL_RIGHT]
+        ]);
 
         // Status row
         $sheet->mergeCells("B{$statusRow}:H{$statusRow}");
@@ -298,16 +461,22 @@ class TaxReportDetailSheet implements FromArray, WithStyles, WithColumnWidths, W
 
         // Data rows
         $sheet->getStyle("B{$dataStart}:H{$dataEnd}")->applyFromArray([
-            'borders' => ['allBorders' => ['borderStyle' => Border::BORDER_THIN]]
+            'borders' => ['allBorders' => ['borderStyle' => Border::BORDER_THIN]],
+            'alignment' => ['vertical' => Alignment::VERTICAL_CENTER]
         ]);
 
-        // Merge description columns
+        // Merge description columns and align right
         for ($row = $dataStart; $row <= $dataEnd; $row++) {
             $sheet->mergeCells("B{$row}:G{$row}");
             $sheet->getStyle("B{$row}:G{$row}")->applyFromArray([
-                'alignment' => ['horizontal' => Alignment::HORIZONTAL_RIGHT]
+                'alignment' => ['horizontal' => Alignment::HORIZONTAL_RIGHT, 'vertical' => Alignment::VERTICAL_CENTER]
             ]);
         }
+
+        // Align amounts to the right
+        $sheet->getStyle("H{$dataStart}:H{$dataEnd}")->applyFromArray([
+            'alignment' => ['horizontal' => Alignment::HORIZONTAL_RIGHT]
+        ]);
     }
 
     public function columnWidths(): array

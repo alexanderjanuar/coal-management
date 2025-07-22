@@ -11,13 +11,21 @@
     $compensation = $hasCompensation ? $record->ppn_dikompensasi_dari_masa_sebelumnya : 0;
     $notes = $hasCompensation ? $record->kompensasi_notes : null;
     
-    // Updated metrics with new filtering logic
+    // Updated metrics with revision exclusion
     $ppnKeluar = $record && $record->exists ? $record->getTotalPpnKeluarFiltered() : 0;
     $ppnMasuk = $record && $record->exists ? $record->getTotalPpnMasukFiltered() : 0;
     $peredaranBruto = $record && $record->exists ? $record->getPeredaranBruto() : 0;
     $selisihPpn = $ppnKeluar - $ppnMasuk;
     $effectivePayment = $selisihPpn - $compensation;
     $status = $record && $record->exists ? ($record->invoice_tax_status ?? 'Belum Dihitung') : 'Belum Dihitung';
+    
+    // Get invoice counts (excluding revisions)
+    $totalInvoices = $record ? $record->getInvoiceCount() : 0;
+    $fakturKeluarCount = $record ? $record->getInvoiceCount('Faktur Keluaran') : 0;
+    $fakturMasukCount = $record ? $record->getInvoiceCount('Faktur Masuk') : 0;
+    $filteredFakturKeluarCount = $record ? $record->getFilteredFakturKeluarCount() : 0;
+    $revisionCount = $record ? $record->revisionInvoices()->count() : 0;
+    $excludedInvoicesCount = $fakturKeluarCount - $filteredFakturKeluarCount;
 @endphp
 
 <div 
@@ -87,6 +95,13 @@
                     <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100">Ringkasan PPN & Peredaran</h3>
                     <div class="flex items-center space-x-4 mt-1">
                         <p class="text-sm text-gray-600 dark:text-gray-400">{{ $record && $record->client ? $record->client->name : 'Tax Report' }} • {{ $record ? $record->month : 'N/A' }}</p>
+                        
+                        {{-- Revision indicator --}}
+                        @if($revisionCount > 0)
+                            <span class="inline-flex items-center px-2 py-1 rounded-md text-xs font-medium bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-300 border border-yellow-200 dark:border-yellow-800">
+                                {{ $revisionCount }} Revisi
+                            </span>
+                        @endif
                         
                         {{-- Status Badge --}}
                         @php
@@ -160,7 +175,7 @@
         class="border-t border-gray-200 dark:border-gray-700"
     >
         <div class="px-6 py-5 space-y-6">
-            {{-- Peredaran Bruto Section (New) --}}
+            {{-- Peredaran Bruto Section --}}
             <div class="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
                 <div class="flex items-center justify-between">
                     <div class="flex items-center space-x-3">
@@ -171,7 +186,7 @@
                         </div>
                         <div>
                             <h4 class="text-sm font-semibold text-blue-800 dark:text-blue-300">Peredaran Bruto</h4>
-                            <p class="text-xs text-blue-600 dark:text-blue-400">Total DPP faktur keluaran (tanpa filter)</p>
+                            <p class="text-xs text-blue-600 dark:text-blue-400">Total DPP faktur keluaran (tanpa revisi)</p>
                         </div>
                     </div>
                     <div class="text-right">
@@ -179,9 +194,37 @@
                             Rp <span x-text="currentPeredaran.toLocaleString('id-ID')">{{ number_format($peredaranBruto, 0, ',', '.') }}</span>
                         </div>
                         <div class="text-xs text-blue-600 dark:text-blue-400">
-                            {{ $record ? $record->invoices()->where('type', 'Faktur Keluaran')->count() : 0 }} faktur keluaran
+                            {{ $fakturKeluarCount }} faktur keluaran
+                            @if($revisionCount > 0)
+                                <span class="text-yellow-600 dark:text-yellow-400">({{ $revisionCount }} revisi dikecualikan)</span>
+                            @endif
                         </div>
                     </div>
+                </div>
+            </div>
+
+            {{-- Invoice Breakdown --}}
+            <div class="bg-gray-50 dark:bg-gray-700/50 rounded-lg p-4">
+                <h4 class="text-sm font-semibold text-gray-800 dark:text-gray-200 mb-3">Detail Faktur</h4>
+                <div class="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+                    <div class="text-center">
+                        <div class="text-lg font-semibold text-gray-900 dark:text-gray-100">{{ $totalInvoices }}</div>
+                        <div class="text-xs text-gray-600 dark:text-gray-400">Total Faktur</div>
+                    </div>
+                    <div class="text-center">
+                        <div class="text-lg font-semibold text-green-600 dark:text-green-400">{{ $fakturKeluarCount }}</div>
+                        <div class="text-xs text-gray-600 dark:text-gray-400">Faktur Keluar</div>
+                    </div>
+                    <div class="text-center">
+                        <div class="text-lg font-semibold text-blue-600 dark:text-blue-400">{{ $fakturMasukCount }}</div>
+                        <div class="text-xs text-gray-600 dark:text-gray-400">Faktur Masuk</div>
+                    </div>
+                    @if($revisionCount > 0)
+                        <div class="text-center">
+                            <div class="text-lg font-semibold text-yellow-600 dark:text-yellow-400">{{ $revisionCount }}</div>
+                            <div class="text-xs text-gray-600 dark:text-gray-400">Revisi</div>
+                        </div>
+                    @endif
                 </div>
             </div>
 
@@ -192,11 +235,17 @@
                         <div>
                             <div class="flex items-center space-x-2">
                                 <p class="text-sm font-medium text-gray-600 dark:text-gray-400">PPN Keluar</p>
-                                <span class="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-300" title="Tidak termasuk nomor faktur 02, 03, 07, 08">
+                                <span class="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-300" title="Tidak termasuk nomor faktur 02, 03, 07, 08 dan revisi">
                                     Filtered
                                 </span>
                             </div>
                             <p class="text-xl font-semibold text-gray-900 dark:text-gray-100 mt-1">Rp {{ number_format($ppnKeluar, 0, ',', '.') }}</p>
+                            <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                                {{ $filteredFakturKeluarCount }} dari {{ $fakturKeluarCount }} faktur
+                                @if($excludedInvoicesCount > 0)
+                                    <span class="text-orange-600 dark:text-orange-400">({{ $excludedInvoicesCount }} dikecualikan)</span>
+                                @endif
+                            </p>
                         </div>
                         <div class="w-8 h-8 bg-red-100 dark:bg-red-900/30 rounded-lg flex items-center justify-center">
                             <svg class="w-4 h-4 text-red-600 dark:text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -204,7 +253,6 @@
                             </svg>
                         </div>
                     </div>
-                    <p class="text-xs text-gray-500 dark:text-gray-400 mt-2">Pajak dari penjualan*</p>
                 </div>
 
                 <div class="bg-gray-50 dark:bg-gray-700/50 rounded-lg p-4">
@@ -212,6 +260,7 @@
                         <div>
                             <p class="text-sm font-medium text-gray-600 dark:text-gray-400">PPN Masuk</p>
                             <p class="text-xl font-semibold text-gray-900 dark:text-gray-100 mt-1">Rp {{ number_format($ppnMasuk, 0, ',', '.') }}</p>
+                            <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">{{ $fakturMasukCount }} faktur masuk</p>
                         </div>
                         <div class="w-8 h-8 bg-green-100 dark:bg-green-900/30 rounded-lg flex items-center justify-center">
                             <svg class="w-4 h-4 text-green-600 dark:text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -219,7 +268,6 @@
                             </svg>
                         </div>
                     </div>
-                    <p class="text-xs text-gray-500 dark:text-gray-400 mt-2">Pajak dari pembelian</p>
                 </div>
 
                 <div class="bg-gray-50 dark:bg-gray-700/50 rounded-lg p-4">
@@ -259,15 +307,39 @@
                         </svg>
                     </div>
                     <div class="flex-1">
-                        <h4 class="text-sm font-semibold text-orange-800 dark:text-orange-300">Filter Nomor Faktur</h4>
-                        <p class="text-sm text-orange-700 dark:text-orange-400 mt-1">
-                            Perhitungan PPN mengecualikan faktur dengan nomor berawalan: <strong>02, 03, 07, 08</strong>
-                        </p>
-                        <div class="text-xs text-orange-600 dark:text-orange-400 mt-2 space-y-1">
-                            <div>• 02: Ekspor BKP</div>
-                            <div>• 03: Ekspor BKP dengan fasilitas</div>
-                            <div>• 07: Penyerahan yang PPN-nya tidak dipungut</div>
-                            <div>• 08: Penyerahan yang dibebaskan dari PPN</div>
+                        <h4 class="text-sm font-semibold text-orange-800 dark:text-orange-300">Pengecualian Perhitungan</h4>
+                        <div class="space-y-2 mt-2">
+                            <p class="text-sm text-orange-700 dark:text-orange-400">
+                                <strong>Faktur yang dikecualikan:</strong>
+                            </p>
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs text-orange-600 dark:text-orange-400">
+                                <div class="space-y-1">
+                                    <div>• <strong>Revisi faktur:</strong> Semua faktur revisi</div>
+                                    <div>• <strong>Nomor 02:</strong> Ekspor BKP</div>
+                                    <div>• <strong>Nomor 03:</strong> Ekspor BKP dengan fasilitas</div>
+                                </div>
+                                <div class="space-y-1">
+                                    <div>• <strong>Nomor 07:</strong> Penyerahan yang PPN-nya tidak dipungut</div>
+                                    <div>• <strong>Nomor 08:</strong> Penyerahan yang dibebaskan dari PPN</div>
+                                </div>
+                            </div>
+                            @if($revisionCount > 0 || $excludedInvoicesCount > 0)
+                                <div class="mt-3 p-3 bg-white dark:bg-gray-800 border border-orange-200 dark:border-orange-700 rounded text-sm">
+                                    <div class="flex items-center justify-between">
+                                        <span class="text-orange-700 dark:text-orange-300">Total faktur dikecualikan:</span>
+                                        <span class="font-semibold text-orange-800 dark:text-orange-200">
+                                            {{ $revisionCount + $excludedInvoicesCount }} faktur
+                                            @if($revisionCount > 0 && $excludedInvoicesCount > 0)
+                                                ({{ $revisionCount }} revisi + {{ $excludedInvoicesCount }} filter nomor)
+                                            @elseif($revisionCount > 0)
+                                                ({{ $revisionCount }} revisi)
+                                            @else
+                                                ({{ $excludedInvoicesCount }} filter nomor)
+                                            @endif
+                                        </span>
+                                    </div>
+                                </div>
+                            @endif
                         </div>
                     </div>
                 </div>
@@ -321,7 +393,7 @@
                         = {{ number_format($effectivePayment, 0, ',', '.') }}
                     </div>
                     <div class="text-xs text-gray-500 dark:text-gray-400 text-center mt-2">
-                        *Filter hanya berlaku untuk PPN Keluar, tidak untuk PPN Masuk
+                        *Dikecualikan: revisi faktur dan nomor 02,03,07,08 (hanya PPN Keluar)
                     </div>
                 </div>
 
@@ -348,7 +420,8 @@
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm text-blue-700 dark:text-blue-300">
                     <div class="space-y-1">
                         <p>• <strong>Peredaran Bruto:</strong> Rp {{ number_format($peredaranBruto, 0, ',', '.') }}</p>
-                        <p>• <strong>Total Faktur:</strong> {{ $record ? $record->invoices()->count() : 0 }} faktur</p>
+                        <p>• <strong>Total Faktur:</strong> {{ $totalInvoices }} faktur ({{ $fakturKeluarCount }} keluar, {{ $fakturMasukCount }} masuk)</p>
+                        <p>• <strong>Faktur Diproses:</strong> {{ $filteredFakturKeluarCount }} dari {{ $fakturKeluarCount }} faktur keluar</p>
                         @if($hasCompensation)
                             <p>• <strong>Kompensasi:</strong> Rp {{ number_format($compensation, 0, ',', '.') }}</p>
                         @else
@@ -357,11 +430,85 @@
                     </div>
                     <div class="space-y-1">
                         <p>• <strong>Status Akhir:</strong> {{ $status }}</p>
-                        <p>• <strong>Filter Aktif:</strong> Mengecualikan nomor 02,03,07,08</p>
-                        <p>• <strong>Perhitungan:</strong> Otomatis berdasarkan data faktur</p>
+                        @if($revisionCount > 0)
+                            <p>• <strong>Revisi Dikecualikan:</strong> {{ $revisionCount }} faktur</p>
+                        @endif
+                        @if($excludedInvoicesCount > 0)
+                            <p>• <strong>Filter Nomor:</strong> {{ $excludedInvoicesCount }} faktur dikecualikan</p>
+                        @endif
+                        <p>• <strong>Perhitungan:</strong> Otomatis berdasarkan data faktur asli</p>
                     </div>
                 </div>
             </div>
+
+            {{-- Show excluded invoices details if any --}}
+            @if($record && ($excludedInvoicesCount > 0 || $revisionCount > 0))
+                <div class="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg p-4">
+                    <button 
+                        type="button"
+                        x-data="{ showDetails: false }"
+                        @click="showDetails = !showDetails"
+                        class="w-full text-left focus:outline-none"
+                    >
+                        <div class="flex items-center justify-between">
+                            <h5 class="text-sm font-semibold text-yellow-800 dark:text-yellow-300">Detail Faktur Dikecualikan</h5>
+                            <svg 
+                                class="w-4 h-4 text-yellow-600 dark:text-yellow-400 transition-transform duration-200"
+                                :class="{ 'rotate-180': showDetails }"
+                                fill="none" 
+                                stroke="currentColor" 
+                                viewBox="0 0 24 24"
+                            >
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+                            </svg>
+                        </div>
+                        
+                        <div x-show="showDetails" x-collapse class="mt-3">
+                            @if($revisionCount > 0)
+                                <div class="mb-3">
+                                    <h6 class="text-xs font-medium text-yellow-700 dark:text-yellow-300 mb-2">Faktur Revisi ({{ $revisionCount }}):</h6>
+                                    <div class="bg-white dark:bg-gray-800 border border-yellow-200 dark:border-yellow-700 rounded p-2 text-xs text-yellow-700 dark:text-yellow-300">
+                                        Semua faktur dengan status revisi dikecualikan dari perhitungan untuk menghindari duplikasi data.
+                                    </div>
+                                </div>
+                            @endif
+                            
+                            @if($excludedInvoicesCount > 0)
+                                <div>
+                                    <h6 class="text-xs font-medium text-yellow-700 dark:text-yellow-300 mb-2">Faktur dengan Nomor Dikecualikan ({{ $excludedInvoicesCount }}):</h6>
+                                    <div class="space-y-1">
+                                        @php
+                                            $filteredOut = $record->getFilteredOutInvoices();
+                                        @endphp
+                                        @forelse($filteredOut->take(5) as $invoice)
+                                            <div class="bg-white dark:bg-gray-800 border border-yellow-200 dark:border-yellow-700 rounded p-2 text-xs">
+                                                <div class="flex justify-between items-start">
+                                                    <div>
+                                                        <span class="font-medium text-yellow-800 dark:text-yellow-200">{{ $invoice->invoice_number }}</span>
+                                                        <span class="text-yellow-600 dark:text-yellow-400"> - {{ $invoice->company_name }}</span>
+                                                    </div>
+                                                    <div class="text-right text-yellow-700 dark:text-yellow-300">
+                                                        <div>DPP: Rp {{ number_format($invoice->dpp, 0, ',', '.') }}</div>
+                                                        <div>PPN: Rp {{ number_format($invoice->ppn, 0, ',', '.') }}</div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        @empty
+                                            <p class="text-xs text-yellow-600 dark:text-yellow-400">Tidak ada data faktur yang dikecualikan.</p>
+                                        @endforelse
+                                        
+                                        @if($filteredOut->count() > 5)
+                                            <div class="text-xs text-yellow-600 dark:text-yellow-400 text-center pt-2">
+                                                Dan {{ $filteredOut->count() - 5 }} faktur lainnya...
+                                            </div>
+                                        @endif
+                                    </div>
+                                </div>
+                            @endif
+                        </div>
+                    </button>
+                </div>
+            @endif
         </div>
     </div>
 
@@ -379,7 +526,7 @@
                     <svg class="w-3 h-3 mr-1" fill="currentColor" viewBox="0 0 20 20">
                         <path fill-rule="evenodd" d="M3 3a1 1 0 000 2v8a2 2 0 002 2h2.586l-1.293 1.293a1 1 0 101.414 1.414L10 15.414l2.293 2.293a1 1 0 001.414-1.414L12.414 15H15a2 2 0 002-2V5a1 1 0 100-2H3zm11.707 4.707a1 1 0 00-1.414-1.414L10 9.586 8.707 8.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"></path>
                     </svg>
-                    Dengan filter nomor faktur
+                    Mengecualikan revisi & filter nomor
                 </span>
             </div>
             @if($record && $record->updated_at)
@@ -388,166 +535,3 @@
         </div>
     </div>
 </div>
-
-{{-- Enhanced CSS for accordion with dark mode support --}}
-<style>
-    [x-cloak] { display: none !important; }
-    
-    /* Dark mode transition support */
-    .tax-compensation-info * {
-        transition: background-color 0.2s ease-in-out, border-color 0.2s ease-in-out, color 0.2s ease-in-out;
-    }
-    
-    /* Dark mode scrollbar styling */
-    @media (prefers-color-scheme: dark) {
-        .tax-compensation-info ::-webkit-scrollbar-thumb {
-            background: rgb(75 85 99);
-            border-radius: 4px;
-        }
-        
-        .tax-compensation-info ::-webkit-scrollbar-thumb:hover {
-            background: rgb(107 114 128);
-        }
-    }
-    
-    /* Enhanced focus styles for dark mode */
-    .dark .tax-compensation-info button:focus {
-        outline: none;
-        box-shadow: 0 0 0 2px rgb(251 191 36 / 0.5);
-    }
-    
-    /* Mobile responsiveness */
-    @media (max-width: 768px) {
-        .tax-compensation-info .md\\:grid-cols-3 {
-            grid-template-columns: 1fr;
-        }
-        
-        .tax-compensation-info .md\\:grid-cols-2 {
-            grid-template-columns: 1fr;
-        }
-        
-        .tax-compensation-info .text-xl {
-            font-size: 1.125rem;
-        }
-        
-        .tax-compensation-info .text-2xl {
-            font-size: 1.25rem;
-        }
-        
-        .tax-compensation-info .px-6 {
-            padding-left: 1rem;
-            padding-right: 1rem;
-        }
-        
-        .tax-compensation-info .space-x-4 {
-            flex-direction: column;
-            align-items: flex-start;
-        }
-        
-        .tax-compensation-info .space-x-4 > * + * {
-            margin-left: 0;
-            margin-top: 0.5rem;
-        }
-    }
-    
-    @media (max-width: 640px) {
-        .tax-compensation-info .text-right {
-            text-align: left;
-            margin-top: 0.5rem;
-        }
-        
-        .tax-compensation-info .justify-between {
-            flex-direction: column;
-            align-items: flex-start;
-        }
-    }
-    
-    /* Animation enhancements */
-    .tax-compensation-info [x-collapse] {
-        overflow: hidden;
-        transition: max-height 0.3s ease-in-out;
-    }
-    
-    /* High contrast mode support */
-    @media (prefers-contrast: high) {
-        .tax-compensation-info .border {
-            border-width: 2px;
-        }
-        
-        .tax-compensation-info .bg-gray-50 {
-            background-color: rgb(249 250 251);
-        }
-        
-        .dark .tax-compensation-info .bg-gray-50 {
-            background-color: rgb(31 41 55);
-        }
-    }
-    
-    /* Reduced motion support */
-    @media (prefers-reduced-motion: reduce) {
-        .tax-compensation-info * {
-            transition: none !important;
-            animation: none !important;
-        }
-    }
-    
-    /* Filter badge pulse animation */
-    @keyframes pulse-orange {
-        0%, 100% {
-            opacity: 1;
-        }
-        50% {
-            opacity: 0.8;
-        }
-    }
-    
-    .tax-compensation-info .filter-badge {
-        animation: pulse-orange 2s ease-in-out infinite;
-    }
-    
-    /* Custom scrollbar for content areas */
-    .tax-compensation-info .overflow-auto {
-        scrollbar-width: thin;
-        scrollbar-color: rgb(156 163 175) rgb(243 244 246);
-    }
-    
-    .dark .tax-compensation-info .overflow-auto {
-        scrollbar-color: rgb(75 85 99) rgb(55 65 81);
-    }
-    
-    /* Enhanced hover effects */
-    .tax-compensation-info .hover\\:scale-105:hover {
-        transform: scale(1.05);
-        transition: transform 0.2s ease-in-out;
-    }
-    
-    /* Smooth transitions for all interactive elements */
-    .tax-compensation-info button,
-    .tax-compensation-info .transition-all {
-        transition: all 0.2s ease-in-out;
-    }
-    
-    /* Enhanced card shadows */
-    .tax-compensation-info .shadow-enhanced {
-        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
-    }
-    
-    .dark .tax-compensation-info .shadow-enhanced {
-        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3), 0 2px 4px -1px rgba(0, 0, 0, 0.2);
-    }
-    
-    /* Print styles */
-    @media print {
-        .tax-compensation-info {
-            break-inside: avoid;
-        }
-        
-        .tax-compensation-info [x-show] {
-            display: block !important;
-        }
-        
-        .tax-compensation-info .no-print {
-            display: none !important;
-        }
-    }
-</style>

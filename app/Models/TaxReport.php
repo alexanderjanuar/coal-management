@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\DB;
 
 class TaxReport extends Model
 {
@@ -48,18 +49,34 @@ class TaxReport extends Model
     }
 
     /**
-     * Manually recalculate tax report status
+     * Get invoices relationship excluding revisions
+     */
+    public function originalInvoices()
+    {
+        return $this->invoices()->where('is_revision', false);
+    }
+
+    /**
+     * Get only revision invoices
+     */
+    public function revisionInvoices()
+    {
+        return $this->invoices()->where('is_revision', true);
+    }
+
+    /**
+     * Manually recalculate tax report status (updated to exclude revisions)
      * Useful for data fixes or manual updates
      */
     public function recalculateStatus(): void
     {
-        // Get total PPN from Faktur Masuk
-        $totalPpnMasuk = $this->invoices()
+        // Get total PPN from Faktur Masuk (excluding revisions)
+        $totalPpnMasuk = $this->originalInvoices()
             ->where('type', 'Faktur Masuk')
             ->sum('ppn');
         
-        // Get total PPN from Faktur Keluar
-        $totalPpnKeluar = $this->invoices()
+        // Get total PPN from Faktur Keluar (excluding revisions)
+        $totalPpnKeluar = $this->originalInvoices()
             ->where('type', 'Faktur Keluaran')
             ->sum('ppn');
         
@@ -78,7 +95,7 @@ class TaxReport extends Model
     }
 
     /**
-     * Get selisih PPN (difference)
+     * Get selisih PPN (difference) - excludes revisions
      */
     public function getSelisihPpn(): float
     {
@@ -144,14 +161,13 @@ class TaxReport extends Model
         return $this->invoice_tax_status === 'Nihil' || is_null($this->invoice_tax_status);
     }
 
-
     /**
-     * Calculate complete tax status with compensation
+     * Calculate complete tax status with compensation (updated to exclude revisions)
      */
     public function calculateFinalTaxStatus()
     {
-        $totalPpnKeluaran = $this->invoices()->where('type', 'Faktur Keluaran')->sum('ppn');
-        $totalPpnMasukan = $this->invoices()->where('type', 'Faktur Masuk')->sum('ppn');
+        $totalPpnKeluaran = $this->originalInvoices()->where('type', 'Faktur Keluaran')->sum('ppn');
+        $totalPpnMasukan = $this->originalInvoices()->where('type', 'Faktur Masuk')->sum('ppn');
         
         // Basic PPN calculation
         $ppnTerutang = $totalPpnKeluaran - $totalPpnMasukan;
@@ -202,51 +218,172 @@ class TaxReport extends Model
     }
 
     /**
-     * Get total PPN Keluar with filtered invoice numbers
+     * Get total PPN Keluar with filtering (excludes certain invoice numbers and revisions)
      */
     public function getTotalPpnKeluarFiltered(): float
     {
-        return $this->invoices()
+        return $this->originalInvoices()
             ->where('type', 'Faktur Keluaran')
-            ->where(function ($query) {
-                $query->where('invoice_number', 'NOT LIKE', '02%')
-                    ->where('invoice_number', 'NOT LIKE', '03%')
-                    ->where('invoice_number', 'NOT LIKE', '07%')
-                    ->where('invoice_number', 'NOT LIKE', '08%');
-            })
+            ->whereNotIn(DB::raw('LEFT(invoice_number, 2)'), ['02', '03', '07', '08'])
             ->sum('ppn');
     }
 
     /**
-     * Get total PPN Masuk (all incoming invoices without filter)
+     * Get total PPN Masuk (excludes revisions but no number filtering)
      */
     public function getTotalPpnMasukFiltered(): float
     {
-        return $this->invoices()
+        return $this->originalInvoices()
             ->where('type', 'Faktur Masuk')
             ->sum('ppn');
     }
 
     /**
-     * Get total PPN Keluar (without filter) - for backward compatibility
+     * Get total PPN Keluar (without filter, excludes revisions) - for backward compatibility
      */
     public function getTotalPpnKeluar(): float
     {
-        return $this->invoices()
+        return $this->originalInvoices()
             ->where('type', 'Faktur Keluaran')
             ->sum('ppn');
     }
 
     /**
-     * Get total PPN Masuk (without filter) - for backward compatibility
+     * Get total PPN Masuk (without filter, excludes revisions) - for backward compatibility
      */
     public function getTotalPpnMasuk(): float
     {
-        return $this->invoices()
+        return $this->originalInvoices()
             ->where('type', 'Faktur Masuk')
             ->sum('ppn');
     }
 
+    /**
+     * Get Peredaran Bruto (total DPP from Faktur Keluaran, excludes revisions)
+     */
+    public function getPeredaranBruto(): float
+    {
+        return $this->originalInvoices()
+            ->where('type', 'Faktur Keluaran')
+            ->sum('dpp');
+    }
+
+    /**
+     * Get total DPP for Faktur Keluar with filtering (excludes certain numbers and revisions)
+     */
+    public function getTotalDppKeluarFiltered(): float
+    {
+        return $this->originalInvoices()
+            ->where('type', 'Faktur Keluaran')
+            ->whereNotIn(DB::raw('LEFT(invoice_number, 2)'), ['02', '03', '07', '08'])
+            ->sum('dpp');
+    }
+
+    /**
+     * Get total DPP for Faktur Masuk (excludes revisions only)
+     */
+    public function getTotalDppMasuk(): float
+    {
+        return $this->originalInvoices()
+            ->where('type', 'Faktur Masuk')
+            ->sum('dpp');
+    }
+
+    /**
+     * Get count of invoices by type (excludes revisions)
+     */
+    public function getInvoiceCount($type = null): int
+    {
+        $query = $this->originalInvoices();
+        
+        if ($type) {
+            $query->where('type', $type);
+        }
+        
+        return $query->count();
+    }
+
+    /**
+     * Get count of filtered Faktur Keluaran (excludes certain numbers and revisions)
+     */
+    public function getFilteredFakturKeluarCount(): int
+    {
+        return $this->originalInvoices()
+            ->where('type', 'Faktur Keluaran')
+            ->whereNotIn(DB::raw('LEFT(invoice_number, 2)'), ['02', '03', '07', '08'])
+            ->count();
+    }
+
+    /**
+     * Calculate effective PPN payment considering compensation and excluding revisions
+     */
+    public function getEffectivePpnPayment(): float
+    {
+        $ppnKeluar = $this->getTotalPpnKeluarFiltered();
+        $ppnMasuk = $this->getTotalPpnMasukFiltered();
+        $compensation = $this->ppn_dikompensasi_dari_masa_sebelumnya ?? 0;
+        
+        return ($ppnKeluar - $ppnMasuk) - $compensation;
+    }
+
+    /**
+     * Auto-calculate and update invoice tax status based on filtered amounts
+     */
+    public function updateInvoiceTaxStatus(): string
+    {
+        $effectivePayment = $this->getEffectivePpnPayment();
+        
+        if ($effectivePayment > 0) {
+            $this->invoice_tax_status = 'Kurang Bayar';
+        } elseif ($effectivePayment < 0) {
+            $this->invoice_tax_status = 'Lebih Bayar';
+            
+            // Update the amount available for future compensation
+            $this->ppn_lebih_bayar_dibawa_ke_masa_depan = abs($effectivePayment);
+        } else {
+            $this->invoice_tax_status = 'Nihil';
+        }
+        
+        $this->save();
+        
+        return $this->invoice_tax_status;
+    }
+
+    /**
+     * Get breakdown of invoice numbers that are filtered out
+     */
+    public function getFilteredOutInvoices()
+    {
+        return $this->originalInvoices()
+            ->where('type', 'Faktur Keluaran')
+            ->whereIn(DB::raw('LEFT(invoice_number, 2)'), ['02', '03', '07', '08'])
+            ->select('invoice_number', 'company_name', 'dpp', 'ppn', 'notes')
+            ->get();
+    }
+
+    /**
+     * Get summary statistics excluding revisions
+     */
+    public function getSummaryStats(): array
+    {
+        $originalInvoices = $this->originalInvoices();
+        
+        return [
+            'total_invoices' => $originalInvoices->count(),
+            'faktur_keluar_count' => $originalInvoices->where('type', 'Faktur Keluaran')->count(),
+            'faktur_masuk_count' => $originalInvoices->where('type', 'Faktur Masuk')->count(),
+            'filtered_faktur_keluar_count' => $this->getFilteredFakturKeluarCount(),
+            'excluded_invoices_count' => $originalInvoices
+                ->where('type', 'Faktur Keluaran')
+                ->whereIn(DB::raw('LEFT(invoice_number, 2)'), ['02', '03', '07', '08'])
+                ->count(),
+            'revision_count' => $this->revisionInvoices()->count(),
+            'peredaran_bruto' => $this->getPeredaranBruto(),
+            'ppn_keluar_filtered' => $this->getTotalPpnKeluarFiltered(),
+            'ppn_masuk' => $this->getTotalPpnMasukFiltered(),
+            'effective_payment' => $this->getEffectivePpnPayment(),
+        ];
+    }
 
     /**
      * Get selisih PPN with filtered invoice numbers (updated version)
@@ -258,17 +395,6 @@ class TaxReport extends Model
         
         return $ppnKeluar - $ppnMasuk;
     }
-
-    /**
-     * Get total peredaran bruto (all outgoing invoices DPP without filter)
-     */
-    public function getPeredaranBruto(): float
-    {
-        return $this->invoices()
-            ->where('type', 'Faktur Keluaran')
-            ->sum('dpp');
-    }
-
 
     /**
      * Apply compensation from previous tax reports
