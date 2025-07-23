@@ -135,6 +135,7 @@ class UserClientResource extends Resource
                 ImageColumn::make('avatar_path')
                     ->label('Avatar')
                     ->circular()
+                    ->defaultImageUrl(fn($record) => 'https://ui-avatars.com/api/?name=' . urlencode($record->name) . '&color=7F9CF5&background=EBF4FF')
                     ->size(60),
                     
                 TextColumn::make('name')
