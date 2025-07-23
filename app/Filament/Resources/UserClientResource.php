@@ -27,10 +27,10 @@ class UserClientResource extends Resource
 {
     protected static ?string $model = UserClient::class;
     protected static ?string $navigationIcon = 'heroicon-o-user-circle';
-    protected static ?string $navigationLabel = 'Employees';
-    protected static ?string $modelLabel = 'Employee';
-    protected static ?string $pluralModelLabel = 'Employees';
-    protected static ?string $breadcrumb = 'Employees';
+    protected static ?string $navigationLabel = 'Karyawan';
+    protected static ?string $modelLabel = 'Karyawan';
+    protected static ?string $pluralModelLabel = 'Karyawan';
+    protected static ?string $breadcrumb = 'Karyawan';
 
     public static function shouldRegisterNavigation(): bool
     {
@@ -38,26 +38,29 @@ class UserClientResource extends Resource
     }
 
     protected static ?string $navigationGroup = 'Master Data';
+    
     public static function form(Form $form): Form
     {
         return $form->schema([
-            Section::make('User Details')
-                ->description('Create or edit team member information')
+            Section::make('Detail Pengguna')
+                ->description('Buat atau edit informasi anggota tim')
                 ->collapsible()
                 ->schema([
                     Forms\Components\TextInput::make('user.name')
                         ->required()
-                        ->placeholder('Enter full name')
-                        ->maxLength(255),
+                        ->placeholder('Masukkan nama lengkap')
+                        ->maxLength(255)
+                        ->label('Nama'),
 
                     Forms\Components\TextInput::make('user.email')
                         ->email()
                         ->required()
                         ->unique('users', 'email', ignoreRecord: true)
-                        ->placeholder('email@example.com'),
+                        ->placeholder('email@contoh.com')
+                        ->label('Email'),
 
                     Forms\Components\FileUpload::make('user.avatar_path')
-                        ->label('Avatar Image')
+                        ->label('Foto Avatar')
                         ->image()
                         ->imageEditor()
                         ->disk('public')
@@ -69,13 +72,13 @@ class UserClientResource extends Resource
                         ->imageResizeTargetHeight('300')
                         ->maxSize(5120) // 5MB max
                         ->acceptedFileTypes(['image/jpeg', 'image/png', 'image/gif', 'image/webp'])
-                        ->helperText('Upload and edit an image file (max 5MB). Click edit to crop and adjust the image.'),
+                        ->helperText('Unggah dan edit file gambar (maksimal 5MB). Klik edit untuk memotong dan menyesuaikan gambar.'),
 
                     Forms\Components\TextInput::make('user.avatar_url')
-                        ->label('Avatar URL (Alternative)')
+                        ->label('URL Avatar (Alternatif)')
                         ->url()
-                        ->placeholder('https://example.com/avatar.jpg')
-                        ->helperText('Or enter a URL if you prefer not to upload a file'),
+                        ->placeholder('https://contoh.com/avatar.jpg')
+                        ->helperText('Atau masukkan URL jika Anda tidak ingin mengunggah file'),
 
                     Forms\Components\TextInput::make('user.password')
                         ->password()
@@ -83,19 +86,20 @@ class UserClientResource extends Resource
                         ->dehydrated(fn($state) => filled($state))
                         ->revealable()
                         ->autocomplete('new-password')
+                        ->label('Kata Sandi')
                 ])
                 ->aside(),
-            Section::make('Assignment')
-                ->description('Assign multiple clients')
+            Section::make('Penugasan')
+                ->description('Tugaskan beberapa klien')
                 ->schema([
                     Forms\Components\Select::make('client_ids')
                         ->multiple()
                         ->searchable()
-                        ->label('Client')
+                        ->label('Klien')
                         ->preload()
                         ->required()
                         ->columnSpanFull()
-                        ->loadingMessage('Loading clients...')
+                        ->loadingMessage('Memuat klien...')
                         ->optionsLimit(50)
                         ->options(fn() => !auth()->user()->hasRole('super-admin')
                             ? \App\Models\Client::where('id', auth()->user()->userClients()->first()->client_id)->pluck('name', 'id')
@@ -112,17 +116,29 @@ class UserClientResource extends Resource
                 User::query()
                 ->whereHas('userClients')
                 ->withCount('userClients')
+                ->with('roles')
             )
+            ->defaultSort(function ($query) {
+                return $query->leftJoin('model_has_roles', 'users.id', '=', 'model_has_roles.model_id')
+                    ->leftJoin('roles', 'model_has_roles.role_id', '=', 'roles.id')
+                    ->orderByRaw("
+                        CASE roles.name 
+                            WHEN 'direktur' THEN 1
+                            WHEN 'project-manager' THEN 2  
+                            WHEN 'staff' THEN 3
+                            WHEN 'client' THEN 4
+                            ELSE 5
+                        END ASC
+                    ");
+            })
             ->columns([
                 ImageColumn::make('avatar')
                     ->label('Avatar')
                     ->circular()
-                    ->getStateUsing(fn($record) => $record->avatar_url)
-                    ->defaultImageUrl(fn($record) => 'https://ui-avatars.com/api/?name=' . urlencode($record->name) . '&color=7F9CF5&background=EBF4FF')
                     ->size(60),
                     
                 TextColumn::make('name')
-                    ->label('Name')
+                    ->label('Nama')
                     ->searchable()
                     ->sortable(),
                     
@@ -139,24 +155,28 @@ class UserClientResource extends Resource
                         'project-manager' => 'success',
                         'direktur' => 'warning',
                         'staff' => 'info',
+                        'client' => 'primary',
+                        'verificator' => 'gray',
                         default => 'gray',
                     })
                     ->formatStateUsing(fn(string $state): string => match ($state) {
-                        'project-manager' => 'Project Manager',
-                        'direktur' => 'Director',
-                        'staff' => 'Staff',
+                        'project-manager' => 'Manajer Proyek',
+                        'direktur' => 'Direktur',
+                        'staff' => 'Staf',
+                        'client' => 'Klien',
+                        'verificator' => 'Verifikator',
                         default => $state,
                     }),
                     
                 TextColumn::make('user_clients_count')
-                    ->label('Assigned Clients')
+                    ->label('Klien yang Ditugaskan')
                     ->badge()
                     ->alignCenter()
                     ->color(fn($state) => $state > 0 ? 'success' : 'danger')
             ])
             ->filters([
                 Tables\Filters\SelectFilter::make('client_id')
-                    ->label('Client')
+                    ->label('Klien')
                     ->native(false)
                     ->multiple()
                     ->searchable()
@@ -180,10 +200,18 @@ class UserClientResource extends Resource
                     ->visible(fn() => !auth()->user()->hasRole('staff')),
 
                 Tables\Filters\SelectFilter::make('roles')
-                    ->label('Role')
+                    ->label('Peran')
                     ->native(false)
                     ->options(fn() => \Spatie\Permission\Models\Role::whereNot('name', 'super-admin')
-                        ->pluck('name', 'name'))
+                        ->pluck('name', 'name')
+                        ->mapWithKeys(fn($role, $key) => [
+                            $key => match ($key) {
+                                'project-manager' => 'Manajer Proyek',
+                                'direktur' => 'Direktur',
+                                'staff' => 'Staf',
+                                default => $key
+                            }
+                        ]))
                     ->query(function (Builder $query, array $data) {
                         if (!empty($data['value'])) {
                             $query->whereHas('roles', function ($query) use ($data) {
@@ -196,15 +224,15 @@ class UserClientResource extends Resource
             ->actions([
                 Tables\Actions\ActionGroup::make([
                     Tables\Actions\Action::make('change_avatar')
-                        ->label('Change Avatar')
+                        ->label('Ubah Avatar')
                         ->icon('heroicon-m-camera')
                         ->color('info')
-                        ->modalHeading(fn($record) => "Change Avatar for {$record->name}")
+                        ->modalHeading(fn($record) => "Ubah Avatar untuk {$record->name}")
                         ->modalIcon('heroicon-o-camera')
-                        ->modalDescription('Upload a new avatar image or provide a URL.')
+                        ->modalDescription('Unggah gambar avatar baru atau berikan URL.')
                         ->modalWidth('2xl')
                         ->form([
-                            Forms\Components\Section::make('Current Avatar')
+                            Forms\Components\Section::make('Avatar Saat Ini')
                                 ->schema([
                                     Forms\Components\Placeholder::make('current_avatar')
                                         ->label('')
@@ -212,32 +240,32 @@ class UserClientResource extends Resource
                                             $avatarUrl = $record->avatar;
                                             $source = '';
                                             if ($record->avatar_path) {
-                                                $source = 'Uploaded file';
+                                                $source = 'File yang diunggah';
                                             } elseif ($record->avatar_url) {
-                                                $source = 'External URL';
+                                                $source = 'URL eksternal';
                                             } else {
-                                                $source = 'Default generated';
+                                                $source = 'Default yang dibuat';
                                             }
                                             
                                             return new \Illuminate\Support\HtmlString(
                                                 '<div class="flex items-center space-x-4">
-                                                    <img src="' . $avatarUrl . '" alt="Current Avatar" class="w-20 h-20 rounded-full object-cover shadow-lg">
+                                                    <img src="' . $avatarUrl . '" alt="Avatar Saat Ini" class="w-20 h-20 rounded-full object-cover shadow-lg">
                                                     <div>
-                                                        <p class="text-sm font-medium text-gray-900">Current Avatar</p>
-                                                        <p class="text-xs text-gray-500">Source: ' . $source . '</p>
+                                                        <p class="text-sm font-medium text-gray-900">Avatar Saat Ini</p>
+                                                        <p class="text-xs text-gray-500">Sumber: ' . $source . '</p>
                                                     </div>
                                                 </div>'
                                             );
                                         })
                                 ]),
                             
-                            Forms\Components\Tabs::make('Avatar Options')
+                            Forms\Components\Tabs::make('Opsi Avatar')
                                 ->tabs([
-                                    Forms\Components\Tabs\Tab::make('Upload & Edit')
+                                    Forms\Components\Tabs\Tab::make('Unggah & Edit')
                                         ->icon('heroicon-m-photo')
                                         ->schema([
                                             Forms\Components\FileUpload::make('avatar_file')
-                                                ->label('Upload & Edit Avatar')
+                                                ->label('Unggah & Edit Avatar')
                                                 ->image()
                                                 ->imageEditor()
                                                 ->disk('public')
@@ -249,37 +277,37 @@ class UserClientResource extends Resource
                                                 ->imageResizeTargetHeight('300')
                                                 ->maxSize(5120) // 5MB max
                                                 ->acceptedFileTypes(['image/jpeg', 'image/png', 'image/gif', 'image/webp'])
-                                                ->helperText('Upload an image and click the edit button to crop, rotate, and adjust it before saving.')
+                                                ->helperText('Unggah gambar dan klik tombol edit untuk memotong, memutar, dan menyesuaikan sebelum menyimpan.')
                                                 ->columnSpanFull()
                                         ]),
                                     
-                                    Forms\Components\Tabs\Tab::make('Use URL')
+                                    Forms\Components\Tabs\Tab::make('Gunakan URL')
                                         ->icon('heroicon-m-link')
                                         ->schema([
                                             Forms\Components\TextInput::make('avatar_url')
-                                                ->label('Avatar URL')
+                                                ->label('URL Avatar')
                                                 ->url()
-                                                ->placeholder('https://example.com/avatar.jpg')
-                                                ->helperText('Enter a direct URL to an image')
+                                                ->placeholder('https://contoh.com/avatar.jpg')
+                                                ->helperText('Masukkan URL langsung ke gambar')
                                                 ->default(fn($record) => $record->avatar_url)
                                                 ->live(onBlur: true)
                                                 ->columnSpanFull(),
                                                 
-                                            Forms\Components\Section::make('URL Preview')
+                                            Forms\Components\Section::make('Pratinjau URL')
                                                 ->schema([
                                                     Forms\Components\Placeholder::make('url_preview')
                                                         ->label('')
                                                         ->content(function ($get) {
                                                             $url = $get('avatar_url');
                                                             if (!$url) {
-                                                                return new \Illuminate\Support\HtmlString('<p class="text-sm text-gray-500">Enter a URL above to see preview</p>');
+                                                                return new \Illuminate\Support\HtmlString('<p class="text-sm text-gray-500">Masukkan URL di atas untuk melihat pratinjau</p>');
                                                             }
                                                             return new \Illuminate\Support\HtmlString(
                                                                 '<div class="flex items-center space-x-4">
-                                                                    <img src="' . $url . '" alt="URL Preview" class="w-20 h-20 rounded-full object-cover shadow-lg" onerror="this.src=\'https://via.placeholder.com/80x80/EF4444/FFFFFF?text=Error\'; this.className=\'w-20 h-20 rounded-full bg-red-100 flex items-center justify-center text-red-500 text-xs\';">
+                                                                    <img src="' . $url . '" alt="Pratinjau URL" class="w-20 h-20 rounded-full object-cover shadow-lg" onerror="this.src=\'https://via.placeholder.com/80x80/EF4444/FFFFFF?text=Error\'; this.className=\'w-20 h-20 rounded-full bg-red-100 flex items-center justify-center text-red-500 text-xs\';">
                                                                     <div>
-                                                                        <p class="text-sm font-medium text-gray-900">URL Preview</p>
-                                                                        <p class="text-xs text-gray-500">New avatar from URL</p>
+                                                                        <p class="text-sm font-medium text-gray-900">Pratinjau URL</p>
+                                                                        <p class="text-xs text-gray-500">Avatar baru dari URL</p>
                                                                     </div>
                                                                 </div>'
                                                             );
@@ -288,7 +316,7 @@ class UserClientResource extends Resource
                                                 ->visible(fn($get) => filled($get('avatar_url')))
                                         ]),
                                     
-                                    Forms\Components\Tabs\Tab::make('Remove Avatar')
+                                    Forms\Components\Tabs\Tab::make('Hapus Avatar')
                                         ->icon('heroicon-m-trash')
                                         ->schema([
                                             Forms\Components\Placeholder::make('remove_info')
@@ -299,15 +327,15 @@ class UserClientResource extends Resource
                                                             <svg class="w-5 h-5 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z"></path>
                                                             </svg>
-                                                            <p class="text-sm font-medium text-red-800">Remove Current Avatar</p>
+                                                            <p class="text-sm font-medium text-red-800">Hapus Avatar Saat Ini</p>
                                                         </div>
-                                                        <p class="text-xs text-red-600 mt-1">This will delete the current avatar and revert to the default generated avatar.</p>
+                                                        <p class="text-xs text-red-600 mt-1">Ini akan menghapus avatar saat ini dan kembali ke avatar default yang dibuat.</p>
                                                     </div>'
                                                 )),
                                             
                                             Forms\Components\Checkbox::make('remove_avatar')
-                                                ->label('Yes, remove the current avatar')
-                                                ->helperText('Check this box to confirm avatar removal')
+                                                ->label('Ya, hapus avatar saat ini')
+                                                ->helperText('Centang kotak ini untuk mengkonfirmasi penghapusan avatar')
                                         ])
                                 ])
                         ])
@@ -321,9 +349,9 @@ class UserClientResource extends Resource
                                 ]);
                                 
                                 Notification::make()
-                                    ->title('Avatar Removed')
+                                    ->title('Avatar Dihapus')
                                     ->success()
-                                    ->body("Avatar removed for {$record->name}. Now using default avatar.")
+                                    ->body("Avatar dihapus untuk {$record->name}. Sekarang menggunakan avatar default.")
                                     ->send();
                                 return;
                             }
@@ -342,9 +370,9 @@ class UserClientResource extends Resource
                                 ]);
                                 
                                 Notification::make()
-                                    ->title('Avatar Updated')
+                                    ->title('Avatar Diperbarui')
                                     ->success()
-                                    ->body("Successfully uploaded and edited new avatar for {$record->name}")
+                                    ->body("Berhasil mengunggah dan mengedit avatar baru untuk {$record->name}")
                                     ->send();
                                 return;
                             }
@@ -360,27 +388,27 @@ class UserClientResource extends Resource
                                 ]);
                                 
                                 Notification::make()
-                                    ->title('Avatar Updated')
+                                    ->title('Avatar Diperbarui')
                                     ->success()
-                                    ->body("Successfully updated avatar URL for {$record->name}")
+                                    ->body("Berhasil memperbarui URL avatar untuk {$record->name}")
                                     ->send();
                                 return;
                             }
                             
                             // If no action taken
                             Notification::make()
-                                ->title('No Changes')
+                                ->title('Tidak Ada Perubahan')
                                 ->warning()
-                                ->body('No avatar changes were made.')
+                                ->body('Tidak ada perubahan avatar yang dilakukan.')
                                 ->send();
                         }),
 
                     Tables\Actions\Action::make('assign_client')
-                        ->label('Assign Client')
+                        ->label('Tugaskan Klien')
                         ->icon('heroicon-m-building-office')
                         ->color('warning')
                         ->visible(fn() => auth()->user()->hasRole(['super-admin', 'direktur', 'project-manager']))
-                        ->modalHeading(fn($record) => "Assign Client to {$record->name}")
+                        ->modalHeading(fn($record) => "Tugaskan Klien ke {$record->name}")
                         ->form(function ($record) {
                             $assignedClientIds = $record->userClients()
                                 ->pluck('client_id')
@@ -388,7 +416,7 @@ class UserClientResource extends Resource
 
                             return [
                                 Forms\Components\Select::make('client_id')
-                                    ->label('Clients')
+                                    ->label('Klien')
                                     ->multiple()
                                     ->options(
                                         \App\Models\Client::whereNotIn('id', $assignedClientIds)
@@ -397,8 +425,8 @@ class UserClientResource extends Resource
                                     ->preload()
                                     ->searchable()
                                     ->required()
-                                    ->loadingMessage('Loading clients...')
-                                    ->helperText('Select clients to assign to this user.')
+                                    ->loadingMessage('Memuat klien...')
+                                    ->helperText('Pilih klien untuk ditugaskan ke pengguna ini.')
                             ];
                         })
                         ->action(function (array $data, User $record): void {
@@ -410,22 +438,22 @@ class UserClientResource extends Resource
                             }
 
                             Notification::make()
-                                ->title('Clients Assigned')
+                                ->title('Klien Ditugaskan')
                                 ->success()
-                                ->body("Successfully assigned clients to {$record->name}")
+                                ->body("Berhasil menugaskan klien ke {$record->name}")
                                 ->send();
                         }),
 
                     Tables\Actions\Action::make('assign_role')
-                        ->label('Assign Role')
+                        ->label('Tugaskan Peran')
                         ->icon('heroicon-m-user-group')
                         ->color('success')
-                        ->modalHeading(fn($record) => "Assign Role to {$record->name}")
+                        ->modalHeading(fn($record) => "Tugaskan Peran ke {$record->name}")
                         ->modalIcon('heroicon-o-user-circle')
-                        ->modalDescription('Select a role to assign to this employee.')
+                        ->modalDescription('Pilih peran untuk ditugaskan ke karyawan ini.')
                         ->form([
                             Forms\Components\Select::make('role')
-                                ->label('Role')
+                                ->label('Peran')
                                 ->options(function () {
                                     $user = auth()->user();
                                     $roles = \Spatie\Permission\Models\Role::whereNot('name', 'super-admin');
@@ -441,34 +469,34 @@ class UserClientResource extends Resource
                                     return $roles->pluck('name', 'name')
                                         ->mapWithKeys(fn($role, $key) => [
                                             $key => match ($key) {
-                                                'project-manager' => 'Project Manager',
-                                                'direktur' => 'Director',
-                                                'staff' => 'Staff',
-                                                'client' => 'Client',
+                                                'project-manager' => 'Manajer Proyek',
+                                                'direktur' => 'Direktur',
+                                                'staff' => 'Staf',
+                                                'client' => 'Klien',
                                                 default => $key
                                             }
                                         ]);
                                 })
                                 ->required()
                                 ->searchable()
-                                ->placeholder('Select a role')
+                                ->placeholder('Pilih peran')
                                 ->disabled(fn() => !auth()->user()->hasRole(['super-admin', 'direktur']))
                         ])
                         ->action(function (array $data, User $record): void {
                             $record->syncRoles([$data['role']]);
                             Notification::make()
-                                ->title('Role Assigned')
+                                ->title('Peran Ditugaskan')
                                 ->success()
-                                ->body("Successfully assigned role to {$record->name}")
+                                ->body("Berhasil menugaskan peran ke {$record->name}")
                                 ->send();
                         }),
 
                     Tables\Actions\Action::make('unassign_client')
-                        ->label('Unassign Client')
+                        ->label('Batalkan Penugasan Klien')
                         ->icon('heroicon-m-building-office-2')
                         ->color('danger')
                         ->visible(fn() => auth()->user()->hasRole(['super-admin', 'direktur', 'project-manager']))
-                        ->modalHeading(fn($record) => "Unassign Client from {$record->name}")
+                        ->modalHeading(fn($record) => "Batalkan Penugasan Klien dari {$record->name}")
                         ->form(function ($record) {
                             $assignedClients = $record->userClients()
                                 ->join('clients', 'user_clients.client_id', '=', 'clients.id')
@@ -477,14 +505,14 @@ class UserClientResource extends Resource
 
                             return [
                                 Forms\Components\Select::make('user_client_ids')
-                                    ->label('Assigned Clients')
+                                    ->label('Klien yang Ditugaskan')
                                     ->multiple()
                                     ->options($assignedClients)
                                     ->preload()
                                     ->searchable()
                                     ->required()
-                                    ->loadingMessage('Loading assigned clients...')
-                                    ->helperText('Select clients to unassign from this user.')
+                                    ->loadingMessage('Memuat klien yang ditugaskan...')
+                                    ->helperText('Pilih klien untuk dibatalkan penugasannya dari pengguna ini.')
                             ];
                         })
                         ->action(function (array $data, User $record): void {
@@ -492,24 +520,24 @@ class UserClientResource extends Resource
                             UserClient::whereIn('id', $data['user_client_ids'])->delete();
 
                             Notification::make()
-                                ->title('Clients Unassigned')
+                                ->title('Penugasan Klien Dibatalkan')
                                 ->success()
-                                ->body("Successfully unassigned clients from {$record->name}")
+                                ->body("Berhasil membatalkan penugasan klien dari {$record->name}")
                                 ->send();
                         })
                         ->requiresConfirmation()
-                        ->modalButton('Unassign Selected Clients'),
+                        ->modalButton('Batalkan Klien yang Dipilih'),
                 ])
             ])
             ->headerActions([
                 Tables\Actions\Action::make('attach_user')
-                    ->label('Attach Unassigned User')
+                    ->label('Lampirkan Pengguna yang Tidak Ditugaskan')
                     ->icon('heroicon-m-user-plus')
                     ->color('gray')
                     ->visible(fn() => auth()->user()->hasRole('super-admin'))
                     ->form([
                         Forms\Components\Select::make('user_id')
-                            ->label('User')
+                            ->label('Pengguna')
                             ->options(function () {
                                 return User::whereDoesntHave('userClients')
                                     ->pluck('name', 'id');
@@ -517,18 +545,18 @@ class UserClientResource extends Resource
                             ->required()
                             ->searchable()
                             ->preload()
-                            ->helperText('Select a user who has no client assignments'),
+                            ->helperText('Pilih pengguna yang tidak memiliki penugasan klien'),
 
-                        Forms\Components\Section::make('Select Clients')
+                        Forms\Components\Section::make('Pilih Klien')
                             ->schema([
                                 Forms\Components\CheckboxList::make('client_ids')
-                                    ->label('Clients')
+                                    ->label('Klien')
                                     ->options(Client::pluck('name', 'id'))
                                     ->required()
                                     ->searchable()
                                     ->bulkToggleable()
                                     ->columns(2)
-                                    ->helperText('Select clients to assign to this user')
+                                    ->helperText('Pilih klien untuk ditugaskan ke pengguna ini')
                             ])
                     ])
                     ->action(function (array $data): void {
@@ -542,29 +570,29 @@ class UserClientResource extends Resource
                         $userName = User::find($data['user_id'])->name;
 
                         Notification::make()
-                            ->title('User Assigned')
+                            ->title('Pengguna Ditugaskan')
                             ->success()
-                            ->body("Successfully assigned {$userName} to selected clients")
+                            ->body("Berhasil menugaskan {$userName} ke klien yang dipilih")
                             ->send();
                     })
-                    ->modalHeading('Attach User to Clients')
-                    ->modalDescription('Select an unassigned user and the clients to assign them to.')
+                    ->modalHeading('Lampirkan Pengguna ke Klien')
+                    ->modalDescription('Pilih pengguna yang tidak ditugaskan dan klien untuk ditugaskan kepada mereka.')
                     ->requiresConfirmation()
-                    ->modalButton('Attach User'),
+                    ->modalButton('Lampirkan Pengguna'),
 
             ])
             ->bulkActions([
                 Tables\Actions\BulkActionGroup::make([
                     Tables\Actions\BulkAction::make('assignRole')
-                        ->label('Assign Role')
+                        ->label('Tugaskan Peran')
                         ->icon('heroicon-m-user-group')
                         ->color('success')
-                        ->modalHeading('Assign Role to Selected Employees')
+                        ->modalHeading('Tugaskan Peran ke Karyawan yang Dipilih')
                         ->modalIcon('heroicon-o-user-circle')
-                        ->modalDescription('Select a role to assign to all selected employees.')
+                        ->modalDescription('Pilih peran untuk ditugaskan ke semua karyawan yang dipilih.')
                         ->form([
                             Forms\Components\Select::make('role')
-                                ->label('Role')
+                                ->label('Peran')
                                 ->options(function () {
                                     $user = auth()->user();
                                     $roles = \Spatie\Permission\Models\Role::whereNot('name', 'super-admin');
@@ -580,9 +608,9 @@ class UserClientResource extends Resource
                                     return $roles->pluck('name', 'name')
                                         ->mapWithKeys(fn($role, $key) => [
                                             $key => match ($key) {
-                                                'project-manager' => 'Project Manager',
-                                                'direktur' => 'Director',
-                                                'staff' => 'Staff',
+                                                'project-manager' => 'Manajer Proyek',
+                                                'direktur' => 'Direktur',
+                                                'staff' => 'Staf',
                                                 default => $key
                                             }
                                         ]);
@@ -594,12 +622,13 @@ class UserClientResource extends Resource
                             $records->each(fn($record) => $record->syncRoles([$data['role']]));
 
                             Notification::make()
-                                ->title('Roles Assigned')
+                                ->title('Peran Ditugaskan')
                                 ->success()
-                                ->body('Successfully assigned roles to selected employees.')
+                                ->body('Berhasil menugaskan peran ke karyawan yang dipilih.')
                                 ->send();
                         }),
-                    Tables\Actions\DeleteBulkAction::make(),
+                    Tables\Actions\DeleteBulkAction::make()
+                        ->label('Hapus'),
                 ]),
             ]);
     }
