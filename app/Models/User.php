@@ -13,8 +13,9 @@ use Filament\Models\Contracts\FilamentUser;
 use Filament\Panel;
 use League\CommonMark\Node\Block\Document;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Filament\Models\Contracts\HasAvatar;
 
-class User extends Authenticatable
+class User extends Authenticatable implements FilamentUser, HasAvatar
 {
     use HasApiTokens, HasFactory, Notifiable, CausesActivity;
     use FilamentUserHelpers;
@@ -103,6 +104,40 @@ class User extends Authenticatable
                     default => "Akun pengguna {$this->name} telah di{$eventName}"
                 };
             });
+    }
+
+    public function getFilamentAvatarUrl(): ?string
+    {
+        return $this->avatar_url;
+    }
+
+    /**
+     * Get the user's avatar URL or return a default
+     */
+    public function getAvatarAttribute(): string
+    {
+        // If there's an uploaded file, use that first
+        if ($this->avatar_path && \Storage::disk('public')->exists($this->avatar_path)) {
+            return \Storage::disk('public')->url($this->avatar_path);
+        }
+        
+        // Otherwise use the URL if provided
+        if ($this->avatar_url) {
+            return $this->avatar_url;
+        }
+        
+        // Fall back to generated avatar
+        return 'https://ui-avatars.com/api/?name=' . urlencode($this->name) . '&color=7F9CF5&background=EBF4FF';
+    }
+
+    /**
+     * Delete the old avatar file when updating
+     */
+    public function deleteOldAvatar(): void
+    {
+        if ($this->avatar_path && \Storage::disk('public')->exists($this->avatar_path)) {
+            \Storage::disk('public')->delete($this->avatar_path);
+        }
     }
 
     public function canAccessPanel(Panel $panel): bool

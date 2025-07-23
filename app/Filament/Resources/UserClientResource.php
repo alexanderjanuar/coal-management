@@ -21,6 +21,7 @@ use Illuminate\Database\Eloquent\Model;
 use Filament\Notifications\Notification;
 use Illuminate\Support\Collection;
 use Filament\Tables\Columns\TextColumn;
+use Filament\Tables\Columns\ImageColumn;
 
 class UserClientResource extends Resource
 {
@@ -54,6 +55,26 @@ class UserClientResource extends Resource
                         ->required()
                         ->unique('users', 'email', ignoreRecord: true)
                         ->placeholder('email@example.com'),
+
+                    Forms\Components\FileUpload::make('user.avatar_path')
+                        ->label('Avatar Image')
+                        ->image()
+                        ->disk('public')
+                        ->directory('avatars')
+                        ->visibility('public')
+                        ->imageResizeMode('cover')
+                        ->imageCropAspectRatio('1:1')
+                        ->imageResizeTargetWidth('200')
+                        ->imageResizeTargetHeight('200')
+                        ->maxSize(2048) // 2MB max
+                        ->acceptedFileTypes(['image/jpeg', 'image/png', 'image/gif', 'image/webp'])
+                        ->helperText('Upload an image file (max 2MB) or use the URL field below'),
+
+                    Forms\Components\TextInput::make('user.avatar_url')
+                        ->label('Avatar URL (Alternative)')
+                        ->url()
+                        ->placeholder('https://example.com/avatar.jpg')
+                        ->helperText('Or enter a URL if you prefer not to upload a file'),
 
                     Forms\Components\TextInput::make('user.password')
                         ->password()
@@ -92,15 +113,24 @@ class UserClientResource extends Resource
                 ->withCount('userClients')
             )
             ->columns([
+                ImageColumn::make('avatar')
+                    ->label('Avatar')
+                    ->circular()
+                    ->getStateUsing(fn($record) => $record->avatar)
+                    ->defaultImageUrl(fn($record) => 'https://ui-avatars.com/api/?name=' . urlencode($record->name) . '&color=7F9CF5&background=EBF4FF')
+                    ->size(40),
+                    
                 TextColumn::make('name')
                     ->label('Name')
                     ->searchable()
                     ->sortable(),
+                    
                 TextColumn::make('email')
                     ->label('Email')
                     ->searchable()
                     ->copyable()
                     ->sortable(),
+                    
                 TextColumn::make('roles.name')
                     ->label('Role')
                     ->badge()
@@ -116,15 +146,13 @@ class UserClientResource extends Resource
                         'staff' => 'Staff',
                         default => $state,
                     }),
-                TextColumn::make('user_clients_count')  // Note the snake_case here
+                    
+                TextColumn::make('user_clients_count')
                     ->label('Assigned Clients')
                     ->badge()
                     ->alignCenter()
                     ->color(fn($state) => $state > 0 ? 'success' : 'danger')
             ])
-            // ->defaultGroup(
-            //     'client.name',
-            // )
             ->filters([
                 Tables\Filters\SelectFilter::make('client_id')
                     ->label('Client')
@@ -166,6 +194,182 @@ class UserClientResource extends Resource
             ])
             ->actions([
                 Tables\Actions\ActionGroup::make([
+                    Tables\Actions\Action::make('change_avatar')
+                        ->label('Change Avatar')
+                        ->icon('heroicon-m-camera')
+                        ->color('info')
+                        ->modalHeading(fn($record) => "Change Avatar for {$record->name}")
+                        ->modalIcon('heroicon-o-camera')
+                        ->modalDescription('Upload a new avatar image or provide a URL.')
+                        ->modalWidth('2xl')
+                        ->form([
+                            Forms\Components\Section::make('Current Avatar')
+                                ->schema([
+                                    Forms\Components\Placeholder::make('current_avatar')
+                                        ->label('')
+                                        ->content(function ($record) {
+                                            $avatarUrl = $record->avatar;
+                                            $source = '';
+                                            if ($record->avatar_path) {
+                                                $source = 'Uploaded file';
+                                            } elseif ($record->avatar_url) {
+                                                $source = 'External URL';
+                                            } else {
+                                                $source = 'Default generated';
+                                            }
+                                            
+                                            return new \Illuminate\Support\HtmlString(
+                                                '<div class="flex items-center space-x-4">
+                                                    <img src="' . $avatarUrl . '" alt="Current Avatar" class="w-20 h-20 rounded-full object-cover shadow-lg">
+                                                    <div>
+                                                        <p class="text-sm font-medium text-gray-900">Current Avatar</p>
+                                                        <p class="text-xs text-gray-500">Source: ' . $source . '</p>
+                                                    </div>
+                                                </div>'
+                                            );
+                                        })
+                                ]),
+                            
+                            Forms\Components\Tabs::make('Avatar Options')
+                                ->tabs([
+                                    Forms\Components\Tabs\Tab::make('Upload File')
+                                        ->icon('heroicon-m-photo')
+                                        ->schema([
+                                            Forms\Components\FileUpload::make('avatar_file')
+                                                ->label('Upload New Avatar')
+                                                ->image()
+                                                ->disk('public')
+                                                ->directory('avatars')
+                                                ->visibility('public')
+                                                ->imageResizeMode('cover')
+                                                ->imageCropAspectRatio('1:1')
+                                                ->imageResizeTargetWidth('200')
+                                                ->imageResizeTargetHeight('200')
+                                                ->maxSize(2048)
+                                                ->acceptedFileTypes(['image/jpeg', 'image/png', 'image/gif', 'image/webp'])
+                                                ->helperText('Upload an image file (JPEG, PNG, GIF, WebP). Max size: 2MB. Image will be resized to 200x200 pixels.')
+                                                ->columnSpanFull()
+                                        ]),
+                                    
+                                    Forms\Components\Tabs\Tab::make('Use URL')
+                                        ->icon('heroicon-m-link')
+                                        ->schema([
+                                            Forms\Components\TextInput::make('avatar_url')
+                                                ->label('Avatar URL')
+                                                ->url()
+                                                ->placeholder('https://example.com/avatar.jpg')
+                                                ->helperText('Enter a direct URL to an image')
+                                                ->default(fn($record) => $record->avatar_url)
+                                                ->live(onBlur: true)
+                                                ->columnSpanFull(),
+                                                
+                                            Forms\Components\Section::make('URL Preview')
+                                                ->schema([
+                                                    Forms\Components\Placeholder::make('url_preview')
+                                                        ->label('')
+                                                        ->content(function ($get) {
+                                                            $url = $get('avatar_url');
+                                                            if (!$url) {
+                                                                return new \Illuminate\Support\HtmlString('<p class="text-sm text-gray-500">Enter a URL above to see preview</p>');
+                                                            }
+                                                            return new \Illuminate\Support\HtmlString(
+                                                                '<div class="flex items-center space-x-4">
+                                                                    <img src="' . $url . '" alt="URL Preview" class="w-20 h-20 rounded-full object-cover shadow-lg" onerror="this.src=\'https://via.placeholder.com/80x80/EF4444/FFFFFF?text=Error\'; this.className=\'w-20 h-20 rounded-full bg-red-100 flex items-center justify-center text-red-500 text-xs\';">
+                                                                    <div>
+                                                                        <p class="text-sm font-medium text-gray-900">URL Preview</p>
+                                                                        <p class="text-xs text-gray-500">New avatar from URL</p>
+                                                                    </div>
+                                                                </div>'
+                                                            );
+                                                        })
+                                                ])
+                                                ->visible(fn($get) => filled($get('avatar_url')))
+                                        ]),
+                                    
+                                    Forms\Components\Tabs\Tab::make('Remove Avatar')
+                                        ->icon('heroicon-m-trash')
+                                        ->schema([
+                                            Forms\Components\Placeholder::make('remove_info')
+                                                ->label('')
+                                                ->content(new \Illuminate\Support\HtmlString(
+                                                    '<div class="p-4 bg-red-50 rounded-lg border border-red-200">
+                                                        <div class="flex items-center space-x-2">
+                                                            <svg class="w-5 h-5 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z"></path>
+                                                            </svg>
+                                                            <p class="text-sm font-medium text-red-800">Remove Current Avatar</p>
+                                                        </div>
+                                                        <p class="text-xs text-red-600 mt-1">This will delete the current avatar and revert to the default generated avatar.</p>
+                                                    </div>'
+                                                )),
+                                            
+                                            Forms\Components\Checkbox::make('remove_avatar')
+                                                ->label('Yes, remove the current avatar')
+                                                ->helperText('Check this box to confirm avatar removal')
+                                        ])
+                                ])
+                        ])
+                        ->action(function (array $data, User $record): void {
+                            // Handle avatar removal
+                            if (!empty($data['remove_avatar'])) {
+                                $record->deleteOldAvatar();
+                                $record->update([
+                                    'avatar_url' => null,
+                                    'avatar_path' => null
+                                ]);
+                                
+                                Notification::make()
+                                    ->title('Avatar Removed')
+                                    ->success()
+                                    ->body("Avatar removed for {$record->name}. Now using default avatar.")
+                                    ->send();
+                                return;
+                            }
+                            
+                            // Handle file upload
+                            if (!empty($data['avatar_file'])) {
+                                // Delete old avatar file if exists
+                                $record->deleteOldAvatar();
+                                
+                                $record->update([
+                                    'avatar_path' => $data['avatar_file'],
+                                    'avatar_url' => null // Clear URL when uploading file
+                                ]);
+                                
+                                Notification::make()
+                                    ->title('Avatar Updated')
+                                    ->success()
+                                    ->body("Successfully uploaded new avatar for {$record->name}")
+                                    ->send();
+                                return;
+                            }
+                            
+                            // Handle URL update
+                            if (!empty($data['avatar_url'])) {
+                                // Delete old avatar file if exists (since we're switching to URL)
+                                $record->deleteOldAvatar();
+                                
+                                $record->update([
+                                    'avatar_url' => $data['avatar_url'],
+                                    'avatar_path' => null // Clear file path when using URL
+                                ]);
+                                
+                                Notification::make()
+                                    ->title('Avatar Updated')
+                                    ->success()
+                                    ->body("Successfully updated avatar URL for {$record->name}")
+                                    ->send();
+                                return;
+                            }
+                            
+                            // If no action taken
+                            Notification::make()
+                                ->title('No Changes')
+                                ->warning()
+                                ->body('No avatar changes were made.')
+                                ->send();
+                        }),
+
                     Tables\Actions\Action::make('assign_client')
                         ->label('Assign Client')
                         ->icon('heroicon-m-building-office')
@@ -317,8 +521,8 @@ class UserClientResource extends Resource
                                     ->options(Client::pluck('name', 'id'))
                                     ->required()
                                     ->searchable()
-                                    ->bulkToggleable() // This adds "Select All" and "Deselect All" buttons
-                                    ->columns(2) // Display in 2 columns for better layout
+                                    ->bulkToggleable()
+                                    ->columns(2)
                                     ->helperText('Select clients to assign to this user')
                             ])
                     ])
@@ -422,7 +626,6 @@ class UserClientResource extends Resource
             //
         ];
     }
-
 
     public static function getPages(): array
     {
