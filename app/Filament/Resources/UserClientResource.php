@@ -132,7 +132,7 @@ class UserClientResource extends Resource
                     ");
             })
             ->columns([
-                ImageColumn::make('avatar')
+                ImageColumn::make('avatar_url')
                     ->label('Avatar')
                     ->circular()
                     ->size(60),
