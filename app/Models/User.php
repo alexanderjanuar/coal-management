@@ -127,7 +127,7 @@ class User extends Authenticatable implements FilamentUser, HasAvatar
         }
         
         // Fall back to generated avatar
-        return 'https://ui-avatars.com/api/?name=' . urlencode($this->name) . '&color=7F9CF5&background=EBF4FF';
+        return 'https://ui-avatars.com/api/?name=' . urlencode($this->name) . '&color=7F9CF5&background=EBF4FF&size=300';
     }
 
     /**
@@ -137,6 +137,19 @@ class User extends Authenticatable implements FilamentUser, HasAvatar
     {
         if ($this->avatar_path && \Storage::disk('public')->exists($this->avatar_path)) {
             \Storage::disk('public')->delete($this->avatar_path);
+        }
+    }
+
+    /**
+     * Set avatar path and automatically populate avatar_url with storage/ prefix
+     */
+    public function setAvatarPathAttribute($value): void
+    {
+        $this->attributes['avatar_path'] = $value;
+        
+        // If we're setting a file path, also set the avatar_url with storage/ prefix
+        if ($value) {
+            $this->attributes['avatar_url'] = 'storage/' . $value;
         }
     }
 

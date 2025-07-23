@@ -59,16 +59,17 @@ class UserClientResource extends Resource
                     Forms\Components\FileUpload::make('user.avatar_path')
                         ->label('Avatar Image')
                         ->image()
+                        ->imageEditor()
                         ->disk('public')
                         ->directory('avatars')
                         ->visibility('public')
                         ->imageResizeMode('cover')
                         ->imageCropAspectRatio('1:1')
-                        ->imageResizeTargetWidth('200')
-                        ->imageResizeTargetHeight('200')
-                        ->maxSize(2048) // 2MB max
+                        ->imageResizeTargetWidth('300')
+                        ->imageResizeTargetHeight('300')
+                        ->maxSize(5120) // 5MB max
                         ->acceptedFileTypes(['image/jpeg', 'image/png', 'image/gif', 'image/webp'])
-                        ->helperText('Upload an image file (max 2MB) or use the URL field below'),
+                        ->helperText('Upload and edit an image file (max 5MB). Click edit to crop and adjust the image.'),
 
                     Forms\Components\TextInput::make('user.avatar_url')
                         ->label('Avatar URL (Alternative)')
@@ -118,7 +119,7 @@ class UserClientResource extends Resource
                     ->circular()
                     ->getStateUsing(fn($record) => $record->avatar)
                     ->defaultImageUrl(fn($record) => 'https://ui-avatars.com/api/?name=' . urlencode($record->name) . '&color=7F9CF5&background=EBF4FF')
-                    ->size(40),
+                    ->size(60),
                     
                 TextColumn::make('name')
                     ->label('Name')
@@ -232,22 +233,23 @@ class UserClientResource extends Resource
                             
                             Forms\Components\Tabs::make('Avatar Options')
                                 ->tabs([
-                                    Forms\Components\Tabs\Tab::make('Upload File')
+                                    Forms\Components\Tabs\Tab::make('Upload & Edit')
                                         ->icon('heroicon-m-photo')
                                         ->schema([
                                             Forms\Components\FileUpload::make('avatar_file')
-                                                ->label('Upload New Avatar')
+                                                ->label('Upload & Edit Avatar')
                                                 ->image()
+                                                ->imageEditor()
                                                 ->disk('public')
                                                 ->directory('avatars')
                                                 ->visibility('public')
                                                 ->imageResizeMode('cover')
                                                 ->imageCropAspectRatio('1:1')
-                                                ->imageResizeTargetWidth('200')
-                                                ->imageResizeTargetHeight('200')
-                                                ->maxSize(2048)
+                                                ->imageResizeTargetWidth('300')
+                                                ->imageResizeTargetHeight('300')
+                                                ->maxSize(5120) // 5MB max
                                                 ->acceptedFileTypes(['image/jpeg', 'image/png', 'image/gif', 'image/webp'])
-                                                ->helperText('Upload an image file (JPEG, PNG, GIF, WebP). Max size: 2MB. Image will be resized to 200x200 pixels.')
+                                                ->helperText('Upload an image and click the edit button to crop, rotate, and adjust it before saving.')
                                                 ->columnSpanFull()
                                         ]),
                                     
@@ -326,20 +328,23 @@ class UserClientResource extends Resource
                                 return;
                             }
                             
-                            // Handle file upload
+                            // Handle file upload with editing
                             if (!empty($data['avatar_file'])) {
                                 // Delete old avatar file if exists
                                 $record->deleteOldAvatar();
                                 
+                                // Generate the storage URL with 'storage/' prefix
+                                $avatarUrl = 'storage/' . $data['avatar_file'];
+                                
                                 $record->update([
                                     'avatar_path' => $data['avatar_file'],
-                                    'avatar_url' => null // Clear URL when uploading file
+                                    'avatar_url' => $avatarUrl // Set both path and URL with storage/ prefix
                                 ]);
                                 
                                 Notification::make()
                                     ->title('Avatar Updated')
                                     ->success()
-                                    ->body("Successfully uploaded new avatar for {$record->name}")
+                                    ->body("Successfully uploaded and edited new avatar for {$record->name}")
                                     ->send();
                                 return;
                             }
