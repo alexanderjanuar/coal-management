@@ -15,6 +15,7 @@ use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Concerns\InteractsWithTable;
 use Filament\Tables\Contracts\HasTable;
 use Filament\Tables\Filters\SelectFilter;
+use Filament\Tables\Filters\Filter;
 use Filament\Tables\Table;
 use Illuminate\Contracts\View\View;
 use Livewire\Component;
@@ -26,10 +27,11 @@ use Filament\Notifications\Notification;
 use Illuminate\Support\Facades\Storage;
 use Maatwebsite\Excel\Facades\Excel;
 use App\Exports\UserDetail\UserSubmittedDocumentsExport;
-use Filament\Forms\Components\DatePicker;
+use Filament\Forms\Components\DateTimePicker;
 use Filament\Forms\Components\Grid;
 use Filament\Tables\Actions\BulkAction;
 use Illuminate\Database\Eloquent\Collection;
+use Illuminate\Database\Eloquent\Builder;
 
 class UserSubmittedDocuments extends Component implements HasForms, HasTable
 {
@@ -59,26 +61,32 @@ class UserSubmittedDocuments extends Component implements HasForms, HasTable
                     ->form([
                         Grid::make(2)
                             ->schema([
-                                DatePicker::make('start_date')
-                                    ->label('Tanggal Mulai')
-                                    ->placeholder('Pilih tanggal mulai')
-                                    ->default(now()->subMonth())
+                                DateTimePicker::make('start_date')
+                                    ->label('Tanggal & Waktu Mulai')
+                                    ->placeholder('Pilih tanggal dan waktu mulai')
+                                    ->default(now()->subMonth()->startOfDay())
                                     ->maxDate(now())
+                                    ->seconds(false)
+                                    ->displayFormat('d/m/Y H:i')
+                                    ->timezone(config('app.timezone'))
                                     ->required(),
                                     
-                                DatePicker::make('end_date')
-                                    ->label('Tanggal Akhir')
-                                    ->placeholder('Pilih tanggal akhir')
-                                    ->default(now())
+                                DateTimePicker::make('end_date')
+                                    ->label('Tanggal & Waktu Akhir')
+                                    ->placeholder('Pilih tanggal dan waktu akhir')
+                                    ->default(now()->endOfDay())
                                     ->maxDate(now())
+                                    ->seconds(false)
+                                    ->displayFormat('d/m/Y H:i')
+                                    ->timezone(config('app.timezone'))
                                     ->required()
                                     ->afterStateUpdated(function (callable $get, callable $set, $state) {
                                         $startDate = $get('start_date');
                                         if ($startDate && $state && $state < $startDate) {
                                             $set('end_date', $startDate);
                                             Notification::make()
-                                                ->title('Tanggal tidak valid')
-                                                ->body('Tanggal akhir tidak boleh kurang dari tanggal mulai.')
+                                                ->title('Waktu tidak valid')
+                                                ->body('Tanggal dan waktu akhir tidak boleh kurang dari tanggal dan waktu mulai.')
                                                 ->warning()
                                                 ->send();
                                         }
@@ -89,7 +97,7 @@ class UserSubmittedDocuments extends Component implements HasForms, HasTable
                         return $this->exportToExcel($data['start_date'], $data['end_date']);
                     })
                     ->modalHeading('Export Dokumen ke Excel')
-                    ->modalDescription('Pilih rentang tanggal untuk dokumen yang ingin diekspor')
+                    ->modalDescription('Pilih rentang tanggal dan waktu untuk dokumen yang ingin diekspor')
                     ->modalSubmitActionLabel('Export Excel')
                     ->modalCancelActionLabel('Batal')
                     ->tooltip('Download laporan dalam format Excel'),
@@ -154,7 +162,7 @@ class UserSubmittedDocuments extends Component implements HasForms, HasTable
                         default => ucfirst($state)
                     })
                     ->colors([
-                        'secondary' => 'uploaded',
+                        'info' => 'uploaded',
                         'warning' => 'pending_review',
                         'success' => 'approved',
                         'danger' => 'rejected',
@@ -189,6 +197,97 @@ class UserSubmittedDocuments extends Component implements HasForms, HasTable
                         'rejected' => 'Ditolak',
                     ])
                     ->multiple(),
+
+                SelectFilter::make('file_type')
+                    ->label('Tipe File')
+                    ->options([
+                        'pdf' => 'PDF',
+                        'doc' => 'DOC',
+                        'docx' => 'DOCX',
+                        'xls' => 'XLS',
+                        'xlsx' => 'XLSX',
+                        'ppt' => 'PPT',
+                        'pptx' => 'PPTX',
+                        'jpg' => 'JPG',
+                        'jpeg' => 'JPEG',
+                        'png' => 'PNG',
+                        'gif' => 'GIF',
+                        'txt' => 'TXT',
+                        'csv' => 'CSV',
+                        'zip' => 'ZIP',
+                        'rar' => 'RAR',
+                        '7z' => '7Z',
+                    ])
+                    ->query(function (Builder $query, array $data): Builder {
+                        if (empty($data['values'])) {
+                            return $query;
+                        }
+                        
+                        return $query->where(function (Builder $query) use ($data) {
+                            foreach ($data['values'] as $extension) {
+                                $query->orWhere('file_path', 'like', '%.'. $extension);
+                            }
+                        });
+                    })
+                    ->multiple(),
+
+                Filter::make('created_at_range')
+                    ->label('Waktu Upload')
+                    ->form([
+                        Grid::make(2)
+                            ->schema([
+                                DateTimePicker::make('start_date')
+                                    ->label('Dari Tanggal & Waktu')
+                                    ->placeholder('Pilih tanggal dan waktu mulai')
+                                    ->seconds(false)
+                                    ->displayFormat('d/m/Y H:i')
+                                    ->timezone(config('app.timezone'))
+                                    ->maxDate(now()),
+                                    
+                                DateTimePicker::make('end_date')
+                                    ->label('Sampai Tanggal & Waktu')
+                                    ->placeholder('Pilih tanggal dan waktu akhir')
+                                    ->seconds(false)
+                                    ->displayFormat('d/m/Y H:i')
+                                    ->timezone(config('app.timezone'))
+                                    ->maxDate(now())
+                                    ->afterStateUpdated(function (callable $get, callable $set, $state) {
+                                        $startDate = $get('start_date');
+                                        if ($startDate && $state && $state < $startDate) {
+                                            $set('end_date', $startDate);
+                                            Notification::make()
+                                                ->title('Waktu tidak valid')
+                                                ->body('Tanggal dan waktu akhir tidak boleh kurang dari tanggal dan waktu mulai.')
+                                                ->warning()
+                                                ->send();
+                                        }
+                                    }),
+                            ])
+                    ])
+                    ->query(function (Builder $query, array $data): Builder {
+                        return $query
+                            ->when(
+                                $data['start_date'],
+                                fn (Builder $query, $date): Builder => $query->where('created_at', '>=', $date),
+                            )
+                            ->when(
+                                $data['end_date'],
+                                fn (Builder $query, $date): Builder => $query->where('created_at', '<=', $date),
+                            );
+                    })
+                    ->indicateUsing(function (array $data): array {
+                        $indicators = [];
+                        
+                        if ($data['start_date'] ?? null) {
+                            $indicators['start_date'] = 'Dari: ' . date('d M Y H:i', strtotime($data['start_date']));
+                        }
+                        
+                        if ($data['end_date'] ?? null) {
+                            $indicators['end_date'] = 'Sampai: ' . date('d M Y H:i', strtotime($data['end_date']));
+                        }
+                        
+                        return $indicators;
+                    }),
 
                 SelectFilter::make('project')
                     ->label('Proyek')
@@ -283,22 +382,28 @@ class UserSubmittedDocuments extends Component implements HasForms, HasTable
                     ->form([
                         Grid::make(2)
                             ->schema([
-                                DatePicker::make('start_date')
-                                    ->label('Tanggal Mulai (Opsional)')
-                                    ->placeholder('Filter berdasarkan tanggal mulai')
-                                    ->maxDate(now()),
-                                    
-                                DatePicker::make('end_date')
-                                    ->label('Tanggal Akhir (Opsional)')
-                                    ->placeholder('Filter berdasarkan tanggal akhir')
+                                DateTimePicker::make('start_date')
+                                    ->label('Tanggal & Waktu Mulai (Opsional)')
+                                    ->placeholder('Filter berdasarkan tanggal dan waktu mulai')
                                     ->maxDate(now())
+                                    ->seconds(false)
+                                    ->displayFormat('d/m/Y H:i')
+                                    ->timezone(config('app.timezone')),
+                                    
+                                DateTimePicker::make('end_date')
+                                    ->label('Tanggal & Waktu Akhir (Opsional)')
+                                    ->placeholder('Filter berdasarkan tanggal dan waktu akhir')
+                                    ->maxDate(now())
+                                    ->seconds(false)
+                                    ->displayFormat('d/m/Y H:i')
+                                    ->timezone(config('app.timezone'))
                                     ->afterStateUpdated(function (callable $get, callable $set, $state) {
                                         $startDate = $get('start_date');
                                         if ($startDate && $state && $state < $startDate) {
                                             $set('end_date', $startDate);
                                             Notification::make()
-                                                ->title('Tanggal tidak valid')
-                                                ->body('Tanggal akhir tidak boleh kurang dari tanggal mulai.')
+                                                ->title('Waktu tidak valid')
+                                                ->body('Tanggal dan waktu akhir tidak boleh kurang dari tanggal dan waktu mulai.')
                                                 ->warning()
                                                 ->send();
                                         }
@@ -309,7 +414,7 @@ class UserSubmittedDocuments extends Component implements HasForms, HasTable
                         return $this->exportSelectedDocuments($records, $data['start_date'] ?? null, $data['end_date'] ?? null);
                     })
                     ->modalHeading('Export Dokumen Terpilih')
-                    ->modalDescription('Export dokumen yang dipilih. Anda dapat menambahkan filter tanggal tambahan.')
+                    ->modalDescription('Export dokumen yang dipilih. Anda dapat menambahkan filter tanggal dan waktu tambahan.')
                     ->modalSubmitActionLabel('Export Excel')
                     ->modalCancelActionLabel('Batal')
                     ->deselectRecordsAfterCompletion(),
@@ -322,11 +427,11 @@ class UserSubmittedDocuments extends Component implements HasForms, HasTable
             ->emptyStateIcon('heroicon-o-document');
     }
 
-    public function exportToExcel($startDate = null, $endDate = null)
+     public function exportToExcel($startDate = null, $endDate = null)
     {
         $dateRangeText = '';
         if ($startDate && $endDate) {
-            $dateRangeText = '_' . date('Y-m-d', strtotime($startDate)) . '_sampai_' . date('Y-m-d', strtotime($endDate));
+            $dateRangeText = '_' . date('Y-m-d_H-i', strtotime($startDate)) . '_sampai_' . date('Y-m-d_H-i', strtotime($endDate));
         }
         
         $fileName = 'Laporan_Dokumen_' . str_replace(' ', '_', $this->user->name) . $dateRangeText . '_' . now()->format('Y-m-d_H-i-s') . '.xlsx';
@@ -340,7 +445,7 @@ class UserSubmittedDocuments extends Component implements HasForms, HasTable
         
         $dateRangeText = '';
         if ($startDate && $endDate) {
-            $dateRangeText = '_' . date('Y-m-d', strtotime($startDate)) . '_sampai_' . date('Y-m-d', strtotime($endDate));
+            $dateRangeText = '_' . date('Y-m-d_H-i', strtotime($startDate)) . '_sampai_' . date('Y-m-d_H-i', strtotime($endDate));
         }
         
         $fileName = 'Laporan_Dokumen_Terpilih_' . str_replace(' ', '_', $this->user->name) . $dateRangeText . '_' . now()->format('Y-m-d_H-i-s') . '.xlsx';
