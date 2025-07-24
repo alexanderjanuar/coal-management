@@ -689,16 +689,6 @@ class DocumentModalManager extends Component implements HasForms
             $this->document->status = $status;
             $this->document->save();
 
-            // Create a comment about auto-completion if transitioning to approved
-            if ($status === 'approved' && $oldStatus !== 'approved') {
-                Comment::create([
-                    'user_id' => auth()->id(),
-                    'commentable_type' => RequiredDocument::class,
-                    'commentable_id' => $this->document->id,
-                    'content' => "Document automatically marked as completed because all submitted documents have been finalized (approved or rejected).",
-                    'status' => 'approved'
-                ]);
-            }
         }
     }
 
