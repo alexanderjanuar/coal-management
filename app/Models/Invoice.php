@@ -122,6 +122,7 @@ class Invoice extends Model
                 'dpp',
                 'ppn',
                 'is_revision',
+                
                 'original_invoice_id',
                 'revision_number',
                 'revision_reason'
