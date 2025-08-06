@@ -91,8 +91,10 @@
             </div>
         </div>
 
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mt-4">
-            {{-- Core Tax User ID --}}
+        {{-- PIC Credentials Section --}}
+        @if($record->pic)
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
+            {{-- PIC NIK --}}
             <div class="space-y-2">
                 <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">
                     PIC NIK
@@ -100,8 +102,8 @@
                 <div class="flex items-center space-x-2">
                     <div class="flex-1 relative">
                         <input type="text" value="{{ $record->pic->nik ?: 'Not configured' }}" readonly
-                            class="w-full bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 font-mono text-sm {{ $record->core_tax_user_id ? 'text-gray-900 dark:text-white' : 'text-gray-500 dark:text-gray-400' }}">
-                        @if($record->core_tax_user_id)
+                            class="w-full bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 font-mono text-sm {{ $record->pic->nik ? 'text-gray-900 dark:text-white' : 'text-gray-500 dark:text-gray-400' }}">
+                        @if($record->pic->nik)
                         <div class="absolute inset-y-0 right-0 flex items-center pr-3">
                             <svg class="w-4 h-4 text-green-500" fill="currentColor" viewBox="0 0 20 20">
                                 <path fill-rule="evenodd"
@@ -111,7 +113,7 @@
                         @endif
                     </div>
                     @if($record->pic->nik)
-                    <button type="button" onclick="navigator.clipboard.writeText('{{ $record->pic->nik}}'); 
+                    <button type="button" onclick="navigator.clipboard.writeText('{{ $record->pic->nik }}'); 
                                      this.textContent = 'Copied!'; 
                                      setTimeout(() => this.textContent = 'Copy', 2000);"
                         class="px-3 py-2 text-xs bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300 rounded-lg hover:bg-blue-200 dark:hover:bg-blue-800 transition-colors">
@@ -121,7 +123,7 @@
                 </div>
             </div>
 
-            {{-- Core Tax Password --}}
+            {{-- PIC Password --}}
             <div class="space-y-2">
                 <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">
                     PIC Password
@@ -163,10 +165,37 @@
                 </div>
             </div>
         </div>
+        @else
+        {{-- No PIC Assigned Alert --}}
+        <div class="mt-6">
+            <div class="bg-gray-50 dark:bg-gray-900/20 border border-gray-200 dark:border-gray-800 rounded-lg p-4">
+                <div class="flex items-center">
+                    <svg class="w-5 h-5 text-gray-500 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                        <path fill-rule="evenodd"
+                            d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" />
+                    </svg>
+                    <div>
+                        <p class="text-sm font-medium text-gray-800 dark:text-gray-200">
+                            No PIC assigned to this client
+                        </p>
+                        <p class="text-xs text-gray-600 dark:text-gray-400 mt-1">
+                            Please assign a PIC (Person in Charge) to this client to view PIC credentials.
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+        @endif
 
         {{-- Status Alert --}}
         <div class="mt-6">
-            @if($record->core_tax_user_id && $record->core_tax_password)
+            @php
+                $hasCoreTax = $record->core_tax_user_id && $record->core_tax_password;
+                $hasPic = $record->pic && $record->pic->nik && $record->pic->password;
+                $allComplete = $hasCoreTax && $hasPic;
+            @endphp
+            
+            @if($allComplete)
             <div class="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg p-4">
                 <div class="flex items-center">
                     <svg class="w-5 h-5 text-green-500 mr-2" fill="currentColor" viewBox="0 0 20 20">
@@ -175,17 +204,16 @@
                     </svg>
                     <div>
                         <p class="text-sm font-medium text-green-800 dark:text-green-200">
-                            Core Tax credentials are complete and ready to use
+                            All credentials are complete and ready to use
                         </p>
                         <p class="text-xs text-green-600 dark:text-green-400 mt-1">
-                            Client can access Core Tax application with these credentials
+                            Both Core Tax and PIC credentials are configured
                         </p>
                     </div>
                 </div>
             </div>
             @else
-            <div
-                class="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg p-4">
+            <div class="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg p-4">
                 <div class="flex items-center">
                     <svg class="w-5 h-5 text-yellow-500 mr-2" fill="currentColor" viewBox="0 0 20 20">
                         <path fill-rule="evenodd"
@@ -193,11 +221,19 @@
                     </svg>
                     <div>
                         <p class="text-sm font-medium text-yellow-800 dark:text-yellow-200">
-                            Core Tax credentials are incomplete
+                            Credentials are incomplete
                         </p>
                         <p class="text-xs text-yellow-600 dark:text-yellow-400 mt-1">
-                            Missing: {{ !$record->core_tax_user_id ? 'User ID' : 'Password' }}. Please complete the
-                            setup to enable Core Tax access.
+                            Missing: 
+                            @if(!$hasCoreTax && !$hasPic)
+                                Core Tax credentials and PIC assignment
+                            @elseif(!$hasCoreTax)
+                                Core Tax {{ !$record->core_tax_user_id ? 'User ID' : 'Password' }}
+                            @elseif(!$record->pic)
+                                PIC assignment
+                            @else
+                                PIC {{ !$record->pic->nik ? 'NIK' : 'Password' }}
+                            @endif
                         </p>
                     </div>
                 </div>
