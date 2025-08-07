@@ -2,136 +2,21 @@
     <script src="https://cdn.jsdelivr.net/npm/apexcharts@3.40.0/dist/apexcharts.min.js"></script>
 
     <div class="space-y-8">
-        <!-- Header Stats Cards -->
-        <div class="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
-            @php $stats = $this->getTaxStats(); @endphp    
-        </div>
 
-        <!-- Report Status Overview -->
-        <div class="grid grid-cols-1 gap-6 lg:grid-cols-3">
-            @php $reportStatus = $this->getReportStatusStats(); @endphp
-            
-            <!-- PPN Status -->
-            <div class="p-6 bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700">
-                <div class="flex items-center justify-between mb-4">
-                    <h3 class="text-lg font-semibold text-gray-900 dark:text-white">Status Laporan PPN</h3>
-                    <div class="p-2 bg-blue-100 dark:bg-blue-900/50 rounded-lg">
-                        <x-heroicon-o-document-check class="w-5 h-5 text-blue-600 dark:text-blue-400" />
-                    </div>
-                </div>
-                <div class="space-y-3">
-                    <div class="flex items-center justify-between">
-                        <span class="text-sm text-gray-600 dark:text-gray-300">Sudah Lapor</span>
-                        <div class="flex items-center">
-                            <span class="text-sm font-medium text-green-600 dark:text-green-400">{{ $reportStatus['ppn']['sudah_lapor'] }}</span>
-                            <div class="ml-2 w-2 h-2 bg-green-500 rounded-full"></div>
-                        </div>
-                    </div>
-                    <div class="flex items-center justify-between">
-                        <span class="text-sm text-gray-600 dark:text-gray-300">Belum Lapor</span>
-                        <div class="flex items-center">
-                            <span class="text-sm font-medium text-red-600 dark:text-red-400">{{ $reportStatus['ppn']['belum_lapor'] }}</span>
-                            <div class="ml-2 w-2 h-2 bg-red-500 rounded-full"></div>
-                        </div>
-                    </div>
-                    <div class="pt-2 border-t border-gray-200 dark:border-gray-700">
-                        <div class="text-xs text-gray-500 dark:text-gray-400">
-                            {{ number_format(($reportStatus['ppn']['sudah_lapor'] / max(1, $reportStatus['ppn']['total'])) * 100, 1) }}% sudah dilaporkan
-                        </div>
-                    </div>
-                </div>
-            </div>
+        @livewire(\App\Livewire\TaxReport\StatsOverview::class)
 
-            <!-- PPh Status -->
-            <div class="p-6 bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700">
-                <div class="flex items-center justify-between mb-4">
-                    <h3 class="text-lg font-semibold text-gray-900 dark:text-white">Status Laporan PPh</h3>
-                    <div class="p-2 bg-green-100 dark:bg-green-900/50 rounded-lg">
-                        <x-heroicon-o-receipt-percent class="w-5 h-5 text-green-600 dark:text-green-400" />
-                    </div>
-                </div>
-                <div class="space-y-3">
-                    <div class="flex items-center justify-between">
-                        <span class="text-sm text-gray-600 dark:text-gray-300">Sudah Lapor</span>
-                        <div class="flex items-center">
-                            <span class="text-sm font-medium text-green-600 dark:text-green-400">{{ $reportStatus['pph']['sudah_lapor'] }}</span>
-                            <div class="ml-2 w-2 h-2 bg-green-500 rounded-full"></div>
-                        </div>
-                    </div>
-                    <div class="flex items-center justify-between">
-                        <span class="text-sm text-gray-600 dark:text-gray-300">Belum Lapor</span>
-                        <div class="flex items-center">
-                            <span class="text-sm font-medium text-red-600 dark:text-red-400">{{ $reportStatus['pph']['belum_lapor'] }}</span>
-                            <div class="ml-2 w-2 h-2 bg-red-500 rounded-full"></div>
-                        </div>
-                    </div>
-                    <div class="pt-2 border-t border-gray-200 dark:border-gray-700">
-                        <div class="text-xs text-gray-500 dark:text-gray-400">
-                            {{ number_format(($reportStatus['pph']['sudah_lapor'] / max(1, $reportStatus['pph']['total'])) * 100, 1) }}% sudah dilaporkan
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Bupot Status -->
-            <div class="p-6 bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700">
-                <div class="flex items-center justify-between mb-4">
-                    <h3 class="text-lg font-semibold text-gray-900 dark:text-white">Status Laporan Bupot</h3>
-                    <div class="p-2 bg-yellow-100 dark:bg-yellow-900/50 rounded-lg">
-                        <x-heroicon-o-document-text class="w-5 h-5 text-yellow-600 dark:text-yellow-400" />
-                    </div>
-                </div>
-                <div class="space-y-3">
-                    <div class="flex items-center justify-between">
-                        <span class="text-sm text-gray-600 dark:text-gray-300">Sudah Lapor</span>
-                        <div class="flex items-center">
-                            <span class="text-sm font-medium text-green-600 dark:text-green-400">{{ $reportStatus['bupot']['sudah_lapor'] }}</span>
-                            <div class="ml-2 w-2 h-2 bg-green-500 rounded-full"></div>
-                        </div>
-                    </div>
-                    <div class="flex items-center justify-between">
-                        <span class="text-sm text-gray-600 dark:text-gray-300">Belum Lapor</span>
-                        <div class="flex items-center">
-                            <span class="text-sm font-medium text-red-600 dark:text-red-400">{{ $reportStatus['bupot']['belum_lapor'] }}</span>
-                            <div class="ml-2 w-2 h-2 bg-red-500 rounded-full"></div>
-                        </div>
-                    </div>
-                    <div class="pt-2 border-t border-gray-200 dark:border-gray-700">
-                        <div class="text-xs text-gray-500 dark:text-gray-400">
-                            {{ number_format(($reportStatus['bupot']['sudah_lapor'] / max(1, $reportStatus['bupot']['total'])) * 100, 1) }}% sudah dilaporkan
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
 
         <!-- Monthly Tax Chart & Tax Distribution -->
         <div class="grid grid-cols-1 gap-8 lg:grid-cols-3">
             <!-- Monthly Tax Chart - 2/3 width -->
-            <div class="p-6 bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 lg:col-span-2 overflow-hidden">
-                <div class="flex items-center justify-between mb-6">
-                    <div>
-                        <h2 class="text-lg font-bold text-gray-900 dark:text-white">Tren Pajak Bulanan {{ date('Y') }}</h2>
-                        <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">Perbandingan PPN, PPh 21, dan Bupot</p>
-                    </div>
-                    <div class="flex items-center space-x-2">
-                        <a href=""
-                            class="inline-flex items-center px-3 py-1.5 text-sm font-medium text-indigo-600 dark:text-indigo-400 hover:text-indigo-700 dark:hover:text-indigo-300 bg-indigo-50 dark:bg-indigo-900/50 hover:bg-indigo-100 dark:hover:bg-indigo-900/70 rounded-lg transition-colors duration-200">
-                            <x-heroicon-m-arrow-top-right-on-square class="w-4 h-4 mr-1" />
-                            Lihat Semua
-                        </a>
-                    </div>
-                </div>
-                <div id="monthly-taxes-chart" class="h-96 -mx-6 -mb-6"></div>
+            <div class="lg:col-span-2 overflow-hidden">
+                @livewire(\App\Livewire\TaxReport\TaxReportCountChart::class)
             </div>
 
             <!-- Tax Distribution - 1/3 width -->
-            <div class="p-6 bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
-                <div class="mb-6">
-                    <h2 class="text-lg font-bold text-gray-900 dark:text-white">Distribusi Jenis Pajak</h2>
-                    <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">Total akumulatif</p>
-                </div>
-                <div id="tax-distribution-chart" class="h-80 -mx-6 -mb-6"></div>
+            <div class="
+            overflow-hidden">
+                @livewire(\App\Livewire\TaxReport\TaxReportTypeChart::class)
             </div>
         </div>
 
