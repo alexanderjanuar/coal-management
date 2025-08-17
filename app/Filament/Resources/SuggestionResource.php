@@ -18,6 +18,10 @@ class SuggestionResource extends Resource
 {
     protected static ?string $model = Suggestion::class;
 
+      public static function shouldRegisterNavigation(): bool
+    {
+        return auth()->user()->hasRole(['super-admin','admin']);
+    }   
     protected static ?string $navigationIcon = 'heroicon-o-rectangle-stack';
 
     protected static ?string $navigationLabel = 'Kotak Saran';
