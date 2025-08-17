@@ -41,5 +41,10 @@ class CreateUserClient extends CreateRecord
         return $firstUserClient;
     }
 
+    protected function getRedirectUrl(): string
+    {
+        return $this->getResource()::getUrl('index');
+    }
+
 
 }
