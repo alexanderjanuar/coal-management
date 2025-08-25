@@ -2,6 +2,9 @@
 
 namespace App\Providers\Filament;
 
+
+use App\Filament\Pages\DailyTaskDashboard;
+use App\Filament\Pages\DailyTaskList;
 use App\Filament\Resources\TaxReportResource\Pages\TaxReportDashboard;
 use Filament\Http\Middleware\Authenticate;
 use Filament\Http\Middleware\AuthenticateSession;
@@ -54,6 +57,8 @@ class AdminPanelProvider extends PanelProvider
             ->discoverClusters(in: app_path('Filament/Clusters'), for: 'App\\Filament\\Clusters')
             ->pages([
                 TaxReportDashboard::class,
+                DailyTaskDashboard::class,
+                DailyTaskList::class
                 // Pages\Dashboard::class,
             ])
             ->discoverWidgets(in: app_path('Filament/Widgets'), for: 'App\\Filament\\Widgets')
