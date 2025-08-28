@@ -194,18 +194,4 @@ class DailyTask extends Model
     {
         return !is_null($this->start_task_date);
     }
-
-    public function getDaysInProgress(): int
-    {
-        if (!$this->start_task_date) {
-            return 0;
-        }
-        
-        return $this->start_task_date->diffInDays(now());
-    }
-
-    public function isOverdue(): bool
-    {
-        return $this->task_date->isPast() && $this->status !== 'completed';
-    }
 }

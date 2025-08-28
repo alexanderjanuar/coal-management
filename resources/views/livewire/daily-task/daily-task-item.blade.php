@@ -27,9 +27,9 @@
                 <div class="space-y-2">
                     <div class="flex items-start justify-between">
                         <div class="flex-1 cursor-pointer" wire:click="viewDetails">
-                            <h4 class="font-semibold text-gray-900 dark:text-gray-100 text-sm leading-snug {{ $task->status === 'completed' ? 'line-through text-gray-500 dark:text-gray-400' : '' }} hover:text-primary-600 dark:hover:text-primary-400 transition-colors">
+                            <h2 class="font-semibold text-gray-900 dark:text-gray-100 text-lg leading-snug {{ $task->status === 'completed' ? 'line-through text-gray-500 dark:text-gray-400' : '' }} hover:text-primary-600 dark:hover:text-primary-400 transition-colors">
                                 {{ $task->title }}
-                            </h4>
+                            </h2>
                         </div>
                     </div>
                 </div>

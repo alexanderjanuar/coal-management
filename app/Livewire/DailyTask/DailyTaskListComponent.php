@@ -22,6 +22,10 @@ class DailyTaskListComponent extends Component implements HasForms
     // Form data - single source of truth
     public ?array $filterData = [];
 
+    public array $creatingNewTasks = []; // Track which groups are creating new tasks
+    public array $newTaskData = []; // Store new task data for each group
+    public ?string $editingGroup = null; // Track which group is currently being edited
+
     // Pagination
     public int $perPage = 20;
 
@@ -33,6 +37,7 @@ class DailyTaskListComponent extends Component implements HasForms
         'taskDeleted' => 'refreshTasks',
         'subtaskAdded' => 'refreshTasks',
         'subtaskUpdated' => 'refreshTasks',
+        'cancelNewTask' => 'cancelNewTask', // Add this
     ];
 
     protected function getForms(): array
@@ -811,6 +816,168 @@ class DailyTaskListComponent extends Component implements HasForms
     public function refresh(): void
     {
         $this->refreshTasks();
+    }
+
+
+    public function createNewTaskForGroup(string $groupType, string $groupValue): void
+    {
+        // Determine the default values based on group
+        $defaults = $this->getDefaultsForGroup($groupType, $groupValue);
+        
+        // Dispatch event to open create modal with pre-filled values
+        $this->dispatch('openCreateTaskModal', defaults: $defaults);
+    }
+
+    /**
+     * Get default values based on group type and value
+     */
+    private function getDefaultsForGroup(string $groupType, string $groupValue): array
+    {
+        $defaults = [
+            'task_date' => today(),
+        ];
+        
+        switch ($groupType) {
+            case 'status':
+                $statusMap = array_flip($this->getStatusOptions());
+                if (isset($statusMap[$groupValue])) {
+                    $defaults['status'] = $statusMap[$groupValue];
+                }
+                break;
+                
+            case 'priority':
+                $priorityMap = array_flip($this->getPriorityOptions());
+                if (isset($priorityMap[$groupValue])) {
+                    $defaults['priority'] = $priorityMap[$groupValue];
+                }
+                break;
+                
+            case 'project':
+                if ($groupValue !== 'No Project') {
+                    $projectId = Project::where('name', $groupValue)->first()?->id;
+                    if ($projectId) {
+                        $defaults['project_id'] = $projectId;
+                    }
+                }
+                break;
+                
+            case 'assignee':
+                if ($groupValue !== 'Unassigned' && !str_contains($groupValue, '+')) {
+                    $userId = User::where('name', $groupValue)->first()?->id;
+                    if ($userId) {
+                        $defaults['assigned_users'] = [$userId];
+                    }
+                }
+                break;
+                
+            case 'date':
+                try {
+                    $date = Carbon::createFromFormat('M d, Y', $groupValue);
+                    $defaults['task_date'] = $date;
+                } catch (\Exception $e) {
+                    // Keep default date
+                }
+                break;
+        }
+        
+        return $defaults;
+    }
+
+    /**
+ * Start creating new task for group
+ */
+public function startCreatingTask(string $groupType, string $groupValue): void
+{
+    $groupKey = $groupType . '_' . str_replace([' ', '+'], ['_', '_plus_'], $groupValue);
+    
+    // Cancel any other creating tasks
+    $this->creatingNewTasks = [];
+    $this->newTaskData = [];
+    
+    // Start creating for this group
+    $this->creatingNewTasks[$groupKey] = true;
+    $this->editingGroup = $groupKey;
+    
+    // Set default values based on group
+    $this->newTaskData[$groupKey] = array_merge([
+        'title' => '',
+        'task_date' => today(),
+        'status' => 'pending',
+        'priority' => 'normal',
+        'project_id' => null,
+    ], $this->getDefaultsForGroup($groupType, $groupValue));
+}
+
+/**
+ * Save new task
+ */
+public function saveNewTask(string $groupKey): void
+{
+    if (!isset($this->newTaskData[$groupKey]) || empty($this->newTaskData[$groupKey]['title'])) {
+        Notification::make()
+            ->title('Error')
+            ->body('Judul task tidak boleh kosong')
+            ->danger()
+            ->send();
+        return;
+    }
+
+    $data = $this->newTaskData[$groupKey];
+    
+    $task = DailyTask::create([
+        'title' => $data['title'],
+        'status' => $data['status'],
+        'priority' => $data['priority'],
+        'task_date' => $data['task_date'],
+        'project_id' => $data['project_id'],
+        'created_by' => auth()->id(),
+    ]);
+
+    // Clear the creating state
+    unset($this->creatingNewTasks[$groupKey]);
+    unset($this->newTaskData[$groupKey]);
+    $this->editingGroup = null;
+
+    Notification::make()
+        ->title('Task Berhasil Dibuat')
+        ->body("Task '{$task->title}' berhasil dibuat")
+        ->success()
+        ->send();
+
+    $this->refreshTasks();
+    }
+
+    /**
+     * Cancel creating new task
+     */
+    public function cancelNewTask(string $groupKey = null): void
+    {
+        if ($groupKey) {
+            unset($this->creatingNewTasks[$groupKey]);
+            unset($this->newTaskData[$groupKey]);
+        } else {
+            $this->creatingNewTasks = [];
+            $this->newTaskData = [];
+        }
+        
+        $this->editingGroup = null;
+    }
+
+    /**
+     * Check if group is creating new task
+     */
+    public function isCreatingTask(string $groupType, string $groupValue): bool
+    {
+        $groupKey = $groupType . '_' . str_replace([' ', '+'], ['_', '_plus_'], $groupValue);
+        return isset($this->creatingNewTasks[$groupKey]) && $this->creatingNewTasks[$groupKey];
+    }
+
+    /**
+     * Get group key for tracking
+     */
+    public function getGroupKey(string $groupType, string $groupValue): string
+    {
+        return $groupType . '_' . str_replace([' ', '+'], ['_', '_plus_'], $groupValue);
     }
 
     public function render()

@@ -2,16 +2,20 @@
 <div class="space-y-4 lg:space-y-6" x-data="taskManager()">
 
     {{-- Enhanced Filters Section - Mobile Optimized & Collapsible --}}
-    <div class="bg-white dark:bg-gray-800 rounded-lg lg:rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm" x-data="{ filtersCollapsed: true }">
+    <div class="bg-white dark:bg-gray-800 rounded-lg lg:rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm"
+        x-data="{ filtersCollapsed: true }">
         <div class="p-4 lg:p-6 border-b border-gray-100 dark:border-gray-700">
             <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                 <div class="flex items-center gap-3">
-                    <div class="w-6 h-6 lg:w-8 lg:h-8 bg-gray-100 dark:bg-gray-700 rounded-lg flex items-center justify-center">
+                    <div
+                        class="w-6 h-6 lg:w-8 lg:h-8 bg-gray-100 dark:bg-gray-700 rounded-lg flex items-center justify-center">
                         <x-heroicon-o-funnel class="w-3 h-3 lg:w-4 lg:h-4 text-gray-600 dark:text-gray-300" />
                     </div>
                     <div>
-                        <h3 class="text-base lg:text-lg font-semibold text-gray-900 dark:text-gray-100">Filters & Controls</h3>
-                        <p class="text-xs lg:text-sm text-gray-500 dark:text-gray-400 hidden sm:block">Customize your task view</p>
+                        <h3 class="text-base lg:text-lg font-semibold text-gray-900 dark:text-gray-100">Filters &
+                            Controls</h3>
+                        <p class="text-xs lg:text-sm text-gray-500 dark:text-gray-400 hidden sm:block">Customize your
+                            task view</p>
                     </div>
                 </div>
 
@@ -21,14 +25,16 @@
                         <span class="sm:hidden">{{ $totalTasks }}</span>
                     </x-filament::badge>
 
-                    <x-filament::button wire:click="resetFilters" color="gray" size="sm" icon="heroicon-o-arrow-path" outlined>
+                    <x-filament::button wire:click="resetFilters" color="gray" size="sm" icon="heroicon-o-arrow-path"
+                        outlined>
                         <span class="hidden sm:inline">Reset</span>
                         <span class="sm:hidden sr-only">Reset Filters</span>
                     </x-filament::button>
 
                     <button @click="filtersCollapsed = !filtersCollapsed"
                         class="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors">
-                        <x-heroicon-o-chevron-down class="w-4 h-4 text-gray-500 dark:text-gray-400 transition-transform duration-200"
+                        <x-heroicon-o-chevron-down
+                            class="w-4 h-4 text-gray-500 dark:text-gray-400 transition-transform duration-200"
                             x-bind:class="{ 'rotate-180': !filtersCollapsed }" />
                     </button>
                 </div>
@@ -44,12 +50,15 @@
 
             {{-- Active Filters Display --}}
             @if(!empty($activeFilters))
-            <div class="mb-6 p-4 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
+            <div
+                class="mb-6 p-4 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
                 <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-3">
                     <div class="flex items-center gap-2">
                         <x-heroicon-o-funnel class="w-4 h-4 text-blue-600 dark:text-blue-400" />
                         <span class="text-sm font-medium text-blue-900 dark:text-blue-200">Active Filters</span>
-                        <span class="text-xs bg-blue-200 dark:bg-blue-800 text-blue-800 dark:text-blue-200 px-2 py-1 rounded-full">{{ count($activeFilters) }}</span>
+                        <span
+                            class="text-xs bg-blue-200 dark:bg-blue-800 text-blue-800 dark:text-blue-200 px-2 py-1 rounded-full">{{
+                            count($activeFilters) }}</span>
                     </div>
                     <button wire:click="resetFilters"
                         class="text-xs text-blue-700 dark:text-blue-300 hover:text-blue-900 dark:hover:text-blue-100 font-medium hover:underline flex items-center gap-1">
@@ -60,7 +69,8 @@
 
                 <div class="flex flex-wrap gap-2">
                     @foreach($activeFilters as $filter)
-                    <div class="inline-flex items-center gap-2 px-3 py-2 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-600 shadow-sm text-sm">
+                    <div
+                        class="inline-flex items-center gap-2 px-3 py-2 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-600 shadow-sm text-sm">
                         <x-dynamic-component :component="$filter['icon']" class="w-3 h-3 {{ match($filter['color']) {
                                     'primary' => 'text-primary-600 dark:text-primary-400',
                                     'success' => 'text-green-600 dark:text-green-400',
@@ -73,13 +83,16 @@
                         <span class="text-gray-600 dark:text-gray-400">
                             @if(isset($filter['count']) && $filter['count'] > 1)
                             {{ Str::limit($filter['value'], 20) }}
-                            <span class="text-xs bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 px-1.5 py-0.5 rounded-full ml-1">{{ $filter['count'] }}</span>
+                            <span
+                                class="text-xs bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 px-1.5 py-0.5 rounded-full ml-1">{{
+                                $filter['count'] }}</span>
                             @else
                             {{ Str::limit($filter['value'], 30) }}
                             @endif
                         </span>
                         <button wire:click="removeFilter('{{ $filter['type'] }}')"
-                            class="ml-1 text-gray-400 dark:text-gray-500 hover:text-red-500 dark:hover:text-red-400 transition-colors" title="Remove filter">
+                            class="ml-1 text-gray-400 dark:text-gray-500 hover:text-red-500 dark:hover:text-red-400 transition-colors"
+                            title="Remove filter">
                             <x-heroicon-o-x-mark class="w-4 h-4" />
                         </button>
                     </div>
@@ -100,14 +113,17 @@
     </div>
 
     {{-- Enhanced Task List Content - Responsive Views --}}
-    <div wire:loading.remove class="space-y-4 lg:space-y-6">
+    <div class="space-y-4 lg:space-y-6">
         @if($viewMode === 'list')
         {{-- Desktop Table View --}}
-        <div class="hidden lg:block bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm overflow-hidden">
+        <div
+            class="hidden lg:block bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm overflow-hidden">
             {{-- Enhanced Table Header --}}
-            <div class="bg-gradient-to-r from-gray-50 to-gray-100 dark:from-gray-700 dark:to-gray-600 border-b border-gray-200 dark:border-gray-600">
+            <div
+                class="bg-gradient-to-r from-gray-50 to-gray-100 dark:from-gray-700 dark:to-gray-600 border-b border-gray-200 dark:border-gray-600">
                 <div class="px-6 py-4">
-                    <div class="grid grid-cols-12 gap-4 text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wider">
+                    <div
+                        class="grid grid-cols-12 gap-4 text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wider">
                         <div class="col-span-1 flex items-center">
                             <input type="checkbox" x-model="selectAll" @change="toggleSelectAll"
                                 class="rounded border-gray-300 dark:border-gray-600 text-primary-600 focus:ring-primary-500 focus:ring-offset-0 dark:bg-gray-700">
@@ -124,7 +140,8 @@
                                 <x-heroicon-s-chevron-down class="w-4 h-4 text-primary-600 dark:text-primary-400" />
                                 @endif
                                 @else
-                                <x-heroicon-o-chevron-up-down class="w-4 h-4 opacity-0 group-hover:opacity-100 transition-opacity" />
+                                <x-heroicon-o-chevron-up-down
+                                    class="w-4 h-4 opacity-0 group-hover:opacity-100 transition-opacity" />
                                 @endif
                             </button>
                         </div>
@@ -140,7 +157,8 @@
                                 <x-heroicon-s-chevron-down class="w-4 h-4 text-primary-600 dark:text-primary-400" />
                                 @endif
                                 @else
-                                <x-heroicon-o-chevron-up-down class="w-4 h-4 opacity-0 group-hover:opacity-100 transition-opacity" />
+                                <x-heroicon-o-chevron-up-down
+                                    class="w-4 h-4 opacity-0 group-hover:opacity-100 transition-opacity" />
                                 @endif
                             </button>
                         </div>
@@ -156,7 +174,8 @@
                                 <x-heroicon-s-chevron-down class="w-4 h-4 text-primary-600 dark:text-primary-400" />
                                 @endif
                                 @else
-                                <x-heroicon-o-chevron-up-down class="w-4 h-4 opacity-0 group-hover:opacity-100 transition-opacity" />
+                                <x-heroicon-o-chevron-up-down
+                                    class="w-4 h-4 opacity-0 group-hover:opacity-100 transition-opacity" />
                                 @endif
                             </button>
                         </div>
@@ -180,7 +199,8 @@
                                 <x-heroicon-s-chevron-down class="w-4 h-4 text-primary-600 dark:text-primary-400" />
                                 @endif
                                 @else
-                                <x-heroicon-o-chevron-up-down class="w-4 h-4 opacity-0 group-hover:opacity-100 transition-opacity" />
+                                <x-heroicon-o-chevron-up-down
+                                    class="w-4 h-4 opacity-0 group-hover:opacity-100 transition-opacity" />
                                 @endif
                             </button>
                         </div>
@@ -200,7 +220,8 @@
                 </div>
                 @empty
                 <div class="py-16 text-center">
-                    <div class="w-24 h-24 bg-gray-100 dark:bg-gray-700 rounded-full flex items-center justify-center mx-auto mb-6">
+                    <div
+                        class="w-24 h-24 bg-gray-100 dark:bg-gray-700 rounded-full flex items-center justify-center mx-auto mb-6">
                         <x-heroicon-o-clipboard-document-list class="w-12 h-12 text-gray-400 dark:text-gray-500" />
                     </div>
                     <h3 class="text-xl font-semibold text-gray-900 dark:text-gray-100 mb-2">No tasks found</h3>
@@ -259,7 +280,8 @@
                             </div>
                             @break
                             @case('priority')
-                            <div class="w-6 h-6 bg-orange-100 dark:bg-orange-900/30 rounded-lg flex items-center justify-center">
+                            <div
+                                class="w-6 h-6 bg-orange-100 dark:bg-orange-900/30 rounded-lg flex items-center justify-center">
                                 @php
                                 $priorityIcon = match($groupName) {
                                 'Urgent' => 'heroicon-s-exclamation-triangle',
@@ -269,29 +291,35 @@
                                 default => 'heroicon-o-minus'
                                 };
                                 @endphp
-                                <x-dynamic-component :component="$priorityIcon" class="w-4 h-4 text-orange-600 dark:text-orange-400" />
+                                <x-dynamic-component :component="$priorityIcon"
+                                    class="w-4 h-4 text-orange-600 dark:text-orange-400" />
                             </div>
                             @break
                             @case('project')
-                            <div class="w-6 h-6 bg-indigo-100 dark:bg-indigo-900/30 rounded-lg flex items-center justify-center">
+                            <div
+                                class="w-6 h-6 bg-indigo-100 dark:bg-indigo-900/30 rounded-lg flex items-center justify-center">
                                 <x-heroicon-o-folder class="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
                             </div>
                             @break
                             @case('assignee')
-                            <div class="w-6 h-6 bg-blue-100 dark:bg-blue-900/30 rounded-lg flex items-center justify-center">
+                            <div
+                                class="w-6 h-6 bg-blue-100 dark:bg-blue-900/30 rounded-lg flex items-center justify-center">
                                 <x-heroicon-o-user class="w-4 h-4 text-blue-600 dark:text-blue-400" />
                             </div>
                             @break
                             @case('date')
-                            <div class="w-6 h-6 bg-purple-100 dark:bg-purple-900/30 rounded-lg flex items-center justify-center">
+                            <div
+                                class="w-6 h-6 bg-purple-100 dark:bg-purple-900/30 rounded-lg flex items-center justify-center">
                                 <x-heroicon-o-calendar-days class="w-4 h-4 text-purple-600 dark:text-purple-400" />
                             </div>
                             @break
                             @endswitch
 
                             <div>
-                                <h3 class="text-base font-semibold text-gray-900 dark:text-gray-100">{{ $groupName }}</h3>
-                                <p class="text-sm text-gray-500 dark:text-gray-400">{{ $tasks->count() }} {{ $tasks->count() === 1 ? 'task' : 'tasks' }}</p>
+                                <h3 class="text-base font-semibold text-gray-900 dark:text-gray-100">{{ $groupName }}
+                                </h3>
+                                <p class="text-sm text-gray-500 dark:text-gray-400">{{ $tasks->count() }} {{
+                                    $tasks->count() === 1 ? 'task' : 'tasks' }}</p>
                             </div>
                         </div>
 
@@ -315,12 +343,14 @@
 
                             <button @click="collapsed = !collapsed"
                                 class="p-1.5 hover:bg-white dark:hover:bg-gray-700 rounded-lg transition-colors">
-                                <x-heroicon-o-chevron-down class="w-4 h-4 text-gray-400 dark:text-gray-500 transition-transform"
+                                <x-heroicon-o-chevron-down
+                                    class="w-4 h-4 text-gray-400 dark:text-gray-500 transition-transform"
                                     x-bind:class="{ 'rotate-180': collapsed }" />
                             </button>
                         </div>
                     </div>
 
+                    {{-- Group Tasks - Fixed collapse --}}
                     {{-- Group Tasks - Fixed collapse --}}
                     <div x-show="!collapsed" x-transition:enter="transition ease-out duration-300"
                         x-transition:enter-start="opacity-0 transform -translate-y-2"
@@ -328,16 +358,123 @@
                         x-transition:leave="transition ease-in duration-200"
                         x-transition:leave-start="opacity-100 transform translate-y-0"
                         x-transition:leave-end="opacity-0 transform -translate-y-2" class="mt-4">
+
                         @foreach($tasks as $task)
-                        <div class="px-6 py-4 hover:bg-gradient-to-r hover:from-primary-50 hover:to-transparent dark:hover:from-primary-900/20 dark:hover:to-transparent transition-all duration-200 group border-l-4 border-l-transparent hover:border-l-primary-200 dark:hover:border-l-primary-600 -mx-6 mb-2 last:mb-0 border-b border-gray-100 dark:border-gray-700 last:border-b-0">
+                        <div
+                            class="px-6 py-4 hover:bg-gradient-to-r hover:from-primary-50 hover:to-transparent dark:hover:from-primary-900/20 dark:hover:to-transparent transition-all duration-200 group border-l-4 border-l-transparent hover:border-l-primary-200 dark:hover:border-l-primary-600 -mx-6 mb-2 last:mb-0 border-b border-gray-100 dark:border-gray-700 last:border-b-0">
                             <livewire:daily-task.daily-task-item :task="$task" :key="'task-'.$task->id . time()" />
                         </div>
                         @endforeach
+
+                        {{-- Inline New Task Row --}}
+                        @php $groupKey = $this->getGroupKey($groupBy, $groupName); @endphp
+                        @if($this->isCreatingTask($groupBy, $groupName))
+                        <div
+                            class="px-6 py-4 -mx-6 mb-2 border-b border-gray-100 dark:border-gray-700 bg-gradient-to-r from-blue-50 to-blue-25 dark:from-blue-900/20 dark:to-blue-900/10 border-l-4 border-l-blue-400 dark:border-l-blue-500">
+                            <div class="grid grid-cols-12 gap-4 items-center">
+                                {{-- Checkbox placeholder --}}
+                                <div class="col-span-1">
+                                    <div
+                                        class="w-5 h-5 bg-blue-100 dark:bg-blue-800 rounded-full flex items-center justify-center">
+                                        <x-heroicon-o-plus class="w-3 h-3 text-blue-600 dark:text-blue-300" />
+                                    </div>
+                                </div>
+
+                                {{-- Task Title Input --}}
+                                <div class="col-span-4">
+                                    <div class="space-y-2">
+                                        <input type="text" wire:model.live="newTaskData.{{ $groupKey }}.title"
+                                            placeholder="Masukkan judul task..."
+                                            class="w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-gray-100 dark:placeholder-gray-400"
+                                            autofocus @keydown.enter="$wire.saveNewTask('{{ $groupKey }}')"
+                                            @keydown.escape="$wire.cancelNewTask('{{ $groupKey }}')" />
+                                    </div>
+                                </div>
+
+                                {{-- Status - Auto filled based on group --}}
+                                <div class="col-span-2">
+                                    <div class="text-xs font-medium text-gray-600 dark:text-gray-400">
+                                        @if($groupBy === 'status')
+                                        <span
+                                            class="inline-flex items-center gap-1.5 px-2 py-1 rounded-md bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-300 border border-blue-200 dark:border-blue-700">
+                                            <div class="w-2 h-2 rounded-full bg-blue-500 dark:bg-blue-400"></div>
+                                            {{ $groupName }}
+                                        </span>
+                                        @else
+                                        <span class="text-gray-500 dark:text-gray-400">Auto-detected</span>
+                                        @endif
+                                    </div>
+                                </div>
+
+                                {{-- Priority - Auto filled based on group --}}
+                                <div class="col-span-1">
+                                    @if($groupBy === 'priority')
+                                    <span
+                                        class="inline-flex items-center gap-1 px-2 py-1 rounded-md text-xs font-bold bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-300 border border-blue-200 dark:border-blue-700">
+                                        <x-heroicon-o-exclamation-triangle class="w-3 h-3" />
+                                        {{ $groupName }}
+                                    </span>
+                                    @else
+                                    <span class="text-xs text-gray-500 dark:text-gray-400">Normal</span>
+                                    @endif
+                                </div>
+
+                                {{-- Assignee placeholder --}}
+                                <div class="col-span-2">
+                                    <span class="text-xs text-gray-500 dark:text-gray-400">Akan diassign nanti</span>
+                                </div>
+
+                                {{-- Project - Auto filled based on group --}}
+                                <div class="col-span-1">
+                                    @if($groupBy === 'project' && $groupName !== 'No Project')
+                                    <span
+                                        class="text-xs font-medium text-indigo-800 dark:text-indigo-300 bg-indigo-100 dark:bg-indigo-900/30 px-2 py-1 rounded-md border border-indigo-200 dark:border-indigo-700">
+                                        {{ Str::limit($groupName, 8) }}
+                                    </span>
+                                    @else
+                                    <span class="text-xs text-gray-500 dark:text-gray-400">-</span>
+                                    @endif
+                                </div>
+
+                                {{-- Action Buttons --}}
+                                <div class="col-span-1">
+                                    <div class="flex items-center gap-1">
+                                        <button wire:click="saveNewTask('{{ $groupKey }}')" wire:loading.attr="disabled"
+                                            class="p-2 bg-green-100 dark:bg-green-900/30 hover:bg-green-200 dark:hover:bg-green-900/50 text-green-700 dark:text-green-400 rounded-lg transition-all duration-200 hover:scale-110 shadow-sm"
+                                            title="Simpan task (Enter)">
+                                            <x-heroicon-o-check class="w-4 h-4" />
+                                        </button>
+                                        <button wire:click="cancelNewTask('{{ $groupKey }}')"
+                                            class="p-2 bg-red-100 dark:bg-red-900/30 hover:bg-red-200 dark:hover:bg-red-900/50 text-red-700 dark:text-red-400 rounded-lg transition-all duration-200 hover:scale-110 shadow-sm"
+                                            title="Batal (Escape)">
+                                            <x-heroicon-o-x-mark class="w-4 h-4" />
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        @endif
+
+                        {{-- Add New Task Button --}}
+                        @if(!$this->isCreatingTask($groupBy, $groupName))
+                        <div
+                            class="px-6 py-3 -mx-6 border-t border-gray-100 dark:border-gray-700 bg-gradient-to-r from-gray-50 to-gray-25 dark:from-gray-700/50 dark:to-gray-600/50">
+                            <button wire:click="startCreatingTask('{{ $groupBy }}', '{{ $groupName }}')"
+                                class="w-full flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-medium text-gray-600 dark:text-gray-300 bg-white dark:bg-gray-800 border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-xl hover:bg-gradient-to-r hover:from-blue-50 hover:to-blue-25 dark:hover:from-blue-900/20 dark:hover:to-blue-900/10 hover:border-blue-300 dark:hover:border-blue-600 hover:text-blue-600 dark:hover:text-blue-400 transition-all duration-200 group">
+                                <div
+                                    class="w-5 h-5 bg-gray-200 dark:bg-gray-600 group-hover:bg-blue-200 dark:group-hover:bg-blue-800 rounded-full flex items-center justify-center transition-colors duration-200">
+                                    <x-heroicon-o-plus class="w-3 h-3 transition-colors duration-200" />
+                                </div>
+                                <span>Tambah Task Baru untuk {{ $groupName }}</span>
+                            </button>
+                        </div>
+                        @endif
                     </div>
                 </div>
                 @empty
                 <div class="py-16 text-center">
-                    <div class="w-24 h-24 bg-gray-100 dark:bg-gray-700 rounded-full flex items-center justify-center mx-auto mb-6">
+                    <div
+                        class="w-24 h-24 bg-gray-100 dark:bg-gray-700 rounded-full flex items-center justify-center mx-auto mb-6">
                         <x-heroicon-o-clipboard-document-list class="w-12 h-12 text-gray-400 dark:text-gray-500" />
                     </div>
                     <h3 class="text-xl font-semibold text-gray-900 dark:text-gray-100 mb-2">No tasks found</h3>
@@ -356,12 +493,15 @@
             @if($groupBy === 'none')
             {{-- Mobile No Grouping --}}
             @forelse($paginatedTasks as $task)
-            <div class="bg-white dark:bg-gray-800 rounded-lg border-2 border-gray-200 dark:border-gray-700 shadow-sm hover:shadow-md hover:border-primary-300 dark:hover:border-primary-600 transition-all duration-200">
+            <div
+                class="bg-white dark:bg-gray-800 rounded-lg border-2 border-gray-200 dark:border-gray-700 shadow-sm hover:shadow-md hover:border-primary-300 dark:hover:border-primary-600 transition-all duration-200">
                 <livewire:daily-task.daily-task-item :task="$task" :key="'mobile-task-'.$task->id . time()" />
             </div>
             @empty
-            <div class="bg-white dark:bg-gray-800 rounded-lg border-2 border-gray-200 dark:border-gray-700 p-8 text-center">
-                <div class="w-16 h-16 bg-gray-100 dark:bg-gray-700 rounded-full flex items-center justify-center mx-auto mb-4">
+            <div
+                class="bg-white dark:bg-gray-800 rounded-lg border-2 border-gray-200 dark:border-gray-700 p-8 text-center">
+                <div
+                    class="w-16 h-16 bg-gray-100 dark:bg-gray-700 rounded-full flex items-center justify-center mx-auto mb-4">
                     <x-heroicon-o-clipboard-document-list class="w-8 h-8 text-gray-400 dark:text-gray-500" />
                 </div>
                 <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-2">No tasks found</h3>
@@ -394,7 +534,8 @@
             <div class="bg-white dark:bg-gray-800 rounded-lg border-2 border-gray-200 dark:border-gray-700 shadow-sm overflow-hidden hover:border-primary-300 dark:hover:border-primary-600 transition-all duration-200"
                 x-data="{ collapsed: false }">
                 {{-- Mobile Group Header --}}
-                <div class="bg-gradient-to-r from-gray-50 to-gray-100 dark:from-gray-700 dark:to-gray-600 p-4 border-b border-gray-200 dark:border-gray-600">
+                <div
+                    class="bg-gradient-to-r from-gray-50 to-gray-100 dark:from-gray-700 dark:to-gray-600 p-4 border-b border-gray-200 dark:border-gray-600">
                     <div class="flex items-center justify-between">
                         <div class="flex items-center gap-3">
                             @switch($groupBy)
@@ -419,7 +560,8 @@
                             </div>
                             @break
                             @case('priority')
-                            <div class="w-5 h-5 bg-orange-100 dark:bg-orange-900/30 rounded-lg flex items-center justify-center">
+                            <div
+                                class="w-5 h-5 bg-orange-100 dark:bg-orange-900/30 rounded-lg flex items-center justify-center">
                                 @php
                                 $priorityIcon = match($groupName) {
                                 'Urgent' => 'heroicon-s-exclamation-triangle',
@@ -429,21 +571,25 @@
                                 default => 'heroicon-o-minus'
                                 };
                                 @endphp
-                                <x-dynamic-component :component="$priorityIcon" class="w-3 h-3 text-orange-600 dark:text-orange-400" />
+                                <x-dynamic-component :component="$priorityIcon"
+                                    class="w-3 h-3 text-orange-600 dark:text-orange-400" />
                             </div>
                             @break
                             @case('project')
-                            <div class="w-5 h-5 bg-indigo-100 dark:bg-indigo-900/30 rounded-lg flex items-center justify-center">
+                            <div
+                                class="w-5 h-5 bg-indigo-100 dark:bg-indigo-900/30 rounded-lg flex items-center justify-center">
                                 <x-heroicon-o-folder class="w-3 h-3 text-indigo-600 dark:text-indigo-400" />
                             </div>
                             @break
                             @case('assignee')
-                            <div class="w-5 h-5 bg-blue-100 dark:bg-blue-900/30 rounded-lg flex items-center justify-center">
+                            <div
+                                class="w-5 h-5 bg-blue-100 dark:bg-blue-900/30 rounded-lg flex items-center justify-center">
                                 <x-heroicon-o-user class="w-3 h-3 text-blue-600 dark:text-blue-400" />
                             </div>
                             @break
                             @case('date')
-                            <div class="w-5 h-5 bg-purple-100 dark:bg-purple-900/30 rounded-lg flex items-center justify-center">
+                            <div
+                                class="w-5 h-5 bg-purple-100 dark:bg-purple-900/30 rounded-lg flex items-center justify-center">
                                 <x-heroicon-o-calendar-days class="w-3 h-3 text-purple-600 dark:text-purple-400" />
                             </div>
                             @break
@@ -451,7 +597,8 @@
 
                             <div>
                                 <h3 class="text-sm font-semibold text-gray-900 dark:text-gray-100">{{ $groupName }}</h3>
-                                <p class="text-xs text-gray-500 dark:text-gray-400">{{ $tasks->count() }} {{ $tasks->count() === 1 ? 'task' : 'tasks' }}</p>
+                                <p class="text-xs text-gray-500 dark:text-gray-400">{{ $tasks->count() }} {{
+                                    $tasks->count() === 1 ? 'task' : 'tasks' }}</p>
                             </div>
                         </div>
 
@@ -475,7 +622,8 @@
 
                             <button @click="collapsed = !collapsed"
                                 class="p-1 hover:bg-white dark:hover:bg-gray-700 rounded-lg transition-colors">
-                                <x-heroicon-o-chevron-down class="w-4 h-4 text-gray-400 dark:text-gray-500 transition-transform"
+                                <x-heroicon-o-chevron-down
+                                    class="w-4 h-4 text-gray-400 dark:text-gray-500 transition-transform"
                                     x-bind:class="{ 'rotate-180': collapsed }" />
                             </button>
                         </div>
@@ -488,21 +636,27 @@
                     x-transition:enter-end="opacity-100 transform translate-y-0"
                     x-transition:leave="transition ease-in duration-200"
                     x-transition:leave-start="opacity-100 transform translate-y-0"
-                    x-transition:leave-end="opacity-0 transform -translate-y-2" class="divide-y divide-gray-100 dark:divide-gray-700">
+                    x-transition:leave-end="opacity-0 transform -translate-y-2"
+                    class="divide-y divide-gray-100 dark:divide-gray-700">
                     @foreach($tasks as $task)
-                    <div class="p-0 border-l-4 border-l-transparent hover:border-l-primary-300 dark:hover:border-l-primary-600 hover:bg-gradient-to-r hover:from-primary-50 hover:to-transparent dark:hover:from-primary-900/20 dark:hover:to-transparent transition-all duration-200">
-                        <livewire:daily-task.daily-task-item :task="$task" :key="'mobile-grouped-task-'.$task->id . time()" />
+                    <div
+                        class="p-0 border-l-4 border-l-transparent hover:border-l-primary-300 dark:hover:border-l-primary-600 hover:bg-gradient-to-r hover:from-primary-50 hover:to-transparent dark:hover:from-primary-900/20 dark:hover:to-transparent transition-all duration-200">
+                        <livewire:daily-task.daily-task-item :task="$task"
+                            :key="'mobile-grouped-task-'.$task->id . time()" />
                     </div>
                     @endforeach
                 </div>
             </div>
             @empty
-            <div class="bg-white dark:bg-gray-800 rounded-lg border-2 border-gray-200 dark:border-gray-700 p-8 text-center">
-                <div class="w-16 h-16 bg-gray-100 dark:bg-gray-700 rounded-full flex items-center justify-center mx-auto mb-4">
+            <div
+                class="bg-white dark:bg-gray-800 rounded-lg border-2 border-gray-200 dark:border-gray-700 p-8 text-center">
+                <div
+                    class="w-16 h-16 bg-gray-100 dark:bg-gray-700 rounded-full flex items-center justify-center mx-auto mb-4">
                     <x-heroicon-o-clipboard-document-list class="w-8 h-8 text-gray-400 dark:text-gray-500" />
                 </div>
                 <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-2">No tasks found</h3>
-                <p class="text-gray-500 dark:text-gray-400 mb-4 text-sm">Try adjusting your filters or create a new task</p>
+                <p class="text-gray-500 dark:text-gray-400 mb-4 text-sm">Try adjusting your filters or create a new task
+                </p>
                 <x-filament::button wire:click="resetFilters" color="gray" outlined size="sm">
                     Clear Filters
                 </x-filament::button>
