@@ -10,6 +10,8 @@ class DailyTaskSubtask extends Model
 {
     use HasFactory;
 
+    use HasFactory;
+
     protected $fillable = [
         'daily_task_id',
         'title',
