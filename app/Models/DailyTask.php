@@ -56,7 +56,7 @@ class DailyTask extends Model
     // Subtask relationships
     public function subtasks(): HasMany
     {
-        return $this->hasMany(\App\Models\Project::class)->orderBy('id');
+        return $this->hasMany(\App\Models\DailyTaskSubtask::class);
     }
 
     // Relationship to comments (using your existing Comment model)
