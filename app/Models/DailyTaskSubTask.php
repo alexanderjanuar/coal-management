@@ -21,6 +21,7 @@ class DailyTaskSubtask extends Model
     protected $casts = [
         //
     ];
+    
 
     // Relationships
     public function dailyTask(): BelongsTo
