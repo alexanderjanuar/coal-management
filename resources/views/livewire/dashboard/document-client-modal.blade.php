@@ -55,7 +55,7 @@
                         <div class="px-6 py-5 space-y-6">
                             <!-- Upload Section -->
                             <div class="bg-gray-50 rounded-xl p-5 border border-gray-100">
-                                <h3 class="text-sm font-medium text-gray-900 mb-4">Upload New Document</h3>
+                                <h3 class="text-sm font-medium text-gray-900 mb-4">Upload Dokumen</h3>
                                 <form wire:submit="uploadDocument" class="space-y-4">
                                     {{ $this->form }}
 

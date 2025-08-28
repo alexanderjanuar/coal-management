@@ -20,7 +20,8 @@
                     @else
                     <div
                         class="w-5 h-5 rounded-full border-2 border-gray-300 hover:border-primary-500 hover:bg-primary-50 transition-all duration-200 flex items-center justify-center">
-                        <div class="w-0 h-0 bg-primary-500 rounded-full hover:w-2 hover:h-2 transition-all duration-200">
+                        <div
+                            class="w-0 h-0 bg-primary-500 rounded-full hover:w-2 hover:h-2 transition-all duration-200">
                         </div>
                     </div>
                     @endif
@@ -31,9 +32,9 @@
             <div class="col-span-4">
                 <div class="space-y-2">
                     <div class="flex items-start justify-between">
-                        <div class="flex-1">
+                        <div class="flex-1 cursor-pointer" wire:click="viewDetails">
                             <h4
-                                class="font-semibold text-gray-900 text-sm leading-snug {{ $task->status === 'completed' ? 'line-through text-gray-500' : '' }} hover:text-primary-600 transition-colors cursor-pointer">
+                                class="font-semibold text-gray-900 text-sm leading-snug {{ $task->status === 'completed' ? 'line-through text-gray-500' : '' }} hover:text-primary-600 transition-colors">
                                 {{ $task->title }}
                             </h4>
                             @if($task->description)
@@ -79,7 +80,8 @@
                         {{-- Enhanced Progress Bar --}}
                         @php
                         $progress = $task->subtasks->count() > 0
-                        ? round(($task->subtasks->where('status', 'completed')->count() / $task->subtasks->count()) * 100)
+                        ? round(($task->subtasks->where('status', 'completed')->count() / $task->subtasks->count()) *
+                        100)
                         : 0;
                         @endphp
                         <div class="flex-1 max-w-24">
@@ -99,8 +101,8 @@
             {{-- Enhanced Status Dropdown --}}
             <div class="col-span-2">
                 <div class="relative" x-data="{ statusOpen: false, buttonRect: {} }">
-                    <button @click="statusOpen = !statusOpen; buttonRect = $el.getBoundingClientRect()" x-ref="statusButton"
-                        class="inline-flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-semibold transition-all duration-200 hover:scale-105 w-full justify-center shadow-sm border
+                    <button @click="statusOpen = !statusOpen; buttonRect = $el.getBoundingClientRect()"
+                        x-ref="statusButton" class="inline-flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-semibold transition-all duration-200 hover:scale-105 w-full justify-center shadow-sm border
                     {{ match($task->status) {
                         'completed' => 'bg-green-100 text-green-800 border-green-200 hover:bg-green-200',
                         'in_progress' => 'bg-yellow-100 text-yellow-800 border-yellow-200 hover:bg-yellow-200',
@@ -313,7 +315,8 @@
                         @else
                         <div
                             class="w-6 h-6 rounded-full border-2 border-gray-300 hover:border-primary-500 hover:bg-primary-50 transition-all duration-200 flex items-center justify-center">
-                            <div class="w-0 h-0 bg-primary-500 rounded-full hover:w-3 hover:h-3 transition-all duration-200">
+                            <div
+                                class="w-0 h-0 bg-primary-500 rounded-full hover:w-3 hover:h-3 transition-all duration-200">
                             </div>
                         </div>
                         @endif
@@ -321,7 +324,8 @@
 
                     {{-- Task Title & Description --}}
                     <div class="flex-1 min-w-0">
-                        <h4 class="font-semibold text-gray-900 text-base leading-snug {{ $task->status === 'completed' ? 'line-through text-gray-500' : '' }} hover:text-primary-600 transition-colors">
+                        <h4
+                            class="font-semibold text-gray-900 text-base leading-snug {{ $task->status === 'completed' ? 'line-through text-gray-500' : '' }} hover:text-primary-600 transition-colors">
                             {{ $task->title }}
                         </h4>
                         @if($task->description)
@@ -343,11 +347,9 @@
                     {{-- Actions Dropdown --}}
                     <div x-show="showActions" @click.away="showActions = false"
                         x-transition:enter="transition ease-out duration-200"
-                        x-transition:enter-start="opacity-0 scale-95"
-                        x-transition:enter-end="opacity-100 scale-100"
+                        x-transition:enter-start="opacity-0 scale-95" x-transition:enter-end="opacity-100 scale-100"
                         x-transition:leave="transition ease-in duration-150"
-                        x-transition:leave-start="opacity-100 scale-100"
-                        x-transition:leave-end="opacity-0 scale-95"
+                        x-transition:leave-start="opacity-100 scale-100" x-transition:leave-end="opacity-0 scale-95"
                         class="absolute right-0 top-full mt-2 w-48 bg-white rounded-xl shadow-lg border border-gray-200 py-2 z-50">
                         <button @click="showDetails = !showDetails; showActions = false"
                             class="w-full text-left px-4 py-3 text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-3">
@@ -359,7 +361,8 @@
                             <x-heroicon-o-pencil class="w-4 h-4 text-blue-600" />
                             <span>Edit Task</span>
                         </button>
-                        <button wire:click="deleteTask" wire:confirm="Are you sure you want to delete this task?" @click="showActions = false"
+                        <button wire:click="deleteTask" wire:confirm="Are you sure you want to delete this task?"
+                            @click="showActions = false"
                             class="w-full text-left px-4 py-3 text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-3">
                             <x-heroicon-o-trash class="w-4 h-4 text-red-600" />
                             <span>Delete Task</span>
@@ -374,8 +377,7 @@
                 <div class="flex flex-col space-y-1">
                     <span class="text-xs text-gray-500 font-medium">Status</span>
                     <div class="relative" x-data="{ statusOpen: false, buttonRect: {} }">
-                        <button @click="statusOpen = !statusOpen; buttonRect = $el.getBoundingClientRect()"
-                            class="inline-flex items-center gap-2 px-2 py-1.5 rounded-md text-xs font-semibold transition-all duration-200 w-full justify-start shadow-sm border
+                        <button @click="statusOpen = !statusOpen; buttonRect = $el.getBoundingClientRect()" class="inline-flex items-center gap-2 px-2 py-1.5 rounded-md text-xs font-semibold transition-all duration-200 w-full justify-start shadow-sm border
                         {{ match($task->status) {
                             'completed' => 'bg-green-100 text-green-800 border-green-200',
                             'in_progress' => 'bg-yellow-100 text-yellow-800 border-yellow-200',
@@ -398,10 +400,13 @@
                         {{-- Mobile Status Dropdown --}}
                         <template x-teleport="body">
                             <div x-show="statusOpen" x-cloak @click.away="statusOpen = false"
-                                @keydown.escape="statusOpen = false" x-transition:enter="transition ease-out duration-200"
-                                x-transition:enter-start="opacity-0 scale-95" x-transition:enter-end="opacity-100 scale-100"
+                                @keydown.escape="statusOpen = false"
+                                x-transition:enter="transition ease-out duration-200"
+                                x-transition:enter-start="opacity-0 scale-95"
+                                x-transition:enter-end="opacity-100 scale-100"
                                 x-transition:leave="transition ease-in duration-150"
-                                x-transition:leave-start="opacity-100 scale-100" x-transition:leave-end="opacity-0 scale-95"
+                                x-transition:leave-start="opacity-100 scale-100"
+                                x-transition:leave-end="opacity-0 scale-95"
                                 class="fixed w-48 bg-white rounded-xl shadow-xl border border-gray-200 py-2 overflow-hidden"
                                 style="z-index: 9999;" x-bind:style="{
                                  top: (buttonRect.bottom + window.scrollY + 8) + 'px',
@@ -529,14 +534,16 @@
                             @endif
                         </div>
                         @if($task->assignedUsers->count() === 1)
-                        <span class="text-sm font-medium text-gray-700 truncate max-w-24">{{ $task->assignedUsers->first()->name }}</span>
+                        <span class="text-sm font-medium text-gray-700 truncate max-w-24">{{
+                            $task->assignedUsers->first()->name }}</span>
                         @else
                         <span class="text-xs text-gray-500">{{ $task->assignedUsers->count() }} people</span>
                         @endif
                     </div>
                     @else
                     <div class="flex items-center gap-2 text-gray-400">
-                        <div class="w-6 h-6 bg-gray-100 border border-dashed border-gray-300 rounded-full flex items-center justify-center">
+                        <div
+                            class="w-6 h-6 bg-gray-100 border border-dashed border-gray-300 rounded-full flex items-center justify-center">
                             <x-heroicon-o-plus class="w-3 h-3" />
                         </div>
                         <span class="text-sm">Unassigned</span>
@@ -564,7 +571,8 @@
                     <button wire:click="toggleSubtasks"
                         class="flex items-center gap-3 text-sm text-gray-500 hover:text-primary-600 transition-colors bg-gray-50 hover:bg-primary-50 px-3 py-2 rounded-lg flex-1 mr-3">
                         <x-heroicon-o-list-bullet class="w-4 h-4" />
-                        <span>{{ $task->getCompletedSubtasksCount() }}/{{ $task->getTotalSubtasksCount() }} subtasks</span>
+                        <span>{{ $task->getCompletedSubtasksCount() }}/{{ $task->getTotalSubtasksCount() }}
+                            subtasks</span>
                         <x-heroicon-o-chevron-down
                             class="w-4 h-4 {{ $showSubtasks ? 'rotate-180' : '' }} transition-transform duration-200" />
                     </button>
@@ -718,7 +726,7 @@
                     <span>{{ $task->getDaysInProgress() }} days</span>
                 </div>
                 @endif
-                
+
                 @if($task->isOverdue())
                 <div class="flex items-center gap-2 text-red-600">
                     <x-heroicon-o-exclamation-triangle class="w-4 h-4" />

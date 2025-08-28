@@ -20,13 +20,12 @@ class DailyTaskListComponent extends Component implements HasForms
     use InteractsWithForms, WithPagination;
 
     // Form data - single source of truth
-    public ?array $quickTaskData = [];
     public ?array $filterData = [];
 
     // Pagination
     public int $perPage = 20;
 
-    // Add listeners for child components
+    // Add listeners for child components and page events
     protected $listeners = [
         'taskUpdated' => 'refreshTasks',
         'task-created' => 'refreshTasks',
@@ -39,23 +38,18 @@ class DailyTaskListComponent extends Component implements HasForms
     protected function getForms(): array
     {
         return [
-            'quickTaskForm',
             'filterForm',
         ];
     }
 
     public function mount(): void
-    {
-        // Initialize form data with defaults
-        $this->quickTaskForm->fill([
-            'title' => '',
-            'date' => today(),
-        ]);
-        
+    {        
         // Initialize filter form with defaults - remove query string persistence for now
         $this->filterData = [
             'search' => '',
             'date' => today(),
+            'date_start' => null,
+            'date_end' => null,
             'status' => [],
             'priority' => [],
             'project' => [],
@@ -70,30 +64,12 @@ class DailyTaskListComponent extends Component implements HasForms
     }
 
     /**
-     * Quick Task Form Definition
+     * Refresh tasks when updates occur
      */
-    public function quickTaskForm(Form $form): Form
+    public function refreshTasks(): void
     {
-        return $form
-            ->schema([
-                Forms\Components\Grid::make(3)
-                    ->schema([
-                        Forms\Components\TextInput::make('title')
-                            ->label('Task Title')
-                            ->placeholder('Enter task title...')
-                            ->required()
-                            ->maxLength(255)
-                            ->columnSpan(2),
-                            
-                        Forms\Components\DatePicker::make('date')
-                            ->label('Date')
-                            ->default(today())
-                            ->required()
-                            ->native(false)
-                            ->columnSpan(1),
-                    ]),
-            ])
-            ->statePath('quickTaskData');
+        $this->resetPage();
+        $this->dispatch('$refresh');
     }
 
     /**
@@ -115,13 +91,17 @@ class DailyTaskListComponent extends Component implements HasForms
                                     ->columnSpan(2),
                                     
                                 Forms\Components\DatePicker::make('date')
+                                    ->label('Single Date')
                                     ->native(false)
-                                    ->live(),
+                                    ->live()
+                                    ->helperText('Filter by specific date')
+                                    ->columnSpan(1),
                                     
                                 Forms\Components\Select::make('group_by')
                                     ->options($this->getGroupByOptions())
                                     ->native(false)
-                                    ->live(),
+                                    ->live()
+                                    ->columnSpan(1),
                                     
                                 Forms\Components\ToggleButtons::make('view_mode')
                                     ->options([
@@ -134,7 +114,28 @@ class DailyTaskListComponent extends Component implements HasForms
                                     ])
                                     ->inline()
                                     ->default('list')
-                                    ->live(),
+                                    ->live()
+                                    ->columnSpan(1),
+                            ]),
+                            
+                        // Date Range Filters
+                        Forms\Components\Grid::make(2)
+                            ->schema([
+                                Forms\Components\DatePicker::make('date_start')
+                                    ->label('Start Date From')
+                                    ->placeholder('Select start date...')
+                                    ->native(false)
+                                    ->live()
+                                    ->helperText('Filter tasks starting from this date')
+                                    ->columnSpan(1),
+                                    
+                                Forms\Components\DatePicker::make('date_end')
+                                    ->label('End Date To')
+                                    ->placeholder('Select end date...')
+                                    ->native(false)
+                                    ->live()
+                                    ->helperText('Filter tasks up to this date')
+                                    ->columnSpan(1),
                             ]),                                                  
                         // Secondary Filters Row
                         Forms\Components\Section::make('Advanced Filters')
@@ -196,6 +197,16 @@ class DailyTaskListComponent extends Component implements HasForms
         $this->resetPage();
     }
     
+    public function updatedFilterDataDateStart(): void
+    {
+        $this->resetPage();
+    }
+    
+    public function updatedFilterDataDateEnd(): void
+    {
+        $this->resetPage();
+    }
+    
     public function updatedFilterDataStatus(): void
     {
         $this->resetPage();
@@ -227,43 +238,6 @@ class DailyTaskListComponent extends Component implements HasForms
     }
 
     /**
-     * Quick Task Form Submission
-     */
-    public function createQuickTask(): void
-    {
-        $data = $this->quickTaskForm->getState();
-
-        try {
-            DailyTask::create([
-                'title' => $data['title'],
-                'task_date' => $data['date'],
-                'created_by' => auth()->id(),
-                'status' => 'pending',
-                'priority' => 'normal',
-            ]);
-
-            // Reset form
-            $this->quickTaskForm->fill([
-                'title' => '',
-                'date' => today(),
-            ]);      
-
-            Notification::make()
-                ->title('Success')
-                ->body('New task created successfully')
-                ->success()
-                ->send();
-
-        } catch (\Exception $e) {
-            Notification::make()
-                ->title('Error')
-                ->body('Failed to create task: ' . $e->getMessage())
-                ->danger()
-                ->send();
-        }
-    }
-
-    /**
      * Update task status
      */
     public function updateTaskStatus(int $taskId, string $status): void
@@ -286,6 +260,9 @@ class DailyTaskListComponent extends Component implements HasForms
             ->body("Task status changed to " . $this->getStatusLabel($status))
             ->success()
             ->send();
+            
+        // Trigger refresh
+        $this->dispatch('taskStatusChanged');
     }
 
     /**
@@ -296,6 +273,8 @@ class DailyTaskListComponent extends Component implements HasForms
         $this->filterData = [
             'search' => '',
             'date' => today(),
+            'date_start' => null,
+            'date_end' => null,
             'status' => [],
             'priority' => [],
             'project' => [],
@@ -321,6 +300,8 @@ class DailyTaskListComponent extends Component implements HasForms
         return [
             'search' => !empty($data['search']) ? trim($data['search']) : '',
             'date' => $data['date'] ?? null,
+            'date_start' => $data['date_start'] ?? null,
+            'date_end' => $data['date_end'] ?? null,
             'status' => is_array($data['status'] ?? null) ? array_values(array_filter($data['status'])) : [],
             'priority' => is_array($data['priority'] ?? null) ? array_values(array_filter($data['priority'])) : [],
             'project' => is_array($data['project'] ?? null) ? array_values(array_filter($data['project'])) : [],
@@ -366,7 +347,7 @@ class DailyTaskListComponent extends Component implements HasForms
             });
         }
         
-        // Apply date filter FIRST - this is critical
+        // Apply date filters
         if (!empty($filters['date'])) {
             $date = $filters['date'];
             if ($date instanceof \Carbon\Carbon) {
@@ -376,15 +357,38 @@ class DailyTaskListComponent extends Component implements HasForms
                     $carbonDate = Carbon::parse($date);
                     $query->whereDate('task_date', $carbonDate->format('Y-m-d'));
                 } catch (\Exception $e) {
-                    \Log::warning('Invalid date format in filter: ' . $date . ' Error: ' . $e->getMessage());
+                    // Handle silently, skip invalid dates
                 }
-            } elseif (is_array($date)) {
-                // Handle array date format from some form inputs
-                try {
-                    $carbonDate = Carbon::createFromFormat('Y-m-d', $date['year'] . '-' . $date['month'] . '-' . $date['day']);
-                    $query->whereDate('task_date', $carbonDate->format('Y-m-d'));
-                } catch (\Exception $e) {
-                    \Log::warning('Invalid array date format in filter: ' . json_encode($date) . ' Error: ' . $e->getMessage());
+            }
+        }
+        
+        // Apply date range filters
+        if (!empty($filters['date_start']) || !empty($filters['date_end'])) {
+            if (!empty($filters['date_start'])) {
+                $startDate = $filters['date_start'];
+                if ($startDate instanceof \Carbon\Carbon) {
+                    $query->whereDate('task_date', '>=', $startDate->format('Y-m-d'));
+                } elseif (is_string($startDate)) {
+                    try {
+                        $carbonStartDate = Carbon::parse($startDate);
+                        $query->whereDate('task_date', '>=', $carbonStartDate->format('Y-m-d'));
+                    } catch (\Exception $e) {
+                        // Handle silently
+                    }
+                }
+            }
+            
+            if (!empty($filters['date_end'])) {
+                $endDate = $filters['date_end'];
+                if ($endDate instanceof \Carbon\Carbon) {
+                    $query->whereDate('task_date', '<=', $endDate->format('Y-m-d'));
+                } elseif (is_string($endDate)) {
+                    try {
+                        $carbonEndDate = Carbon::parse($endDate);
+                        $query->whereDate('task_date', '<=', $carbonEndDate->format('Y-m-d'));
+                    } catch (\Exception $e) {
+                        // Handle silently
+                    }
                 }
             }
         }
@@ -428,7 +432,7 @@ class DailyTaskListComponent extends Component implements HasForms
     }
 
     /**
-     * Get grouped tasks - improved grouping logic with better debugging
+     * Get grouped tasks - improved grouping logic
      */
     public function getGroupedTasks(): Collection
     {
@@ -439,12 +443,8 @@ class DailyTaskListComponent extends Component implements HasForms
         $query = $this->getTasksQuery();
         $tasks = $query->get();
         
-        \Log::info("Tasks found after all filters applied: " . $tasks->count());
-        \Log::info("Grouping by: " . $groupBy);
-        
         // If no grouping, return all tasks
         if ($groupBy === 'none') {
-            \Log::info("No grouping - returning all tasks");
             return collect(['All Tasks' => $tasks]);
         }
 
@@ -479,12 +479,8 @@ class DailyTaskListComponent extends Component implements HasForms
                     break;
             }
             
-            \Log::info("Task ID {$task->id} grouped under: {$groupValue}");
             return $groupValue;
         });
-        
-        \Log::info("Groups created: " . $grouped->keys()->implode(', '));
-        \Log::info("Group counts: " . $grouped->map(fn($group) => $group->count())->toJson());
         
         // Sort groups logically
         $sorted = $grouped->sortKeysUsing(function ($a, $b) use ($groupBy) {
@@ -518,6 +514,166 @@ class DailyTaskListComponent extends Component implements HasForms
     }
 
     /**
+     * Get active filters for visual display
+     */
+    public function getActiveFilters(): array
+    {
+        $filters = $this->getCurrentFilters();
+        $activeFilters = [];
+
+        // Search filter
+        if (!empty($filters['search'])) {
+            $activeFilters[] = [
+                'type' => 'search',
+                'label' => 'Search',
+                'value' => $filters['search'],
+                'color' => 'primary',
+                'icon' => 'heroicon-o-magnifying-glass',
+            ];
+        }
+
+        // Date filter
+        if (!empty($filters['date'])) {
+            $date = $filters['date'];
+            $dateValue = '';
+            if ($date instanceof \Carbon\Carbon) {
+                $dateValue = $date->format('M d, Y');
+            } elseif (is_string($date)) {
+                try {
+                    $dateValue = Carbon::parse($date)->format('M d, Y');
+                } catch (\Exception $e) {
+                    $dateValue = $date;
+                }
+            }
+            $activeFilters[] = [
+                'type' => 'date',
+                'label' => 'Date',
+                'value' => $dateValue,
+                'color' => 'info',
+                'icon' => 'heroicon-o-calendar-days',
+            ];
+        }
+
+        // Date range filters
+        if (!empty($filters['date_start']) || !empty($filters['date_end'])) {
+            $rangeValue = '';
+            if (!empty($filters['date_start']) && !empty($filters['date_end'])) {
+                $startDate = $filters['date_start'] instanceof \Carbon\Carbon 
+                    ? $filters['date_start']->format('M d') 
+                    : Carbon::parse($filters['date_start'])->format('M d');
+                $endDate = $filters['date_end'] instanceof \Carbon\Carbon 
+                    ? $filters['date_end']->format('M d, Y') 
+                    : Carbon::parse($filters['date_end'])->format('M d, Y');
+                $rangeValue = $startDate . ' - ' . $endDate;
+            } elseif (!empty($filters['date_start'])) {
+                $rangeValue = 'From ' . ($filters['date_start'] instanceof \Carbon\Carbon 
+                    ? $filters['date_start']->format('M d, Y') 
+                    : Carbon::parse($filters['date_start'])->format('M d, Y'));
+            } elseif (!empty($filters['date_end'])) {
+                $rangeValue = 'Until ' . ($filters['date_end'] instanceof \Carbon\Carbon 
+                    ? $filters['date_end']->format('M d, Y') 
+                    : Carbon::parse($filters['date_end'])->format('M d, Y'));
+            }
+            
+            $activeFilters[] = [
+                'type' => 'date_range',
+                'label' => 'Date Range',
+                'value' => $rangeValue,
+                'color' => 'info',
+                'icon' => 'heroicon-o-calendar',
+            ];
+        }
+
+        // Status filter
+        if (!empty($filters['status'])) {
+            $statusLabels = array_map(fn($status) => $this->getStatusOptions()[$status] ?? $status, $filters['status']);
+            $activeFilters[] = [
+                'type' => 'status',
+                'label' => 'Status',
+                'value' => implode(', ', $statusLabels),
+                'color' => 'success',
+                'icon' => 'heroicon-o-flag',
+                'count' => count($filters['status']),
+            ];
+        }
+
+        // Priority filter
+        if (!empty($filters['priority'])) {
+            $priorityLabels = array_map(fn($priority) => $this->getPriorityOptions()[$priority] ?? $priority, $filters['priority']);
+            $activeFilters[] = [
+                'type' => 'priority',
+                'label' => 'Priority',
+                'value' => implode(', ', $priorityLabels),
+                'color' => 'warning',
+                'icon' => 'heroicon-o-exclamation-triangle',
+                'count' => count($filters['priority']),
+            ];
+        }
+
+        // Project filter
+        if (!empty($filters['project'])) {
+            $projectLabels = array_map(fn($projectId) => $this->getProjectOptions()[$projectId] ?? 'Unknown Project', $filters['project']);
+            $activeFilters[] = [
+                'type' => 'project',
+                'label' => 'Project',
+                'value' => implode(', ', $projectLabels),
+                'color' => 'info',
+                'icon' => 'heroicon-o-folder',
+                'count' => count($filters['project']),
+            ];
+        }
+
+        // Assignee filter
+        if (!empty($filters['assignee'])) {
+            $assigneeLabels = array_map(fn($userId) => $this->getUserOptions()[$userId] ?? 'Unknown User', $filters['assignee']);
+            $activeFilters[] = [
+                'type' => 'assignee',
+                'label' => 'Assignee',
+                'value' => implode(', ', $assigneeLabels),
+                'color' => 'gray',
+                'icon' => 'heroicon-o-user',
+                'count' => count($filters['assignee']),
+            ];
+        }
+
+        return $activeFilters;
+    }
+
+    /**
+     * Remove specific filter
+     */
+    public function removeFilter(string $type): void
+    {
+        switch ($type) {
+            case 'search':
+                $this->filterData['search'] = '';
+                break;
+            case 'date':
+                $this->filterData['date'] = null;
+                break;
+            case 'date_range':
+                $this->filterData['date_start'] = null;
+                $this->filterData['date_end'] = null;
+                break;
+            case 'status':
+                $this->filterData['status'] = [];
+                break;
+            case 'priority':
+                $this->filterData['priority'] = [];
+                break;
+            case 'project':
+                $this->filterData['project'] = [];
+                break;
+            case 'assignee':
+                $this->filterData['assignee'] = [];
+                break;
+        }
+        
+        $this->filterForm->fill($this->filterData);
+        $this->resetPage();
+    }
+
+    /**
      * Get status options
      */
     public function getStatusOptions(): array
@@ -528,6 +684,22 @@ class DailyTaskListComponent extends Component implements HasForms
             'completed' => 'Completed',
             'cancelled' => 'Cancelled',
         ];
+    }
+
+    /**
+     * Handle opening task detail modal
+     */
+    public function handleOpenTaskDetailModal(int $taskId): void
+    {
+        $this->dispatch('openTaskDetailModal', taskId: $taskId);
+    }
+
+    /**
+     * Open task detail modal
+     */
+    public function openTaskDetail(int $taskId): void
+    {
+        $this->dispatch('openTaskDetailModal', taskId: $taskId);
     }
 
     /**
@@ -634,28 +806,11 @@ class DailyTaskListComponent extends Component implements HasForms
     }
 
     /**
-     * Debug method - force refresh component
+     * Manual refresh method for external triggers
      */
     public function refresh(): void
     {
-        $this->resetPage();
-        // Force re-render
-    }
-
-    /**
-     * Debug method - log current state
-     */
-    public function logCurrentState(): void
-    {
-        if (app()->environment('local')) {
-            \Log::info('=== DEBUG: Current Component State ===');
-            \Log::info('Filter Data: ' . json_encode($this->filterData));
-            \Log::info('Current Filters: ' . json_encode($this->getCurrentFilters()));
-            \Log::info('View Mode: ' . $this->getCurrentViewMode());
-            \Log::info('Group By: ' . $this->getCurrentGroupBy());
-            \Log::info('Total Tasks: ' . $this->getTotalTasksCount());
-            \Log::info('=== END DEBUG ===');
-        }
+        $this->refreshTasks();
     }
 
     public function render()
@@ -677,6 +832,7 @@ class DailyTaskListComponent extends Component implements HasForms
             'groupBy' => $groupBy,
             'sortBy' => $this->getCurrentSortBy(),
             'sortDirection' => $this->getCurrentSortDirection(),
+            'activeFilters' => $this->getActiveFilters(),
         ]);
     }
 }

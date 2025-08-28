@@ -334,7 +334,23 @@ class ClientResource extends Resource
                     ->copyable()
                     ->copyMessage('NPWP copied!')
                     ->fontFamily('mono'),
-                    
+                
+                Tables\Columns\TextColumn::make('status')
+                    ->label('Status')
+                    ->badge()
+                    ->color(fn(string $state): string => match ($state) {
+                        'Active' => 'success',
+                        'Inactive' => 'danger',
+                        default => 'gray',
+                    })
+                    ->icon(fn(string $state): string => match ($state) {
+                        'Active' => 'heroicon-o-check-circle',
+                        'Inactive' => 'heroicon-o-x-circle',
+                        default => 'heroicon-o-question-mark-circle',
+                    })
+                    ->sortable()
+                    ->searchable(),
+                                    
                 Tables\Columns\TextColumn::make('core_tax_user_id')
                     ->label('Core Tax ID')
                     ->searchable()
@@ -374,22 +390,13 @@ class ClientResource extends Resource
                     ->relationship('pic', 'name')
                     ->searchable()
                     ->preload(),
-                    
-                Tables\Filters\Filter::make('has_core_tax_credentials')
-                    ->label('Has Core Tax Credentials')
-                    ->query(fn (Builder $query): Builder => 
-                        $query->whereNotNull('core_tax_user_id')
-                              ->whereNotNull('core_tax_password')
-                    ),
-                    
-                Tables\Filters\Filter::make('missing_core_tax_credentials')
-                    ->label('Missing Core Tax Credentials')
-                    ->query(fn (Builder $query): Builder => 
-                        $query->where(function ($query) {
-                            $query->whereNull('core_tax_user_id')
-                                  ->orWhereNull('core_tax_password');
-                        })
-                    ),
+         
+                Tables\Filters\SelectFilter::make('status')
+                    ->label('Client Status')
+                    ->options([
+                        'Active' => 'Active',
+                        'Inactive' => 'Inactive',
+                    ]),
                     
                 // PKP STATUS FILTER
                 Tables\Filters\SelectFilter::make('pkp_status')
@@ -685,192 +692,81 @@ class ClientResource extends Resource
                         ->modalDescription(fn ($records) => 'Export ' . $records->count() . ' selected client(s) to a comprehensive multi-sheet Excel file with separate tabs for different data categories.')
                         ->modalSubmitActionLabel('Export Detailed')
                         ->deselectRecordsAfterCompletion(),
-
-                    // Advanced Export with Options
-                    Tables\Actions\BulkAction::make('export_selected_advanced')
-                        ->label('Export Selected (Advanced)')
-                        ->icon('heroicon-o-cog-6-tooth')
-                        ->color('warning')
-                        ->form([
-                            Forms\Components\Section::make('Selected Clients Overview')
-                                ->schema([
-                                Forms\Components\Placeholder::make('export_statistics')
-                                    ->label('')
-                                    ->content(function ($livewire) {
-                                        $selectedIds = $livewire->selectedTableRecords ?? [];
-                                        
-                                        if (empty($selectedIds)) {
-                                            return view('filament.components.export-statistics-empty');
-                                        }
-                                        
-                                        $selectedRecords = Client::with('pic')->whereIn('id', $selectedIds)->get();
-                                        
-                                        $stats = [
-                                            'total' => $selectedRecords->count(),
-                                            'with_pic' => $selectedRecords->whereNotNull('pic_id')->count(),
-                                            'without_pic' => $selectedRecords->whereNull('pic_id')->count(),
-                                            'with_core_tax' => $selectedRecords->filter(function($client) {
-                                                return $client->core_tax_user_id && $client->core_tax_password;
-                                            })->count(),
-                                            'pkp_clients' => $selectedRecords->where('pkp_status', 'PKP')->count(),
-                                            'active_contracts' => $selectedRecords->filter(function($client) {
-                                                return $client->ppn_contract || $client->pph_contract || $client->bupot_contract;
-                                            })->count(),
-                                        ];
-                                        
-                                        return view('filament.components.export-statistics', compact('stats'));
-                                    }),
-                            ])
-                            ->collapsible(),
-                                
-                            Forms\Components\Section::make('Export Configuration')
-                                ->schema([
-                                    Forms\Components\Select::make('export_type')
-                                        ->label('Export Format')
-                                        ->options([
-                                            'simple' => 'Simple Export (Single comprehensive sheet)',
-                                            'detailed' => 'Detailed Export (Multiple organized sheets)',
-                                        ])
-                                        ->default('simple')
-                                        ->required()
-                                        ->live()
-                                        ->helperText(fn (Forms\Get $get) => 
-                                            $get('export_type') === 'detailed' 
-                                                ? 'Creates separate sheets for: Main Info, Contracts, PIC Details, and Core Tax Credentials'
-                                                : 'Single sheet with all client information in one place'
-                                        ),
-                                        
-                                    Forms\Components\Grid::make(2)
-                                        ->schema([
-                                            Forms\Components\Toggle::make('include_passwords')
-                                                ->label('Include Actual Passwords')
-                                                ->helperText('⚠️ Security Risk: Actual Core Tax passwords will be visible')
-                                                ->default(false),
-                                                
-                                            Forms\Components\Toggle::make('include_sensitive_data')
-                                                ->label('Include Sensitive Data')
-                                                ->helperText('Include PIC NIK and other sensitive information')
-                                                ->default(true),
-                                        ]),
-                                        
-                                    Forms\Components\TextInput::make('filename_prefix')
-                                        ->label('Custom Filename Prefix')
-                                        ->placeholder('e.g., monthly-report, client-audit')
-                                        ->helperText('Optional: Add a custom prefix to the filename')
-                                        ->maxLength(50),
-                                        
-                                    Forms\Components\Textarea::make('export_notes')
-                                        ->label('Export Notes')
-                                        ->placeholder('Add notes about this export (for your records)')
-                                        ->rows(2)
-                                        ->maxLength(500),
-                                ]),
-                        ])
-                        ->action(function (array $data, $records) {
-                            $clientIds = $records->pluck('id')->toArray();
-                            $exportClass = $data['export_type'] === 'detailed' 
-                                ? \App\Exports\Clients\ClientsDetailedExport::class 
-                                : \App\Exports\Clients\ClientsExport::class;
-                                
-                            $prefix = $data['filename_prefix'] ? Str::slug($data['filename_prefix']) . '-' : '';
-                            $filename = $prefix . 'selected-clients-' . $data['export_type'] . '-' . now()->format('Y-m-d-H-i') . '.xlsx';
-                            
-                            // Log the export activity (optional)
-                            if ($data['export_notes']) {
-                                \Log::info('Client export performed', [
-                                    'user_id' => auth()->id(),
-                                    'clients_count' => count($clientIds),
-                                    'export_type' => $data['export_type'],
-                                    'include_passwords' => $data['include_passwords'],
-                                    'notes' => $data['export_notes'],
-                                    'filename' => $filename,
-                                ]);
-                            }
-                            
-                            \Filament\Notifications\Notification::make()
-                                ->title('Advanced Export Completed')
-                                ->body("Successfully exported {$records->count()} client(s) with your custom settings.")
-                                ->success()
-                                ->send();
-                            
-                            return Excel::download(
-                                new $exportClass([], $data['include_passwords'], $clientIds), 
-                                $filename
-                            );
-                        })
-                        ->modalHeading('Advanced Export Options')
-                        ->modalSubmitActionLabel('Export with Settings')
-                        ->modalWidth('lg')
-                        ->deselectRecordsAfterCompletion(),
-
-                    // Smart Export Actions
-                    Tables\Actions\BulkAction::make('export_incomplete_clients')
-                        ->label('Export Incomplete Only')
-                        ->icon('heroicon-o-exclamation-triangle')
+                    
+                    Tables\Actions\BulkAction::make('bulk_deactivate_clients')
+                        ->label('Nonaktifkan Klien Terpilih')
+                        ->icon('heroicon-o-x-circle')
                         ->color('danger')
+                        ->requiresConfirmation()
+                        ->modalHeading('Nonaktifkan Klien Terpilih')
+                        ->modalDescription(fn ($records) => 
+                            "Apakah Anda yakin ingin menonaktifkan {$records->count()} klien yang dipilih? Status mereka akan diubah menjadi 'Inactive'."
+                        )
+                        ->modalSubmitActionLabel('Ya, Nonaktifkan Klien')
                         ->action(function ($records) {
-                            $incompleteClients = $records->filter(function($client) {
-                                return !$client->pic_id || 
-                                    !$client->core_tax_user_id || 
-                                    !$client->core_tax_password ||
-                                    (!$client->ppn_contract && !$client->pph_contract && !$client->bupot_contract);
+                            $count = 0;
+                            
+                            \DB::transaction(function () use ($records, &$count) {
+                                foreach ($records as $record) {
+                                    if ($record->status !== 'Inactive') {
+                                        $record->update(['status' => 'Inactive']);
+                                        $count++;
+                                    }
+                                }
                             });
                             
-                            if ($incompleteClients->isEmpty()) {
+                            if ($count > 0) {
                                 \Filament\Notifications\Notification::make()
-                                    ->title('No Incomplete Clients')
-                                    ->body('All selected clients have complete information!')
+                                    ->title('Klien Berhasil Dinonaktifkan')
+                                    ->body("Berhasil menonaktifkan {$count} klien.")
                                     ->success()
                                     ->send();
-                                return;
+                            } else {
+                                \Filament\Notifications\Notification::make()
+                                    ->title('Tidak Ada Perubahan')
+                                    ->body('Klien yang dipilih sudah dalam status tidak aktif.')
+                                    ->warning()
+                                    ->send();
                             }
-                            
-                            $clientIds = $incompleteClients->pluck('id')->toArray();
-                            
-                            \Filament\Notifications\Notification::make()
-                                ->title('Exporting Incomplete Clients')
-                                ->body("Found {$incompleteClients->count()} clients with missing information.")
-                                ->warning()
-                                ->send();
-                            
-                            return Excel::download(
-                                new \App\Exports\Clients\ClientsExport([], false, $clientIds), 
-                                'incomplete-clients-' . now()->format('Y-m-d-H-i') . '.xlsx'
-                            );
                         })
-                        ->requiresConfirmation()
-                        ->modalHeading('Export Clients with Missing Information')
-                        ->modalDescription('This will export only the selected clients that have incomplete data (missing PIC, Core Tax credentials, or contracts).')
-                        ->modalSubmitActionLabel('Export Incomplete')
                         ->deselectRecordsAfterCompletion(),
 
-                    // Export by PIC
-                    Tables\Actions\BulkAction::make('export_by_pic_group')
-                        ->label('Export Grouped by PIC')
-                        ->icon('heroicon-o-user-group')
-                        ->color('info')
-                        ->action(function ($records) {
-                            $clientIds = $records->pluck('id')->toArray();
-                            
-                            // Count clients by PIC for notification
-                            $picGroups = $records->groupBy('pic_id');
-                            $groupCount = $picGroups->count();
-                            
-                            \Filament\Notifications\Notification::make()
-                                ->title('Exporting by PIC Groups')
-                                ->body("Exporting {$records->count()} clients across {$groupCount} PIC group(s).")
-                                ->info()
-                                ->send();
-                            
-                            return Excel::download(
-                                new \App\Exports\Clients\ClientsDetailedExport([], $clientIds), 
-                                'clients-by-pic-groups-' . now()->format('Y-m-d-H-i') . '.xlsx'
-                            );
-                        })
+                    Tables\Actions\BulkAction::make('bulk_activate_clients')
+                        ->label('Aktifkan Klien Terpilih')
+                        ->icon('heroicon-o-check-circle')
+                        ->color('success')
                         ->requiresConfirmation()
-                        ->modalHeading('Export Clients Grouped by PIC')
-                        ->modalDescription('Export selected clients with detailed breakdown by their assigned PIC.')
-                        ->modalSubmitActionLabel('Export by PIC')
+                        ->modalHeading('Aktifkan Klien Terpilih')
+                        ->modalDescription(fn ($records) => 
+                            "Apakah Anda yakin ingin mengaktifkan {$records->count()} klien yang dipilih? Status mereka akan diubah menjadi 'Active'."
+                        )
+                        ->modalSubmitActionLabel('Ya, Aktifkan Klien')
+                        ->action(function ($records) {
+                            $count = 0;
+                            
+                            \DB::transaction(function () use ($records, &$count) {
+                                foreach ($records as $record) {
+                                    if ($record->status !== 'Active') {
+                                        $record->update(['status' => 'Active']);
+                                        $count++;
+                                    }
+                                }
+                            });
+                            
+                            if ($count > 0) {
+                                \Filament\Notifications\Notification::make()
+                                    ->title('Klien Berhasil Diaktifkan')
+                                    ->body("Berhasil mengaktifkan {$count} klien.")
+                                    ->success()
+                                    ->send();
+                            } else {
+                                \Filament\Notifications\Notification::make()
+                                    ->title('Tidak Ada Perubahan')
+                                    ->body('Klien yang dipilih sudah dalam status aktif.')
+                                    ->warning()
+                                    ->send();
+                            }
+                        })
                         ->deselectRecordsAfterCompletion(),
 
                     // Standard bulk actions
@@ -917,7 +813,14 @@ class ClientResource extends Resource
                         ->modalSubmitActionLabel('Assign PIC')
                         ->deselectRecordsAfterCompletion(),
                 ]),
-            ]);
+            ])
+            ->recordClasses(function (Client $record) {
+                if ($record->status === 'Inactive') {
+                    return 'border-l-4 border-l-red-500 dark:border-l-red-400 opacity-70 hover:bg-red-50 dark:hover:bg-red-900/10 bg-red-50/30 dark:bg-red-900/10';
+                }
+                // Default hover effect for active clients with complete info
+                return 'hover:bg-gray-50 dark:hover:bg-gray-800/10';
+            });
     }
 
     public static function getExportStatistics($records = null): array

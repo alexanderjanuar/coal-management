@@ -124,12 +124,86 @@
                 padding-bottom: 2rem;
             }
         }
+
+        /* Enhanced scrollbar for better UX */
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: #f8fafc;
+            border-radius: 10px;
+        }
+
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: linear-gradient(180deg, #e2e8f0 0%, #cbd5e1 100%);
+            border-radius: 10px;
+            border: 2px solid #f8fafc;
+        }
+
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+            background: linear-gradient(180deg, #cbd5e1 0%, #94a3b8 100%);
+        }
+
+        /* Dark mode scrollbar */
+        .dark .custom-scrollbar::-webkit-scrollbar-track {
+            background: #0f172a;
+        }
+
+        .dark .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: linear-gradient(180deg, #334155 0%, #475569 100%);
+            border: 2px solid #0f172a;
+        }
+
+        .dark .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+            background: linear-gradient(180deg, #475569 0%, #64748b 100%);
+        }
+
+        /* Modal animations */
+        .modal-card {
+            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .modal-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+        }
+
+        .dark .modal-card:hover {
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.25), 0 10px 10px -5px rgba(0, 0, 0, 0.1);
+        }
+
+        /* Gradient backgrounds */
+        .gradient-bg-primary {
+            background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%);
+        }
+
+        .dark .gradient-bg-primary {
+            background: linear-gradient(135deg, #0c4a6e 0%, #075985 100%);
+        }
+
+        .gradient-bg-amber {
+            background: linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%);
+        }
+
+        .dark .gradient-bg-amber {
+            background: linear-gradient(135deg, #92400e 0%, #b45309 100%);
+        }
     </style>
 
     {{-- Stats Overview --}}
-    {{-- @livewire('dashboard.project-stats') --}}
-
     @livewire('widget.projects-stats-overview')
+
+    <div class="grid grid-cols-1 lg:grid-cols-6 gap-4">
+        <div class="lg:col-span-3">
+            @livewire('widget.project-picchart')
+
+        </div>
+        <div class="lg:col-span-3">
+            @livewire('widget.recent-activity-table')
+        </div>
+    </div>
 
     <div class="grid grid-cols-1 lg:grid-cols-6 gap-4">
         <div class="lg:col-span-4">
@@ -140,283 +214,216 @@
         </div>
     </div>
 
-    {{-- <div class="grid grid-cols-1 lg:grid-cols-6 gap-4">
-        <div class="lg:col-span-3">
-            @livewire('widget.recent-submitted-documents')
-        </div>
-        <div class="lg:col-span-3">
-            @livewire('widget.recent-activity-table')
-        </div>
-    </div> --}}
+    {{-- Project Modal --}}
+    <x-filament::modal id="project-stats-modal" width="7xl">
+        <x-slot name="header">
+            <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-full bg-primary-100 dark:bg-primary-900 flex items-center justify-center">
+                    <x-heroicon-o-folder class="w-5 h-5 text-primary-600 dark:text-primary-400" />
+                </div>
+                <div>
+                    <h3 class="text-lg font-semibold text-gray-900 dark:text-white">
+                        {{ $modalTitle }}
+                    </h3>
+                    <p class="text-sm text-gray-500 dark:text-gray-400">
+                        Daftar proyek berdasarkan status
+                    </p>
+                </div>
+            </div>
+        </x-slot>
 
+        <div class="max-h-96 overflow-y-auto custom-scrollbar">
+            @if(count($modalData) > 0)
+            <div class="space-y-3">
+                @foreach($modalData as $project)
+                <a href="{{ $project['url'] }}" target="_blank"
+                    class="block p-4 bg-gray-50 dark:bg-gray-800 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors group">
+                    <div class="flex items-start justify-between">
+                        <div class="flex-1">
+                            <div class="flex items-center gap-3 mb-2">
+                                <h4
+                                    class="font-medium text-gray-900 dark:text-white group-hover:text-primary-600 dark:group-hover:text-primary-400 transition-colors">
+                                    {{ $project['name'] }}
+                                </h4>
+                                <x-filament::badge :color="match($project['status']) {
+                                        'completed' => 'success',
+                                        'in_progress' => 'info',
+                                        'draft' => 'gray',
+                                        'canceled' => 'danger',
+                                        default => 'warning'
+                                    }">
+                                    {{ ucwords(str_replace('_', ' ', $project['status'])) }}
+                                </x-filament::badge>
+                            </div>
 
-    {{-- Status Tabs --}}
-    <div class="mb-6 mt-2">
-        <div class="border-b border-gray-200 dark:border-gray-700">
-            <nav class="-mb-px flex space-x-8">
-                @php
-                $statuses = ['all', 'draft', 'in progress', 'completed', 'on hold', 'canceled'];
-                $currentStatus = request()->query('status', 'in_progress');
-                @endphp
+                            <div class="grid grid-cols-1 sm:grid-cols-3 gap-2 text-sm text-gray-600 dark:text-gray-400">
+                                <div class="flex items-center gap-1">
+                                    <x-heroicon-m-building-office-2 class="w-4 h-4" />
+                                    <span>{{ $project['client_name'] }}</span>
+                                </div>
+                                <div class="flex items-center gap-1">
+                                    <x-heroicon-m-user class="w-4 h-4" />
+                                    <span>{{ $project['pic_name'] }}</span>
+                                </div>
+                                @if($project['due_date'])
+                                <div class="flex items-center gap-1">
+                                    <x-heroicon-m-calendar class="w-4 h-4" />
+                                    <span>{{ $project['due_date'] }}</span>
+                                </div>
+                                @endif
+                            </div>
+                        </div>
 
-                @foreach ($statuses as $status)
-                <a href="?status={{ str_replace(' ', '_', $status) }}"
-                    @class([ 'whitespace-nowrap pb-4 px-1 border-b-2 font-medium text-sm'
-                    , 'border-primary-500 text-primary-600 dark:text-primary-400'=>
-                    $currentStatus === str_replace(' ', '_', $status),
-                    'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 dark:text-gray-400
-                    dark:hover:text-gray-300 dark:hover:border-gray-600' =>
-                    $currentStatus !== str_replace(' ', '_', $status),
-                    ])>
-                    {{ ucwords($status) }}
-                    @if ($status !== 'all')
-                    <span class="ml-2 py-0.5 px-2.5 rounded-full text-xs font-medium bg-gray-100 dark:bg-gray-800">
-                        {{ $clients->flatMap->projects->where('status', str_replace(' ', '_', $status))->count() }}
-                    </span>
-                    @endif
+                        <div class="flex items-center gap-2 ml-4">
+                            <x-filament::badge :color="match($project['priority']) {
+                                    'urgent' => 'danger',
+                                    'normal' => 'warning', 
+                                    'low' => 'success',
+                                    default => 'gray'
+                                }">
+                                {{ ucwords($project['priority']) }}
+                            </x-filament::badge>
+                            <x-heroicon-m-arrow-top-right-on-square class="w-4 h-4 text-gray-400" />
+                        </div>
+                    </div>
                 </a>
                 @endforeach
-            </nav>
+            </div>
+
+            @if(count($modalData) >= 50)
+            <div class="mt-4 p-3 bg-blue-50 dark:bg-blue-900 rounded-lg">
+                <p class="text-sm text-blue-700 dark:text-blue-300 text-center">
+                    Menampilkan 50 data teratas. Gunakan filter di halaman proyek untuk melihat lebih banyak.
+                </p>
+            </div>
+            @endif
+            @else
+            <div class="text-center py-12">
+                <x-heroicon-o-folder class="w-16 h-16 text-gray-400 mx-auto mb-4" />
+                <h3 class="text-lg font-medium text-gray-900 dark:text-white mb-2">
+                    Tidak Ada Data
+                </h3>
+                <p class="text-sm text-gray-500 dark:text-gray-400">
+                    Tidak ada proyek dengan status ini.
+                </p>
+            </div>
+            @endif
         </div>
-    </div>
 
-    {{-- Projects List --}}
-    <div class="space-y-6">
-        @foreach ($clients as $client)
-        @php
-        $filteredProjects = $client->projects->when($currentStatus !== 'all', function ($projects) use ($currentStatus)
-        {
-        return $projects->where('status', $currentStatus);
-        });
-        @endphp
+        <x-slot name="footer">
+            <div class="flex justify-end">
+                <x-filament::button color="gray" wire:click="closeModal">
+                    Tutup
+                </x-filament::button>
+            </div>
+        </x-slot>
+    </x-filament::modal>
 
-        @if ($filteredProjects->isNotEmpty())
-        <div x-data="{ isClientOpen: false }"
-            class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700 overflow-hidden hover:border-primary-100 dark:hover:border-primary-800 transition-all duration-300">
-            {{-- Client Header --}}
-            <div class="group cursor-pointer" @click="isClientOpen = !isClientOpen">
-                <div
-                    class="p-4 sm:p-6 flex items-center justify-between hover:bg-gray-50/50 dark:hover:bg-gray-700/50 transition-colors duration-200">
-                    <div class="flex items-center gap-4">
-                        {{-- Client Logo/Initial with Dynamic Color --}}
-                        @if ($client->logo)
-                        <div class="logo-container">
-                            <img src="{{ Storage::url($client->logo) }}" alt="{{ $client->name }}" />
-                        </div>
-                        @else
-                        @php
-                        $hasInProgress = $filteredProjects->contains(function ($project) {
-                        return $project->status === 'in_progress' || $project->progress < 100; });
-                            $allCompleted=$filteredProjects->every(function ($project) {
-                            return $project->status === 'completed' || $project->progress === 100;
-                            });
-                            @endphp
-
-                            <div class="w-12 h-12 rounded-xl flex items-center justify-center
-                                @if ($allCompleted)
-                                    bg-gradient-to-br from-green-50 to-green-100 dark:from-green-900/30 dark:to-green-800/30
-                                @elseif ($hasInProgress)
-                                    bg-gradient-to-br from-amber-50 to-amber-100 dark:from-amber-900/30 dark:to-amber-800/30
-                                @else
-                                    bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-800 dark:to-gray-700
-                                @endif">
-                                <span class="text-xl font-bold
-                                    @if ($allCompleted)
-                                        text-green-600 dark:text-green-400
-                                    @elseif ($hasInProgress)
-                                        text-amber-600 dark:text-amber-400
-                                    @else
-                                        text-gray-600 dark:text-gray-400
-                                    @endif">
-                                    {{ substr($client->name, 0, 1) }}
-                                </span>
-                            </div>
-                            @endif
-
-                            {{-- Client Info --}}
-                            <div>
-                                <div class="flex items-center gap-3">
-                                    <h3
-                                        class="text-lg font-semibold text-gray-900 dark:text-white group-hover:text-primary-600 dark:group-hover:text-primary-400 transition-colors">
-                                        {{ $client->name }}
-                                    </h3>
-
-                                    @php
-                                    $hasUploadedDocs = $filteredProjects->flatMap(function ($project) {
-                                    return $project->steps->flatMap(function ($step) {
-                                    return $step->requiredDocuments->where('status', 'uploaded');
-                                    });
-                                    })->isNotEmpty();
-                                    @endphp
-
-                                    @if($hasUploadedDocs)
-                                    <div class="relative inline-flex">
-                                        <!-- Badge with pulsing effect -->
-                                        <div
-                                            class="inline-flex items-center gap-1 px-2 py-1 rounded-md bg-blue-500 text-white text-xs font-medium">
-                                            <div
-                                                class="animate-ping absolute inline-flex h-full w-full rounded-md bg-blue-400 opacity-50">
-                                            </div>
-                                            <span class="relative">New Document</span>
-                                        </div>
-                                    </div>
-                                    @endif
-                                </div>
-                                <div class="flex items-center gap-2 mt-1">
-                                    <span class="text-sm font-medium text-gray-600 dark:text-gray-300">
-                                        {{ $filteredProjects->count() }} {{ Str::plural('Project',
-                                        $filteredProjects->count()) }}
-                                    </span>
-                                    <span class="text-gray-300 dark:text-gray-600">•</span>
-                                    <span class="text-sm text-gray-500 dark:text-gray-400">
-                                        Last updated {{
-                                        Carbon\Carbon::parse($client->latest_project_activity)->diffForHumans() }}
-                                    </span>
-                                </div>
-                            </div>
+    {{-- Document Modal --}}
+    <x-filament::modal id="document-stats-modal" width="7xl">
+        <x-slot name="header">
+            <div class="flex items-center justify-between w-full">
+                <div class="flex items-center gap-4">
+                    <div
+                        class="w-14 h-14 rounded-xl bg-gradient-to-br from-amber-100 to-orange-200 dark:from-amber-900 dark:to-orange-800 flex items-center justify-center shadow-sm">
+                        <x-heroicon-o-document-text class="w-7 h-7 text-amber-600 dark:text-amber-400" />
                     </div>
+                    <div>
+                        <h3 class="text-xl font-bold text-gray-900 dark:text-white">
+                            {{ $modalTitle ?? 'Modal Dokumen' }}
+                        </h3>
+                        <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">
+                            Daftar lengkap dokumen berdasarkan status yang dipilih
+                        </p>
+                    </div>
+                </div>
+                <div class="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400">
+                    <x-heroicon-m-document-duplicate class="w-4 h-4" />
+                    <span>{{ is_array($modalData) ? count($modalData) : 0 }} item</span>
+                </div>
+            </div>
+        </x-slot>
 
-                    {{-- Toggle Icon --}}
-                    <div class="flex items-center gap-3">
-                        <div
-                            class="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-lg bg-gray-50 dark:bg-gray-700 text-sm text-gray-600 dark:text-gray-300">
-                            <x-heroicon-m-chart-bar class="w-4 h-4 text-gray-500 dark:text-gray-400" />
-                            <span>{{ $filteredProjects->where('status', 'completed')->count() }}/{{
-                                $filteredProjects->count() }} Completed</span>
+        <div class="max-h-[70vh] overflow-y-auto custom-scrollbar">
+            @if(is_array($modalData) && count($modalData) > 0)
+            <div class="space-y-4">
+                @foreach($modalData as $index => $document)
+                @if(is_array($document))
+                <div class="p-6 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl">
+                    <h4 class="font-semibold text-lg text-gray-900 dark:text-white mb-3">
+                        {{ $document['name'] ?? 'Dokumen #' . ($index + 1) }}
+                    </h4>
+
+                    <div class="grid grid-cols-2 gap-4 text-sm">
+                        <div>
+                            <span class="text-gray-500 dark:text-gray-400">Status:</span>
+                            <span class="ml-2 font-medium">{{ $document['status'] ?? 'Unknown' }}</span>
                         </div>
-
-                        @if(!auth()->user()->hasRole('staff'))
-                        {{-- Upload Document Button --}}
-                        <livewire:dashboard.document-client-modal :client="$client" :wire:key="'upload-'.$client->id" />
+                        @if(isset($document['project_name']))
+                        <div>
+                            <span class="text-gray-500 dark:text-gray-400">Proyek:</span>
+                            <span class="ml-2 font-medium">{{ $document['project_name'] }}</span>
+                        </div>
                         @endif
-
-                        <div
-                            class="h-8 w-8 rounded-lg flex items-center justify-center text-gray-400 group-hover:bg-primary-50 group-hover:text-primary-500 dark:group-hover:bg-primary-900/30 dark:group-hover:text-primary-400 transition-all duration-200">
-                            <x-heroicon-o-chevron-down class="w-5 h-5 transform transition-transform duration-200"
-                                x-bind:class="isClientOpen ? 'rotate-180' : ''" />
+                        @if(isset($document['client_name']))
+                        <div>
+                            <span class="text-gray-500 dark:text-gray-400">Klien:</span>
+                            <span class="ml-2 font-medium">{{ $document['client_name'] }}</span>
                         </div>
-                    </div>
-                </div>
-            </div>
-
-            {{-- Projects List --}}
-            <div x-show="isClientOpen" x-collapse x-cloak>
-                <div class="border-t divide-y divide-gray-100 dark:divide-gray-700 dark:border-gray-700">
-                    @foreach ($filteredProjects as $project)
-                    <div x-data="{ isProjectOpen: false }" class="group/project">
-                        <div
-                            class="p-4 sm:p-6 hover:bg-gray-50/50 dark:hover:bg-gray-700/50 transition-all duration-200">
-                            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                                {{-- Project Info --}}
-                                <div class="flex-1 min-w-0">
-                                    <div class="flex items-center gap-3">
-                                        <h4
-                                            class="text-base font-medium text-gray-900 dark:text-white group-hover/project:text-primary-600 dark:group-hover/project:text-primary-400 transition-colors">
-                                            {{ $project->name }}
-                                        </h4>
-                                        <x-filament::badge size="sm" :color="match ($project->status) {
-                                            'completed' => 'success',
-                                            'in_progress' => 'warning',
-                                            'on_hold' => 'danger',
-                                            default => 'secondary',
-                                        }">
-                                            {{ ucwords(str_replace('_', ' ', $project->status)) }}
-                                        </x-filament::badge>
-
-                                        @php
-                                        $uploadedDocsCount = $project->steps->flatMap(function ($step) {
-                                        return $step->requiredDocuments->where('status', 'uploaded');
-                                        })->count();
-                                        @endphp
-
-                                        @if($uploadedDocsCount > 0)
-                                        <div
-                                            class="relative inline-flex items-center gap-1 px-2 py-1 rounded-md bg-blue-500 text-xs font-medium text-white">
-                                            <x-heroicon-m-document class="relative w-3 h-3" />
-                                            <span class="relative">{{ $uploadedDocsCount }} new</span>
-                                        </div>
-                                        @endif
-                                    </div>
-
-                                    @if($project->due_date)
-                                    <div class="mt-1 flex items-center gap-2 text-sm">
-                                        <x-heroicon-m-calendar-days
-                                            class="w-4 h-4 {{ $project->due_date->isPast() ? 'text-red-400 dark:text-red-500' : 'text-gray-400 dark:text-gray-500' }}" />
-                                        <span
-                                            class="{{ $project->due_date->isPast() ? 'text-red-600 dark:text-red-400' : 'text-gray-600 dark:text-gray-400' }}">
-                                            Due {{ $project->due_date->format('M d, Y') }}
-                                        </span>
-                                    </div>
-                                    @endif
-                                </div>
-
-                                {{-- Project Actions --}}
-                                <div class="flex items-center gap-4">
-                                    {{-- Progress Bar --}}
-                                    <div
-                                        class="group/progress relative flex items-center gap-3 bg-white dark:bg-gray-800 px-4 py-2 rounded-lg border border-gray-100 dark:border-gray-700">
-                                        <div class="w-24 h-2 bg-gray-100 dark:bg-gray-700 rounded-full overflow-hidden">
-                                            <div class="h-full transition-all duration-300 {{ match(true) {
-                                                $project->progress === 100 => 'bg-green-500',
-                                                $project->progress >= 50 => 'bg-amber-500',
-                                                default => 'bg-red-500'
-                                            } }}" style="width: {{ $project->progress }}%"></div>
-                                        </div>
-                                        <span class="text-sm font-medium {{ match(true) {
-                                            $project->progress === 100 => 'text-green-600 dark:text-green-400',
-                                            $project->progress >= 50 => 'text-amber-600 dark:text-amber-400',
-                                            default => 'text-red-600 dark:text-red-400'
-                                        } }}">{{ $project->progress }}%</span>
-                                    </div>
-
-                                    {{-- Action Buttons --}}
-                                    <div class="flex items-center gap-2">
-                                        <a href="{{ route('filament.admin.resources.projects.view', ['record' => $project->id]) }}"
-                                            class="h-8 w-8 rounded-lg flex items-center justify-center text-gray-400 dark:text-gray-500 hover:bg-primary-50 hover:text-primary-500 dark:hover:bg-primary-900/30 dark:hover:text-primary-400 transition-all duration-200">
-                                            <x-heroicon-m-eye class="w-4 h-4" />
-                                        </a>
-                                        <button @click="isProjectOpen = !isProjectOpen"
-                                            class="h-8 w-8 rounded-lg flex items-center justify-center text-gray-400 dark:text-gray-500 hover:bg-primary-50 hover:text-primary-500 dark:hover:bg-primary-900/30 dark:hover:text-primary-400 transition-all duration-200">
-                                            <x-heroicon-o-chevron-down
-                                                class="w-4 h-4 transform transition-transform duration-200"
-                                                x-bind:class="isProjectOpen ? 'rotate-180' : ''" />
-                                        </button>
-                                    </div>
-                                </div>
-                            </div>
+                        @endif
+                        @if(isset($document['created_at']))
+                        <div>
+                            <span class="text-gray-500 dark:text-gray-400">Dibuat:</span>
+                            <span class="ml-2 font-medium">{{ $document['created_at'] }}</span>
                         </div>
-
-                        {{-- Project Details --}}
-                        {{-- <div x-show="isProjectOpen" x-collapse x-cloak
-                            class="border-t bg-gray-50/50 dark:bg-gray-800/50 dark:border-gray-700">
-                            <livewire:dashboard.project-details :project="$project" />
-                        </div> --}}
+                        @endif
                     </div>
-                    @endforeach
+
+                    @if(isset($document['url']) && $document['url'] !== '#')
+                    <div class="mt-4">
+                        <a href="{{ $document['url'] }}" target="_blank"
+                            class="inline-flex items-center gap-2 px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors">
+                            <span>Lihat Detail</span>
+                            <x-heroicon-m-arrow-top-right-on-square class="w-4 h-4" />
+                        </a>
+                    </div>
+                    @endif
                 </div>
+                @else
+                <div class="p-4 bg-red-50 dark:bg-red-900/20 rounded-lg">
+                    <p class="text-red-600 dark:text-red-400">Invalid document data at index {{ $index }}</p>
+                </div>
+                @endif
+                @endforeach
             </div>
+            @else
+            <div class="text-center py-16">
+                <div
+                    class="w-24 h-24 rounded-full bg-gray-100 dark:bg-gray-700 flex items-center justify-center mx-auto mb-6">
+                    <x-heroicon-o-document-text class="w-12 h-12 text-gray-400" />
+                </div>
+                <h3 class="text-xl font-semibold text-gray-900 dark:text-white mb-2">
+                    Tidak Ada Data Dokumen
+                </h3>
+                <p class="text-gray-500 dark:text-gray-400 max-w-sm mx-auto">
+                    {{ is_array($modalData) ? 'Tidak ada dokumen dengan status yang dipilih saat ini.' : 'Data dokumen
+                    tidak valid.' }}
+                </p>
+            </div>
+            @endif
         </div>
-        @endif
 
-        @endforeach
-
-        @if ($hasMoreClients)
-        <div class="relative">
-            <div class="absolute inset-0 flex items-center" aria-hidden="true">
-                <div class="w-full border-t border-gray-200 dark:border-gray-700"></div>
+        <x-slot name="footer">
+            <div class="flex justify-between items-center">
+                <p class="text-sm text-gray-500 dark:text-gray-400">
+                    Klik tombol "Lihat Detail" untuk melihat dokumen lengkap
+                </p>
+                <x-filament::button color="gray" wire:click="closeModal" size="lg">
+                    <x-heroicon-m-x-mark class="w-4 h-4 mr-2" />
+                    Tutup
+                </x-filament::button>
             </div>
-            <div class="relative flex justify-center">
-                <a href="{{ route('filament.admin.resources.projects.index') }}"
-                    class="inline-flex items-center gap-2 px-4 py-2 bg-white dark:bg-gray-800 rounded-lg text-primary-600 dark:text-primary-400 hover:text-primary-500 dark:hover:text-primary-300 hover:bg-primary-50 dark:hover:bg-primary-900/30 font-medium transition-colors duration-200 border border-gray-200 dark:border-gray-700 shadow-sm">
-                    <span>See {{ $totalClients - 5 }} More {{ Str::plural('Projects', $totalClients - 5) }}</span>
-                    <x-heroicon-m-arrow-long-right class="w-5 h-5" />
-                </a>
-            </div>
-        </div>
-        @endif
+        </x-slot>
+    </x-filament::modal>
 
-        <x-filament::modal id="document-client-modal" width="3xl" slide-over>
-            @livewire('dashboard.document-client-modal')
-        </x-filament::modal>
-    </div>
 </x-filament-panels::page>

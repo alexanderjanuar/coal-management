@@ -82,7 +82,87 @@
         .dark .custom-scrollbar::-webkit-scrollbar-thumb:hover {
             background: #6b7280;
         }
+
+        /* Add this to your existing style section */
+
+        /* PIC Button Animations */
+        .pic-button {
+            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .pic-button:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px 0 rgba(0, 0, 0, 0.1);
+        }
+
+        .pic-button:active {
+            transform: translateY(0);
+        }
+
+        /* Pulse animation for unassigned PIC */
+        .pic-button-unassigned {
+            animation: subtle-pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+        }
+
+        @keyframes subtle-pulse {
+
+            0%,
+            100% {
+                opacity: 1;
+                border-color: rgb(209, 213, 219);
+            }
+
+            50% {
+                opacity: 0.8;
+                border-color: rgb(156, 163, 175);
+            }
+        }
+
+        /* Modal backdrop enhancement */
+        .pic-modal-backdrop {
+            backdrop-filter: blur(4px);
+            background-color: rgba(0, 0, 0, 0.25);
+        }
+
+        /* User selection hover effects */
+        .user-selection-item {
+            transition: all 0.15s ease-out;
+        }
+
+        .user-selection-item:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+        }
+
+        /* Avatar ring animation */
+        .avatar-ring {
+            transition: all 0.2s ease-out;
+        }
+
+        .user-selection-item:hover .avatar-ring {
+            ring-width: 3px;
+            ring-color: rgb(245, 158, 11);
+        }
     </style>
+
+    @if($record->client->status === 'Inactive')
+    <div class="mb-6 bg-red-50 dark:bg-red-900/20 border-l-4 border-red-400 dark:border-red-600 p-4 rounded-lg">
+        <div class="flex items-center">
+            <div class="flex-shrink-0">
+                <x-heroicon-m-exclamation-triangle class="h-5 w-5 text-red-400 dark:text-red-500" />
+            </div>
+            <div class="ml-3">
+                <p class="text-sm font-medium text-red-800 dark:text-red-200">
+                    Klien Tidak Aktif
+                </p>
+                <p class="mt-1 text-sm text-red-700 dark:text-red-300">
+                    Proyek ini terkunci karena klien "{{ $record->client->name }}" tidak aktif. 
+                    Tidak ada perubahan yang dapat dilakukan sampai klien diaktifkan kembali.
+                </p>
+            </div>
+        </div>
+    </div>
+    @endif
 
 
     <div class="bg-white dark:bg-gray-800 rounded-lg border-2 border-gray-100 dark:border-gray-700 shadow-sm">
@@ -105,6 +185,7 @@
                 </div>
 
                 <!-- Project Info -->
+                <!-- Project Info -->
                 <div class="flex-1 min-w-0">
                     <div class="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
                         <div class="text-center sm:text-left">
@@ -119,6 +200,38 @@
                                     {{ $record->due_date->format('M d, Y') }}
                                 </span>
                                 @endif
+
+                                <!-- PIC Information -->
+                                @if($record->pic)
+                                <div class="flex items-center gap-1">
+                                    <span class="text-xs text-gray-400">•</span>
+                                    <button x-on:click="$dispatch('open-modal', { id: 'pic-modal' })"
+                                        class="flex items-center gap-1.5 px-2 py-1 text-xs font-medium bg-info-50 dark:bg-info-900 text-info-700 dark:text-info-300 rounded-md hover:bg-info-100 dark:hover:bg-info-800 transition-colors group"
+                                        title="Person in Charge: {{ $record->pic->name }}">
+                                        <x-heroicon-m-user class="w-3 h-3" />
+                                        <span>PIC: {{ Str::limit($record->pic->name, 15) }}</span>
+                                        <x-heroicon-m-chevron-down
+                                            class="w-3 h-3 opacity-60 group-hover:opacity-100 transition-opacity" />
+                                    </button>
+                                </div>
+                                @else
+                                <div class="flex items-center gap-1">
+                                    <span class="text-xs text-gray-400">•</span>
+                                    <button x-on:click="$dispatch('open-modal', { id: 'pic-modal' })"
+                                        class="flex items-center gap-1.5 px-2 py-1 text-xs font-medium bg-gray-50 dark:bg-gray-700 text-gray-600 dark:text-gray-400 rounded-md hover:bg-gray-100 dark:hover:bg-gray-600 transition-colors group border border-dashed border-gray-300 dark:border-gray-600"
+                                        @if(auth()->user()->hasRole(['staff', 'client']))
+                                        disabled
+                                        @endif
+                                        >
+                                        <x-heroicon-m-user-plus class="w-3 h-3" />
+                                        <span>Assign PIC</span>
+                                        @if(!auth()->user()->hasRole(['staff', 'client']))
+                                        <x-heroicon-m-plus
+                                            class="w-3 h-3 opacity-60 group-hover:opacity-100 transition-opacity" />
+                                        @endif
+                                    </button>
+                                </div>
+                                @endif
                             </div>
                         </div>
 
@@ -132,9 +245,9 @@
                                 text-sm font-medium text-gray-700 dark:text-gray-300 transition-colors group">
                                 <div class="flex items-center -space-x-2">
                                     @php
-                                        $nonDirectorMembers = $record->userProject->filter(function($userProject) {
-                                            return !$userProject->user->roles->contains('name', 'direktur');
-                                        });
+                                    $nonDirectorMembers = $record->userProject->filter(function($userProject) {
+                                    return !$userProject->user->roles->contains('name', 'direktur');
+                                    });
                                     @endphp
 
                                     <div class="flex items-center -space-x-2">
@@ -146,30 +259,34 @@
                                                 title="{{ $member->user->name }}">
 
                                             <div class="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-2 py-1 bg-gray-900 dark:bg-gray-700 text-white text-xs rounded-lg 
-                                                opacity-0 invisible group-hover/tooltip:opacity-100 group-hover/tooltip:visible transition-all duration-200 min-w-max z-[999]
-                                                shadow-lg">
+                                opacity-0 invisible group-hover/tooltip:opacity-100 group-hover/tooltip:visible transition-all duration-200 min-w-max z-[999]
+                                shadow-lg">
                                                 <span>{{ $member->user->name }}</span>
-                                                <div class="absolute -bottom-1 left-1/2 -translate-x-1/2 w-2 h-2 bg-gray-900 dark:bg-gray-700 rotate-45">
+                                                <div
+                                                    class="absolute -bottom-1 left-1/2 -translate-x-1/2 w-2 h-2 bg-gray-900 dark:bg-gray-700 rotate-45">
                                                 </div>
                                             </div>
                                         </div>
                                         @endforeach
 
                                         @php
-                                            $nonDirectorCount = $nonDirectorMembers->count();
+                                        $nonDirectorCount = $nonDirectorMembers->count();
                                         @endphp
 
                                         @if($nonDirectorCount > 4)
                                         <div class="relative group/tooltip py-3">
-                                            <div class="w-8 h-8 rounded-full ring-2 ring-white dark:ring-gray-800 bg-gray-100 dark:bg-gray-700 flex items-center justify-center transition-transform hover:scale-110">
-                                                <span class="text-xs font-medium text-gray-600 dark:text-gray-300">+{{ $nonDirectorCount - 4 }}</span>
+                                            <div
+                                                class="w-8 h-8 rounded-full ring-2 ring-white dark:ring-gray-800 bg-gray-100 dark:bg-gray-700 flex items-center justify-center transition-transform hover:scale-110">
+                                                <span class="text-xs font-medium text-gray-600 dark:text-gray-300">+{{
+                                                    $nonDirectorCount - 4 }}</span>
                                             </div>
 
                                             <div class="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-2 py-1 bg-gray-900 dark:bg-gray-700 text-white text-xs rounded-lg
-                                                opacity-0 invisible group-hover/tooltip:opacity-100 group-hover/tooltip:visible transition-all duration-200 whitespace-nowrap z-50
-                                                shadow-lg">
+                                opacity-0 invisible group-hover/tooltip:opacity-100 group-hover/tooltip:visible transition-all duration-200 whitespace-nowrap z-50
+                                shadow-lg">
                                                 {{ $nonDirectorCount - 4 }} more team members
-                                                <div class="absolute -bottom-1 left-1/2 -translate-x-1/2 w-2 h-2 bg-gray-900 dark:bg-gray-700 rotate-45">
+                                                <div
+                                                    class="absolute -bottom-1 left-1/2 -translate-x-1/2 w-2 h-2 bg-gray-900 dark:bg-gray-700 rotate-45">
                                                 </div>
                                             </div>
                                         </div>
@@ -205,11 +322,11 @@
 
                             <!-- Status Badge -->
                             <x-filament::badge :color="match($record->status) {
-                            'completed' => 'success',
-                            'in_progress' => 'warning',
-                            'on_hold' => 'danger',
-                            default => 'gray',
-                        }">
+            'completed' => 'success',
+            'in_progress' => 'warning',
+            'on_hold' => 'danger',
+            default => 'gray',
+        }">
                                 {{ ucwords(str_replace('_', ' ', $record->status)) }}
                             </x-filament::badge>
                         </div>
@@ -549,15 +666,16 @@
                                             class="flex flex-col bg-gray-50 dark:bg-gray-900 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors">
                                             <!-- Task Main Content -->
                                             <div class="flex flex-col sm:flex-row sm:items-center gap-3 p-3">
+                                                <!-- In the task section, update the checkbox -->
                                                 <input type="checkbox" wire:click="toggleTaskStatus({{ $task->id }})"
                                                     @class([ 'w-4 h-4 rounded border-gray-300 dark:border-gray-600 flex-shrink-0'
-                                                    , 'text-amber-600 focus:ring-amber-500 dark:text-amber-500 dark:focus:ring-amber-400'=>
-                                                !auth()->user()->hasRole(['staff', 'client']),
-                                                'text-gray-300 dark:text-gray-600 cursor-not-allowed' =>
-                                                auth()->user()->hasRole(['staff', 'client'])
-                                                ])
-                                                {{ $task->status === 'completed' ? 'checked' : '' }}
-                                                @disabled(auth()->user()->hasRole(['staff', 'client']))>
+                                                    , 'text-amber-600 focus:ring-amber-500 dark:text-amber-500 dark:focus:ring-amber-400'=> 
+                                                    !auth()->user()->hasRole(['staff', 'client']) && $record->client->status === 'Active',
+                                                    'text-gray-300 dark:text-gray-600 cursor-not-allowed' => 
+                                                    auth()->user()->hasRole(['staff', 'client']) || $record->client->status === 'Inactive'
+                                                    ])
+                                                    {{ $task->status === 'completed' ? 'checked' : '' }}
+                                                    @disabled(auth()->user()->hasRole(['staff', 'client']) || $record->client->status === 'Inactive')>
 
                                                 <div class="flex-1 min-w-0">
                                                     <div
@@ -989,6 +1107,12 @@
 
     <x-filament::modal id="all-documents-modal" width="4xl" slide-over>
         @livewire('project-detail.project-detail-all-document', ['project' => $record])
+    </x-filament::modal>
+
+
+    <!-- PIC Modal -->
+    <x-filament::modal id="pic-modal" width="2xl">
+        @livewire('project-detail.project-pic-manager', ['project' => $record])
     </x-filament::modal>
 
 

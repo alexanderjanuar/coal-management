@@ -40,6 +40,7 @@ use Filament\Forms\Components\FileUpload;
 use Guava\FilamentModalRelationManagers\Actions\Table\RelationManagerAction;
 use Filament\Actions\CreateAction;
 use Carbon\Carbon;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Contracts\Support\Htmlable;
 use Filament\Notifications\Notification;
 use Illuminate\Database\Eloquent\Model;
@@ -69,26 +70,59 @@ class ProjectResource extends Resource
                                 ->label('Project Name')
                                 ->maxLength(255)
                                 ->columnSpanFull(),
-                            Select::make('client_id')
-                                ->required()
-                                ->label('Client')
-                                ->options(function () {
-                                    // For super-admin, show all clients
-                                    if (auth()->user()->hasRole('super-admin')) {
-                                        return Client::pluck('name', 'id');
+                                Select::make('client_id')
+                                    ->required()
+                                    ->label('Client')
+                                    ->options(function () {
+                                        // For super-admin, show all clients
+                                        if (auth()->user()->hasRole('super-admin')) {
+                                            return Client::pluck('name', 'id');
+                                        }
+
+                                        // For other users, only show their assigned clients
+                                        return Client::whereIn(
+                                            'id',
+                                            auth()->user()->userClients()->pluck('client_id')
+                                        )->pluck('name', 'id');
+                                    })
+                                    ->disableOptionWhen(fn (string $value): bool => 
+                                        Client::find($value)?->status === 'Inactive'
+                                    )
+                                    ->searchable()
+                                    ->live()
+                                    ->afterStateUpdated(function ($state, Forms\Set $set) {
+                                        // Reset PIC when client changes
+                                        $set('pic_id', null);
+                                    })
+                                    ->native(false)
+                                    ->columnSpan(2),
+                                
+                            Select::make('pic_id')
+                                ->label('Person in Charge (PIC)')
+                                ->options(function (Forms\Get $get) {
+                                    $clientId = $get('client_id');
+                                    
+                                    if (!$clientId) {
+                                        return [];
                                     }
 
-                                    // For other users, only show their assigned clients
-                                    return Client::whereIn(
-                                        'id',
-                                        auth()->user()->userClients()->pluck('client_id')
-                                    )->pluck('name', 'id');
+                                    // Get users related to the selected client through user_clients
+                                    return User::whereHas('userClients', function ($query) use ($clientId) {
+                                        $query->where('client_id', $clientId);
+                                    })
+                                    ->pluck('name', 'id');
                                 })
                                 ->searchable()
                                 ->live()
-
                                 ->native(false)
-                                ->columnSpanFull(),
+                                ->helperText(function (Forms\Get $get) {
+                                    $clientId = $get('client_id');
+                                    return $clientId
+                                        ? 'Select a user assigned to this client as Person in Charge'
+                                        : 'Please select a client first';
+                                })
+                                ->columnSpan(2),
+                                
                             Select::make('type')
                                 ->label('Type')
                                 ->options([
@@ -305,6 +339,7 @@ class ProjectResource extends Resource
                 $baseQuery = Project::query()
                     ->with([
                         'client',
+                        'pic', // Add PIC relationship to eager loading
                         'steps' => function ($query) {
                             $query->select('id', 'project_id', 'name', 'status', 'order')
                                   ->orderBy('order');
@@ -335,6 +370,7 @@ class ProjectResource extends Resource
                     ->label('No. ')
                     ->rowIndex()
                     ->sortable(false),
+                    
                 // Client Information
                 Tables\Columns\TextColumn::make('client.name')
                     ->label('Client Name')
@@ -350,6 +386,16 @@ class ProjectResource extends Resource
                     ->weight(FontWeight::Bold)
                     ->searchable(),
 
+                // Person in Charge
+                Tables\Columns\TextColumn::make('pic.name')
+                    ->label('PIC')
+                    ->badge()
+                    ->color('info')
+                    ->searchable()
+                    ->sortable()
+                    ->placeholder('No PIC assigned')
+                    ->tooltip(fn ($record) => $record->pic ? "Person in Charge: {$record->pic->name}" : 'No PIC assigned'),
+
                 // Project Status
                 Tables\Columns\TextColumn::make('status')
                     ->badge()
@@ -364,6 +410,7 @@ class ProjectResource extends Resource
                         fn(string $state): string =>
                         __(Str::title(str_replace('_', ' ', $state)))
                     ),
+                    
                 Tables\Columns\TextColumn::make('priority')
                     ->badge()
                     ->color(fn(string $state): string => match ($state) {
@@ -448,6 +495,41 @@ class ProjectResource extends Resource
                         'canceled' => 'Canceled',
                     ])
                     ->default(['draft', 'in_progress']),
+                    
+                SelectFilter::make('pic_id')
+                    ->label('Person in Charge')
+                    ->options(function () {
+                        $user = auth()->user();
+                        
+                        if ($user->hasRole('super-admin')) {
+                            // Super admin can see all users as PIC options
+                            return User::whereHas('userClients')
+                                ->pluck('name', 'id');
+                        }
+                        
+                        // Regular users can only see PICs from their clients
+                        return User::whereHas('userClients', function ($query) use ($user) {
+                            $query->whereIn('client_id', $user->userClients()->pluck('client_id'));
+                        })->pluck('name', 'id');
+                    })
+                    ->searchable()
+                    ->preload(),
+                    
+                SelectFilter::make('client_id')
+                    ->label('Client')
+                    ->options(function () {
+                        $user = auth()->user();
+                        
+                        if ($user->hasRole('super-admin')) {
+                            return Client::pluck('name', 'id');
+                        }
+                        
+                        return Client::whereIn('id', $user->userClients()->pluck('client_id'))
+                            ->pluck('name', 'id');
+                    })
+                    ->searchable()
+                    ->preload(),
+                    
                 DateRangeFilter::make('due_date'),
             ])
             // Row Actions
@@ -477,6 +559,7 @@ class ProjectResource extends Resource
             ->defaultSort('status', 'asc')
             ->groups([
                 'client.name',
+                'pic.name', // Add PIC grouping option
             ])
             // Add styling to rows based on document status
             ->recordClasses(function (Project $record) {
@@ -504,6 +587,91 @@ class ProjectResource extends Resource
             // Bulk Actions
             ->bulkActions([
                 Tables\Actions\BulkActionGroup::make([
+                    Tables\Actions\BulkAction::make('bulk_assign_pic')
+                        ->label('Assign PIC to Projects')
+                        ->icon('heroicon-o-user-plus')
+                        ->color('info')
+                        ->form([
+                            Select::make('pic_id')
+                                ->label('Select Person in Charge (PIC)')
+                                ->options(function () {
+                                    $user = auth()->user();
+                                    
+                                    if ($user->hasRole('super-admin')) {
+                                        // Super admin can assign any user as PIC
+                                        return User::whereHas('userClients')->pluck('name', 'id');
+                                    }
+                                    
+                                    // Regular users can only assign PICs from their clients
+                                    return User::whereHas('userClients', function ($query) use ($user) {
+                                        $query->whereIn('client_id', $user->userClients()->pluck('client_id'));
+                                    })->pluck('name', 'id');
+                                })
+                                ->searchable()
+                                ->required()
+                                ->native(false)
+                                ->helperText('This PIC will be assigned to all selected projects'),
+                        ])
+                        ->action(function (Collection $records, array $data): void {
+                            $picUser = User::find($data['pic_id']);
+                            $updatedCount = 0;
+                            
+                            if (!$picUser) {
+                                Notification::make()
+                                    ->title('Error')
+                                    ->body('Selected PIC tidak ditemukan.')
+                                    ->danger()
+                                    ->send();
+                                return;
+                            }
+
+                            \DB::transaction(function () use ($records, $data, $picUser, &$updatedCount) {
+                                foreach ($records as $project) {
+                                    // Check if user has permission to assign PIC to this project
+                                    $user = auth()->user();
+                                    if (!$user->hasRole('super-admin')) {
+                                        $hasAccess = $user->userClients()
+                                            ->where('client_id', $project->client_id)
+                                            ->exists();
+                                            
+                                        if (!$hasAccess) {
+                                            continue; // Skip projects user doesn't have access to
+                                        }
+                                    }
+
+                                    $project->update(['pic_id' => $data['pic_id']]);
+                                    $updatedCount++;
+                                }
+                            });
+
+                            if ($updatedCount > 0) {
+                                Notification::make()
+                                    ->title('PIC Berhasil Ditugaskan')
+                                    ->body("Berhasil menugaskan {$picUser->name} sebagai PIC untuk {$updatedCount} proyek.")
+                                    ->success()
+                                    ->send();
+
+                                // Send notification to the assigned PIC
+                                if ($picUser->id !== auth()->id()) {
+                                    Notification::make()
+                                        ->title('Anda Ditugaskan sebagai PIC')
+                                        ->body("Anda telah ditugaskan sebagai Person in Charge untuk {$updatedCount} proyek baru.")
+                                        ->info()
+                                        ->sendToDatabase($picUser);
+                                }
+                            } else {
+                                Notification::make()
+                                    ->title('Tidak Ada Proyek yang Diperbarui')
+                                    ->body('Tidak ada proyek yang dapat diperbarui. Pastikan Anda memiliki akses ke proyek yang dipilih.')
+                                    ->warning()
+                                    ->send();
+                            }
+                        })
+                        ->deselectRecordsAfterCompletion()
+                        ->requiresConfirmation()
+                        ->modalHeading('Assign PIC ke Multiple Projects')
+                        ->modalDescription('Pilih Person in Charge yang akan ditugaskan ke semua proyek yang dipilih.')
+                        ->modalSubmitActionLabel('Assign PIC'),
                     Tables\Actions\DeleteBulkAction::make(),
                 ]),
             ]);
@@ -529,6 +697,7 @@ class ProjectResource extends Resource
         return [
             'Client' => $record->client->name,
             'Status' => $record->status,
+            'PIC' => $record->pic?->name ?? 'No PIC assigned', // Add PIC to search results
         ];
     }
 
@@ -539,7 +708,7 @@ class ProjectResource extends Resource
 
     public static function getGloballySearchableAttributes(): array
     {
-        return ['name'];
+        return ['name', 'pic.name']; // Add PIC name to searchable attributes
     }
 
     public static function getGlobalSearchResultUrl(Model $record): string
@@ -574,7 +743,11 @@ class ProjectResource extends Resource
                         TextEntry::make('client.name'),
                         TextEntry::make('name')
                             ->label('Project Name'),
-
+                        TextEntry::make('pic.name')
+                            ->label('Person in Charge')
+                            ->badge()
+                            ->color('info')
+                            ->placeholder('No PIC assigned'),
                         TextEntry::make('status')
                             ->label('Status')->badge()
                             ->color(fn(string $state): string => match ($state) {
@@ -625,6 +798,11 @@ class ProjectResource extends Resource
             ->where('users.id', '!=', auth()->id()) // Exclude current user
             ->distinct()
             ->get();
+
+        // Also notify the PIC if they exist and aren't already in the recipients
+        if ($project->pic && !$recipients->contains('id', $project->pic->id) && $project->pic->id !== auth()->id()) {
+            $recipients->push($project->pic);
+        }
 
         // Use database transaction to ensure all notifications are created or none
         \DB::transaction(function () use ($recipients, $notificationTemplate, $type) {

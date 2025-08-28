@@ -8,6 +8,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Spatie\Activitylog\Traits\LogsActivity;
 use Spatie\Activitylog\LogOptions;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 
 class Project extends Model
 {
@@ -55,6 +56,13 @@ class Project extends Model
         return $this->hasMany(ProjectStep::class);
     }
 
+    public function users(): BelongsToMany
+    {
+        return $this->belongsToMany(User::class, 'user_projects')
+                    ->withPivot('role')
+                    ->withTimestamps();
+    }
+
     public function userProject(): HasMany
     {
         return $this->hasMany(UserProject::class);
@@ -64,4 +72,10 @@ class Project extends Model
     {
         return $this->belongsTo(SOP::class);
     }
+
+    public function pic(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'pic_id');
+    }
+
 }

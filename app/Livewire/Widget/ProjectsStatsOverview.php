@@ -27,8 +27,8 @@ class ProjectsStatsOverview extends BaseWidget
             });
         }
 
-        // Get monthly data for the last 6 months
-        $monthlyData = $baseQuery->select([
+        // Create a CLONE for monthly data so it doesn't modify the original
+        $monthlyData = $baseQuery->clone()->select([
             DB::raw('COUNT(*) as total'),
             DB::raw('SUM(CASE WHEN status = "in_progress" THEN 1 ELSE 0 END) as active'),
             DB::raw('SUM(CASE WHEN status = "completed" THEN 1 ELSE 0 END) as completed'),
@@ -36,11 +36,11 @@ class ProjectsStatsOverview extends BaseWidget
         ])
             ->where('created_at', '>=', now()->subMonths(6))
             ->groupBy(DB::raw('DATE_FORMAT(created_at, "%Y-%m")'))
-            ->orderBy(DB::raw('DATE_FORMAT(created_at, "%Y-%m")'))  // Fixed this line
+            ->orderBy(DB::raw('DATE_FORMAT(created_at, "%Y-%m")'))
             ->get();
 
-        // Get pending documents count
-        $pendingDocsQuery = RequiredDocument::query()
+        // Get pending documents count for charts (use separate query)
+        $pendingDocsBaseQuery = RequiredDocument::query()
             ->whereHas('projectStep.project', function ($query) {
                 if (!auth()->user()->hasRole('super-admin')) {
                     $query->whereIn('client_id', function ($subQuery) {
@@ -49,7 +49,9 @@ class ProjectsStatsOverview extends BaseWidget
                             ->where('user_id', auth()->id());
                     });
                 }
-            })
+            });
+
+        $pendingDocsQuery = $pendingDocsBaseQuery->clone()
             ->where('status', 'pending_review')
             ->select([
                 DB::raw('COUNT(*) as pending'),
@@ -57,16 +59,20 @@ class ProjectsStatsOverview extends BaseWidget
             ])
             ->where('created_at', '>=', now()->subMonths(6))
             ->groupBy(DB::raw('DATE_FORMAT(created_at, "%Y-%m")'))
-            ->orderBy(DB::raw('DATE_FORMAT(created_at, "%Y-%m")'))  // Fixed this line
+            ->orderBy(DB::raw('DATE_FORMAT(created_at, "%Y-%m")'))
             ->get();
 
-        // Current month totals
-        $currentTotal = $baseQuery->count();
-        $currentActive = $baseQuery->clone()->where('status', 'in_progress')->count();
-        $currentCompleted = $baseQuery->clone()->where('status', 'completed')->count();
-        $currentPending = RequiredDocument::where('status', 'pending_review')->count();
+        // ALL TIME TOTALS using clean base query
+        $totalProjects = $baseQuery->count();
+        $activeProjects = $baseQuery->clone()->where('status', 'in_progress')->count();
+        $completedProjects = $baseQuery->clone()->where('status', 'completed')->count();
+        
+        // Pending documents (all time)
+        $pendingDocuments = $pendingDocsBaseQuery->clone()
+            ->where('status', 'pending_review')
+            ->count();
 
-        // Last month totals - modified to count only last month's data
+        // Last month totals for comparison
         $lastMonthStart = now()->subMonth()->startOfMonth();
         $lastMonthEnd = now()->subMonth()->endOfMonth();
         
@@ -81,15 +87,16 @@ class ProjectsStatsOverview extends BaseWidget
             ->where('status', 'completed')
             ->whereBetween('created_at', [$lastMonthStart, $lastMonthEnd])
             ->count();
-        $lastMonthPending = RequiredDocument::where('status', 'pending_review')
+        $lastMonthPending = $pendingDocsBaseQuery->clone()
+            ->where('status', 'pending_review')
             ->whereBetween('created_at', [$lastMonthStart, $lastMonthEnd])
             ->count();
 
-        // Calculate percentage changes
-        $totalChange = $this->calculatePercentageChange($currentTotal, $lastMonthTotal);
-        $activeChange = $this->calculatePercentageChange($currentActive, $lastMonthActive);
-        $completedChange = $this->calculatePercentageChange($currentCompleted, $lastMonthCompleted);
-        $pendingChange = $this->calculatePercentageChange($currentPending, $lastMonthPending);
+        // Calculate percentage changes (comparing current total with last month additions)
+        $totalChange = $this->calculatePercentageChange($totalProjects, $totalProjects - $lastMonthTotal);
+        $activeChange = $this->calculatePercentageChange($activeProjects, $activeProjects - $lastMonthActive);
+        $completedChange = $this->calculatePercentageChange($completedProjects, $completedProjects - $lastMonthCompleted);
+        $pendingChange = $this->calculatePercentageChange($pendingDocuments, $pendingDocuments - $lastMonthPending);
 
         // Get chart data for last 6 months
         $chartData = collect(range(5, 0))
@@ -104,40 +111,57 @@ class ProjectsStatsOverview extends BaseWidget
             });
 
         return [
-            Stat::make('Total Projects', (string) $currentTotal)
-                ->description($totalChange . '% vs last month')
+            Stat::make('Total Proyek', (string) $totalProjects)
+                ->description($totalChange . '% dari bulan lalu')
                 ->descriptionIcon($totalChange >= 0 ? 'heroicon-m-arrow-trending-up' : 'heroicon-m-arrow-trending-down')
-                ->color($totalChange >= 0 ? 'warning' : 'danger')
-                ->icon('heroicon-o-document-text')
-                ->chart($chartData->pluck('total')->toArray()),
+                ->color($totalChange >= 0 ? 'success' : 'danger')
+                ->icon('heroicon-o-folder')
+                ->chart($chartData->pluck('total')->toArray())
+                ->extraAttributes([
+                    'class' => 'cursor-pointer transition-all duration-200 hover:scale-105',
+                    'wire:click' => "\$dispatch('openProjectModal', { status: 'all', count: {$totalProjects} })",
+                ]),
 
-            Stat::make('Active Projects', (string) $currentActive)
-                ->description($activeChange . '% vs last month')
+            Stat::make('Proyek Aktif', (string) $activeProjects)
+                ->description($activeChange . '% dari bulan lalu')
                 ->descriptionIcon($activeChange >= 0 ? 'heroicon-m-arrow-trending-up' : 'heroicon-m-arrow-trending-down')
-                ->color($activeChange >= 0 ? 'warning' : 'danger')
+                ->color($activeChange >= 0 ? 'success' : 'danger')
                 ->icon('heroicon-o-play')
-                ->chart($chartData->pluck('active')->toArray()),
+                ->chart($chartData->pluck('active')->toArray())
+                ->extraAttributes([
+                    'class' => 'cursor-pointer transition-all duration-200 hover:scale-105',
+                    'wire:click' => "\$dispatch('openProjectModal', { status: 'in_progress', count: {$activeProjects} })",
+                ]),
 
-            Stat::make('Completed', (string) $currentCompleted)
-                ->description($completedChange . '% vs last month')
+            Stat::make('Proyek Selesai', (string) $completedProjects)
+                ->description($completedChange . '% dari bulan lalu')
                 ->descriptionIcon($completedChange >= 0 ? 'heroicon-m-arrow-trending-up' : 'heroicon-m-arrow-trending-down')
-                ->color($completedChange >= 0 ? 'warning' : 'danger')
+                ->color($completedChange >= 0 ? 'success' : 'danger')
                 ->icon('heroicon-o-check-circle')
-                ->chart($chartData->pluck('completed')->toArray()),
+                ->chart($chartData->pluck('completed')->toArray())
+                ->extraAttributes([
+                    'class' => 'cursor-pointer transition-all duration-200 hover:scale-105',
+                    'wire:click' => "\$dispatch('openProjectModal', { status: 'completed', count: {$completedProjects} })",
+                ]),
 
-            Stat::make('Pending Documents', (string) $currentPending)
-                ->description($pendingChange . '% vs last month')
+            Stat::make('Dokumen Pending', (string) $pendingDocuments)
+                ->description($pendingChange . '% dari bulan lalu')
                 ->descriptionIcon($pendingChange <= 0 ? 'heroicon-m-arrow-trending-up' : 'heroicon-m-arrow-trending-down')
-                ->color($pendingChange <= 0 ? 'warning' : 'danger')
-                ->icon('heroicon-o-document')
-                ->chart($chartData->pluck('pending')->toArray()),
+                ->color($pendingChange <= 0 ? 'success' : 'warning')
+                ->icon('heroicon-o-document-text')
+                ->chart($chartData->pluck('pending')->toArray())
+                ->extraAttributes([
+                    'class' => 'cursor-pointer transition-all duration-200 hover:scale-105',
+                    'wire:click' => "\$dispatch('openDocumentModal', { status: 'pending_review', count: {$pendingDocuments} })",
+                ]),
         ];
     }
 
     private function calculatePercentageChange($current, $previous): float
     {
-        if ($previous == 0)
-            return 0;
+        if ($previous == 0) {
+            return $current > 0 ? 100 : 0;
+        }
         return round((($current - $previous) / $previous) * 100, 1);
     }
 }

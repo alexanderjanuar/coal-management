@@ -74,6 +74,8 @@ class ProjectDetailDocumentModal extends Component implements HasForms
         'rejected' => 4
     ];
 
+    public $isClientInactive = false;
+
     /**
      * Component Initialization
      */
@@ -84,6 +86,8 @@ class ProjectDetailDocumentModal extends Component implements HasForms
         $this->createCommentForm->fill();
         $this->rejectionForm->fill();
         $this->documentNotesForm->fill();
+
+        $this->isClientInactive = $this->document->projectStep->project->client->status == 'Inactive';
 
         // Calculate overall status based on submitted documents
         $this->calculateOverallStatus();
@@ -177,8 +181,11 @@ class ProjectDetailDocumentModal extends Component implements HasForms
                     ->multiple()
                     ->downloadable()
                     ->openable()
-                    ->disabled(auth()->user()->hasRole('client'))
+                    ->disabled(auth()->user()->hasRole('client') || $this->document->projectStep->project->client->status == 'Inactive')
                     ->helperText(function () {
+                        if ($this->isClientInactive) {
+                            return 'Klien tidak aktif - Upload dokumen dinonaktifkan';
+                        }
                         if (auth()->user()->hasRole('client')) {
                             return 'You do not have permission to upload documents';
                         }
@@ -206,8 +213,9 @@ class ProjectDetailDocumentModal extends Component implements HasForms
                         'underline',
                     ])
                     ->extraInputAttributes(['style' => 'height: 12rem; max-height: 12rem; overflow-y: scroll;font-size:14px'])
-                    ->placeholder('Write your comment here...')
+                    ->placeholder($this->isClientInactive ? 'Klien tidak aktif - Komentar dinonaktifkan' : 'Write your comment here...')
                     ->required()
+                    ->disabled($this->document->projectStep->project->client->status == 'Inactive')
             ])
             ->statePath('data');
     }
@@ -223,22 +231,20 @@ class ProjectDetailDocumentModal extends Component implements HasForms
                         'bulletList',
                         'orderedList',
                     ])
-                    ->placeholder('Please provide details about why this document is being rejected...')
+                    ->placeholder($this->document->projectStep->project->client->status == 'Inactive' ? 'Klien tidak aktif - Form penolakan dinonaktifkan' : 'Please provide details about why this document is being rejected...')
                     ->required()
+                    ->disabled($this->document->projectStep->project->client->status == 'Inactive')
             ])
             ->statePath('rejectData');
     }
 
-    /**
-     * Document Notes Form
-     */
     public function documentNotesForm(Form $form): Form
     {
         return $form
             ->schema([
                 RichEditor::make('notes')
                     ->label('Document Notes')
-                    ->placeholder('Add notes about this document...')
+                    ->placeholder($this->document->projectStep->project->client->status == 'Inactive' ? 'Klien tidak aktif - Catatan dokumen dinonaktifkan' : 'Add notes about this document...')
                     ->toolbarButtons([
                         'bold',
                         'italic',
@@ -246,6 +252,7 @@ class ProjectDetailDocumentModal extends Component implements HasForms
                         'orderedList',
                     ])
                     ->extraInputAttributes(['style' =>'height: 12rem; max-height: 12rem; overflow-y: scroll;font-size:14px'])
+                    ->disabled($this->document->projectStep->project->client->status == 'Inactive')
             ])
             ->statePath('notesData');
     }

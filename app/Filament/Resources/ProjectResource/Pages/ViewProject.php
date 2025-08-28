@@ -58,6 +58,22 @@ class ViewProject extends ViewRecord
     }
 
     /**
+     * Check if the client is inactive (which locks the project)
+     */
+    public function isClientInactive(): bool
+    {
+        return $this->record->client->status === 'Inactive';
+    }
+
+    /**
+     * Check if the project is locked (completed or client inactive)
+     */
+    public function isProjectLocked(): bool
+    {
+        return $this->record->status === 'completed' || $this->isClientInactive();
+    }
+
+    /**
      * Update required document statuses based on submitted documents
      */
     private function updateRequiredDocumentStatuses(): void
@@ -169,20 +185,20 @@ class ViewProject extends ViewRecord
         return $totalSteps > 0 ? round(($completedSteps / $totalSteps) * 100) : 0;
     }
 
-    /**
-     * Check if the project is locked (completed)
-     */
-    public function isProjectLocked(): bool
-    {
-        return $this->record->status === 'completed';
-    }
-
-    // Task Status Management
     public function toggleTaskStatus(Task $task): void
     {
-        if ($this->isProjectLocked()) {
+        if ($this->isClientInactive()) {
             Notification::make()
-                ->title('Project is locked')
+                ->title('Client is inactive')
+                ->body('This client is inactive and its projects are locked from modifications.')
+                ->warning()
+                ->send();
+            return;
+        }
+        
+        if ($this->record->status === 'completed') {
+            Notification::make()
+                ->title('Project is completed')
                 ->body('This project is completed and its tasks can no longer be modified.')
                 ->warning()
                 ->send();
@@ -198,12 +214,20 @@ class ViewProject extends ViewRecord
             ->send();
     }
 
-    // Document Status Management
     public function updateDocumentStatus(RequiredDocument $document, string $status): void
     {
-        if ($this->isProjectLocked()) {
+        if ($this->isClientInactive()) {
             Notification::make()
-                ->title('Project is locked')
+                ->title('Client is inactive')
+                ->body('This client is inactive and its projects are locked from modifications.')
+                ->warning()
+                ->send();
+            return;
+        }
+        
+        if ($this->record->status === 'completed') {
+            Notification::make()
+                ->title('Project is completed')
                 ->body('This project is completed and its documents can no longer be modified.')
                 ->warning()
                 ->send();
@@ -236,20 +260,22 @@ class ViewProject extends ViewRecord
         // Check if current user has the required role
         $hasRequiredRole = auth()->user()->hasAnyRole(['direktur', 'project-manager', 'super-admin','verificator']);
         
+        // Check if client is inactive
+        $clientInactive = $this->isClientInactive();
+        
         if (!$hasRequiredRole) {
             return [
                 // Only include the other actions if user doesn't have required role
                 Actions\Action::make('edit')
                     ->url(static::getResource()::getUrl('edit', ['record' => $this->record]))
                     ->icon('heroicon-o-pencil-square')
-                    ->visible(fn() => $this->record->status !== 'completed')
+                    ->visible(fn() => !$this->isProjectLocked())
                     ->button(),
                 
                 Actions\Action::make('viewActivity')
                     ->label('View Activity Log')
                     ->icon('heroicon-o-clock')
                     ->url(fn() => ProjectResource::getUrl('activity', ['record' => $this->record])),
-
             ];
         }
         
@@ -269,18 +295,22 @@ class ViewProject extends ViewRecord
         }
         
         // All documents resolved is the only requirement now
-        $requirementsMet = $allDocumentsResolved;
+        $requirementsMet = $allDocumentsResolved && !$clientInactive;
         
         // Determine tooltip message if requirements are not met
         $tooltipMessage = "";
         if (!$requirementsMet) {
-            $tooltipMessage = "This project cannot be completed yet. ";
-            
-            if (!$allDocumentsResolved) {
-                if (count($unfinishedItems) > 0) {
-                    $tooltipMessage .= "Unfinished documents: " . implode(", ", array_slice($unfinishedItems, 0, 3));
-                    if (count($unfinishedItems) > 3) {
-                        $tooltipMessage .= " and " . (count($unfinishedItems) - 3) . " more.";
+            if ($clientInactive) {
+                $tooltipMessage = "This project cannot be completed because the client is inactive. ";
+            } else {
+                $tooltipMessage = "This project cannot be completed yet. ";
+                
+                if (!$allDocumentsResolved) {
+                    if (count($unfinishedItems) > 0) {
+                        $tooltipMessage .= "Unfinished documents: " . implode(", ", array_slice($unfinishedItems, 0, 3));
+                        if (count($unfinishedItems) > 3) {
+                            $tooltipMessage .= " and " . (count($unfinishedItems) - 3) . " more.";
+                        }
                     }
                 }
             }
@@ -288,7 +318,6 @@ class ViewProject extends ViewRecord
         
         // Conditions for showing complete button
         $canComplete = $requirementsMet && $this->record->status !== 'completed';
-        
 
         return [
             Actions\Action::make('completeProject')
@@ -345,11 +374,11 @@ class ViewProject extends ViewRecord
                         ->send();
                 }),
             
-            // Modify edit action to be disabled when project is completed
+            // Modify edit action to be disabled when project is completed or client inactive
             Actions\Action::make('edit')
                 ->url(static::getResource()::getUrl('edit', ['record' => $this->record]))
                 ->icon('heroicon-o-pencil-square')
-                ->visible(fn() => $this->record->status !== 'completed')
+                ->visible(fn() => !$this->isProjectLocked())
                 ->button(),
             
             Actions\Action::make('viewActivity')

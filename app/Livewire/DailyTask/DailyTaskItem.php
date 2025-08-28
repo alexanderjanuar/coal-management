@@ -37,6 +37,11 @@ class DailyTaskItem extends Component implements HasForms
         ];
     }
 
+    public function viewDetails(): void
+    {
+        $this->dispatch('openTaskDetailModal', taskId: $this->task->id);
+    }
+
     public function editTask(): void
     {
         // Redirect to edit page or emit event to parent
