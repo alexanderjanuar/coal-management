@@ -180,9 +180,11 @@
                             @else
                             <div class="min-h-[60px] flex items-center">
                                 @if($task->description)
-                                <p class="text-gray-900 leading-relaxed whitespace-pre-wrap">{!! $task->description !!}</p>
+                                <p class="text-gray-900 leading-relaxed whitespace-pre-wrap">{!! $task->description !!}
+                                </p>
                                 @else
-                                <button wire:click="startEditDescription" class="flex items-center text-gray-400 italic hover:text-gray-600 transition-colors">
+                                <button wire:click="startEditDescription"
+                                    class="flex items-center text-gray-400 italic hover:text-gray-600 transition-colors">
                                     <x-heroicon-o-plus class="w-4 h-4 mr-2" />
                                     Klik untuk menambahkan deskripsi
                                 </button>
@@ -250,7 +252,8 @@
                                     <div class="text-gray-900 text-sm">
                                         <div>Dibuat {{ $task->created_at->diffForHumans() }}</div>
                                         @if($task->start_task_date)
-                                        <div class="text-gray-600">Dimulai {{ $task->start_task_date->format('d M Y') }}</div>
+                                        <div class="text-gray-600">Dimulai {{ $task->start_task_date->format('d M Y') }}
+                                        </div>
                                         @endif
                                     </div>
                                 </div>
@@ -401,13 +404,15 @@
                     {{-- Add first subtask when no subtasks exist --}}
                     <div class="border-t border-gray-200 pt-6">
                         <div class="text-center py-8">
-                            <div class="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                            <div
+                                class="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
                                 <x-heroicon-o-list-bullet class="w-8 h-8 text-gray-400" />
                             </div>
                             <h4 class="text-lg font-medium text-gray-900 mb-2">Belum ada subtask</h4>
-                            <p class="text-gray-500 text-sm mb-6">Buat subtask untuk membagi task ini menjadi bagian-bagian kecil</p>
+                            <p class="text-gray-500 text-sm mb-6">Buat subtask untuk membagi task ini menjadi
+                                bagian-bagian kecil</p>
                         </div>
-                        
+
                         <form wire:submit="addSubtask" class="space-y-4">
                             <div class="flex items-center gap-3">
                                 <div
@@ -497,5 +502,6 @@
             </div>
         </div>
         @endif
+        <x-filament-actions::modals />
     </x-filament::modal>
 </div>
