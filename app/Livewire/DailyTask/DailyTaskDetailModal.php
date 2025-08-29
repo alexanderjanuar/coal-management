@@ -3,6 +3,7 @@
 namespace App\Livewire\DailyTask;
 
 use App\Models\DailyTask;
+use App\Models\DailyTaskSubtask;
 use App\Models\User;
 use Livewire\Component;
 use Filament\Forms;
@@ -20,38 +21,141 @@ class DailyTaskDetailModal extends Component implements HasForms, HasActions
 
     public ?DailyTask $task = null;
     public ?array $commentData = [];
+    public ?array $newSubtaskData = [];
+    public ?int $editingSubtaskId = null;
+    public ?array $editSubtaskData = [];
+    
+    // For editing task details
+    public bool $editingTitle = false;
+    public bool $editingDescription = false;
+    public ?array $taskEditData = [];
+
+    // Initialize properties
+    protected function initializeProperties()
+    {
+        $this->editingTitle = false;
+        $this->editingDescription = false;
+        $this->taskEditData = [];
+    }
 
     protected $listeners = [
         'openTaskDetailModal' => 'openModal',
     ];
 
-    public function mount(): void
-    {
-        $this->commentForm->fill();
-    }
-
     protected function getForms(): array
     {
         return [
             'commentForm',
+            'newSubtaskForm',
+            'editSubtaskForm',
+            'taskEditForm',
+            'descriptionForm',
         ];
     }
 
     /**
-     * Comment Form Definition - Simplified for Notion-like experience
+     * Description Edit Form - Separate form for rich editing
+     */
+    public function descriptionForm(Form $form): Form
+    {
+        return $form
+            ->schema([
+                Forms\Components\RichEditor::make('description')
+                    ->placeholder('Tulis deskripsi task...')
+                    ->maxLength(5000)
+                    ->toolbarButtons([
+                        'bold',
+                        'italic',
+                        'underline',
+                        'bulletList',
+                        'orderedList',
+                        'link',
+                        'undo',
+                        'redo',
+                    ])
+                    ->hiddenLabel()
+                    ->required(false),
+            ])
+            ->statePath('taskEditData');
+    }
+
+    /**
+     * Task Edit Form
+     */
+    public function taskEditForm(Form $form): Form
+    {
+        return $form
+            ->schema([
+                Forms\Components\TextInput::make('title')
+                    ->required()
+                    ->maxLength(255)
+                    ->hiddenLabel(),
+                Forms\Components\Textarea::make('description')
+                    ->placeholder('Tulis deskripsi task...')
+                    ->maxLength(1000)
+                    ->rows(4)
+                    ->hiddenLabel(),
+            ])
+            ->statePath('taskEditData');
+    }
+
+    /**
+     * New Subtask Form
+     */
+    public function newSubtaskForm(Form $form): Form
+    {
+        return $form
+            ->schema([
+                Forms\Components\TextInput::make('title')
+                    ->placeholder('Tambahkan subtask baru...')
+                    ->required()
+                    ->maxLength(255)
+                    ->hiddenLabel(),
+            ])
+            ->statePath('newSubtaskData');
+    }
+
+    /**
+     * Edit Subtask Form
+     */
+    public function editSubtaskForm(Form $form): Form
+    {
+        return $form
+            ->schema([
+                Forms\Components\TextInput::make('title')
+                    ->required()
+                    ->maxLength(255)
+                    ->hiddenLabel(),
+            ])
+            ->statePath('editSubtaskData');
+    }
+
+    /**
+     * Comment Form Definition
      */
     public function commentForm(Form $form): Form
     {
         return $form
             ->schema([
                 Forms\Components\Textarea::make('content')
-                    ->placeholder('Add a comment...')
+                    ->placeholder('Tulis komentar...')
                     ->required()
                     ->maxLength(1000)
                     ->rows(3)
                     ->hiddenLabel(),
             ])
             ->statePath('commentData');
+    }
+
+    public function mount(): void
+    {
+        // Initialize properties
+        $this->editingTitle = false;
+        $this->editingDescription = false;
+        $this->taskEditData = [];
+        
+        $this->commentForm->fill();
+        $this->newSubtaskForm->fill(['title' => '']);
     }
 
     public function openModal(int $taskId): void
@@ -65,6 +169,17 @@ class DailyTaskDetailModal extends Component implements HasForms, HasActions
         ])->find($taskId);
         
         if ($this->task) {
+            // Initialize task edit form
+            $this->taskEditForm->fill([
+                'title' => $this->task->title,
+                'description' => $this->task->description,
+            ]);
+            
+            // Initialize description form separately
+            $this->descriptionForm->fill([
+                'description' => $this->task->description,
+            ]);
+            
             $this->dispatch('open-modal', id: 'task-detail-modal');
         }
     }
@@ -72,7 +187,72 @@ class DailyTaskDetailModal extends Component implements HasForms, HasActions
     public function closeModal(): void
     {
         $this->task = null;
+        $this->editingTitle = false;
+        $this->editingDescription = false;
         $this->dispatch('close-modal', id: 'task-detail-modal');
+    }
+
+    public function startEditTitle(): void
+    {
+        $this->editingTitle = true;
+    }
+
+    public function saveTitle(): void
+    {
+        if (!$this->task) return;
+
+        $data = $this->taskEditForm->getState();
+        $this->task->update(['title' => $data['title']]);
+        $this->task->refresh();
+        $this->editingTitle = false;
+        
+        $this->dispatch('taskUpdated');
+        
+        Notification::make()
+            ->title('Judul berhasil diperbarui')
+            ->success()
+            ->duration(2000)
+            ->send();
+    }
+
+    public function cancelEditTitle(): void
+    {
+        $this->editingTitle = false;
+        $this->taskEditForm->fill([
+            'title' => $this->task->title,
+            'description' => $this->task->description,
+        ]);
+    }
+
+    public function startEditDescription(): void
+    {
+        $this->editingDescription = true;
+    }
+
+    public function saveDescription(): void
+    {
+        if (!$this->task) return;
+
+        $data = $this->descriptionForm->getState();
+        $this->task->update(['description' => $data['description']]);
+        $this->task->refresh();
+        $this->editingDescription = false;
+        
+        $this->dispatch('taskUpdated');
+        
+        Notification::make()
+            ->title('Deskripsi berhasil diperbarui')
+            ->success()
+            ->duration(2000)
+            ->send();
+    }
+
+    public function cancelEditDescription(): void
+    {
+        $this->editingDescription = false;
+        $this->descriptionForm->fill([
+            'description' => $this->task->description,
+        ]);
     }
 
     public function toggleTaskCompletion(): void
@@ -92,9 +272,16 @@ class DailyTaskDetailModal extends Component implements HasForms, HasActions
         
         $this->dispatch('taskUpdated');
         
+        $statusLabels = [
+            'pending' => 'Tertunda',
+            'in_progress' => 'Sedang Dikerjakan',
+            'completed' => 'Selesai',
+            'cancelled' => 'Dibatalkan'
+        ];
+        
         Notification::make()
-            ->title('Status Updated')
-            ->body("Status changed to " . ucfirst(str_replace('_', ' ', $status)))
+            ->title('Status Diperbarui')
+            ->body("Status diubah menjadi " . ($statusLabels[$status] ?? $status))
             ->success()
             ->duration(3000)
             ->send();
@@ -109,12 +296,91 @@ class DailyTaskDetailModal extends Component implements HasForms, HasActions
         
         $this->dispatch('taskUpdated');
         
+        $priorityLabels = [
+            'low' => 'Rendah',
+            'normal' => 'Normal',
+            'high' => 'Tinggi',
+            'urgent' => 'Mendesak'
+        ];
+        
         Notification::make()
-            ->title('Priority Updated')
-            ->body("Priority changed to " . ucfirst($priority))
+            ->title('Prioritas Diperbarui')
+            ->body("Prioritas diubah menjadi " . ($priorityLabels[$priority] ?? $priority))
             ->success()
             ->duration(3000)
             ->send();
+    }
+
+    public function addSubtask(): void
+    {
+        if (!$this->task) return;
+
+        $data = $this->newSubtaskForm->getState();
+        
+        $this->task->subtasks()->create([
+            'title' => $data['title'],
+            'status' => 'pending',
+        ]);
+
+        $this->newSubtaskForm->fill(['title' => '']);
+        $this->task->refresh();
+        
+        Notification::make()
+            ->title('Subtask berhasil ditambahkan')
+            ->success()
+            ->duration(2000)
+            ->send();
+    }
+
+    public function startEditSubtask(int $subtaskId): void
+    {
+        $subtask = $this->task->subtasks->find($subtaskId);
+        if ($subtask) {
+            $this->editingSubtaskId = $subtaskId;
+            $this->editSubtaskForm->fill(['title' => $subtask->title]);
+        }
+    }
+
+    public function saveSubtaskEdit(): void
+    {
+        if (!$this->editingSubtaskId) return;
+        
+        $data = $this->editSubtaskForm->getState();
+        $subtask = $this->task->subtasks->find($this->editingSubtaskId);
+        
+        if ($subtask) {
+            $subtask->update(['title' => $data['title']]);
+            $this->editingSubtaskId = null;
+            $this->editSubtaskForm->fill(['title' => '']);
+            $this->task->refresh();
+            
+            Notification::make()
+                ->title('Subtask berhasil diperbarui')
+                ->success()
+                ->duration(2000)
+                ->send();
+        }
+    }
+
+    public function cancelEditSubtask(): void
+    {
+        $this->editingSubtaskId = null;
+        $this->editSubtaskForm->fill(['title' => '']);
+    }
+
+    public function deleteSubtask(int $subtaskId): void
+    {
+        $subtask = $this->task->subtasks->find($subtaskId);
+        if ($subtask) {
+            $subtask->delete();
+            $this->task->refresh();
+            
+            Notification::make()
+                ->title('Subtask berhasil dihapus')
+                ->success()
+                ->duration(2000)
+                ->send();
+        }
     }
 
     public function toggleSubtask(int $subtaskId): void
@@ -126,9 +392,8 @@ class DailyTaskDetailModal extends Component implements HasForms, HasActions
             $this->task->refresh();
             $this->dispatch('taskUpdated');
 
-            // Subtle notification for subtask updates
             Notification::make()
-                ->title('Subtask updated')
+                ->title('Subtask diperbarui')
                 ->success()
                 ->duration(2000)
                 ->send();
@@ -151,66 +416,30 @@ class DailyTaskDetailModal extends Component implements HasForms, HasActions
         $this->task->refresh();
         
         Notification::make()
-            ->title('Comment added')
+            ->title('Komentar ditambahkan')
             ->success()
             ->duration(2000)
             ->send();
     }
 
-    public function getStatusColor(): string
-    {
-        if (!$this->task) return 'gray';
-        
-        return match ($this->task->status) {
-            'completed' => 'success',
-            'in_progress' => 'warning',
-            'pending' => 'gray',
-            'cancelled' => 'danger',
-            default => 'gray',
-        };
-    }
-
-    public function getPriorityColor(): string
-    {
-        if (!$this->task) return 'gray';
-        
-        return match ($this->task->priority) {
-            'urgent' => 'danger',
-            'high' => 'warning',
-            'normal' => 'primary',
-            'low' => 'gray',
-            default => 'gray',
-        };
-    }
-
     public function getStatusOptions(): array
     {
         return [
-            'pending' => 'Pending',
-            'in_progress' => 'In Progress',
-            'completed' => 'Completed',
-            'cancelled' => 'Cancelled',
+            'pending' => 'Tertunda',
+            'in_progress' => 'Sedang Dikerjakan',
+            'completed' => 'Selesai',
+            'cancelled' => 'Dibatalkan',
         ];
     }
 
     public function getPriorityOptions(): array
     {
         return [
-            'low' => 'Low',
+            'low' => 'Rendah',
             'normal' => 'Normal',
-            'high' => 'High',
-            'urgent' => 'Urgent',
+            'high' => 'Tinggi',
+            'urgent' => 'Mendesak',
         ];
-    }
-
-    public function editAction(): Actions\Action
-    {
-        return Actions\Action::make('edit')
-            ->label('')
-            ->icon('heroicon-o-pencil')
-            ->color('gray')
-            ->size('sm')
-            ->tooltip('Edit task');
     }
 
     public function deleteAction(): Actions\Action
@@ -220,17 +449,17 @@ class DailyTaskDetailModal extends Component implements HasForms, HasActions
             ->icon('heroicon-o-trash')
             ->color('gray')
             ->size('sm')
-            ->tooltip('Delete task')
+            ->tooltip('Hapus task')
             ->requiresConfirmation()
-            ->modalHeading('Delete Task')
-            ->modalDescription('Are you sure you want to delete this task? This action cannot be undone.')
+            ->modalHeading('Hapus Task')
+            ->modalDescription('Yakin ingin menghapus task ini? Aksi ini tidak dapat dibatalkan.')
             ->action(function () {
                 $this->task->delete();
                 $this->closeModal();
                 $this->dispatch('taskUpdated');
                 
                 Notification::make()
-                    ->title('Task deleted')
+                    ->title('Task berhasil dihapus')
                     ->success()
                     ->send();
             });

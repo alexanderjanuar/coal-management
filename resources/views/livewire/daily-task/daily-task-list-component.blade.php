@@ -351,7 +351,6 @@
                     </div>
 
                     {{-- Group Tasks - Fixed collapse --}}
-                    {{-- Group Tasks - Fixed collapse --}}
                     <div x-show="!collapsed" x-transition:enter="transition ease-out duration-300"
                         x-transition:enter-start="opacity-0 transform -translate-y-2"
                         x-transition:enter-end="opacity-100 transform translate-y-0"
@@ -361,7 +360,7 @@
 
                         @foreach($tasks as $task)
                         <div
-                            class="px-6 py-4 hover:bg-gradient-to-r hover:from-primary-50 hover:to-transparent dark:hover:from-primary-900/20 dark:hover:to-transparent transition-all duration-200 group border-l-4 border-l-transparent hover:border-l-primary-200 dark:hover:border-l-primary-600 -mx-6 mb-2 last:mb-0 border-b border-gray-100 dark:border-gray-700 last:border-b-0">
+                            class="px-6 py-1 hover:bg-gradient-to-r hover:from-primary-50 hover:to-transparent dark:hover:from-primary-900/20 dark:hover:to-transparent transition-all duration-200 group border-l-4 border-l-transparent hover:border-l-primary-200 dark:hover:border-l-primary-600 -mx-6 mb-2 last:mb-0 border-b-2 border-gray-100 dark:border-gray-700 last:border-b-0">
                             <livewire:daily-task.daily-task-item :task="$task" :key="'task-'.$task->id . time()" />
                         </div>
                         @endforeach

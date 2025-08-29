@@ -3,18 +3,22 @@
 namespace App\Livewire\DailyTask;
 
 use App\Models\DailyTask;
+use App\Models\Project;
+use App\Models\User;
 use Livewire\Component;
 use Filament\Forms;
 use Filament\Forms\Form;
 use Filament\Forms\Concerns\InteractsWithForms;
 use Filament\Forms\Contracts\HasForms;
 use Filament\Notifications\Notification;
+use App\Models\Client;
 
 class DailyTaskItem extends Component implements HasForms
 {
     use InteractsWithForms;
 
     public DailyTask $task;
+    public ?int $selectedClientId = null;
     public bool $showSubtasks = false;
     public ?array $newSubtaskData = [];
 
@@ -23,6 +27,11 @@ class DailyTaskItem extends Component implements HasForms
     public function mount(DailyTask $task): void
     {
         $this->task = $task;
+        
+        // Set selected client based on current project
+        if ($this->task->project && $this->task->project->client_id) {
+            $this->selectedClientId = $this->task->project->client_id;
+        }
         
         $this->newSubtaskForm->fill([
             'title' => '',
@@ -77,6 +86,36 @@ class DailyTaskItem extends Component implements HasForms
     public function toggleSubtasks(): void
     {
         $this->showSubtasks = !$this->showSubtasks;
+    }
+
+    public function updateSelectedClient(int $clientId): void
+    {
+        $this->selectedClientId = $clientId;
+        
+        // If current project doesn't belong to selected client, clear it
+        if ($this->task->project && $this->task->project->client_id !== $clientId) {
+            $this->updateProject(null);
+        }
+    }
+
+    public function getClientOptions(): array
+    {
+        return Client::where('status', 'Active')
+            ->orderBy('name')
+            ->pluck('name', 'id')
+            ->toArray();
+    }
+
+    public function getProjectOptions(): array
+    {
+        if (!$this->selectedClientId) {
+            return [];
+        }
+        
+        return Project::where('client_id', $this->selectedClientId)
+            ->orderBy('name')
+            ->pluck('name', 'id')
+            ->toArray();
     }
 
     public function updateStatus(string $status): void
@@ -168,6 +207,81 @@ class DailyTaskItem extends Component implements HasForms
             'cancelled' => 'Cancelled',
         ];
     }
+
+    public function updatePriority(string $priority): void
+    {
+        $this->task->update(['priority' => $priority]);
+        
+        $this->dispatch('taskUpdated');
+        
+        Notification::make()
+            ->title('Priority Updated')
+            ->body("Priority changed to " . ucfirst($priority))
+            ->success()
+            ->send();
+    }
+
+    public function updateProject($projectId): void
+    {
+        $this->task->update(['project_id' => $projectId]);
+        
+        $this->dispatch('taskUpdated');
+        
+        Notification::make()
+            ->title('Project Updated')
+            ->body($projectId ? "Project assigned" : "Project removed")
+            ->success()
+            ->send();
+    }
+
+    public function assignUser(int $userId): void
+    {
+        if (!$this->task->assignedUsers->contains($userId)) {
+            $this->task->assignedUsers()->attach($userId);
+            $this->task->refresh();
+            
+            $userName = User::find($userId)?->name ?? 'User';
+            
+            Notification::make()
+                ->title('User Assigned')
+                ->body("Assigned to {$userName}")
+                ->success()
+                ->send();
+                
+            $this->dispatch('taskUpdated');
+        }
+    }
+
+    public function unassignUser(int $userId): void
+    {
+        $this->task->assignedUsers()->detach($userId);
+        $this->task->refresh();
+        
+        $userName = User::find($userId)?->name ?? 'User';
+        
+        Notification::make()
+            ->title('User Unassigned')
+            ->body("Unassigned from {$userName}")
+            ->success()
+            ->send();
+            
+        $this->dispatch('taskUpdated');
+    }
+
+    public function getPriorityOptions(): array
+    {
+        return [
+            'low' => 'Low',
+            'normal' => 'Normal',
+            'high' => 'High',
+            'urgent' => 'Urgent',
+        ];
+    }
+
+    public function getUserOptions(): array
+    {
+        return User::orderBy('name')->pluck('name', 'id')->toArray();
+}
 
     public function render()
     {

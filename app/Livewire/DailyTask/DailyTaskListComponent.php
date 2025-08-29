@@ -49,10 +49,10 @@ class DailyTaskListComponent extends Component implements HasForms
 
     public function mount(): void
     {        
-        // Initialize filter form with defaults - remove query string persistence for now
+        // Initialize filter form with defaults - remove default date filter
         $this->filterData = [
             'search' => '',
-            'date' => today(),
+            'date' => null, // Ubah dari today() ke null
             'date_start' => null,
             'date_end' => null,
             'status' => [],
@@ -277,7 +277,7 @@ class DailyTaskListComponent extends Component implements HasForms
     {
         $this->filterData = [
             'search' => '',
-            'date' => today(),
+            'date' => null, // Ubah dari today() ke null
             'date_start' => null,
             'date_end' => null,
             'status' => [],
@@ -708,35 +708,6 @@ class DailyTaskListComponent extends Component implements HasForms
     }
 
     /**
-     * Get priority options
-     */
-    public function getPriorityOptions(): array
-    {
-        return [
-            'low' => 'Low',
-            'normal' => 'Normal',
-            'high' => 'High',
-            'urgent' => 'Urgent',
-        ];
-    }
-
-    /**
-     * Get user options
-     */
-    public function getUserOptions(): array
-    {
-        return User::orderBy('name')->pluck('name', 'id')->toArray();
-    }
-
-    /**
-     * Get project options
-     */
-    public function getProjectOptions(): array
-    {
-        return Project::orderBy('name')->pluck('name', 'id')->toArray();
-    }
-
-    /**
      * Get group by options
      */
     public function getGroupByOptions(): array
@@ -978,6 +949,87 @@ public function saveNewTask(string $groupKey): void
     public function getGroupKey(string $groupType, string $groupValue): string
     {
         return $groupType . '_' . str_replace([' ', '+'], ['_', '_plus_'], $groupValue);
+    }
+
+
+    public function updatePriority(string $priority): void
+    {
+        $this->task->update(['priority' => $priority]);
+        
+        $this->dispatch('taskUpdated');
+        
+        Notification::make()
+            ->title('Priority Updated')
+            ->body("Priority changed to " . ucfirst($priority))
+            ->success()
+            ->send();
+    }
+
+    public function updateProject($projectId): void
+    {
+        $this->task->update(['project_id' => $projectId]);
+        
+        $this->dispatch('taskUpdated');
+        
+        Notification::make()
+            ->title('Project Updated')
+            ->body($projectId ? "Project assigned" : "Project removed")
+            ->success()
+            ->send();
+    }
+
+    public function assignUser(int $userId): void
+    {
+        if (!$this->task->assignedUsers->contains($userId)) {
+            $this->task->assignedUsers()->attach($userId);
+            $this->task->refresh();
+            
+            $userName = User::find($userId)?->name ?? 'User';
+            
+            Notification::make()
+                ->title('User Assigned')
+                ->body("Assigned to {$userName}")
+                ->success()
+                ->send();
+                
+            $this->dispatch('taskUpdated');
+        }
+    }
+
+    public function unassignUser(int $userId): void
+    {
+        $this->task->assignedUsers()->detach($userId);
+        $this->task->refresh();
+        
+        $userName = User::find($userId)?->name ?? 'User';
+        
+        Notification::make()
+            ->title('User Unassigned')
+            ->body("Unassigned from {$userName}")
+            ->success()
+            ->send();
+            
+        $this->dispatch('taskUpdated');
+    }
+
+    public function getPriorityOptions(): array
+    {
+        return [
+            'low' => 'Low',
+            'normal' => 'Normal',
+            'high' => 'High',
+            'urgent' => 'Urgent',
+        ];
+    }
+
+    public function getProjectOptions(): array
+    {
+        return Project::pluck('name', 'id')->toArray();
+    }
+
+    public function getUserOptions(): array
+    {
+        return User::orderBy('name')->pluck('name', 'id')->toArray();
     }
 
     public function render()
