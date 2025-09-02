@@ -382,56 +382,119 @@
             </div>
 
             {{-- Enhanced Due Date --}}
+            {{-- Enhanced Due Date with Clickable Edit --}}
             <div class="col-span-1">
                 <div class="flex flex-col items-start space-y-1">
-                    <div class="flex items-center gap-2 text-sm">
+                    <div class="relative" x-data="{ dateOpen: false, buttonRect: {} }">
                         @php
                         $isOverdue = $task->task_date->isPast() && $task->status !== 'completed';
                         $isToday = $task->task_date->isToday();
-                        $isTomorrow = $task->task_date->isTomorrow();
+                        $isTomorrow = $task->task_date->isTomorrow(); // Gunakan method Laravel yang benar
                         @endphp
 
-                        <div
-                            class="p-1 rounded {{ $isOverdue ? 'bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400' : ($isToday ? 'bg-yellow-100 dark:bg-yellow-900/30 text-yellow-600 dark:text-yellow-400' : 'text-gray-600 dark:text-gray-400') }}">
-                            <x-heroicon-o-calendar-days class="w-4 h-4" />
-                        </div>
+                        {{-- Clickable Due Date Button --}}
+                        <button @click="dateOpen = !dateOpen; buttonRect = $el.getBoundingClientRect()" class="flex items-center gap-2 text-sm px-2 py-1.5 rounded-lg transition-all duration-200 hover:scale-105 border shadow-sm
+                            {{ $isOverdue ? 
+                                'bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 border-red-200 dark:border-red-700 hover:bg-red-200 dark:hover:bg-red-900/50' : 
+                                ($isToday ? 
+                                    'bg-yellow-100 dark:bg-yellow-900/30 text-yellow-600 dark:text-yellow-400 border-yellow-200 dark:border-yellow-700 hover:bg-yellow-200 dark:hover:bg-yellow-900/50' : 
+                                    'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400 border-gray-200 dark:border-gray-600 hover:bg-gray-200 dark:hover:bg-gray-600'
+                                ) 
+                            }}">
+                            <div
+                                class="p-1 rounded {{ $isOverdue ? 'bg-red-200 dark:bg-red-800' : ($isToday ? 'bg-yellow-200 dark:bg-yellow-800' : 'bg-gray-200 dark:bg-gray-600') }}">
+                                <x-heroicon-o-calendar-days class="w-3 h-3" />
+                            </div>
 
-                        <div class="flex flex-col">
-                            <span
-                                class="font-medium {{ $isOverdue ? 'text-red-600 dark:text-red-400' : ($isToday ? 'text-yellow-600 dark:text-yellow-400' : 'text-gray-700 dark:text-gray-300') }}">
-                                @if($isToday)
-                                Today
-                                @elseif($isTomorrow)
-                                Tomorrow
-                                @else
-                                {{ $task->task_date->format('M d') }}
-                                @endif
-                            </span>
+                            <div class="flex flex-col">
+                                <span class="font-medium">
+                                    @if($isToday)
+                                    Today
+                                    @elseif($isTomorrow)
+                                    Tomorrow
+                                    @else
+                                    {{ $task->task_date->format('M d') }}
+                                    @endif
+                                </span>
 
-                            @if($isOverdue)
-                            <span class="text-xs text-red-500 dark:text-red-400 font-medium">Overdue</span>
-                            @elseif($task->task_date->diffInDays() <= 3 && !$task->task_date->isPast())
-                                <span class="text-xs text-yellow-600 dark:text-yellow-400">Soon</span>
-                                @endif
-                        </div>
+                                @if($isOverdue)
+                                <span class="text-xs font-medium">Overdue</span>
+                                @elseif($task->task_date->diffInDays() <= 3 && !$task->task_date->isPast())
+                                    <span class="text-xs">Soon</span>
+                                    @endif
+                            </div>
+
+                            <x-heroicon-o-pencil class="w-3 h-3 ml-1 opacity-60" />
+                        </button>
+
+                        {{-- Date Picker Dropdown --}}
+                        <template x-teleport="body">
+                            <div x-show="dateOpen" x-cloak @click.away="dateOpen = false"
+                                @keydown.escape="dateOpen = false" x-transition:enter="transition ease-out duration-200"
+                                x-transition:enter-start="opacity-0 scale-95"
+                                x-transition:enter-end="opacity-100 scale-100"
+                                x-transition:leave="transition ease-in duration-150"
+                                x-transition:leave-start="opacity-100 scale-100"
+                                x-transition:leave-end="opacity-0 scale-95"
+                                class="fixed w-80 bg-white dark:bg-gray-800 rounded-xl shadow-xl border border-gray-200 dark:border-gray-600"
+                                style="z-index: 9999;" x-bind:style="{
+                                top: (buttonRect.bottom + window.scrollY + 8) + 'px',
+                                left: Math.max(8, Math.min(buttonRect.left + window.scrollX, window.innerWidth - 320 - 8)) + 'px'
+                                    }">
+
+                                {{-- Header --}}
+                                <div
+                                    class="px-4 py-3 bg-gradient-to-r from-gray-50 to-gray-100 dark:from-gray-700 dark:to-gray-600 border-b border-gray-200 dark:border-gray-600">
+                                    <h3
+                                        class="text-sm font-semibold text-gray-700 dark:text-gray-300 flex items-center gap-2">
+                                        <x-heroicon-o-calendar-days class="w-4 h-4" />
+                                        Edit Due Date
+                                    </h3>
+                                </div>
+
+                                {{-- Date Form --}}
+                                <div class="p-4">
+                                    {{ $this->dueDateForm }}
+                                </div>
+
+                                {{-- Quick Date Options --}}
+                                <div class="px-4 pb-4 border-t border-gray-100 dark:border-gray-700">
+                                    <div
+                                        class="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-2">
+                                        Quick Options
+                                    </div>
+                                    <div class="grid grid-cols-2 gap-2">
+                                        <button wire:click="updateTaskDate('{{ today()->format('Y-m-d') }}')"
+                                            @click="dateOpen = false"
+                                            class="px-3 py-2 text-xs text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 rounded-lg transition-colors">
+                                            Today
+                                        </button>
+                                        <button wire:click="updateTaskDate('{{ today()->addDay()->format('Y-m-d') }}')"
+                                            @click="dateOpen = false"
+                                            class="px-3 py-2 text-xs text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 rounded-lg transition-colors">
+                                            Tomorrow
+                                        </button>
+                                        <button
+                                            wire:click="updateTaskDate('{{ today()->addDays(7)->format('Y-m-d') }}')"
+                                            @click="dateOpen = false"
+                                            class="px-3 py-2 text-xs text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 rounded-lg transition-colors">
+                                            Next Week
+                                        </button>
+                                        <button
+                                            wire:click="updateTaskDate('{{ today()->addMonth()->format('Y-m-d') }}')"
+                                            @click="dateOpen = false"
+                                            class="px-3 py-2 text-xs text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 rounded-lg transition-colors">
+                                            Next Month
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </template>
                     </div>
-
-                    @if($task->start_time || $task->end_time)
-                    <div class="text-xs text-gray-500 dark:text-gray-400 ml-6 flex items-center gap-1">
-                        <x-heroicon-o-clock class="w-3 h-3" />
-                        @if($task->start_time)
-                        {{ $task->start_time->format('H:i') }}
-                        @endif
-                        @if($task->start_time && $task->end_time)
-                        -
-                        @endif
-                        @if($task->end_time)
-                        {{ $task->end_time->format('H:i') }}
-                        @endif
-                    </div>
-                    @endif
                 </div>
             </div>
+
+
         </div>
     </div>
 
@@ -610,7 +673,7 @@
                         @php
                         $isOverdue = $task->task_date->isPast() && $task->status !== 'completed';
                         $isToday = $task->task_date->isToday();
-                        $isTomorrow = $task->task_date->isTomorrow();
+                        $isTomorrow = $task->task_date->isTomorrow(); // Gunakan method Laravel yang benar
                         @endphp
 
                         <div class="flex items-center gap-2 text-sm">

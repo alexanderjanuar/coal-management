@@ -21,6 +21,7 @@ class DailyTaskItem extends Component implements HasForms
     public ?int $selectedClientId = null;
     public bool $showSubtasks = false;
     public ?array $newSubtaskData = [];
+    public ?array $dueDateData = [];
 
     protected $listeners = ['taskUpdated' => '$refresh'];
 
@@ -36,12 +37,16 @@ class DailyTaskItem extends Component implements HasForms
         $this->newSubtaskForm->fill([
             'title' => '',
         ]);
+        $this->dueDateForm->fill([
+            'task_date' => $this->task->task_date,
+        ]);
     }
 
     protected function getForms(): array
     {
         return [
             'newSubtaskForm',
+            'dueDateForm', // Tambah ini
         ];
     }
 
@@ -281,7 +286,43 @@ class DailyTaskItem extends Component implements HasForms
     public function getUserOptions(): array
     {
         return User::orderBy('name')->pluck('name', 'id')->toArray();
-}
+    }
+
+    // Tambahkan method baru ini
+    public function dueDateForm(Form $form): Form
+    {
+        return $form
+            ->schema([
+                Forms\Components\DatePicker::make('task_date')
+                    ->label('Due Date')
+                    ->native(false)
+                    ->displayFormat('d M Y')
+                    ->format('Y-m-d')
+                    ->required()
+                    ->closeOnDateSelection()
+                    ->live()
+                    ->afterStateUpdated(function ($state) {
+                        $this->updateTaskDate($state);
+                    }),
+            ])
+            ->statePath('dueDateData');
+    }
+
+    public function updateTaskDate($date): void
+    {
+        if (!$date) return;
+
+        $this->task->update(['task_date' => $date]);
+        $this->task->refresh();
+        
+        $this->dispatch('taskUpdated');
+        
+        Notification::make()
+            ->title('Due Date Updated')
+            ->body("Due date changed to " . \Carbon\Carbon::parse($date)->format('d M Y'))
+            ->success()
+            ->send();
+    }
 
     public function render()
     {

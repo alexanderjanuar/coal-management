@@ -119,8 +119,7 @@
         <div
             class="hidden lg:block bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm overflow-hidden">
             {{-- Enhanced Table Header --}}
-            <div
-                class="bg-gradient-to-r from-gray-50 to-gray-100 dark:from-gray-700 dark:to-gray-600 border-b border-gray-200 dark:border-gray-600">
+            <div class="bg-gray-100 dark:bg-gray-800 border-b border-gray-200 dark:border-gray-600">
                 <div class="px-6 py-4">
                     <div
                         class="grid grid-cols-12 gap-4 text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wider">
@@ -254,8 +253,7 @@
             <div class="divide-y divide-gray-200 dark:divide-gray-600">
                 @forelse($groupedTasks as $groupName => $tasks)
                 {{-- Enhanced Group Header - Fixed Alpine.js --}}
-                <div class="bg-gradient-to-r from-gray-25 to-gray-50 dark:from-gray-700 dark:to-gray-600 px-6 py-4 border-l-4 border-l-primary-500 dark:border-l-primary-400"
-                    x-data="{ collapsed: false }">
+                <div class="bg-gray-25 dark:bg-gray-800 px-6 py-4" x-data="{ collapsed: false }">
                     <div class="flex items-center justify-between">
                         <div class="flex items-center gap-3">
                             @switch($groupBy)
@@ -317,9 +315,10 @@
 
                             <div>
                                 <h3 class="text-base font-semibold text-gray-900 dark:text-gray-100">{{ $groupName }}
+                                    <span class="text-sm text-gray-500 dark:text-gray-400">
+                                        {{ $tasks->count() }}
+                                    </span>
                                 </h3>
-                                <p class="text-sm text-gray-500 dark:text-gray-400">{{ $tasks->count() }} {{
-                                    $tasks->count() === 1 ? 'task' : 'tasks' }}</p>
                             </div>
                         </div>
 
@@ -356,7 +355,7 @@
                         x-transition:enter-end="opacity-100 transform translate-y-0"
                         x-transition:leave="transition ease-in duration-200"
                         x-transition:leave-start="opacity-100 transform translate-y-0"
-                        x-transition:leave-end="opacity-0 transform -translate-y-2" class="mt-4">
+                        x-transition:leave-end="opacity-0 transform -translate-y-2" class="mt-2">
 
                         @foreach($tasks as $task)
                         <div

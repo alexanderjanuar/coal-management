@@ -495,7 +495,9 @@ class ProjectResource extends Resource
                         'canceled' => 'Canceled',
                     ])
                     ->default(['draft', 'in_progress']),
-                    
+                
+
+
                 SelectFilter::make('pic_id')
                     ->label('Person in Charge')
                     ->options(function () {
@@ -514,6 +516,24 @@ class ProjectResource extends Resource
                     })
                     ->searchable()
                     ->preload(),
+                    SelectFilter::make('client_status')
+                        ->label('Client Status')
+                        ->query(function (Builder $query, array $data): Builder {
+                            if (empty($data['values'])) {
+                                return $query;
+                            }
+                            
+                            return $query->whereHas('client', function (Builder $query) use ($data) {
+                                $query->whereIn('status', $data['values']);
+                            });
+                        })
+                        ->options([
+                            'Active' => 'Active',
+                            'Inactive' => 'Inactive',
+                        ])
+                        ->multiple()
+                        ->default(['Active']) // Default hanya tampilkan client dengan status Active
+                        ->preload(),
                     
                 SelectFilter::make('client_id')
                     ->label('Client')
