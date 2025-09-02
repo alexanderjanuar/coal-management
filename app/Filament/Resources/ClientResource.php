@@ -397,7 +397,7 @@ class ClientResource extends Resource
                         'Active' => 'Active',
                         'Inactive' => 'Inactive',
                     ])
-                    ->default('Active'),
+                    ->default(['Active']),
                     
                 // PKP STATUS FILTER
                 Tables\Filters\SelectFilter::make('pkp_status')
