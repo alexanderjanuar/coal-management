@@ -78,31 +78,31 @@ class ViewProject extends ViewRecord
      */
     private function updateRequiredDocumentStatuses(): void
     {
-        foreach ($this->record->steps as $step) {
-            foreach ($step->requiredDocuments as $requiredDocument) {
-                $submittedDocs = $requiredDocument->submittedDocuments;
+        // foreach ($this->record->steps as $step) {
+        //     foreach ($step->requiredDocuments as $requiredDocument) {
+        //         $submittedDocs = $requiredDocument->submittedDocuments;
                 
-                if ($submittedDocs->isEmpty()) {
-                    // No submitted documents, keep as draft
-                    if ($requiredDocument->status !== 'draft') {
-                        $requiredDocument->status = 'draft';
-                        $requiredDocument->save();
-                    }
-                    continue;
-                }
+        //         if ($submittedDocs->isEmpty()) {
+        //             // No submitted documents, keep as draft
+        //             if ($requiredDocument->status !== 'draft') {
+        //                 $requiredDocument->status = 'draft';
+        //                 $requiredDocument->save();
+        //             }
+        //             continue;
+        //         }
                 
-                // Get all submitted document statuses
-                $submittedStatuses = $submittedDocs->pluck('status')->toArray();
+        //         // Get all submitted document statuses
+        //         $submittedStatuses = $submittedDocs->pluck('status')->toArray();
                 
-                // Determine the required document status based on submitted documents
-                $newStatus = $this->determineRequiredDocumentStatus($submittedStatuses);
+        //         // Determine the required document status based on submitted documents
+        //         $newStatus = $this->determineRequiredDocumentStatus($submittedStatuses);
                 
-                if ($requiredDocument->status !== $newStatus) {
-                    $requiredDocument->status = $newStatus;
-                    $requiredDocument->save();
-                }
-            }
-        }
+        //         if ($requiredDocument->status !== $newStatus) {
+        //             $requiredDocument->status = $newStatus;
+        //             $requiredDocument->save();
+        //         }
+        //     }
+        // }
     }
 
     /**

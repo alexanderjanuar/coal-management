@@ -1,116 +1,10 @@
-{{-- resources/views/livewire/daily-task/daily-task-list-component.blade.php - Fully Responsive with Dark Mode --}}
+{{-- resources/views/livewire/daily-task/daily-task-list-component.blade.php - Refactored Version --}}
 <div class="space-y-4 lg:space-y-6" x-data="taskManager()">
 
-    {{-- Enhanced Filters Section - Mobile Optimized & Collapsible --}}
-    <div class="bg-white dark:bg-gray-800 rounded-lg lg:rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm"
-        x-data="{ filtersCollapsed: true }">
-        <div class="p-4 lg:p-6 border-b border-gray-100 dark:border-gray-700">
-            <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-                <div class="flex items-center gap-3">
-                    <div
-                        class="w-6 h-6 lg:w-8 lg:h-8 bg-gray-100 dark:bg-gray-700 rounded-lg flex items-center justify-center">
-                        <x-heroicon-o-funnel class="w-3 h-3 lg:w-4 lg:h-4 text-gray-600 dark:text-gray-300" />
-                    </div>
-                    <div>
-                        <h3 class="text-base lg:text-lg font-semibold text-gray-900 dark:text-gray-100">Filters &
-                            Controls</h3>
-                        <p class="text-xs lg:text-sm text-gray-500 dark:text-gray-400 hidden sm:block">Customize your
-                            task view</p>
-                    </div>
-                </div>
-
-                <div class="flex items-center gap-2 flex-wrap">
-                    <x-filament::badge color="primary" size="lg" icon="heroicon-o-document-text">
-                        <span class="hidden sm:inline">{{ number_format($totalTasks) }} tasks</span>
-                        <span class="sm:hidden">{{ $totalTasks }}</span>
-                    </x-filament::badge>
-
-                    <x-filament::button wire:click="resetFilters" color="gray" size="sm" icon="heroicon-o-arrow-path"
-                        outlined>
-                        <span class="hidden sm:inline">Reset</span>
-                        <span class="sm:hidden sr-only">Reset Filters</span>
-                    </x-filament::button>
-
-                    <button @click="filtersCollapsed = !filtersCollapsed"
-                        class="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors">
-                        <x-heroicon-o-chevron-down
-                            class="w-4 h-4 text-gray-500 dark:text-gray-400 transition-transform duration-200"
-                            x-bind:class="{ 'rotate-180': !filtersCollapsed }" />
-                    </button>
-                </div>
-            </div>
-        </div>
-
-        <div x-show="!filtersCollapsed" x-transition:enter="transition ease-out duration-300"
-            x-transition:enter-start="opacity-0 transform -translate-y-2"
-            x-transition:enter-end="opacity-100 transform translate-y-0"
-            x-transition:leave="transition ease-in duration-200"
-            x-transition:leave-start="opacity-100 transform translate-y-0"
-            x-transition:leave-end="opacity-0 transform -translate-y-2" class="p-4 lg:p-6">
-
-            {{-- Active Filters Display --}}
-            @if(!empty($activeFilters))
-            <div
-                class="mb-6 p-4 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
-                <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-3">
-                    <div class="flex items-center gap-2">
-                        <x-heroicon-o-funnel class="w-4 h-4 text-blue-600 dark:text-blue-400" />
-                        <span class="text-sm font-medium text-blue-900 dark:text-blue-200">Active Filters</span>
-                        <span
-                            class="text-xs bg-blue-200 dark:bg-blue-800 text-blue-800 dark:text-blue-200 px-2 py-1 rounded-full">{{
-                            count($activeFilters) }}</span>
-                    </div>
-                    <button wire:click="resetFilters"
-                        class="text-xs text-blue-700 dark:text-blue-300 hover:text-blue-900 dark:hover:text-blue-100 font-medium hover:underline flex items-center gap-1">
-                        <x-heroicon-o-x-mark class="w-3 h-3" />
-                        Clear All
-                    </button>
-                </div>
-
-                <div class="flex flex-wrap gap-2">
-                    @foreach($activeFilters as $filter)
-                    <div
-                        class="inline-flex items-center gap-2 px-3 py-2 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-600 shadow-sm text-sm">
-                        <x-dynamic-component :component="$filter['icon']" class="w-3 h-3 {{ match($filter['color']) {
-                                    'primary' => 'text-primary-600 dark:text-primary-400',
-                                    'success' => 'text-green-600 dark:text-green-400',
-                                    'warning' => 'text-orange-600 dark:text-orange-400',
-                                    'danger' => 'text-red-600 dark:text-red-400',
-                                    'info' => 'text-blue-600 dark:text-blue-400',
-                                    default => 'text-gray-600 dark:text-gray-400'
-                                } }}" />
-                        <span class="font-medium text-gray-700 dark:text-gray-300">{{ $filter['label'] }}:</span>
-                        <span class="text-gray-600 dark:text-gray-400">
-                            @if(isset($filter['count']) && $filter['count'] > 1)
-                            {{ Str::limit($filter['value'], 20) }}
-                            <span
-                                class="text-xs bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 px-1.5 py-0.5 rounded-full ml-1">{{
-                                $filter['count'] }}</span>
-                            @else
-                            {{ Str::limit($filter['value'], 30) }}
-                            @endif
-                        </span>
-                        <button wire:click="removeFilter('{{ $filter['type'] }}')"
-                            class="ml-1 text-gray-400 dark:text-gray-500 hover:text-red-500 dark:hover:text-red-400 transition-colors"
-                            title="Remove filter">
-                            <x-heroicon-o-x-mark class="w-4 h-4" />
-                        </button>
-                    </div>
-                    @endforeach
-                </div>
-            </div>
-            @endif
-
-            {{ $this->filterForm }}
-
-            <div wire:loading.delay class="flex items-center justify-center py-4">
-                <div class="flex items-center text-primary-600 dark:text-primary-400">
-                    <x-heroicon-o-arrow-path class="w-5 h-5 animate-spin mr-2" />
-                    <span class="text-sm font-medium">Loading tasks...</span>
-                </div>
-            </div>
-        </div>
-    </div>
+    {{-- Filter Component - Separate component --}}
+    <livewire:daily-task.daily-task-filter-component 
+        :initial-filters="$this->currentFilters" 
+        :total-tasks="$totalTasks" />
 
     {{-- Enhanced Task List Content - Responsive Views --}}
     <div class="space-y-4 lg:space-y-6">
@@ -223,20 +117,13 @@
                         class="w-24 h-24 bg-gray-100 dark:bg-gray-700 rounded-full flex items-center justify-center mx-auto mb-6">
                         <x-heroicon-o-clipboard-document-list class="w-12 h-12 text-gray-400 dark:text-gray-500" />
                     </div>
-                    <h3 class="text-xl font-semibold text-gray-900 dark:text-gray-100 mb-2">No tasks found</h3>
+                    <h3 class="text-xl font-semibold text-gray-900 dark:text-gray-100 mb-2">Tidak ada task ditemukan</h3>
                     <p class="text-gray-500 dark:text-gray-400 mb-6 max-w-sm mx-auto">
-                        @if(!empty(array_filter($this->getCurrentFilters())))
-                        Try adjusting your filters to see more tasks
-                        @else
-                        Get started by creating your first task above
-                        @endif
+                        Coba sesuaikan filter Anda untuk melihat lebih banyak task
                     </p>
                     <div class="flex flex-col sm:flex-row gap-3 justify-center">
-                        <x-filament::button wire:click="resetFilters" color="gray" outlined>
-                            Clear Filters
-                        </x-filament::button>
                         <x-filament::button color="primary" icon="heroicon-o-plus">
-                            Create Task
+                            Buat Task
                         </x-filament::button>
                     </div>
                 </div>
@@ -252,7 +139,7 @@
             {{-- Desktop Grouped View --}}
             <div class="divide-y divide-gray-200 dark:divide-gray-600">
                 @forelse($groupedTasks as $groupName => $tasks)
-                {{-- Enhanced Group Header - Fixed Alpine.js --}}
+                {{-- Enhanced Group Header --}}
                 <div class="bg-gray-25 dark:bg-gray-800 px-6 py-4" x-data="{ collapsed: false }">
                     <div class="flex items-center justify-between">
                         <div class="flex items-center gap-3">
@@ -349,7 +236,7 @@
                         </div>
                     </div>
 
-                    {{-- Group Tasks - Fixed collapse --}}
+                    {{-- Group Tasks --}}
                     <div x-show="!collapsed" x-transition:enter="transition ease-out duration-300"
                         x-transition:enter-start="opacity-0 transform -translate-y-2"
                         x-transition:enter-end="opacity-100 transform translate-y-0"
@@ -475,10 +362,10 @@
                         class="w-24 h-24 bg-gray-100 dark:bg-gray-700 rounded-full flex items-center justify-center mx-auto mb-6">
                         <x-heroicon-o-clipboard-document-list class="w-12 h-12 text-gray-400 dark:text-gray-500" />
                     </div>
-                    <h3 class="text-xl font-semibold text-gray-900 dark:text-gray-100 mb-2">No tasks found</h3>
-                    <p class="text-gray-500 dark:text-gray-400 mb-6">Try adjusting your filters or create a new task</p>
-                    <x-filament::button wire:click="resetFilters" color="gray" outlined>
-                        Clear Filters
+                    <h3 class="text-xl font-semibold text-gray-900 dark:text-gray-100 mb-2">Tidak ada task ditemukan</h3>
+                    <p class="text-gray-500 dark:text-gray-400 mb-6">Coba sesuaikan filter Anda atau buat task baru</p>
+                    <x-filament::button color="primary" icon="heroicon-o-plus">
+                        Buat Task
                     </x-filament::button>
                 </div>
                 @endforelse
@@ -502,20 +389,13 @@
                     class="w-16 h-16 bg-gray-100 dark:bg-gray-700 rounded-full flex items-center justify-center mx-auto mb-4">
                     <x-heroicon-o-clipboard-document-list class="w-8 h-8 text-gray-400 dark:text-gray-500" />
                 </div>
-                <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-2">No tasks found</h3>
+                <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-2">Tidak ada task ditemukan</h3>
                 <p class="text-gray-500 dark:text-gray-400 mb-4 text-sm">
-                    @if(!empty(array_filter($this->getCurrentFilters())))
-                    Try adjusting your filters to see more tasks
-                    @else
-                    Get started by creating your first task above
-                    @endif
+                    Coba sesuaikan filter Anda untuk melihat lebih banyak task
                 </p>
                 <div class="flex flex-col gap-3">
-                    <x-filament::button wire:click="resetFilters" color="gray" outlined size="sm">
-                        Clear Filters
-                    </x-filament::button>
                     <x-filament::button color="primary" icon="heroicon-o-plus" size="sm">
-                        Create Task
+                        Buat Task
                     </x-filament::button>
                 </div>
             </div>
@@ -652,23 +532,35 @@
                     class="w-16 h-16 bg-gray-100 dark:bg-gray-700 rounded-full flex items-center justify-center mx-auto mb-4">
                     <x-heroicon-o-clipboard-document-list class="w-8 h-8 text-gray-400 dark:text-gray-500" />
                 </div>
-                <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-2">No tasks found</h3>
-                <p class="text-gray-500 dark:text-gray-400 mb-4 text-sm">Try adjusting your filters or create a new task
+                <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-2">Tidak ada task ditemukan</h3>
+                <p class="text-gray-500 dark:text-gray-400 mb-4 text-sm">Coba sesuaikan filter Anda atau buat task baru
                 </p>
-                <x-filament::button wire:click="resetFilters" color="gray" outlined size="sm">
-                    Clear Filters
+                <x-filament::button color="primary" icon="heroicon-o-plus" size="sm">
+                    Buat Task
                 </x-filament::button>
             </div>
             @endforelse
             @endif
         </div>
         @else
+        {{-- Kanban Board View (placeholder for future implementation) --}}
+        <div class="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm p-8 text-center">
+            <div class="w-24 h-24 bg-gray-100 dark:bg-gray-700 rounded-full flex items-center justify-center mx-auto mb-6">
+                <x-heroicon-o-squares-2x2 class="w-12 h-12 text-gray-400 dark:text-gray-500" />
+            </div>
+            <h3 class="text-xl font-semibold text-gray-900 dark:text-gray-100 mb-2">Kanban Board</h3>
+            <p class="text-gray-500 dark:text-gray-400 mb-6">Tampilan Kanban Board akan segera hadir</p>
+            <x-filament::button wire:click="$set('currentFilters.view_mode', 'list')" color="primary">
+                Kembali ke List View
+            </x-filament::button>
+        </div>
         @endif
     </div>
 
+    {{-- Task Detail Modal --}}
     <livewire:daily-task.daily-task-detail-modal />
 
-    {{-- Responsive JavaScript --}}
+    {{-- JavaScript untuk manajemen task --}}
     <script>
         function taskManager() {
             return {
