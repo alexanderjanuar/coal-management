@@ -22,6 +22,12 @@ class KppService
                 'KPP Pratama Langsa',
                 'KPP Pratama Subulussalam',
                 'KPP Pratama Tapaktuan',
+                'KPP Tenggarong',
+                'KPP Balikpapan Barat',
+                'KPP Balikpapan Timur',
+                'KPP Madya Dua Jakarta Barat',
+                'KPP Madya Balikpapan',
+                'KPP Bontang',
             ],
 
             // SUMATERA UTARA
