@@ -71,11 +71,10 @@ class AccountRepresentativeResource extends Resource
                     ->schema([
                         Forms\Components\Select::make('kpp')
                             ->label('KPP')
-                            ->options(\App\Services\Clients\KppService::getAllKpp())
+                            ->options(\App\Services\Clients\KppService::getKppOptions())
                             ->searchable()
                             ->placeholder('Pilih atau cari KPP...')
                             ->helperText('Pilih KPP tempat AR bertugas'),
-                            
                         Forms\Components\Select::make('status')
                             ->label('Status')
                             ->options([

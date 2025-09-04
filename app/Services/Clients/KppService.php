@@ -9,9 +9,9 @@ class KppService
      * 
      * @return array
      */
-    public static function getAllKpp(): array
+    public static function getAllKppByRegion(): array
     {
-        $kppByRegion = [
+        return [
             // ACEH
             'ACEH' => [
                 'KPP Pratama Banda Aceh',
@@ -451,17 +451,6 @@ class KppService
                 'KPP Pratama Fakfak',
             ],
         ];
-
-        // Menggabungkan semua KPP menjadi satu array
-        $allKpp = [];
-        foreach ($kppByRegion as $region => $kppList) {
-            $allKpp = array_merge($allKpp, $kppList);
-        }
-
-        // Mengurutkan secara alfabetis
-        sort($allKpp);
-
-        return $allKpp;
     }
 
     /**
