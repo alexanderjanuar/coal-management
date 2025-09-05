@@ -35,6 +35,8 @@ use Filament\Infolists\Components\ViewEntry;
 use App\Exports\Clients\ClientsExport;
 use App\Exports\Clients\ClientsDetailedExport;
 use Maatwebsite\Excel\Facades\Excel;
+use App\Models\AccountRepresentative;
+
 
 class ClientResource extends Resource
 {
@@ -99,6 +101,46 @@ class ClientResource extends Resource
                                     ->required(),
                             ])
                             ->helperText('Select or create a new PIC for this client'),
+                        
+                            Select::make('ar_id')
+                                ->label('Account Representative (AR)')
+                                ->relationship('accountRepresentative', 'name')
+                                ->searchable()
+                                ->preload()
+                                ->createOptionForm([
+                                    Forms\Components\TextInput::make('name')
+                                        ->required()
+                                        ->maxLength(255)
+                                        ->label('AR Name'),
+                                    Forms\Components\TextInput::make('phone_number')
+                                        ->tel()
+                                        ->label('Phone Number')
+                                        ->placeholder('+62 XXX XXXX XXXX'),
+                                    Forms\Components\TextInput::make('email')
+                                        ->email()
+                                        ->unique()
+                                        ->label('Email'),
+                                    Forms\Components\TextInput::make('kpp')
+                                        ->label('KPP')
+                                        ->maxLength(255),
+                                    Forms\Components\Textarea::make('notes')
+                                        ->label('Notes')
+                                        ->rows(2),
+                                    Forms\Components\Select::make('status')
+                                        ->options([
+                                            'active' => 'Active',
+                                            'inactive' => 'Inactive',
+                                        ])
+                                        ->default('active')
+                                        ->required(),
+                                ])
+                                ->createOptionAction(function (Forms\Components\Actions\Action $action) {
+                                    return $action
+                                        ->modalHeading('Create New Account Representative')
+                                        ->modalSubmitActionLabel('Create AR')
+                                        ->modalWidth('lg');
+                                })
+                                ->helperText('Select or create a new Account Representative for this client'),
                         Select::make('status')
                             ->label('Client Status')
                             ->options([
@@ -184,32 +226,7 @@ class ClientResource extends Resource
                             ->placeholder('XX.XXX.XXX.X-XXX.XXX'),
                         Forms\Components\TextInput::make('EFIN')
                             ->label('EFIN')
-                            ->placeholder('Electronic Filing Identification Number'),
-                        Forms\Components\TextInput::make('account_representative')
-                            ->label('Account Representative (AR)')
-                            ->maxLength(255)
-                            ->placeholder('AR Name'),
-                        Forms\Components\TextInput::make('ar_phone_number')
-                            ->label('AR Phone Number')
-                            ->tel()
-                            ->placeholder('+62 XXX XXXX XXXX'),
-                        Select::make('KPP')
-                            ->label('Kantor Pelayanan Pajak (KPP)')
-                            ->native(false)
-                            ->searchable()
-                            ->options([
-                                'SAMARINDA ULU' => 'KPP Samarinda Ulu',
-                                'SAMARINDA ILIR' => 'KPP Samarinda Ilir',
-                                'TENGGARONG' => 'KPP Tenggarong',
-                                'BALIKPAPAN BARAT' => 'KPP Balikpapan Barat',
-                                'BALIKPAPAN TIMUR' => 'KPP Balikpapan Timur',
-                                'MADYA DUA JAKARTA BARAT' => 'KPP Madya Dua Jakarta Barat',
-                                'MADYA BALIKPAPAN' => 'KPP Madya Balikpapan',
-                                'BONTANG' => 'KPP Bontang',
-                                'BANJARBARU' => 'KPP Banjarbaru',
-                            ])
-                            ->placeholder('Select KPP'),
-                            
+                            ->placeholder('Electronic Filing Identification Number'),                       
                         // PKP STATUS FIELD
                         Select::make('pkp_status')
                             ->label('Status PKP')
@@ -313,7 +330,7 @@ class ClientResource extends Resource
             ->columns([
                 ImageColumn::make('logo')
                     ->circular()
-                    ->defaultImageUrl('/images/default-avatar.png'),
+                    ->defaultImageUrl(fn($record) => 'https://ui-avatars.com/api/?name=' . urlencode($record->name) . '&color=7F9CF5&background=EBF4FF'),
                 Tables\Columns\TextColumn::make('name')
                     ->label('Client')
                     ->searchable()
@@ -350,6 +367,8 @@ class ClientResource extends Resource
                     })
                     ->sortable()
                     ->searchable(),
+                
+                    
                                     
                 Tables\Columns\TextColumn::make('core_tax_user_id')
                     ->label('Core Tax ID')
@@ -393,11 +412,12 @@ class ClientResource extends Resource
          
                 Tables\Filters\SelectFilter::make('status')
                     ->label('Client Status')
+                    ->native(false)
                     ->options([
                         'Active' => 'Active',
                         'Inactive' => 'Inactive',
                     ])
-                    ->default(['Active']),
+                    ->default('Active'),
                     
                 // PKP STATUS FILTER
                 Tables\Filters\SelectFilter::make('pkp_status')
@@ -405,15 +425,8 @@ class ClientResource extends Resource
                     ->options([
                         'PKP' => 'PKP',
                         'Non-PKP' => 'Non-PKP',
-                    ]),
-                    
-                Tables\Filters\SelectFilter::make('status')
-                    ->label('Client Status')
-                    ->options([
-                        'Active' => 'Active',
-                        'Inactive' => 'Inactive',
-                    ]),
-                    
+                    ]),                    
+          
                 // CONTRACT FILTERS
                 Tables\Filters\Filter::make('has_ppn_contract')
                     ->label('Memiliki Kontrak PPN')

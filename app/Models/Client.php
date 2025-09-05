@@ -38,6 +38,10 @@ class Client extends Model
         return $this->belongsTo(Pic::class);
     }
 
+    public function accountRepresentative(): BelongsTo
+    {
+        return $this->belongsTo(AccountRepresentative::class, 'ar_id');
+    }
 
     public function userClients()
     {
