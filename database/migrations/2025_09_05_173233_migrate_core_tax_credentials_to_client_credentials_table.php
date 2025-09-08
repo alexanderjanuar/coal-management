@@ -27,7 +27,6 @@ return new class extends Migration
 
             if (!$existingCredential) {
                 DB::table('client_credentials')->insert([
-                    'client_id' => $client->id,
                     'core_tax_user_id' => $client->core_tax_user_id,
                     'core_tax_password' => $client->core_tax_password,
                     'credential_type' => 'general',
