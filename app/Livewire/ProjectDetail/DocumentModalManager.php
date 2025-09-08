@@ -656,6 +656,9 @@ class DocumentModalManager extends Component implements HasForms
         $submissions = $this->document->submittedDocuments;
         
         if ($submissions->count() === 0) {
+            if ($this->document->status === 'approved') {
+                return;
+            }
             $this->overallStatus = 'draft';
             $this->document->status = 'draft';
             $this->document->save();

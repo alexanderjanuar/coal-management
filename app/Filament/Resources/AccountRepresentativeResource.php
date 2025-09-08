@@ -17,6 +17,9 @@ use Filament\Support\Enums\FontWeight;
 use Filament\Tables\Enums\FiltersLayout;
 use Filament\Forms\Components\Section;
 use Filament\Tables\Actions\ActionGroup;
+use App\Models\Client;
+use Filament\Notifications\Notification;
+use Illuminate\Database\Eloquent\Collection;
 
 class AccountRepresentativeResource extends Resource
 {
@@ -132,19 +135,12 @@ class AccountRepresentativeResource extends Resource
                     ->placeholder('Tidak diset')
                     ->toggleable(),
 
-                // Tables\Columns\TextColumn::make('clients_count')
-                //     ->label('Jumlah Klien')
-                //     ->counts('clients')
-                //     ->badge()
-                //     ->color('info')
-                //     ->sortable(),
-
-                // Tables\Columns\TextColumn::make('active_clients_count')
-                //     ->label('Klien Aktif')
-                //     ->counts(['clients' => fn (Builder $query) => $query->where('status', 'Active')])
-                //     ->badge()
-                //     ->color('success')
-                //     ->sortable(),
+                Tables\Columns\TextColumn::make('clients_count')
+                    ->label('Jumlah Klien')
+                    ->counts('clients')
+                    ->badge()
+                    ->color('info')
+                    ->sortable(),
 
                 Tables\Columns\SelectColumn::make('status')
                     ->label('Status')
@@ -234,6 +230,115 @@ class AccountRepresentativeResource extends Resource
             ])
             ->bulkActions([
                 Tables\Actions\BulkActionGroup::make([
+                    Tables\Actions\BulkAction::make('assign_to_clients')
+                        ->label('Assign ke Klien')
+                        ->icon('heroicon-o-user-plus')
+                        ->color('info')
+                        ->form([
+                            Forms\Components\Select::make('client_ids')
+                                ->label('Pilih Klien')
+                                ->multiple()
+                                ->searchable()
+                                ->preload()
+                                ->options(function () {
+                                    return Client::query()
+                                        ->where('status', 'Active')
+                                        ->orderBy('name')
+                                        ->pluck('name', 'id');
+                                })
+                                ->getSearchResultsUsing(function (string $search) {
+                                    return Client::query()
+                                        ->where('status', 'Active')
+                                        ->where('name', 'like', "%{$search}%")
+                                        ->limit(50)
+                                        ->pluck('name', 'id');
+                                })
+                                ->required()
+                                ->helperText('Pilih satu atau lebih klien untuk diassign ke AR yang dipilih'),
+                                
+                            Forms\Components\Toggle::make('replace_existing')
+                                ->label('Ganti AR yang sudah ada')
+                                ->helperText('Jika diaktifkan, akan mengganti AR yang sudah diassign ke klien tersebut')
+                                ->default(false),
+                                
+                            Forms\Components\Textarea::make('notes')
+                                ->label('Catatan Assignment')
+                                ->placeholder('Catatan untuk assignment ini...')
+                                ->maxLength(500)
+                                ->rows(3),
+                        ])
+                        ->action(function (Collection $records, array $data) {
+                            $clientIds = $data['client_ids'];
+                            $replaceExisting = $data['replace_existing'] ?? false;
+                            $notes = $data['notes'] ?? null;
+                            
+                            $successCount = 0;
+                            $skippedCount = 0;
+                            $updatedCount = 0;
+                            
+                            foreach ($records as $ar) {
+                                foreach ($clientIds as $clientId) {
+                                    $client = Client::find($clientId);
+                                    
+                                    if (!$client) {
+                                        continue;
+                                    }
+                                    
+                                    // Cek apakah client sudah punya AR
+                                    if ($client->ar_id && !$replaceExisting) {
+                                        $skippedCount++;
+                                        continue;
+                                    }
+                                    
+                                    $previousAr = $client->ar_id;
+                                    
+                                    // Update client dengan AR baru
+                                    $client->update(['ar_id' => $ar->id]);
+                                    
+                                    // Log activity
+                                    $logMessage = "Klien {$client->name} diassign ke AR {$ar->name}";
+                                    if ($previousAr) {
+                                        $previousArName = AccountRepresentative::find($previousAr)?->name ?? 'Unknown';
+                                        $logMessage .= " (sebelumnya: {$previousArName})";
+                                        $updatedCount++;
+                                    } else {
+                                        $successCount++;
+                                    }
+                                    
+                                    if ($notes) {
+                                        $logMessage .= " - Catatan: {$notes}";
+                                    }
+                                    
+                                    activity()
+                                        ->performedOn($client)
+                                        ->causedBy(auth()->user())
+                                        ->log($logMessage);
+                                }
+                            }
+                            
+                            // Notification dengan summary
+                            $message = "Assignment selesai! ";
+                            if ($successCount > 0) {
+                                $message .= "{$successCount} assignment baru, ";
+                            }
+                            if ($updatedCount > 0) {
+                                $message .= "{$updatedCount} AR diganti, ";
+                            }
+                            if ($skippedCount > 0) {
+                                $message .= "{$skippedCount} dilewati (sudah ada AR).";
+                            }
+                            
+                            Notification::make()
+                                ->title('Assignment AR Berhasil')
+                                ->body(rtrim($message, ', ') . '.')
+                                ->success()
+                                ->send();
+                        })
+                        ->modalHeading('Assign AR ke Klien')
+                        ->modalDescription('Pilih klien yang akan diassign ke Account Representative yang dipilih')
+                        ->modalSubmitActionLabel('Assign Sekarang')
+                        ->requiresConfirmation()
+                        ->deselectRecordsAfterCompletion(),
                     Tables\Actions\BulkAction::make('activate')
                         ->label('Aktifkan')
                         ->icon('heroicon-o-check-circle')

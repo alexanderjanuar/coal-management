@@ -105,8 +105,7 @@
                         @if (!auth()->user()->hasRole(['staff', 'client']))
                         <x-filament::button x-data="{}"
                             x-on:click="$dispatch('open-modal', { id: 'confirm-approve-all' })" color="success"
-                            size="sm" :disabled="$document->submittedDocuments->count() ===
-                                    $document->submittedDocuments->where('status', 'approved')->count()">
+                            size="sm">
                             <div class="flex items-center gap-2">
                                 <x-heroicon-m-check-badge class="w-4 h-4" />
                                 <span>Approve All</span>

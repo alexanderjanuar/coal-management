@@ -98,43 +98,48 @@ class ProjectDetailDocumentModal extends Component implements HasForms
      */
     public function calculateOverallStatus(): void
     {
-        // $submissions = $this->document->submittedDocuments;
+        $submissions = $this->document->submittedDocuments;
 
-        // if ($submissions->count() === 0) {
-        //     $this->overallStatus = 'draft';
-        //     $this->document->status = 'draft';
-        //     $this->document->save();
-        //     return;
-        // }
+        if ($submissions->count() === 0) {
+            
+            if ($this->document->status === 'approved') {
+                return;
+            }
 
-        // // Count different statuses
-        // $approvedCount = $submissions->where('status', 'approved')->count();
-        // $rejectedCount = $submissions->where('status', 'rejected')->count();
-        // $pendingReviewCount = $submissions->where('status', 'pending_review')->count();
+            $this->overallStatus = 'draft';
+            $this->document->status = 'draft';
+            $this->document->save();
+            return;
+        }
 
-        // // Set status based on new conditions
-        // if ($rejectedCount === $submissions->count()) {
-        //     // All documents are rejected
-        //     $status = 'rejected';
-        // } elseif ($approvedCount > 0) {
-        //     // At least one document is approved
-        //     $status = 'approved';
-        // } elseif ($pendingReviewCount > 0) {
-        //     // At least one document is pending review
-        //     $status = 'pending_review';
-        // } else {
-        //     // Default to uploaded if no other conditions met
-        //     $status = 'uploaded';
-        // }
+        // Count different statuses
+        $approvedCount = $submissions->where('status', 'approved')->count();
+        $rejectedCount = $submissions->where('status', 'rejected')->count();
+        $pendingReviewCount = $submissions->where('status', 'pending_review')->count();
 
-        // $this->overallStatus = $status;
+        // Set status based on new conditions
+        if ($rejectedCount === $submissions->count()) {
+            // All documents are rejected
+            $status = 'rejected';
+        } elseif ($approvedCount > 0) {
+            // At least one document is approved
+            $status = 'approved';
+        } elseif ($pendingReviewCount > 0) {
+            // At least one document is pending review
+            $status = 'pending_review';
+        } else {
+            // Default to uploaded if no other conditions met
+            $status = 'uploaded';
+        }
+
+        $this->overallStatus = $status;
         
-        // // Only update if status has changed
-        // if ($this->document->status !== $status) {
-        //     $oldStatus = $this->document->status;
-        //     $this->document->status = $status;
-        //     $this->document->save();
-        // }
+        // Only update if status has changed
+        if ($this->document->status !== $status) {
+            $oldStatus = $this->document->status;
+            $this->document->status = $status;
+            $this->document->save();
+        }
     }
 
     protected function getForms(): array
