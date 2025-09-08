@@ -270,14 +270,14 @@ class ProjectDetailDocumentModal extends Component implements HasForms
                 ->where('status', '!=', 'rejected')
                 ->get();
 
-            if ($documents->isEmpty()) {
-                $this->sendNotification(
-                    'warning',
-                    'No Documents Found',
-                    'There are no documents available to approve.'
-                );
-                return;
-            }
+            // if ($documents->isEmpty()) {
+            //     $this->sendNotification(
+            //         'warning',
+            //         'No Documents Found',
+            //         'There are no documents available to approve.'
+            //     );
+            //     return;
+            // }
 
             // Store the count of affected documents
             $affectedCount = $documents->count();
