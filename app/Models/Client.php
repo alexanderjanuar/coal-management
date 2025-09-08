@@ -6,6 +6,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 
@@ -46,6 +47,14 @@ class Client extends Model
     public function userClients()
     {
         return $this->hasMany(UserClient::class);
+    }
+
+    /**
+     * Relationship ke credential utama
+     */
+    public function clientCredential(): BelongsTo
+    {
+        return $this->belongsTo(ClientCredential::class, 'credential_id');
     }
 
     public function clientDocuments(): HasMany

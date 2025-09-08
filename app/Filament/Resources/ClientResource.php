@@ -8,6 +8,7 @@ use App\Filament\Resources\ClientResource\RelationManagers\ProgressRelationManag
 use Filament\Forms\Components\Section;
 use App\Models\Client;
 use App\Models\Pic;
+use App\Models\ClientCredential;
 use Filament\Forms;
 use Filament\Forms\Form;
 use Filament\Resources\Resource;
@@ -70,6 +71,7 @@ class ClientResource extends Resource
                         Forms\Components\TextInput::make('email')
                             ->email()
                             ->label('Client Email')
+                            ->unique(ignoreRecord: true)
                             ->maxLength(255),
                         Forms\Components\TextInput::make('adress')
                             ->label('Address'),
@@ -120,9 +122,12 @@ class ClientResource extends Resource
                                         ->email()
                                         ->unique()
                                         ->label('Email'),
-                                    Forms\Components\TextInput::make('kpp')
+                                    Forms\Components\Select::make('kpp')
                                         ->label('KPP')
-                                        ->maxLength(255),
+                                        ->options(\App\Services\Clients\KppService::getKppOptions())
+                                        ->searchable()
+                                        ->placeholder('Pilih atau cari KPP...')
+                                        ->helperText('Pilih KPP tempat AR bertugas'),
                                     Forms\Components\Textarea::make('notes')
                                         ->label('Notes')
                                         ->rows(2),
@@ -176,8 +181,8 @@ class ClientResource extends Resource
                     ->hiddenOn(['create', 'edit'])
                     ->columnSpanFull(),
 
-                Section::make('Core Tax Account')
-                    ->description('Client credentials for Core Tax application access')
+                Section::make('Kredensial Client')
+                    ->description('Kredensial Klien untuk akses aplikasi perpajakan dan email')
                     ->icon('heroicon-o-key')
                     ->schema([
                         Forms\Components\TextInput::make('core_tax_user_id')
@@ -186,6 +191,7 @@ class ClientResource extends Resource
                             ->placeholder('Enter Core Tax User ID')
                             ->helperText('Unique identifier for Core Tax application login')
                             ->suffixIcon('heroicon-o-identification'),
+                            
                         Forms\Components\TextInput::make('core_tax_password')
                             ->label('Core Tax Password')
                             ->maxLength(255)
@@ -193,28 +199,25 @@ class ClientResource extends Resource
                             ->default('Samarinda#1')
                             ->helperText('Password for Core Tax application access')
                             ->suffixIcon('heroicon-o-lock-closed'),
-                        Forms\Components\Placeholder::make('core_tax_status')
-                            ->label('Account Status')
-                            ->content(function (Forms\Get $get, ?Client $record) {
-                                if ($record) {
-                                    return view('filament.components.client-core-tax-status', ['record' => $record]);
-                                }
-                                
-                                $userId = $get('core_tax_user_id');
-                                $password = $get('core_tax_password');
-                                
-                                if ($userId && $password) {
-                                    return view('filament.components.core-tax-status-preview', ['status' => 'complete']);
-                                } elseif ($userId || $password) {
-                                    return view('filament.components.core-tax-status-preview', ['status' => 'incomplete']);
-                                } else {
-                                    return view('filament.components.core-tax-status-preview', ['status' => 'empty']);
-                                }
-                            })
-                            ->columnSpanFull(),
+
+                        Forms\Components\TextInput::make('email')
+                            ->label('Client Email Account')
+                            ->email()
+                            ->maxLength(255)
+                            ->placeholder('client@example.com')
+                            ->helperText('Email account for client access')
+                            ->suffixIcon('heroicon-o-envelope'),
+                            
+                        Forms\Components\TextInput::make('email_password')
+                            ->label('Email Password')
+                            ->maxLength(255)
+                            ->placeholder('Enter Email Password')
+                            ->helperText('Password for email account access')
+                            ->suffixIcon('heroicon-o-lock-closed'),
                     ])
                     ->columns(2)
-                    ->collapsible(),
+                    ->collapsible()
+                    ->relationship('clientCredential'),
                 
                 Section::make('Client Tax Information')
                     ->description('Tax registration and compliance details')
@@ -370,7 +373,7 @@ class ClientResource extends Resource
                 
                     
                                     
-                Tables\Columns\TextColumn::make('core_tax_user_id')
+                Tables\Columns\TextColumn::make('clientCredential.core_tax_user_id')
                     ->label('Core Tax ID')
                     ->searchable()
                     ->copyable()
@@ -464,11 +467,11 @@ class ClientResource extends Resource
                 ])
             ->actions([
             // Existing Core Tax action
-            Tables\Actions\Action::make('view_core_tax_credentials')
+            Tables\Actions\Action::make('view_client_credentials')
                 ->label('')
                 ->icon('heroicon-o-key')
                 ->color('info')
-                ->modalHeading('Core Tax Credentials')
+                ->modalHeading('Client Application Credentials')
                 ->modalContent(fn ($record) => view('filament.modals.client-core-tax-credentials', ['record' => $record]))
                 ->modalActions([
                     Tables\Actions\Action::make('close')
@@ -476,7 +479,20 @@ class ClientResource extends Resource
                         ->color('gray')
                         ->close(),
                 ])
-                ->visible(fn ($record) => $record->core_tax_user_id || $record->core_tax_password),
+                ->visible(function ($record) {
+                    // Show if has credential record with any filled data OR has PIC assigned
+                    $hasCredential = $record->clientCredential && (
+                        $record->clientCredential->core_tax_user_id || 
+                        $record->clientCredential->core_tax_password ||
+                        $record->clientCredential->email ||
+                        $record->clientCredential->email_password
+                    );
+                    
+                    $hasPic = $record->pic_id && $record->pic;
+                    
+                    return $hasCredential || $hasPic;
+                }),
+
 
             // PIC Management Actions Group
             Tables\Actions\ActionGroup::make([
@@ -837,38 +853,38 @@ class ClientResource extends Resource
             });
     }
 
-    public static function getExportStatistics($records = null): array
-    {
-        if ($records) {
-            // Statistics for selected records
-            $clientsCount = $records->count();
-            $withPIC = $records->whereNotNull('pic_id')->count();
-            $withCoreTax = $records->filter(function($client) {
-                return $client->core_tax_user_id && $client->core_tax_password;
-            })->count();
-            $activeContracts = $records->filter(function($client) {
-                return $client->ppn_contract || $client->pph_contract || $client->bupot_contract;
-            })->count();
-        } else {
-            // Statistics for all records
-            $clientsCount = Client::count();
-            $withPIC = Client::whereNotNull('pic_id')->count();
-            $withCoreTax = Client::whereNotNull('core_tax_user_id')
-                ->whereNotNull('core_tax_password')->count();
-            $activeContracts = Client::where(function($q) {
-                $q->where('ppn_contract', true)
-                ->orWhere('pph_contract', true)
-                ->orWhere('bupot_contract', true);
-            })->count();
-        }
+    // public static function getExportStatistics($records = null): array
+    // {
+    //     if ($records) {
+    //         // Statistics for selected records
+    //         $clientsCount = $records->count();
+    //         $withPIC = $records->whereNotNull('pic_id')->count();
+    //         $withCoreTax = $records->filter(function($client) {
+    //             return $client->core_tax_user_id && $client->core_tax_password;
+    //         })->count();
+    //         $activeContracts = $records->filter(function($client) {
+    //             return $client->ppn_contract || $client->pph_contract || $client->bupot_contract;
+    //         })->count();
+    //     } else {
+    //         // Statistics for all records
+    //         $clientsCount = Client::count();
+    //         $withPIC = Client::whereNotNull('pic_id')->count();
+    //         $withCoreTax = Client::whereNotNull('core_tax_user_id')
+    //             ->whereNotNull('core_tax_password')->count();
+    //         $activeContracts = Client::where(function($q) {
+    //             $q->where('ppn_contract', true)
+    //             ->orWhere('pph_contract', true)
+    //             ->orWhere('bupot_contract', true);
+    //         })->count();
+    //     }
 
-        return [
-            'total_clients' => $clientsCount,
-            'with_pic' => $withPIC,
-            'with_core_tax' => $withCoreTax,
-            'with_contracts' => $activeContracts,
-        ];
-    }
+    //     return [
+    //         'total_clients' => $clientsCount,
+    //         'with_pic' => $withPIC,
+    //         'with_core_tax' => $withCoreTax,
+    //         'with_contracts' => $activeContracts,
+    //     ];
+    // }
 
     public static function getNavigationBadge(): ?string
     {
@@ -877,7 +893,7 @@ class ClientResource extends Resource
 
     public static function getGloballySearchableAttributes(): array
     {
-        return ['name', 'email', 'NPWP', 'core_tax_user_id'];
+        return ['name', 'email', 'NPWP'];
     }
 
     public static function getRelations(): array

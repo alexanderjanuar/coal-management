@@ -13,6 +13,27 @@ class CreateClient extends CreateRecord
 {
     protected static string $resource = ClientResource::class;
 
+
+
+    protected function getRedirectUrl(): string
+    {
+        return $this->getResource()::getUrl('index');
+    }
+
+    protected function getCreatedNotification(): ?Notification
+    {
+        return Notification::make()
+            ->success()
+            ->title('Client berhasil ditambahkan')
+            ->body("Client {$this->record->name} telah berhasil dibuat.");
+    }
+   
+
+    public function getTitle(): string
+    {
+        return 'Tambah Client Baru';
+    }
+
     protected function afterCreate(): void
     {
         // Get users with the required roles
