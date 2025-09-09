@@ -83,10 +83,11 @@ class ViewProject extends ViewRecord
                 $submittedDocs = $requiredDocument->submittedDocuments;
                 
                 if ($submittedDocs->isEmpty()) {
-                    // No submitted documents, keep as draft
-                    if ($requiredDocument->status === 'approved') {
+                    // Check if status is approved_without_document, if so keep it
+                    if ($requiredDocument->status === 'approved_without_document') {
                         continue;
                     }
+                    
                     if ($requiredDocument->status !== 'draft') {
                         $requiredDocument->status = 'draft';
                         $requiredDocument->save();
@@ -161,8 +162,10 @@ class ViewProject extends ViewRecord
 
             $tasksCompleted = $tasks->every(fn($task) => $task->status === 'completed');
             
-            // Updated logic: step is completed only if all required documents are approved
-            $documentsCompleted = $documents->every(fn($doc) => $doc->status === 'approved');
+            // Updated logic: step is completed only if all required documents are approved or approved_without_document
+            $documentsCompleted = $documents->every(fn($doc) => 
+                in_array($doc->status, ['approved', 'approved_without_document'])
+            );
             
             // Check for documents that are still in progress
             $hasDocumentsInProgress = $documents->whereIn('status', ['uploaded', 'pending_review'])->count() > 0;
@@ -288,9 +291,17 @@ class ViewProject extends ViewRecord
         
         foreach ($this->record->steps as $step) {
             foreach ($step->requiredDocuments as $document) {
-                // Check if document is not approved
-                if ($document->status !== 'approved') {
-                    $statusLabel = ucfirst(str_replace('_', ' ', $document->status));
+                // Check if document is not approved or approved_without_document
+                if (!in_array($document->status, ['approved', 'approved_without_document'])) {
+                    $statusLabel = match($document->status) {
+                        'approved_without_document' => 'Disetujui Tanpa Dokumen',
+                        'approved' => 'Disetujui',
+                        'pending_review' => 'Menunggu Review',
+                        'uploaded' => 'Diunggah',
+                        'rejected' => 'Ditolak',
+                        'draft' => 'Draft',
+                        default => ucfirst(str_replace('_', ' ', $document->status))
+                    };
                     $unfinishedItems[] = "Document: {$document->name} ({$statusLabel})";
                     $allDocumentsResolved = false;
                 }
@@ -354,8 +365,8 @@ class ViewProject extends ViewRecord
                         
                         // Mark all documents as approved/completed
                         foreach ($step->requiredDocuments as $document) {
-                            if ($document->status !== 'approved') {
-                                // Only change status if not already approved
+                            if (!in_array($document->status, ['approved', 'approved_without_document'])) {
+                                // Only change status if not already approved or approved_without_document
                                 $document->status = 'approved';
                                 $document->save();
                             }

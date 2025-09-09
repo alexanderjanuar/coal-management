@@ -57,8 +57,8 @@ class ProjectDetailDocumentModal extends Component implements HasForms
     protected $listeners = [
         'refresh' => '$refresh',
         'documentUploaded' => 'handleDocumentUploaded',
+        'documentApprovedWithoutUpload' => 'handleDocumentApprovedWithoutUpload',
     ];
-
     /**
      * Track document being rejected
      */
@@ -101,40 +101,34 @@ class ProjectDetailDocumentModal extends Component implements HasForms
         $submissions = $this->document->submittedDocuments;
 
         if ($submissions->count() === 0) {
-            
-            if ($this->document->status === 'approved') {
+            // Jika tidak ada submission dan status sudah approved_without_document, jangan ubah
+            if ($this->document->status === 'approved_without_document') {
+                $this->overallStatus = 'approved_without_document';
                 return;
             }
-
             $this->overallStatus = 'draft';
             $this->document->status = 'draft';
             $this->document->save();
             return;
         }
 
-        // Count different statuses
+        // Rest of the existing logic...
         $approvedCount = $submissions->where('status', 'approved')->count();
         $rejectedCount = $submissions->where('status', 'rejected')->count();
         $pendingReviewCount = $submissions->where('status', 'pending_review')->count();
 
-        // Set status based on new conditions
         if ($rejectedCount === $submissions->count()) {
-            // All documents are rejected
             $status = 'rejected';
         } elseif ($approvedCount > 0) {
-            // At least one document is approved
             $status = 'approved';
         } elseif ($pendingReviewCount > 0) {
-            // At least one document is pending review
             $status = 'pending_review';
         } else {
-            // Default to uploaded if no other conditions met
             $status = 'uploaded';
         }
 
         $this->overallStatus = $status;
         
-        // Only update if status has changed
         if ($this->document->status !== $status) {
             $oldStatus = $this->document->status;
             $this->document->status = $status;
@@ -270,14 +264,14 @@ class ProjectDetailDocumentModal extends Component implements HasForms
                 ->where('status', '!=', 'rejected')
                 ->get();
 
-            // if ($documents->isEmpty()) {
-            //     $this->sendNotification(
-            //         'warning',
-            //         'No Documents Found',
-            //         'There are no documents available to approve.'
-            //     );
-            //     return;
-            // }
+            if ($documents->isEmpty()) {
+                $this->sendNotification(
+                    'warning',
+                    'No Documents Found',
+                    'There are no documents available to approve.'
+                );
+                return;
+            }
 
             // Store the count of affected documents
             $affectedCount = $documents->count();
@@ -428,6 +422,17 @@ class ProjectDetailDocumentModal extends Component implements HasForms
 
         // Fallback to type-based icons
         return $this->getDefaultIconForType($type);
+    }
+
+
+    public function handleDocumentApprovedWithoutUpload($eventData): void
+    {
+        // Refresh document
+        $this->document->refresh();
+        $this->calculateOverallStatus();
+
+
+        $this->dispatch('refresh');
     }
 
     /**

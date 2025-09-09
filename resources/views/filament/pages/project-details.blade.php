@@ -948,24 +948,26 @@
                                             x-on:click="$dispatch('open-modal', { id: 'document-modal-{{ $document->id }}' })"
                                             class="w-full group">
                                             <div class="flex flex-col sm:flex-row items-start sm:items-center gap-3 p-3 bg-white dark:bg-gray-800 rounded-lg transition-all duration-200
-                                                        {{ match($document->status) {
-                                                            'approved' => 'border-2 border-green-200 dark:border-green-800 hover:border-green-300 dark:hover:border-green-700',
-                                                            'pending_review' => 'border-2 border-amber-200 dark:border-amber-800 hover:border-amber-300 dark:hover:border-amber-700',
-                                                            'rejected' => 'border-2 border-red-200 dark:border-red-800 hover:border-red-300 dark:hover:border-red-700',
-                                                            'uploaded' => 'border-2 border-blue-200 dark:border-blue-800 hover:border-blue-300 dark:hover:border-blue-700',
-                                                            default => 'border-2 border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600'
-                                                        } }}">
+                                                {{ match($document->status) {
+                                                    'approved' => 'border-2 border-green-200 dark:border-green-800 hover:border-green-300 dark:hover:border-green-700',
+                                                    'approved_without_document' => 'border-2 border-emerald-200 dark:border-emerald-800 hover:border-emerald-300 dark:hover:border-emerald-700',
+                                                    'pending_review' => 'border-2 border-amber-200 dark:border-amber-800 hover:border-amber-300 dark:hover:border-amber-700',
+                                                    'rejected' => 'border-2 border-red-200 dark:border-red-800 hover:border-red-300 dark:hover:border-red-700',
+                                                    'uploaded' => 'border-2 border-blue-200 dark:border-blue-800 hover:border-blue-300 dark:hover:border-blue-700',
+                                                    default => 'border-2 border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600'
+                                                } }}">
 
                                                 <!-- Left: Icon with Status -->
                                                 <div class="relative flex-shrink-0">
                                                     <div
                                                         class="{{ match($document->status) {
                                                                 'approved' => 'bg-green-50 dark:bg-green-900 text-green-600 dark:text-green-400',
+                                                                'approved_without_document' => 'bg-emerald-50 dark:bg-emerald-900 text-emerald-600 dark:text-emerald-400',
                                                                 'pending_review' => 'bg-amber-50 dark:bg-amber-900 text-amber-600 dark:text-amber-400',
                                                                 'rejected' => 'bg-red-50 dark:bg-red-900 text-red-600 dark:text-red-400',
                                                                 'uploaded' => 'bg-blue-50 dark:bg-blue-900 text-blue-600 dark:text-blue-400',
                                                                 default => 'bg-gray-50 dark:bg-gray-700 text-gray-600 dark:text-gray-400'
-                                                            } }} 
+                                                            } }}
                                                             w-10 h-10 rounded-lg flex items-center justify-center transition-colors">
                                                         @if($document->submittedDocuments->count() > 0)
                                                         <x-heroicon-o-document-text class="w-5 h-5" />
@@ -978,6 +980,7 @@
                                                     <span class="absolute -bottom-1 -right-1 w-3 h-3 rounded-full ring-2 ring-white dark:ring-gray-800
                                                         {{ match($document->status) {
                                                             'approved' => 'bg-green-500',
+                                                            'approved_without_document' => 'bg-emerald-500',
                                                             'pending_review' => 'bg-amber-500',
                                                             'rejected' => 'bg-red-500',
                                                             'uploaded' => 'bg-blue-500',
@@ -991,6 +994,7 @@
                                                     <p class="text-sm font-medium transition-colors
                                                         {{ match($document->status) {
                                                             'approved' => 'text-green-900 dark:text-green-400',
+                                                            'approved_without_document' => 'text-emerald-900 dark:text-emerald-400',
                                                             'pending_review' => 'text-amber-900 dark:text-amber-400',
                                                             'rejected' => 'text-red-900 dark:text-red-400',
                                                             default => 'text-gray-900 dark:text-gray-300'

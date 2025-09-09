@@ -514,6 +514,46 @@ class InvoiceResource extends Resource
                     ->searchable()
                     ->sortable()
                     ->description(fn ($record) => "NPWP: " . ($record->client->NPWP ?? 'N/A')),
+                
+                    Tables\Columns\TextColumn::make('month')
+                        ->label('Bulan')
+                        ->badge()
+                        ->color('primary')
+                        ->sortable(query: function (Builder $query, string $direction): Builder {
+                            // Custom sorting untuk bulan
+                            $monthOrder = [
+                                'January' => 1, 'February' => 2, 'March' => 3, 'April' => 4,
+                                'May' => 5, 'June' => 6, 'July' => 7, 'August' => 8,
+                                'September' => 9, 'October' => 10, 'November' => 11, 'December' => 12
+                            ];
+                            
+                            $orderByCase = 'CASE ';
+                            foreach ($monthOrder as $month => $order) {
+                                $orderByCase .= "WHEN TRIM(SUBSTRING_INDEX(month, ' ', 1)) = '{$month}' THEN {$order} ";
+                            }
+                            $orderByCase .= 'ELSE 13 END';
+                            
+                            return $query->orderByRaw($orderByCase . ' ' . $direction);
+                        })
+                        ->formatStateUsing(function (string $state): string {
+                            // Format tampilan bulan
+                            $parts = explode(' ', $state);
+                            if (count($parts) >= 2) {
+                                $monthNames = [
+                                    'January' => 'Jan', 'February' => 'Feb', 'March' => 'Mar',
+                                    'April' => 'Apr', 'May' => 'Mei', 'June' => 'Jun',
+                                    'July' => 'Jul', 'August' => 'Agu', 'September' => 'Sep',
+                                    'October' => 'Okt', 'November' => 'Nov', 'December' => 'Des'
+                                ];
+                                
+                                $month = $parts[0];
+                                $year = $parts[1];
+                                $shortMonth = $monthNames[$month] ?? $month;
+                                
+                                return "{$shortMonth} {$year}";
+                            }
+                            return $state;
+                        }),
 
                 // Invoice Counts
                 Tables\Columns\TextColumn::make('total_invoices')
@@ -603,6 +643,10 @@ class InvoiceResource extends Resource
                     ->weight('medium'),
             ])
             ->defaultSort('created_at', 'desc')
+            ->recordUrl(
+            fn (\App\Models\TaxReport $record): string => 
+                route('filament.admin.laporan-pajak.resources.tax-reports.edit', ['record' => $record->id])
+            )
             ->filters([
                 // Client Filter
                 Tables\Filters\SelectFilter::make('client_id')
@@ -634,6 +678,29 @@ class InvoiceResource extends Resource
                         'Lebih Bayar' => 'Lebih Bayar',
                         'Nihil' => 'Nihil',
                     ]),
+                
+                Tables\Filters\SelectFilter::make('month_filter')
+                    ->label('Bulan')
+                    ->options([
+                        'January' => 'Januari',
+                        'February' => 'Februari', 
+                        'March' => 'Maret',
+                        'April' => 'April',
+                        'May' => 'Mei',
+                        'June' => 'Juni',
+                        'July' => 'Juli',
+                        'August' => 'Agustus',
+                        'September' => 'September',
+                        'October' => 'Oktober',
+                        'November' => 'November',
+                        'December' => 'Desember',
+                    ])
+                    ->query(function (Builder $query, array $data): Builder {
+                        if (isset($data['value']) && $data['value']) {
+                            return $query->where('month', 'like', $data['value'] . '%');
+                        }
+                        return $query;
+                    }),
 
                 // Filter by PPN Report Status
                 Tables\Filters\SelectFilter::make('ppn_report_status')

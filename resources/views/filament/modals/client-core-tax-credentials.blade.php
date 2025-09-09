@@ -19,7 +19,7 @@
         </div>
 
         @php
-            $credential = $record->clientCredential;
+        $credential = $record->clientCredential;
         @endphp
 
         @if($credential)
@@ -68,8 +68,7 @@
                             placeholder="{{ $credential->core_tax_password ? '' : 'Belum dikonfigurasi' }}"
                             class="w-full bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 pr-10 font-mono text-sm {{ $credential->core_tax_password ? 'text-gray-900 dark:text-white' : 'text-gray-500 dark:text-gray-400' }}">
                         @if($credential->core_tax_password)
-                        <button type="button"
-                            onclick="const hiddenField = document.getElementById('password-hidden-{{ $record->id }}'); 
+                        <button type="button" onclick="const hiddenField = document.getElementById('password-hidden-{{ $record->id }}'); 
                                      const textField = document.getElementById('password-field-{{ $record->id }}');
                                      if (hiddenField.style.display !== 'none') {
                                          hiddenField.style.display = 'none';
@@ -153,8 +152,7 @@
                             placeholder="{{ $credential->email_password ? '' : 'Belum dikonfigurasi' }}"
                             class="w-full bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 pr-10 text-sm {{ $credential->email_password ? 'text-gray-900 dark:text-white' : 'text-gray-500 dark:text-gray-400' }}">
                         @if($credential->email_password)
-                        <button type="button"
-                            onclick="const hiddenField = document.getElementById('email-password-hidden-{{ $record->id }}'); 
+                        <button type="button" onclick="const hiddenField = document.getElementById('email-password-hidden-{{ $record->id }}'); 
                                      const textField = document.getElementById('email-password-field-{{ $record->id }}');
                                      if (hiddenField.style.display !== 'none') {
                                          hiddenField.style.display = 'none';
@@ -248,29 +246,54 @@
                     </div>
                 </div>
 
-                {{-- PIC Status --}}
+                {{-- PIC Password --}}
                 <div class="space-y-2">
                     <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                        Status PIC
+                        Password PIC
                     </label>
                     <div class="flex items-center space-x-2">
-                        <div class="flex-1">
-                            @if($record->pic->status === 'active')
-                                <span class="inline-flex items-center px-3 py-2 rounded-lg text-sm font-medium bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200">
-                                    <svg class="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20">
-                                        <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" />
-                                    </svg>
-                                    Aktif
-                                </span>
-                            @else
-                                <span class="inline-flex items-center px-3 py-2 rounded-lg text-sm font-medium bg-red-100 dark:bg-red-900 text-red-800 dark:text-red-200">
-                                    <svg class="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20">
-                                        <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" />
-                                    </svg>
-                                    Tidak Aktif
-                                </span>
+                        <div class="flex-1 relative">
+                            <input type="text" id="pic-password-field-{{ $record->id }}" style="display: none;"
+                                value="{{ $record->pic->password ?: '' }}" readonly
+                                class="w-full bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 pr-10 font-mono text-sm text-gray-900 dark:text-white">
+                            <input type="password" id="pic-password-hidden-{{ $record->id }}"
+                                value="{{ $record->pic->password ?: '' }}" readonly
+                                placeholder="{{ $record->pic->password ? '' : 'Belum dikonfigurasi' }}"
+                                class="w-full bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 pr-10 font-mono text-sm {{ $record->pic->password ? 'text-gray-900 dark:text-white' : 'text-gray-500 dark:text-gray-400' }}">
+                            @if($record->pic->password)
+                            <button type="button" onclick="const hiddenField = document.getElementById('pic-password-hidden-{{ $record->id }}'); 
+                         const textField = document.getElementById('pic-password-field-{{ $record->id }}');
+                         if (hiddenField.style.display !== 'none') {
+                             hiddenField.style.display = 'none';
+                             textField.style.display = 'block';
+                             this.innerHTML = '<svg class=&quot;w-4 h-4&quot; fill=&quot;currentColor&quot; viewBox=&quot;0 0 20 20&quot;><path fill-rule=&quot;evenodd&quot; d=&quot;M3.707 2.293a1 1 0 00-1.414 1.414l14 14a1 1 0 001.414-1.414l-1.473-1.473A10.014 10.014 0 0019.542 10C18.268 5.943 14.478 3 10 3a9.958 9.958 0 00-4.512 1.074l-1.78-1.781zm4.261 4.26l1.514 1.515a2.003 2.003 0 012.45 2.45l1.514 1.514a4 4 0 00-5.478-5.478z&quot;/><path d=&quot;M12.454 16.697L9.75 13.992a4 4 0 01-3.742-3.741L2.335 6.578A9.98 9.98 0 00.458 10c1.274 4.057 5.065 7 9.542 7 .847 0 1.669-.105 2.454-.303z&quot;/></svg>';
+                         } else {
+                             hiddenField.style.display = 'block';
+                             textField.style.display = 'none';
+                             this.innerHTML = '<svg class=&quot;w-4 h-4&quot; fill=&quot;currentColor&quot; viewBox=&quot;0 0 20 20&quot;><path d=&quot;M10 12a2 2 0 100-4 2 2 0 000 4z&quot;/><path fill-rule=&quot;evenodd&quot; d=&quot;M.458 10C1.732 5.943 5.522 3 10 3s8.268 2.943 9.542 7c-1.274 4.057-5.064 7-9.542 7S1.732 14.057.458 10zM14 10a4 4 0 11-8 0 4 4 0 018 0z&quot;/></svg>';
+                         }" class="absolute inset-y-0 right-0 flex items-center pr-3 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors">
+                                <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                                    <path d="M10 12a2 2 0 100-4 2 2 0 000 4z" />
+                                    <path fill-rule="evenodd"
+                                        d="M.458 10C1.732 5.943 5.522 3 10 3s8.268 2.943 9.542 7c-1.274 4.057-5.064 7-9.542 7S1.732 14.057.458 10zM14 10a4 4 0 11-8 0 4 4 0 018 0z" />
+                                </svg>
+                            </button>
+                            <div class="absolute inset-y-0 right-8 flex items-center pr-1">
+                                <svg class="w-4 h-4 text-green-500" fill="currentColor" viewBox="0 0 20 20">
+                                    <path fill-rule="evenodd"
+                                        d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" />
+                                </svg>
+                            </div>
                             @endif
                         </div>
+                        @if($record->pic->password)
+                        <button type="button" onclick="navigator.clipboard.writeText('{{ $record->pic->password }}'); 
+                     this.textContent = 'Disalin!'; 
+                     setTimeout(() => this.textContent = 'Salin', 2000);"
+                            class="px-3 py-2 text-xs bg-green-100 dark:bg-green-900 text-green-700 dark:text-green-300 rounded-lg hover:bg-green-200 dark:hover:bg-green-800 transition-colors">
+                            Salin
+                        </button>
+                        @endif
                     </div>
                 </div>
             </div>
@@ -300,12 +323,12 @@
         {{-- Status Alert --}}
         <div class="mt-6">
             @php
-                $hasCoreTax = $credential && $credential->core_tax_user_id && $credential->core_tax_password;
-                $hasEmail = $credential && $credential->email && $credential->email_password;
-                $hasPic = $record->pic && $record->pic->nik && $record->pic->status === 'active';
-                $allComplete = $hasCoreTax && $hasPic;
+            $hasCoreTax = $credential && $credential->core_tax_user_id && $credential->core_tax_password;
+            $hasEmail = $credential && $credential->email && $credential->email_password;
+            $hasPic = $record->pic && $record->pic->nik && $record->pic->status === 'active';
+            $allComplete = $hasCoreTax && $hasPic;
             @endphp
-            
+
             @if($allComplete)
             <div class="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg p-4">
                 <div class="flex items-center">
@@ -325,7 +348,8 @@
                 </div>
             </div>
             @else
-            <div class="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg p-4">
+            <div
+                class="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg p-4">
                 <div class="flex items-center">
                     <svg class="w-5 h-5 text-yellow-500 mr-2" fill="currentColor" viewBox="0 0 20 20">
                         <path fill-rule="evenodd"
@@ -336,21 +360,21 @@
                             Kredensial belum lengkap
                         </p>
                         <p class="text-xs text-yellow-600 dark:text-yellow-400 mt-1">
-                            Yang kurang: 
+                            Yang kurang:
                             @if(!$hasCoreTax && !$hasPic)
-                                Kredensial Core Tax dan penugasan PIC
+                            Kredensial Core Tax dan penugasan PIC
                             @elseif(!$hasCoreTax)
-                                @if(!$credential)
-                                    Data kredensial klien
-                                @elseif(!$credential->core_tax_user_id)
-                                    ID Pengguna Core Tax
-                                @else
-                                    Kata Sandi Core Tax
-                                @endif
-                            @elseif(!$record->pic)
-                                Penugasan PIC
+                            @if(!$credential)
+                            Data kredensial klien
+                            @elseif(!$credential->core_tax_user_id)
+                            ID Pengguna Core Tax
                             @else
-                                NIK PIC atau status PIC tidak aktif
+                            Kata Sandi Core Tax
+                            @endif
+                            @elseif(!$record->pic)
+                            Penugasan PIC
+                            @else
+                            NIK PIC atau status PIC tidak aktif
                             @endif
                         </p>
                     </div>
