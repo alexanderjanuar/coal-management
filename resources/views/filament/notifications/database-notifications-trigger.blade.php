@@ -4,7 +4,7 @@ $isMobile = preg_match('/(android|iphone|ipad|mobile)/i', request()->header('Use
 
 @if(!$isMobile)
 <button type="button"
-    class="relative inline-flex items-center gap-2 px-4 py-2 {{ $unreadNotificationsCount > 0 ? 'bg-amber-500 text-white' : 'bg-white text-gray-700 border border-gray-200' }} rounded-lg transition-colors duration-200 hover:bg-opacity-90 active:scale-95">
+    class="relative inline-flex items-center gap-2 px-4 py-2 {{ $unreadNotificationsCount > 0 ? 'bg-cyan-500 text-white' : 'bg-white text-gray-700 border border-gray-200' }} rounded-lg transition-colors duration-200 hover:bg-opacity-90 active:scale-95">
     <!-- Bell Icon -->
     <svg xmlns="http://www.w3.org/2000/svg"
         class="h-5 w-5 {{ $unreadNotificationsCount > 0 ? 'text-white' : 'text-gray-500' }}" fill="none"

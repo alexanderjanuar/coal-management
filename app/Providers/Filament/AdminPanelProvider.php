@@ -35,6 +35,7 @@ use Njxqlus\FilamentProgressbar\FilamentProgressbarPlugin;
 use Leandrocfe\FilamentApexCharts\FilamentApexChartsPlugin;
 use EightCedars\FilamentInactivityGuard\FilamentInactivityGuardPlugin;
 
+
 class AdminPanelProvider extends PanelProvider
 {
     public function panel(Panel $panel): Panel
@@ -83,13 +84,16 @@ class AdminPanelProvider extends PanelProvider
                 fn() =>
                 preg_match('/(android|iphone|ipad|mobile)/i', request()->header('User-Agent'))
             )
+            ->colors([
+                'primary' => Color::Cyan,
+            ])
             ->plugins([
                 FilamentInactivityGuardPlugin::make(),
                 \TomatoPHP\FilamentPWA\FilamentPWAPlugin::make(),
                 FilamentApexChartsPlugin::make(),
                 EasyFooterPlugin::make()
-                    ->withFooterPosition('sidebar.footer')
-                    ->withSentence(new HtmlString('<img src="' . asset('images/JKB-Logo.png') . '" style="margin-right:.5rem;" alt="Laravel Logo" width="20" height="20"> JKB Management')),
+                    ->withFooterPosition('sidebar.footer')  
+                    ->withSentence(new HtmlString('<img src="' . asset('images/Logo/Logo Vertical.png') . '" style="margin-right:.5rem;" alt="Laravel Logo" width="20" height="20"> Kisantra Management')),
                 GlobalSearchModalPlugin::make(),
                 BannerPlugin::make()
                     ->persistsBannersInDatabase(),
@@ -104,8 +108,8 @@ class AdminPanelProvider extends PanelProvider
                     ->emptyPanelBackgroundImageUrl('https://images.pexels.com/photos/466685/pexels-photo-466685.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=2')
             ])
             
-            ->brandLogo(asset('images/JKB-Logo.png'))
-            ->brandLogoHeight('3.5rem')
+            ->brandLogo(asset('images/Logo/Logo Horizontal.png'))
+            ->brandLogoHeight('3rem')
             ->viteTheme('resources/css/filament/admin/theme.css')
             ->authMiddleware([
                 Authenticate::class,

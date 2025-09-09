@@ -379,19 +379,19 @@
             $completedItems = 0;
 
             foreach ($record->steps as $step) {
-            // Count tasks
-            $tasks = $step->tasks;
-            if ($tasks->count() > 0) {
-            $totalItems += $tasks->count();
-            $completedItems += $tasks->where('status', 'completed')->count();
-            }
+                // Count tasks
+                $tasks = $step->tasks;
+                if ($tasks->count() > 0) {
+                    $totalItems += $tasks->count();
+                    $completedItems += $tasks->where('status', 'completed')->count();
+                }
 
-            // Count documents
-            $documents = $step->requiredDocuments;
-            if ($documents->count() > 0) {
-            $totalItems += $documents->count();
-            $completedItems += $documents->where('status', 'approved')->count();
-            }
+                // Count documents - now includes approved_without_document as completed
+                $documents = $step->requiredDocuments;
+                if ($documents->count() > 0) {
+                    $totalItems += $documents->count();
+                    $completedItems += $documents->whereIn('status', ['approved', 'approved_without_document'])->count();
+                }
             }
 
             // Calculate overall progress percentage
@@ -597,9 +597,9 @@
                                     $totalItems += $totalTasks;
                                     $completedItems += $completedTasks;
 
-                                    // Count required documents
+                                    // Count required documents - now includes approved_without_document as completed
                                     $totalDocs = $step->requiredDocuments->count();
-                                    $completedDocs = $step->requiredDocuments->where('status', 'approved')->count();
+                                    $completedDocs = $step->requiredDocuments->whereIn('status', ['approved', 'approved_without_document'])->count();
                                     $totalItems += $totalDocs;
                                     $completedItems += $completedDocs;
 
@@ -984,7 +984,7 @@
                                                             'pending_review' => 'bg-amber-500',
                                                             'rejected' => 'bg-red-500',
                                                             'uploaded' => 'bg-blue-500',
-                                                            default => 'bg-gray-400'
+                                                            default => 'bg-gray-500'
                                                         } }}">
                                                     </span>
                                                 </div>
@@ -1045,17 +1045,19 @@
                                                         class="flex items-center gap-2 
                                                         {{ match($document->status) {
                                                             'approved' => 'bg-green-50 dark:bg-green-900 text-green-700 dark:text-green-300',
+                                                            'approved_without_document' => 'bg-emerald-50 dark:bg-emerald-900 text-emerald-700 dark:text-emerald-300',
                                                             'pending_review' => 'bg-amber-50 dark:bg-amber-900 text-amber-700 dark:text-amber-300',
                                                             'rejected' => 'bg-red-50 dark:bg-red-900 text-red-700 dark:text-red-300',
                                                             'uploaded' => 'bg-blue-50 dark:bg-blue-900 text-blue-700 dark:text-blue-300',
                                                             default => 'bg-gray-50 dark:bg-gray-800 text-gray-700 dark:text-gray-300'
-                                                        } }} 
+                                                        } }}
                                                         px-2.5 py-1 rounded-full text-xs font-medium flex-1 sm:flex-initial justify-center">
                                                         <span class="relative flex w-2 h-2">
                                                             <span class="{{ $document->status === 'pending_review' ? 'animate-ping' : '' }} 
                                                                 absolute inline-flex h-full w-full rounded-full opacity-75
                                                                 {{ match($document->status) {
                                                                     'approved' => 'bg-green-500',
+                                                                    'approved_without_document' => 'bg-emerald-500',
                                                                     'pending_review' => 'bg-amber-500',
                                                                     'rejected' => 'bg-red-500',
                                                                     'uploaded' => 'bg-blue-500',
@@ -1065,6 +1067,7 @@
                                                             <span class="relative inline-flex rounded-full h-2 w-2 
                                                                 {{ match($document->status) {
                                                                     'approved' => 'bg-green-500',
+                                                                    'approved_without_document' => 'bg-emerald-500',
                                                                     'pending_review' => 'bg-amber-500',
                                                                     'rejected' => 'bg-red-500',
                                                                     'uploaded' => 'bg-blue-500',
@@ -1073,8 +1076,15 @@
                                                             </span>
                                                         </span>
                                                         <span class="ml-1.5">
-                                                            {{ ucwords(str_replace('_', ' ', $document->status ?? 'Not
-                                                            Submitted')) }}
+                                                            {{ match($document->status) {
+                                                            'approved_without_document' => 'Disetujui Tanpa Dokumen',
+                                                            'approved' => 'Disetujui',
+                                                            'pending_review' => 'Menunggu Review',
+                                                            'uploaded' => 'Diunggah',
+                                                            'rejected' => 'Ditolak',
+                                                            'draft' => 'Draft',
+                                                            default => 'Belum Disubmit'
+                                                            } }}
                                                         </span>
                                                     </div>
                                                 </div>
