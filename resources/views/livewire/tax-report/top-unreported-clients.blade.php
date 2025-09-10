@@ -3,7 +3,7 @@
     <div class="px-6 py-4 border-b border-gray-200 dark:border-gray-700 flex-shrink-0">
         <div class="flex items-center justify-between">
             <div>
-                <h2 class="text-lg font-bold text-gray-900 dark:text-white">Klien Peredaran Tertinggi</h2>
+                <h2 class="text-lg font-bold text-gray-900 dark:text-white">Klien Peredaran PPN Tertinggi</h2>
                 <p class="text-sm text-gray-500 dark:text-gray-400">Belum melaporkan pajak</p>
             </div>
             <div class="flex items-center space-x-2">

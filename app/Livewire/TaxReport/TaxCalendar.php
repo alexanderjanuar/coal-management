@@ -9,6 +9,8 @@ use App\Models\Client;
 use App\Models\Invoice;
 use App\Models\IncomeTax;
 use App\Models\Bupot;
+use App\Models\User;
+use Filament\Notifications\Notification;
 
 class TaxCalendar extends Component
 {
@@ -118,16 +120,13 @@ class TaxCalendar extends Component
         // Check if this is a date with pending clients
         if ($this->getPendingClientsCount($date) > 0) {
             $this->pendingClients = $this->getPendingClients($date);
-            $this->isClientModalOpen = true;
+            $this->dispatch('open-modal', id: 'pending-clients-modal');
             return;
         }
         
         if ($this->hasTaxEvent($date)) {
             $this->selectedEvents = $this->getTaxEventsForDate($date);
-            $this->isModalOpen = true;
-        } else {
-            $this->selectedEvents = [];
-            $this->isModalOpen = false;
+            $this->dispatch('open-modal', id: 'tax-events-modal');
         }
     }
 
@@ -289,48 +288,42 @@ class TaxCalendar extends Component
     {
         $day = $date->day;
         
-        // The target month is always the month before the calendar date
-        // Example: If calendar shows July 31, we check tax reports for June
         $targetMonth = $date->copy()->startOfMonth()->subMonth();
-        $targetMonthFormatted = $targetMonth->format('F'); // Month name like 'June', 'May'
+        $targetMonthFormatted = $targetMonth->format('F');
         $monthName = $targetMonth->translatedFormat('F Y');
         
         $reportType = '';
         $clients = [];
         
         if ($day == 15) {
-            $reportType = "Setor PPh dan PPN untuk periode {$monthName}";
-            // Get clients with unpaid taxes for the target month
-            $taxReports = TaxReport::with('client')
-                ->where('month', $targetMonthFormatted)
-                ->where(function($query) {
-                    $query->where('ppn_report_status', 'Belum Lapor')
-                          ->orWhere('pph_report_status', 'Belum Lapor');
-                })
-                ->get();
-                
-            foreach ($taxReports as $report) {
-                $totalTax = 0;
-                // Calculate total unpaid tax amount
-                if ($report->ppn_report_status === 'Belum Lapor') {
-                    $totalTax += $report->invoices()->sum('ppn');
+                $reportType = "Setor PPh dan PPN untuk periode {$monthName}";
+                $taxReports = TaxReport::with('client')
+                    ->where('month', $targetMonthFormatted)
+                    ->where(function($query) {
+                        $query->where('ppn_report_status', 'Belum Lapor')
+                            ->orWhere('pph_report_status', 'Belum Lapor');
+                    })
+                    ->get();
+                    
+                foreach ($taxReports as $report) {
+                    // Ubah dari total tax menjadi peredaran bruto
+                    $peredaranBruto = $report->originalInvoices()
+                        ->where('type', 'Faktur Keluaran')
+                        ->sum('dpp');
+                    
+                    $clients[] = [
+                        'id' => $report->client->id,
+                        'name' => $report->client->name,
+                        'logo' => $report->client->logo, // Tambahkan field logo    
+                        'status' => $this->getPaymentStatus($report),
+                        'tax_report_id' => $report->id, // Tambahkan tax report ID
+                        'dueAmount' => $peredaranBruto, // Ganti dengan peredaran bruto
+                        'NPWP' => $report->client->NPWP ?? 'Tidak Ada'
+                    ];
                 }
-                if ($report->pph_report_status === 'Belum Lapor') {
-                    $totalTax += $report->incomeTaxs()->sum('pph_21_amount');
-                }
-                
-                $clients[] = [
-                    'id' => $report->client->id,
-                    'name' => $report->client->name,
-                    'status' => $this->getPaymentStatus($report),
-                    'dueAmount' => $totalTax,
-                    'NPWP' => $report->client->NPWP ?? 'Tidak Ada'
-                ];
             }
-            
-        } elseif ($day == 20) {
+            elseif ($day == 20) {
             $reportType = "Lapor SPT Masa PPh 21 untuk periode {$monthName}";
-            // Get clients with unreported PPh 21 for the target month
             $taxReports = TaxReport::with('client')
                 ->where('month', $targetMonthFormatted)
                 ->where('pph_report_status', 'Belum Lapor')
@@ -350,14 +343,13 @@ class TaxCalendar extends Component
             
         } elseif ($this->isLastDayOfMonth($date)) {
             $reportType = "Lapor SPT Masa PPN untuk periode {$monthName}";
-            // Get clients with unreported PPN for the target month (PREVIOUS MONTH)
             $taxReports = TaxReport::with('client')
                 ->where('month', $targetMonthFormatted)
                 ->where('ppn_report_status', 'Belum Lapor')
                 ->get();
                 
             foreach ($taxReports as $report) {
-                $transactionCount = $report->invoices()->count();
+                $transactionCount = $report->originalInvoices()->count();
                 
                 $clients[] = [
                     'id' => $report->client->id,
@@ -448,41 +440,78 @@ class TaxCalendar extends Component
         return $upcomingDeadlines;
     }
 
-    /**
-     * Debug method to check pending counts for specific dates
-     */
-    public function debugPendingCounts($dateString = null)
+    public function sendMassReminder()
     {
-        $date = $dateString ? Carbon::parse($dateString) : Carbon::now();
-        $targetMonth = $date->copy()->startOfMonth()->subMonth();
-        
-        $debug = [
-            'date' => $date->format('Y-m-d'),
-            'day' => $date->day,
-            'is_15th' => $date->day == 15,
-            'is_20th' => $date->day == 20,
-            'is_last_day' => $this->isLastDayOfMonth($date),
-            'end_of_month_day' => $date->copy()->endOfMonth()->day,
-            'target_month' => $targetMonth->format('F'),
-            'target_month_debug' => [
-                'original_date' => $date->format('Y-m-d'),
-                'start_of_month' => $date->copy()->startOfMonth()->format('Y-m-d'),
-                'minus_one_month' => $targetMonth->format('Y-m-d'),
-                'month_name' => $targetMonth->format('F')
-            ],
-            'counts' => [
-                'unpaid_tax' => $this->getUnpaidTaxClientsCount($date),
-                'unreported_pph' => $this->getUnreportedPPhClientsCount($date),
-                'unreported_ppn' => $this->getUnreportedPPNClientsCount($date),
-            ],
-            'sql_check' => [
-                'query' => "SELECT COUNT(*) FROM tax_reports WHERE month = '{$targetMonth->format('F')}' AND ppn_report_status = 'Belum Lapor'",
-                'manual_count' => TaxReport::where('month', $targetMonth->format('F'))->where('ppn_report_status', 'Belum Lapor')->count()
-            ],
-            'total_pending' => $this->getPendingClientsCount($date)
-        ];
-        
-        return $debug;
+        try {
+            // Get all users with project-manager role
+            $projectManagers = User::whereHas('roles', function ($query) {
+                $query->where('name', 'project-manager');
+            })->get();
+
+            if ($projectManagers->isEmpty()) {
+                Notification::make()
+                    ->title('Tidak Ada Project Manager')
+                    ->body('Tidak ditemukan user dengan role project-manager.')
+                    ->warning()
+                    ->send();
+                return;
+            }
+
+            $clientCount = count($this->pendingClients['clients'] ?? []);
+            $reportType = $this->pendingClients['reportType'] ?? '';
+            $date = $this->pendingClients['date'] ?? '';
+
+            // Create notification for each project manager
+            foreach ($projectManagers as $manager) {
+                Notification::make()
+                    ->title('Pengingat: Klien Tertunggak')
+                    ->body("Ada {$clientCount} klien yang belum {$reportType} pada {$date}. Segera tindak lanjuti untuk memastikan kepatuhan pajak.")
+                    ->icon('heroicon-o-exclamation-triangle')
+                    ->color('warning')
+                    ->persistent()
+                    ->actions([
+                        \Filament\Notifications\Actions\Action::make('view')
+                            ->label('Lihat Detail')
+                            ->url('#') // You can add specific URL if needed
+                            ->markAsRead(),
+                        \Filament\Notifications\Actions\Action::make('dismiss')
+                            ->label('Tutup')
+                            ->markAsRead(),
+                    ])
+                    ->sendToDatabase($manager)
+                    ->broadcast($manager);
+            }
+
+            // Close the modal
+            $this->dispatch('close-modal', ['id' => 'pending-clients-modal']);
+
+            // Show success notification to current user
+            Notification::make()
+                ->title('Pengingat Terkirim')
+                ->body("Pengingat telah dikirim ke {$projectManagers->count()} project manager.")
+                ->success()
+                ->send();
+
+        } catch (\Exception $e) {
+            Notification::make()
+                ->title('Gagal Mengirim Pengingat')
+                ->body('Terjadi kesalahan saat mengirim pengingat. Silakan coba lagi.')
+                ->danger()
+                ->send();
+
+            report($e); // Log error untuk debugging
+        }
+    }
+
+
+    public function getTaxReportUrl($taxReportId)
+    {
+        return route('filament.admin.laporan-pajak.resources.tax-reports.edit', ['record' => $taxReportId]);
+    }
+
+    public function getClientUrl($clientId)
+    {
+        return route('filament.admin.resources.clients.edit', ['record' => $clientId]);
     }
 
     public function render()

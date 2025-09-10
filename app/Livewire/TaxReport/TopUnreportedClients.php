@@ -36,9 +36,7 @@ class TopUnreportedClients extends Component
         ->join('invoices', 'tax_reports.id', '=', 'invoices.tax_report_id')
         ->where('invoices.is_revision', false) // Exclude revisions
         ->where(function($query) {
-            $query->where('tax_reports.ppn_report_status', 'Belum Lapor')
-                  ->orWhere('tax_reports.pph_report_status', 'Belum Lapor')
-                  ->orWhere('tax_reports.bupot_report_status', 'Belum Lapor');
+            $query->where('tax_reports.ppn_report_status', 'Belum Lapor');
         })
         ->groupBy([
             'tax_reports.id',
@@ -132,7 +130,7 @@ class TopUnreportedClients extends Component
 
     public function getClientUrl($clientId)
     {
-        return route('filament.admin.resources.clients.index', ['record' => $clientId]);
+        return route('filament.admin.resources.clients.edit', ['record' => $clientId]);
     }
 
     public function render()
