@@ -1,5 +1,5 @@
 <div
-    class="w-full border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 rounded-xl shadow-sm overflow-hidden transition-colors duration-200">
+    class="w-full border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 rounded-xl shadow-sm overflow-hidden transition-colors duration-200 h-max-[800px]">
     <div class="p-4 md:p-6">
         <!-- Calendar Section -->
         <div class="mb-8">
@@ -390,159 +390,43 @@
 
         <!-- Tax Schedule Section -->
         <div>
-            <div class="flex items-center mb-6">
-                <div class="p-2 bg-blue-100 dark:bg-blue-900/50 rounded-lg mr-3">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-blue-600 dark:text-blue-400" fill="none"
-                        viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                            d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
-                    </svg>
-                </div>
-                <div>
-                    <h2 class="text-xl font-semibold text-gray-900 dark:text-white">Jadwal Pajak Bulan Ini</h2>
-                    <p class="text-sm text-gray-500 dark:text-gray-400">{{ $currentDate->translatedFormat('F Y') }}</p>
-                </div>
-            </div>
-
-            @php
-            $currentMonthEvents = $this->getTaxSchedule();
-            @endphp
-
-            @if(count($currentMonthEvents) > 0)
-            <div class="space-y-4">
-                @foreach($currentMonthEvents as $event)
-                <div
-                    class="group relative overflow-hidden rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-800 p-4 hover:shadow-md dark:hover:shadow-gray-900/20 transition-all duration-200">
-                    <div class="flex items-start gap-4">
-                        <!-- Date Badge -->
-                        <div class="flex-shrink-0">
-                            <div
-                                class="flex items-center justify-center w-16 h-16 rounded-xl text-white text-xl font-bold shadow-lg
-                                        {{ $event['priority'] === 'high' ? 'bg-gradient-to-br from-red-500 to-red-600' : ($event['priority'] === 'medium' ? 'bg-gradient-to-br from-yellow-500 to-amber-600' : 'bg-gradient-to-br from-blue-500 to-blue-600') }}">
-                                {{ Carbon\Carbon::parse($event['date'])->day }}
-                            </div>
-                        </div>
-
-                        <!-- Event Content -->
-                        <div class="flex-1 min-w-0">
-                            <div class="flex items-start justify-between">
-                                <div class="flex-1">
-                                    <h3
-                                        class="text-lg font-semibold text-gray-900 dark:text-white group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors duration-200">
-                                        {{ $event['title'] }}
-                                    </h3>
-                                    <p class="text-gray-600 dark:text-gray-300 mt-1 text-sm leading-relaxed">
-                                        {{ $event['description'] }}
-                                    </p>
-
-                                    <!-- Priority Badge -->
-                                    <div class="mt-3 flex items-center gap-2">
-                                        <span
-                                            class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium
-                                                   {{ $event['priority'] === 'high' ? 'bg-red-100 dark:bg-red-900/50 text-red-800 dark:text-red-300' : ($event['priority'] === 'medium' ? 'bg-yellow-100 dark:bg-yellow-900/50 text-yellow-800 dark:text-yellow-300' : 'bg-blue-100 dark:bg-blue-900/50 text-blue-800 dark:text-blue-300') }}">
-                                            {{ $event['priority'] === 'high' ? 'Prioritas Tinggi' : ($event['priority']
-                                            === 'medium' ? 'Prioritas Sedang' : 'Prioritas Normal') }}
-                                        </span>
-
-                                        @if($event['type'] === 'payment')
-                                        <span
-                                            class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 dark:bg-green-900/50 text-green-800 dark:text-green-300">
-                                            <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3 mr-1" fill="none"
-                                                viewBox="0 0 24 24" stroke="currentColor">
-                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                                    d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1" />
-                                            </svg>
-                                            Pembayaran
-                                        </span>
-                                        @else
-                                        <span
-                                            class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-purple-100 dark:bg-purple-900/50 text-purple-800 dark:text-purple-300">
-                                            <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3 mr-1" fill="none"
-                                                viewBox="0 0 24 24" stroke="currentColor">
-                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                                    d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                                            </svg>
-                                            Pelaporan
-                                        </span>
-                                        @endif
-                                    </div>
-                                </div>
-
-                                <!-- Action Button -->
-                                <div class="flex-shrink-0 ml-4">
-                                    @if(isset($event['actionLink']))
-                                    <a href="{{ $event['actionLink'] }}"
-                                        class="inline-flex items-center px-4 py-2 text-sm font-medium rounded-lg transition-all duration-200 transform hover:scale-105
-                                               {{ $event['type'] === 'payment' ? 'text-white bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 shadow-red-500/25' : 'text-white bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 shadow-blue-500/25' }} shadow-lg">
-                                        {{ $event['actionText'] }}
-                                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 ml-2" viewBox="0 0 20 20"
-                                            fill="currentColor">
-                                            <path fill-rule="evenodd"
-                                                d="M10.293 5.293a1 1 0 011.414 0l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414-1.414L12.586 11H5a1 1 0 110-2h7.586l-2.293-2.293a1 1 0 010-1.414z"
-                                                clip-rule="evenodd" />
-                                        </svg>
-                                    </a>
-                                    @endif
-                                </div>
-                            </div>
-
-                            <!-- Pending Clients Info -->
-                            @if(isset($event['date']))
-                            @php
-                            $eventDate = Carbon\Carbon::parse($event['date']);
-                            $clientCount = $this->getPendingClientsCount($eventDate);
-                            @endphp
-
-                            @if($clientCount > 0)
-                            <div
-                                class="mt-4 p-3 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg">
-                                <div class="flex items-center justify-between">
-                                    <div class="flex items-center">
-                                        <svg xmlns="http://www.w3.org/2000/svg"
-                                            class="h-5 w-5 text-amber-600 dark:text-amber-400 mr-2" fill="none"
-                                            viewBox="0 0 24 24" stroke="currentColor">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                                d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z" />
-                                        </svg>
-                                        <span class="text-sm font-medium text-amber-800 dark:text-amber-300">
-                                            {{ $clientCount }} klien belum melakukan {{ strtolower($event['title']) }}
-                                        </span>
-                                    </div>
-                                    <button wire:click="selectDate('{{ $event['date'] }}')"
-                                        class="inline-flex items-center px-3 py-1.5 text-xs font-medium text-amber-700 dark:text-amber-300 bg-amber-100 dark:bg-amber-900/50 hover:bg-amber-200 dark:hover:bg-amber-900/70 rounded-lg transition-colors duration-200">
-                                        Lihat Detail
-                                        <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3 ml-1" fill="none"
-                                            viewBox="0 0 24 24" stroke="currentColor">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                                d="M9 5l7 7-7 7" />
-                                        </svg>
-                                    </button>
-                                </div>
-                            </div>
-                            @endif
-                            @endif
-                        </div>
+            <div class="flex items-center justify-between mb-6">
+                <div class="flex items-center">
+                    <div class="p-2 bg-blue-100 dark:bg-blue-900/50 rounded-lg mr-3">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-blue-600 dark:text-blue-400"
+                            fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
+                        </svg>
                     </div>
-
-                    <!-- Hover Effect Overlay -->
-                    <div
-                        class="absolute inset-0 bg-gradient-to-r from-blue-500/5 to-purple-500/5 dark:from-blue-400/5 dark:to-purple-400/5 opacity-0 group-hover:opacity-100 transition-opacity duration-300 rounded-lg">
+                    <div>
+                        <h2 class="text-lg font-bold text-gray-900 dark:text-white">Jadwal Pajak Bulan Ini</h2>
+                        <p class="text-sm text-gray-500 dark:text-gray-400">{{ $currentDate->translatedFormat('F Y') }}
+                        </p>
                     </div>
                 </div>
-                @endforeach
+
+                <!-- Quick Stats -->
+                @php
+                $currentMonthEvents = $this->getTaxSchedule();
+                $highPriorityCount = collect($currentMonthEvents)->where('priority', 'high')->count();
+                $totalEvents = count($currentMonthEvents);
+                @endphp
+
+                @if($totalEvents > 0)
+                <div class="flex items-center space-x-3">
+                    <div class="text-center">
+                        <div class="text-2xl font-bold text-red-600 dark:text-red-400">{{ $highPriorityCount }}</div>
+                        <div class="text-xs text-gray-500 dark:text-gray-400">Prioritas Tinggi</div>
+                    </div>
+                    <div class="w-px h-8 bg-gray-300 dark:bg-gray-600"></div>
+                    <div class="text-center">
+                        <div class="text-2xl font-bold text-blue-600 dark:text-blue-400">{{ $totalEvents }}</div>
+                        <div class="text-xs text-gray-500 dark:text-gray-400">Total Jadwal</div>
+                    </div>
+                </div>
+                @endif
             </div>
-            @else
-            <div
-                class="text-center py-12 bg-gray-50 dark:bg-gray-700/50 rounded-lg border-2 border-dashed border-gray-300 dark:border-gray-600">
-                <svg xmlns="http://www.w3.org/2000/svg" class="mx-auto h-12 w-12 text-gray-400 dark:text-gray-500"
-                    fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                        d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                </svg>
-                <h3 class="mt-2 text-sm font-medium text-gray-900 dark:text-white">Tidak ada jadwal pajak</h3>
-                <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">Tidak ada jadwal pajak untuk bulan ini.</p>
-            </div>
-            @endif
         </div>
     </div>
 </div>
