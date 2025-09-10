@@ -373,7 +373,7 @@ class ProjectResource extends Resource
                     
                 // Client Information
                 Tables\Columns\TextColumn::make('client.name')
-                    ->label('Client Name')
+                    ->label('Nama Klien')
                     ->badge()
                     ->color('gray')
                     ->searchable()
@@ -382,7 +382,7 @@ class ProjectResource extends Resource
 
                 // Project Information
                 Tables\Columns\TextColumn::make('name')
-                    ->label('Project Name')
+                    ->label('Nama Proyek')
                     ->weight(FontWeight::Bold)
                     ->searchable(),
 
@@ -393,7 +393,7 @@ class ProjectResource extends Resource
                     ->color('info')
                     ->searchable()
                     ->sortable()
-                    ->placeholder('No PIC assigned')
+                    ->placeholder('PIC Belum Ditugaskan')
                     ->tooltip(fn ($record) => $record->pic ? "Person in Charge: {$record->pic->name}" : 'No PIC assigned'),
 
                 // Project Status
@@ -604,6 +604,7 @@ class ProjectResource extends Resource
                 // Default hover effect for rows without special status
                 return 'hover:bg-gray-50 dark:hover:bg-gray-800/10';
             })
+            ->deferLoading()
             // Bulk Actions
             ->bulkActions([
                 Tables\Actions\BulkActionGroup::make([

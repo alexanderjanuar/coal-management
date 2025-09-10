@@ -60,17 +60,6 @@ class StatsOverview extends BaseWidget
                 ->color('primary')
                 ->chart($chartData['total_reports']),
             
-            Stat::make('Laporan Tahun Ini', number_format($thisYearReports))
-                ->description('Laporan tahun ' . $year)
-                ->descriptionIcon('heroicon-m-calendar-days')
-                ->color('success')
-                ->chart($chartData['this_year_reports']),
-            
-            Stat::make('Total Nilai Pajak', 'Rp ' . number_format($totalTax, 0, ',', '.'))
-                ->description('PPN + PPh 21 + Bupot')
-                ->descriptionIcon('heroicon-m-banknotes')
-                ->color('warning')
-                ->chart($chartData['total_tax']),
             
             Stat::make('Status PPN', $ppnStats['sudah_lapor'] . ' dari ' . $ppnStats['total'])
                 ->description($ppnCompletion . '% sudah dilaporkan')
@@ -83,12 +72,6 @@ class StatsOverview extends BaseWidget
                 ->descriptionIcon('heroicon-m-receipt-percent')
                 ->color($pphCompletion >= 80 ? 'success' : ($pphCompletion >= 50 ? 'warning' : 'danger'))
                 ->chart($chartData['pph_completion']),
-
-            Stat::make('Status Bupot', $bupotStats['sudah_lapor'] . ' dari ' . $bupotStats['total'])
-                ->description($bupotCompletion . '% sudah dilaporkan')
-                ->descriptionIcon('heroicon-m-document-text')
-                ->color($bupotCompletion >= 80 ? 'success' : ($bupotCompletion >= 50 ? 'warning' : 'danger'))
-                ->chart($chartData['bupot_completion']),
         ];
     }
 

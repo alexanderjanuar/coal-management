@@ -238,6 +238,7 @@ class ClientDocumentsRelationManager extends RelationManager
                         }
                     }),
             ])
+            ->deferLoading()
             ->actions([
                 Tables\Actions\Action::make('preview')
                     ->icon('heroicon-o-eye')

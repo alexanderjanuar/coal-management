@@ -416,6 +416,7 @@ class TaxReportResource extends Resource
                 Group::make('invoice_tax_status')
                     ->label('Payment Status'),
             ])
+            ->deferLoading()
             ->filters([
 
                 Tables\Filters\SelectFilter::make('ppn_report_status')

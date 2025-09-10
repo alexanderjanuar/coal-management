@@ -850,7 +850,8 @@ class ClientResource extends Resource
                 }
                 // Default hover effect for active clients with complete info
                 return 'hover:bg-gray-50 dark:hover:bg-gray-800/10';
-            });
+            })
+            ->deferLoading();
     }
 
     // public static function getExportStatistics($records = null): array
