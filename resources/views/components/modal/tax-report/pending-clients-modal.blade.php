@@ -92,7 +92,7 @@
                     </svg>
                 </div>
                 <div class="ml-3">
-                    <p class="text-sm font-medium text-green-600 dark:text-green-400">Total Peredaran Bruto</p>
+                    <p class="text-sm font-medium text-green-600 dark:text-green-400">Total Peredaran Bruto PPN</p>
                     <p class="text-lg font-bold text-green-700 dark:text-green-300">Rp {{ number_format($totalAmount, 0,
                         ',', '.') }}</p>
                 </div>
@@ -141,7 +141,7 @@
                         PPN') !== false)
                         <th scope="col"
                             class="px-6 py-4 text-left text-xs font-semibold text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                            Peredaran Bruto
+                            Peredaran Bruto (PPN)
                         </th>
                         @elseif(isset($pendingClients['reportType']) && strpos($pendingClients['reportType'], 'PPh 21')
                         !== false)
@@ -204,14 +204,14 @@
                                 {{ $client['status'] }}
                             </span>
                         </td>
-                        @if(isset($pendingClients['reportType']) && strpos($pendingClients['reportType'], 'Setor PPh dan
-                        PPN') !== false)
+                        @if(isset($pendingClients['reportType']) && (strpos($pendingClients['reportType'], 'Setor PPh
+                        dan PPN') !== false || strpos($pendingClients['reportType'], 'PPN') !== false))
                         <td class="px-6 py-4 whitespace-nowrap">
                             <div class="text-sm font-bold text-gray-900 dark:text-white">
                                 Rp {{ number_format($client['dueAmount'] ?? 0, 0, ',', '.') }}
                             </div>
                             @if(($client['dueAmount'] ?? 0) > 1000000)
-                            <div class="text-xs text-green-500 dark:text-green-400">Peredaran Besar</div>
+                            <div class="text-xs text-green-500 dark:text-green-400">Peredaran PPN Besar</div>
                             @endif
                         </td>
                         @elseif(isset($pendingClients['reportType']) && strpos($pendingClients['reportType'], 'PPh 21')
@@ -223,8 +223,8 @@
                                 <span class="text-xs text-gray-500 dark:text-gray-400 ml-1">orang</span>
                             </div>
                         </td>
-                        @elseif(isset($pendingClients['reportType']) && strpos($pendingClients['reportType'], 'PPN') !==
-                        false)
+                        @elseif(isset($pendingClients['reportType']) && strpos($pendingClients['reportType'], 'Lapor SPT
+                        Masa PPN') !== false)
                         <td class="px-6 py-4 whitespace-nowrap">
                             <div class="flex items-center">
                                 <span class="text-sm font-medium text-gray-900 dark:text-white">{{

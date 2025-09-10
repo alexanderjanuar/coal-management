@@ -299,25 +299,22 @@ class TaxCalendar extends Component
                 $reportType = "Setor PPh dan PPN untuk periode {$monthName}";
                 $taxReports = TaxReport::with('client')
                     ->where('month', $targetMonthFormatted)
-                    ->where(function($query) {
-                        $query->where('ppn_report_status', 'Belum Lapor')
-                            ->orWhere('pph_report_status', 'Belum Lapor');
-                    })
+                    ->where('ppn_report_status', 'Belum Lapor') // Hanya yang belum lapor PPN
                     ->get();
                     
                 foreach ($taxReports as $report) {
-                    // Ubah dari total tax menjadi peredaran bruto
+                    // Hitung peredaran bruto hanya dari Faktur Keluaran untuk PPN
                     $peredaranBruto = $report->originalInvoices()
                         ->where('type', 'Faktur Keluaran')
                         ->sum('dpp');
                     
                     $clients[] = [
                         'id' => $report->client->id,
+                        'tax_report_id' => $report->id,
                         'name' => $report->client->name,
-                        'logo' => $report->client->logo, // Tambahkan field logo    
-                        'status' => $this->getPaymentStatus($report),
-                        'tax_report_id' => $report->id, // Tambahkan tax report ID
-                        'dueAmount' => $peredaranBruto, // Ganti dengan peredaran bruto
+                        'logo' => $report->client->logo,
+                        'status' => 'Belum bayar PPN', // Spesifik untuk PPN
+                        'dueAmount' => $peredaranBruto,
                         'NPWP' => $report->client->NPWP ?? 'Tidak Ada'
                     ];
                 }
@@ -376,15 +373,7 @@ class TaxCalendar extends Component
             $statuses[] = 'Belum bayar PPN';
         }
         
-        if ($taxReport->pph_report_status === 'Belum Lapor') {
-            $statuses[] = 'Belum bayar PPh';
-        }
-        
-        if ($taxReport->bupot_report_status === 'Belum Lapor') {
-            $statuses[] = 'Belum upload Bupot';
-        }
-        
-        return !empty($statuses) ? implode(', ', $statuses) : 'Semua sudah dibayar';
+        return !empty($statuses) ? implode(', ', $statuses) : 'PPN sudah dibayar';
     }
 
     /**
