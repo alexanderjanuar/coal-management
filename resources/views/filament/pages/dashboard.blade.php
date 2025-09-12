@@ -1,199 +1,111 @@
 <x-filament-panels::page class="w-full">
     <style>
-        .logo-container {
-            width: 3rem;
-            /* w-12 */
-            height: 3rem;
-            /* h-12 */
-            border-radius: 0.75rem;
-            /* rounded-xl */
-            overflow: hidden;
-            border: 2px solid rgb(var(--primary-50));
-            /* ring-2 ring-primary-50 */
-            transition: border-color 0.3s ease;
-        }
+        /* CSS Tambahan untuk Welcome Card - Tambahkan ke dalam tag <style> yang sudah ada */
 
-        .logo-container:hover {
-            border-color: rgb(var(--primary-100));
-            /* hover:ring-primary-100 */
-        }
-
-        .logo-container img {
-            width: 100%;
-            /* w-full */
-            height: 100%;
-            /* h-full */
-            object-fit: cover;
-            transform: scale(1);
-            transition: transform 0.3s ease;
-        }
-
-        .logo-container img:hover {
-            transform: scale(1.05);
-            /* hover:scale-105 */
-        }
-
-        @media (min-width: 768px) {
-            .logo-container {
-                width: 4rem;
-                /* md:w-16 */
-                height: 4rem;
-                /* md:h-16 */
-            }
-        }
-
-        @keyframes pulse-subtle {
+        @keyframes float {
 
             0%,
             100% {
-                opacity: 1;
+                transform: translateY(0px);
             }
 
             50% {
-                opacity: 0.8;
+                transform: translateY(-10px);
             }
         }
 
-        @keyframes bounce-subtle {
+        @keyframes glow {
 
             0%,
             100% {
-                transform: translateY(0);
+                box-shadow: 0 0 20px rgba(59, 130, 246, 0.3);
             }
 
             50% {
-                transform: translateY(-5px);
+                box-shadow: 0 0 30px rgba(59, 130, 246, 0.5);
             }
         }
 
-        .animate-pulse-subtle {
-            animation: pulse-subtle 2s infinite;
+        .animate-float {
+            animation: float 3s ease-in-out infinite;
         }
 
-        .animate-bounce-subtle {
-            animation: bounce-subtle 2s infinite;
+        .animate-glow {
+            animation: glow 2s ease-in-out infinite;
         }
 
-        .animate-spin-slow {
-            animation: spin 3s linear infinite;
-        }
-
-
-        @keyframes shimmer {
-            0% {
-                background-position: 200% 0;
-            }
-
-            100% {
-                background-position: -200% 0;
-            }
-        }
-
-        .animate-shimmer {
-            animation: shimmer 6s infinite linear;
-        }
-
-        .header-container {
-            display: flex;
-            flex-direction: column;
-            gap: 1rem;
-            /* equivalent to space-y-4 */
-        }
-
-        @media (min-width: 768px) {
-
-            /* md breakpoint */
-            .header-container {
-                flex-direction: row;
-                justify-content: space-between;
-                align-items: flex-start;
-                gap: 0;
-                /* removes space-y on larger screens */
-            }
-        }
-
-        .content-container {
+        .welcome-card {
             position: relative;
-            padding: 1rem;
-            padding-bottom: 2rem;
+            background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 50%, #f3e8ff 100%);
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
         }
 
-        @media (min-width: 768px) {
-            .content-container {
-                padding: 1.5rem;
-                padding-bottom: 2rem;
-            }
+        .dark .welcome-card {
+            background: linear-gradient(135deg, #1e293b 0%, #334155 50%, #374151 100%);
         }
 
-        /* Enhanced scrollbar for better UX */
-        .custom-scrollbar::-webkit-scrollbar {
-            width: 8px;
-            height: 8px;
-        }
-
-        .custom-scrollbar::-webkit-scrollbar-track {
-            background: #f8fafc;
-            border-radius: 10px;
-        }
-
-        .custom-scrollbar::-webkit-scrollbar-thumb {
-            background: linear-gradient(180deg, #e2e8f0 0%, #cbd5e1 100%);
-            border-radius: 10px;
-            border: 2px solid #f8fafc;
-        }
-
-        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
-            background: linear-gradient(180deg, #cbd5e1 0%, #94a3b8 100%);
-        }
-
-        /* Dark mode scrollbar */
-        .dark .custom-scrollbar::-webkit-scrollbar-track {
-            background: #0f172a;
-        }
-
-        .dark .custom-scrollbar::-webkit-scrollbar-thumb {
-            background: linear-gradient(180deg, #334155 0%, #475569 100%);
-            border: 2px solid #0f172a;
-        }
-
-        .dark .custom-scrollbar::-webkit-scrollbar-thumb:hover {
-            background: linear-gradient(180deg, #475569 0%, #64748b 100%);
-        }
-
-        /* Modal animations */
-        .modal-card {
-            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-        }
-
-        .modal-card:hover {
+        .welcome-card:hover {
             transform: translateY(-2px);
-            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.15);
         }
 
-        .dark .modal-card:hover {
-            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.25), 0 10px 10px -5px rgba(0, 0, 0, 0.1);
+        .dark .welcome-card:hover {
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.4);
         }
 
-        /* Gradient backgrounds */
-        .gradient-bg-primary {
-            background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%);
+        /* Avatar hover effects */
+        .avatar-container {
+            transition: all 0.3s ease;
         }
 
-        .dark .gradient-bg-primary {
-            background: linear-gradient(135deg, #0c4a6e 0%, #075985 100%);
+        .avatar-container:hover {
+            transform: scale(1.05);
         }
 
-        .gradient-bg-amber {
-            background: linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%);
+        /* Button hover effects */
+        .action-button {
+            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+            position: relative;
+            overflow: hidden;
         }
 
-        .dark .gradient-bg-amber {
-            background: linear-gradient(135deg, #92400e 0%, #b45309 100%);
+        .action-button::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+            transition: left 0.5s;
+        }
+
+        .action-button:hover::before {
+            left: 100%;
+        }
+
+        /* Stats animation */
+        .stat-item {
+            transition: all 0.2s ease;
+        }
+
+        .stat-item:hover {
+            transform: translateY(-2px);
+        }
+
+        /* Responsive improvements */
+        @media (max-width: 640px) {
+            .welcome-card {
+                margin: 0 -1rem;
+                border-radius: 0;
+            }
         }
     </style>
 
     {{-- Stats Overview --}}
     @livewire('widget.projects-stats-overview')
+
+    @include('components.dashboard.greeting-card')
 
     <div class="grid grid-cols-1 lg:grid-cols-6 gap-4">
         <div class="lg:col-span-3">

@@ -331,6 +331,7 @@ class TaxCalendar extends Component
                 
                 $clients[] = [
                     'id' => $report->client->id,
+                        'tax_report_id' => $report->id,
                     'name' => $report->client->name,
                     'status' => 'Belum lapor PPh 21',
                     'employees' => $employeeCount,
@@ -350,6 +351,7 @@ class TaxCalendar extends Component
                 
                 $clients[] = [
                     'id' => $report->client->id,
+                    'tax_report_id' => $report->id,
                     'name' => $report->client->name,
                     'status' => 'Belum lapor PPN',
                     'transaksiCount' => $transactionCount,

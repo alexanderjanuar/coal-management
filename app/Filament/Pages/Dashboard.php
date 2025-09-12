@@ -9,6 +9,7 @@ use App\Models\Progress;
 use App\Models\Project;
 use App\Models\Task;
 use App\Models\RequiredDocument;
+use App\Models\DailyTask;
 use Filament\Pages\Page;
 use Filament\Pages\Dashboard as BaseDashboard;
 use Illuminate\Support\Facades\DB;
@@ -162,18 +163,210 @@ class Dashboard extends BaseDashboard
                 return [
                     'id' => $document->id,
                     'name' => $document->name,
-                    'project_name' => $document->projectStep?->project?->name ?? 'Tidak ada proyek', // Add null safety
-                    'client_name' => $document->projectStep?->project?->client?->name ?? 'Tidak ada klien', // Add null safety
+                    'project_name' => $document->projectStep?->project?->name ?? 'Tidak ada proyek',
+                    'client_name' => $document->projectStep?->project?->client?->name ?? 'Tidak ada klien',
                     'status' => $document->status,
                     'created_at' => $document->created_at->format('d M Y'),
                     'updated_at' => $document->updated_at->format('d M Y H:i'),
                     'url' => $document->projectStep?->project ? route('filament.admin.resources.projects.view', [
                         'record' => $document->projectStep->project->id,
                         'openDocument' => $document->id
-                    ]) : '#', // Add null safety for URL
+                    ]) : '#',
                 ];
             })
             ->toArray();
+    }
+
+    /**
+     * Get dashboard statistics for welcome card
+     */
+    public function getDashboardStats(): array
+    {
+        $user = auth()->user();
+        $isSuperAdmin = $user->hasRole('super-admin');
+        
+        // Get client IDs for non-admin users once
+        $clientIds = $isSuperAdmin ? null : $user->userClients()->pluck('client_id')->toArray();
+
+        // Base project query with role-based filtering
+        $baseProjectQuery = function() use ($isSuperAdmin, $clientIds, $user) {
+            $query = Project::query();
+            
+            if (!$isSuperAdmin && !empty($clientIds)) {
+                $query->whereIn('client_id', $clientIds)
+                    ->where(function($subQuery) use ($user) {
+                        $subQuery->where('pic_id', $user->id)
+                                ->orWhereHas('userProject', function($q) use ($user) {
+                                    $q->where('user_id', $user->id);
+                                });
+                    });
+            }
+            
+            return $query;
+        };
+
+        // Project counts
+        $activeProjectCount = $baseProjectQuery()
+            ->whereNotIn('status', ['completed', 'canceled'])
+            ->count();
+
+        $completedProjectCount = $baseProjectQuery()
+            ->where('status', 'completed')
+            ->count();
+
+        $urgentProjectCount = $baseProjectQuery()
+            ->whereNotIn('status', ['completed', 'canceled'])
+            ->where('priority', 'urgent')
+            ->count();
+
+        // Updated Daily tasks counts
+        $todayTasksCount = 0;
+        $completedTasksCount = 0;
+        $incompleteTasksCount = 0;
+        
+        if (class_exists(DailyTask::class)) {
+            $baseTaskQuery = DailyTask::where(function($query) use ($user) {
+                    $query->where('created_by', $user->id)
+                        ->orWhereHas('assignedUsers', function($q) use ($user) {
+                            $q->where('user_id', $user->id);
+                        });
+                })
+                ->where(function($dateQuery) {
+                    $today = today();
+                    $dateQuery->where(function($q) use ($today) {
+                        $q->where('start_task_date', '<=', $today)
+                        ->where('task_date', '>=', $today);
+                    })->orWhere(function($q) use ($today) {
+                        $q->where('task_date', $today)
+                        ->whereNull('start_task_date');
+                    });
+                });
+
+            $todayTasksCount = $baseTaskQuery->count();
+            $completedTasksCount = (clone $baseTaskQuery)->where('status', 'completed')->count();
+            $incompleteTasksCount = $todayTasksCount - $completedTasksCount;
+        }
+
+        // NEW: Document statistics
+        $submittedDocumentsQuery = SubmittedDocument::where('user_id', $user->id);
+        
+        if (!$isSuperAdmin && !empty($clientIds)) {
+            $submittedDocumentsQuery->whereHas('requiredDocument.projectStep.project', function($q) use ($clientIds) {
+                $q->whereIn('client_id', $clientIds);
+            });
+        }
+
+        $totalSubmittedDocuments = $submittedDocumentsQuery->count();
+        $approvedDocuments = (clone $submittedDocumentsQuery)->where('status', 'approved')->count();
+        $pendingDocuments = (clone $submittedDocumentsQuery)->whereIn('status', ['uploaded', 'pending_review'])->count();
+        $rejectedDocuments = (clone $submittedDocumentsQuery)->where('status', 'rejected')->count();
+
+        return [
+            'active_projects' => $activeProjectCount,
+            'completed_projects' => $completedProjectCount,
+            'urgent_projects' => $urgentProjectCount,
+            'today_tasks' => $todayTasksCount,
+            'completed_tasks_today' => $completedTasksCount,
+            'incomplete_tasks_today' => $incompleteTasksCount,
+            // NEW: Document fields
+            'submitted_documents' => $totalSubmittedDocuments,
+            'approved_documents' => $approvedDocuments,
+            'pending_documents' => $pendingDocuments,
+            'rejected_documents' => $rejectedDocuments,
+            'client_ids' => $clientIds,
+            'is_super_admin' => $isSuperAdmin,
+        ];
+    }
+
+    /**
+     * Get recent projects for accordion
+     */
+    public function getRecentProjects(int $limit = 3): array
+    {
+        $stats = $this->getDashboardStats();
+        
+        $query = Project::with(['client'])
+            ->whereNotIn('status', ['completed', 'canceled']);
+
+        if (!$stats['is_super_admin'] && !empty($stats['client_ids'])) {
+            $query->whereIn('client_id', $stats['client_ids'])
+                  ->where(function($subQuery) use ($stats) {
+                      $user = auth()->user();
+                      $subQuery->where('pic_id', $user->id)
+                               ->orWhereHas('userProject', function($q) use ($user) {
+                                   $q->where('user_id', $user->id);
+                               });
+                  });
+        }
+
+        return $query->orderByRaw("CASE WHEN priority = 'urgent' THEN 0 WHEN priority = 'normal' THEN 1 ELSE 2 END")
+                    ->orderBy('due_date')
+                    ->limit($limit)
+                    ->get()
+                    ->toArray();
+    }
+
+    /**
+     * Get today's daily tasks
+     */
+    public function getTodayTasks(int $limit = 4): array
+    {
+        if (!class_exists(DailyTask::class)) {
+            return [];
+        }
+
+        $user = auth()->user();
+        $today = today();
+
+        return DailyTask::with(['project', 'subtasks'])
+            ->where(function($query) use ($user) {
+                $query->where('created_by', $user->id)
+                    ->orWhereHas('assignedUsers', function($q) use ($user) {
+                        $q->where('user_id', $user->id);
+                    });
+            })
+            ->where(function($dateQuery) use ($today) {
+                $dateQuery->where(function($q) use ($today) {
+                    // Task yang start_task_date <= today <= task_date
+                    $q->where('start_task_date', '<=', $today)
+                    ->where('task_date', '>=', $today);
+                })->orWhere(function($q) use ($today) {
+                    // Task yang task_date = today (untuk backward compatibility)
+                    $q->where('task_date', $today)
+                    ->whereNull('start_task_date');
+                });
+            })
+            ->orderByRaw("CASE WHEN priority = 'urgent' THEN 0 WHEN priority = 'high' THEN 1 WHEN priority = 'normal' THEN 2 ELSE 3 END")
+            ->limit($limit)
+            ->get()
+            ->toArray();
+    }
+
+    /**
+     * Get recently completed projects
+     */
+    public function getCompletedProjects(int $limit = 3): array
+    {
+        $stats = $this->getDashboardStats();
+        
+        $query = Project::with(['client'])
+            ->where('status', 'completed');
+
+        if (!$stats['is_super_admin'] && !empty($stats['client_ids'])) {
+            $query->whereIn('client_id', $stats['client_ids'])
+                  ->where(function($subQuery) use ($stats) {
+                      $user = auth()->user();
+                      $subQuery->where('pic_id', $user->id)
+                               ->orWhereHas('userProject', function($q) use ($user) {
+                                   $q->where('user_id', $user->id);
+                               });
+                  });
+        }
+
+        return $query->orderBy('updated_at', 'desc')
+                    ->limit($limit)
+                    ->get()
+                    ->toArray();
     }
 
     public function getViewData(): array
@@ -286,6 +479,7 @@ class Dashboard extends BaseDashboard
             'clients' => $clients,
             'hasMoreClients' => $totalClients > 5,
             'totalClients' => $totalClients,
+            'dashboard_stats' => $this->getDashboardStats(),
         ];
     }
 }
