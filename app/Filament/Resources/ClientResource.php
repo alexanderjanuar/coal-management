@@ -186,34 +186,72 @@ class ClientResource extends Resource
                     ->icon('heroicon-o-key')
                     ->schema([
                         Forms\Components\TextInput::make('core_tax_user_id')
-                            ->label('Core Tax User ID')
-                            ->maxLength(255)
-                            ->placeholder('Enter Core Tax User ID')
-                            ->helperText('Unique identifier for Core Tax application login')
-                            ->suffixIcon('heroicon-o-identification'),
-                            
-                        Forms\Components\TextInput::make('core_tax_password')
-                            ->label('Core Tax Password')
-                            ->maxLength(255)
-                            ->placeholder('Enter Core Tax Password')
-                            ->default('Samarinda#1')
-                            ->helperText('Password for Core Tax application access')
-                            ->suffixIcon('heroicon-o-lock-closed'),
+                        ->label('Core Tax User ID')
+                        ->maxLength(255)
+                        ->placeholder('Enter Core Tax User ID')
+                        ->helperText('Unique identifier for Core Tax application login')
+                        ->suffixIcon('heroicon-o-identification'),
+                        
+                    Forms\Components\TextInput::make('core_tax_password')
+                        ->label('Core Tax Password')
+                        ->maxLength(255)
+                        ->placeholder('Enter Core Tax Password')
+                        ->helperText('Password for Core Tax application access')
+                        ->suffixIcon('heroicon-o-lock-closed')
+                        ->dehydrated(false)  // Jangan kirim ke server jika kosong
+                        ->dehydrateStateUsing(function ($state, $record) {
+                            // Jika field kosong dan ada record, pertahankan password lama
+                            if (empty($state) && $record && $record->credential) {
+                                return $record->credential->core_tax_password;
+                            }
+                            return $state;
+                        }),
 
-                        Forms\Components\TextInput::make('email')
-                            ->label('Client Email Account')
-                            ->email()
-                            ->maxLength(255)
-                            ->placeholder('client@example.com')
-                            ->helperText('Email account for client access')
-                            ->suffixIcon('heroicon-o-envelope'),
-                            
-                        Forms\Components\TextInput::make('email_password')
-                            ->label('Email Password')
-                            ->maxLength(255)
-                            ->placeholder('Enter Email Password')
-                            ->helperText('Password for email account access')
-                            ->suffixIcon('heroicon-o-lock-closed'),
+                    // FIELD BARU - DJP CREDENTIALS
+                    Forms\Components\TextInput::make('djp_account')
+                        ->label('DJP Account')
+                        ->maxLength(255)
+                        ->placeholder('Enter DJP account username')
+                        ->helperText('Username untuk akses DJP Online')
+                        ->suffixIcon('heroicon-o-building-office'),
+                        
+                    Forms\Components\TextInput::make('djp_password')
+                        ->label('DJP Password')
+                        ->maxLength(255)
+                        ->placeholder('Enter DJP password')
+                        ->helperText('Password untuk akses DJP Online')
+                        ->suffixIcon('heroicon-o-lock-closed')
+                        ->dehydrated(false)  // Jangan kirim ke server jika kosong
+                        ->dehydrateStateUsing(function ($state, $record) {
+                            // Jika field kosong dan ada record, pertahankan password lama
+                            if (empty($state) && $record && $record->credential) {
+                                return $record->credential->djp_password;
+                            }
+                            return $state;
+                        }),
+
+                    Forms\Components\TextInput::make('email')
+                        ->label('Client Email Account')
+                        ->email()
+                        ->maxLength(255)
+                        ->placeholder('client@example.com')
+                        ->helperText('Email account for client access')
+                        ->suffixIcon('heroicon-o-envelope'),
+                        
+                    Forms\Components\TextInput::make('email_password')
+                        ->label('Email Password')
+                        ->maxLength(255)
+                        ->placeholder('Enter Email Password')
+                        ->helperText('Password untuk akses email - kosongkan jika tidak ingin mengubah')
+                        ->suffixIcon('heroicon-o-lock-closed')
+                        ->dehydrated(false)  // Jangan kirim ke server jika kosong
+                        ->dehydrateStateUsing(function ($state, $record) {
+                            // Jika field kosong dan ada record, pertahankan password lama
+                            if (empty($state) && $record && $record->credential) {
+                                return $record->credential->email_password;
+                            }
+                            return $state;
+                        }),
                     ])
                     ->columns(2)
                     ->collapsible()
@@ -480,12 +518,14 @@ class ClientResource extends Resource
                         ->close(),
                 ])
                 ->visible(function ($record) {
-                    // Show if has credential record with any filled data OR has PIC assigned
-                    $hasCredential = $record->clientCredential && (
-                        $record->clientCredential->core_tax_user_id || 
-                        $record->clientCredential->core_tax_password ||
-                        $record->clientCredential->email ||
-                        $record->clientCredential->email_password
+                    // PERUBAHAN: Update kondisi untuk memeriksa credential relationship
+                    $hasCredential = $record->credential && (
+                        $record->credential->core_tax_user_id || 
+                        $record->credential->core_tax_password ||
+                        $record->credential->djp_account ||      // TAMBAHAN: cek DJP account
+                        $record->credential->djp_password ||     // TAMBAHAN: cek DJP password
+                        $record->credential->email ||
+                        $record->credential->email_password
                     );
                     
                     $hasPic = $record->pic_id && $record->pic;

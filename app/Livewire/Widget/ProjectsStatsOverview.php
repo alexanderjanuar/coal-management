@@ -11,8 +11,6 @@ use Illuminate\Support\Facades\DB;
 
 class ProjectsStatsOverview extends BaseWidget
 {
-    protected static ?string $pollingInterval = '15s';
-
     protected function getStats(): array
     {
         // Get base query for projects

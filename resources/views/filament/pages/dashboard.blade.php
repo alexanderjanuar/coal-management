@@ -1,38 +1,18 @@
 <x-filament-panels::page class="w-full">
     <style>
-        /* CSS Tambahan untuk Welcome Card - Tambahkan ke dalam tag <style> yang sudah ada */
-
+        /* CSS Tambahan untuk Welcome Card */
         @keyframes float {
-
-            0%,
-            100% {
-                transform: translateY(0px);
-            }
-
-            50% {
-                transform: translateY(-10px);
-            }
+            0%, 100% { transform: translateY(0px); }
+            50% { transform: translateY(-10px); }
         }
 
         @keyframes glow {
-
-            0%,
-            100% {
-                box-shadow: 0 0 20px rgba(59, 130, 246, 0.3);
-            }
-
-            50% {
-                box-shadow: 0 0 30px rgba(59, 130, 246, 0.5);
-            }
+            0%, 100% { box-shadow: 0 0 20px rgba(59, 130, 246, 0.3); }
+            50% { box-shadow: 0 0 30px rgba(59, 130, 246, 0.5); }
         }
 
-        .animate-float {
-            animation: float 3s ease-in-out infinite;
-        }
-
-        .animate-glow {
-            animation: glow 2s ease-in-out infinite;
-        }
+        .animate-float { animation: float 3s ease-in-out infinite; }
+        .animate-glow { animation: glow 2s ease-in-out infinite; }
 
         .welcome-card {
             position: relative;
@@ -54,13 +34,8 @@
         }
 
         /* Avatar hover effects */
-        .avatar-container {
-            transition: all 0.3s ease;
-        }
-
-        .avatar-container:hover {
-            transform: scale(1.05);
-        }
+        .avatar-container { transition: all 0.3s ease; }
+        .avatar-container:hover { transform: scale(1.05); }
 
         /* Button hover effects */
         .action-button {
@@ -80,18 +55,11 @@
             transition: left 0.5s;
         }
 
-        .action-button:hover::before {
-            left: 100%;
-        }
+        .action-button:hover::before { left: 100%; }
 
         /* Stats animation */
-        .stat-item {
-            transition: all 0.2s ease;
-        }
-
-        .stat-item:hover {
-            transform: translateY(-2px);
-        }
+        .stat-item { transition: all 0.2s ease; }
+        .stat-item:hover { transform: translateY(-2px); }
 
         /* Responsive improvements */
         @media (max-width: 640px) {
@@ -105,17 +73,25 @@
     {{-- Stats Overview --}}
     @livewire('widget.projects-stats-overview')
 
+    {{-- Greeting Card --}}
     @include('components.dashboard.greeting-card')
 
-    <div class="grid grid-cols-1 lg:grid-cols-6 gap-4">
-        <div class="lg:col-span-3">
+    {{-- First Row: PIC Chart and Overdue Projects --}}
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-4">
+        <div>
             @livewire('widget.person-in-charge-project-chart')
         </div>
-        <div class="lg:col-span-3">
-            @livewire('widget.recent-activity-table')
+        <div>
+            @livewire('dashboard.overdue-projects')
         </div>
     </div>
 
+    {{-- Second Row: Recent Activity Table (Full Width) --}}
+    <div class="mb-4">
+        @livewire('widget.recent-activity-table')
+    </div>
+
+    {{-- Third Row: Project Report Chart and Properties Chart --}}
     <div class="grid grid-cols-1 lg:grid-cols-6 gap-4">
         <div class="lg:col-span-4">
             @livewire('widget.project-report-chart')
@@ -152,8 +128,7 @@
                     <div class="flex items-start justify-between">
                         <div class="flex-1">
                             <div class="flex items-center gap-3 mb-2">
-                                <h4
-                                    class="font-medium text-gray-900 dark:text-white group-hover:text-primary-600 dark:group-hover:text-primary-400 transition-colors">
+                                <h4 class="font-medium text-gray-900 dark:text-white group-hover:text-primary-600 dark:group-hover:text-primary-400 transition-colors">
                                     {{ $project['name'] }}
                                 </h4>
                                 <x-filament::badge :color="match($project['status']) {
@@ -235,8 +210,7 @@
         <x-slot name="header">
             <div class="flex items-center justify-between w-full">
                 <div class="flex items-center gap-4">
-                    <div
-                        class="w-14 h-14 rounded-xl bg-gradient-to-br from-amber-100 to-orange-200 dark:from-amber-900 dark:to-orange-800 flex items-center justify-center shadow-sm">
+                    <div class="w-14 h-14 rounded-xl bg-gradient-to-br from-amber-100 to-orange-200 dark:from-amber-900 dark:to-orange-800 flex items-center justify-center shadow-sm">
                         <x-heroicon-o-document-text class="w-7 h-7 text-amber-600 dark:text-amber-400" />
                     </div>
                     <div>
@@ -309,16 +283,14 @@
             </div>
             @else
             <div class="text-center py-16">
-                <div
-                    class="w-24 h-24 rounded-full bg-gray-100 dark:bg-gray-700 flex items-center justify-center mx-auto mb-6">
+                <div class="w-24 h-24 rounded-full bg-gray-100 dark:bg-gray-700 flex items-center justify-center mx-auto mb-6">
                     <x-heroicon-o-document-text class="w-12 h-12 text-gray-400" />
                 </div>
                 <h3 class="text-xl font-semibold text-gray-900 dark:text-white mb-2">
                     Tidak Ada Data Dokumen
                 </h3>
                 <p class="text-gray-500 dark:text-gray-400 max-w-sm mx-auto">
-                    {{ is_array($modalData) ? 'Tidak ada dokumen dengan status yang dipilih saat ini.' : 'Data dokumen
-                    tidak valid.' }}
+                    {{ is_array($modalData) ? 'Tidak ada dokumen dengan status yang dipilih saat ini.' : 'Data dokumen tidak valid.' }}
                 </p>
             </div>
             @endif

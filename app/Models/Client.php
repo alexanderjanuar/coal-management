@@ -68,6 +68,15 @@ class Client extends Model
     }
 
     /**
+     * Check apakah client memiliki kredensial DJP
+     */
+    public function hasDjpCredentials(): bool
+    {
+        return $this->credential && $this->credential->hasDjpCredentials();
+    }
+
+
+    /**
      * Get client folder path
      */
     public function getFolderPath(): string

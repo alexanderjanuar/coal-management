@@ -4,8 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use Illuminate\Database\Eloquent\Casts\Attribute;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Spatie\Activitylog\Traits\LogsActivity;
 use Spatie\Activitylog\LogOptions;
 
@@ -13,34 +12,21 @@ class ClientCredential extends Model
 {
     use HasFactory, LogsActivity;
 
-    protected $fillable = [
-        'client_id',
-        'core_tax_user_id',
-        'core_tax_password',
-        'email',
-        'email_password',
-        'credential_type',
-        'notes',
-        'last_used_at',
-        'is_active'
-    ];
-
-    protected $casts = [
-        'last_used_at' => 'datetime',
-        'is_active' => 'boolean',
-    ];
-
-    protected $hidden = [
-        'core_tax_password',
-        'email_password',
-    ];
 
     /**
-     * Relationship dengan Client
+     * Relationship ke Client (one-to-one melalui foreign key di clients table)
      */
-    public function client(): BelongsTo
+    public function client(): HasOne
     {
-        return $this->belongsTo(Client::class);
+        return $this->hasOne(Client::class, 'credential_id');
+    }
+
+    /**
+     * Check apakah credential aktif
+     */
+    public function isActive(): bool
+    {
+        return $this->is_active;
     }
 
     /**
@@ -52,78 +38,11 @@ class ClientCredential extends Model
     }
 
     /**
-     * Scope untuk tipe credential tertentu
+     * Scope berdasarkan tipe credential
      */
-    public function scopeByType($query, string $type)
+    public function scopeByType($query, $type)
     {
         return $query->where('credential_type', $type);
-    }
-
-    /**
-     * Scope untuk Core Tax credentials
-     */
-    public function scopeCoreTax($query)
-    {
-        return $query->where('credential_type', 'core_tax')
-                    ->orWhere(function($q) {
-                        $q->where('credential_type', 'general')
-                          ->whereNotNull('core_tax_user_id');
-                    });
-    }
-
-    /**
-     * Scope untuk Email credentials
-     */
-    public function scopeEmail($query)
-    {
-        return $query->where('credential_type', 'email')
-                    ->orWhere(function($q) {
-                        $q->where('credential_type', 'general')
-                          ->whereNotNull('email');
-                    });
-    }
-
-
-    /**
-     * Method untuk mendapatkan password asli (hanya untuk kebutuhan sistem)
-     */
-    public function getRawCoreTaxPassword(): ?string
-    {
-        return $this->getOriginal('core_tax_password');
-    }
-
-    public function getRawEmailPassword(): ?string
-    {
-        return $this->getOriginal('email_password');
-    }
-
-    /**
-     * Check apakah credential lengkap
-     */
-    public function isComplete(): bool
-    {
-        return match($this->credential_type) {
-            'core_tax' => !empty($this->core_tax_user_id) && !empty($this->core_tax_password),
-            'email' => !empty($this->email) && !empty($this->email_password),
-            'general' => $this->hasCoreTaxCredentials() || $this->hasEmailCredentials(),
-            default => false,
-        };
-    }
-
-    /**
-     * Check apakah ada credential Core Tax
-     */
-    public function hasCoreTaxCredentials(): bool
-    {
-        return !empty($this->core_tax_user_id) && !empty($this->getRawCoreTaxPassword());
-    }
-
-    /**
-     * Check apakah ada credential Email
-     */
-    public function hasEmailCredentials(): bool
-    {
-        return !empty($this->email) && !empty($this->getRawEmailPassword());
     }
 
     /**
@@ -135,59 +54,14 @@ class ClientCredential extends Model
     }
 
     /**
-     * Deactivate credential
-     */
-    public function deactivate(): void
-    {
-        $this->update(['is_active' => false]);
-    }
-
-    /**
-     * Activate credential
-     */
-    public function activate(): void
-    {
-        $this->update(['is_active' => true]);
-    }
-
-    /**
-     * Get credential status untuk display
-     */
-    public function getStatusAttribute(): string
-    {
-        if (!$this->is_active) {
-            return 'Tidak Aktif';
-        }
-
-        if (!$this->isComplete()) {
-            return 'Belum Lengkap';
-        }
-
-        return 'Aktif';
-    }
-
-    /**
-     * Get credential status color
-     */
-    public function getStatusColorAttribute(): string
-    {
-        return match($this->status) {
-            'Aktif' => 'success',
-            'Belum Lengkap' => 'warning',
-            'Tidak Aktif' => 'danger',
-            default => 'gray'
-        };
-    }
-
-    /**
      * Activity Log Configuration
      */
     public function getActivitylogOptions(): LogOptions
     {
         return LogOptions::defaults()
             ->logOnly([
-                'client_id',
                 'core_tax_user_id',
+                'djp_account', 
                 'email',
                 'credential_type',
                 'is_active'
@@ -195,15 +69,35 @@ class ClientCredential extends Model
             ->logOnlyDirty()
             ->dontSubmitEmptyLogs()
             ->setDescriptionForEvent(function(string $eventName) {
-                $clientName = $this->client?->name ?? 'Klien';
-                $credType = ucfirst(str_replace('_', ' ', $this->credential_type));
+                $clientName = $this->client?->name ?? 'Klien Tidak Diketahui';
+                $userName = auth()->user()?->name ?? 'System';
                 
                 return match($eventName) {
-                    'created' => "[{$clientName}] 🔑 Credential {$credType} baru ditambahkan",
-                    'updated' => "[{$clientName}] 🔧 Credential {$credType} diperbarui",
-                    'deleted' => "[{$clientName}] 🗑️ Credential {$credType} dihapus",
-                    default => "[{$clientName}] Credential {$credType} {$eventName}"
+                    'created' => "[{$clientName}] 🔐 KREDENSIAL BARU: {$this->formatted_credentials} | Dibuat oleh: {$userName}",
+                    'updated' => match($this->is_active) {
+                        true => "[{$clientName}] ✅ KREDENSIAL DIAKTIFKAN: {$this->formatted_credentials} | Oleh: {$userName}",
+                        false => "[{$clientName}] ❌ KREDENSIAL DINONAKTIFKAN: {$this->formatted_credentials} | Oleh: {$userName}",
+                        default => "[{$clientName}] 📝 KREDENSIAL DIPERBARUI: {$this->formatted_credentials} | Oleh: {$userName}"
+                    },
+                    'deleted' => "[{$clientName}] 🗑️ KREDENSIAL DIHAPUS: {$this->formatted_credentials} | Oleh: {$userName}",
+                    default => "[{$clientName}] Kredensial telah {$eventName} oleh {$userName}"
                 };
             });
+    }
+
+    /**
+     * Disable credential
+     */
+    public function disable(): void
+    {
+        $this->update(['is_active' => false]);
+    }
+
+    /**
+     * Enable credential
+     */
+    public function enable(): void
+    {
+        $this->update(['is_active' => true]);
     }
 }

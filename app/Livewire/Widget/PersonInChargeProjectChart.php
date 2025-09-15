@@ -8,7 +8,19 @@ use Illuminate\Support\Facades\DB;
 
 class PersonInChargeProjectChart extends ChartWidget
 {
-    protected static ?string $heading = 'Chart';
+    protected static ?string $heading = 'Distribusi Proyek per Person in Charge';
+
+    public function getHeading(): string
+    {
+        $filter = $this->filter ?? 'all';
+        
+        return match($filter) {
+            'all' => 'Distribusi Semua Proyek per PIC',
+            'not_completed' => 'Distribusi Proyek Aktif per PIC',
+            'completed' => 'Distribusi Proyek Selesai per PIC',
+            default => 'Distribusi Proyek per Person in Charge'
+        };
+    }
 
     public function getFilters(): ?array
     {
@@ -44,7 +56,7 @@ class PersonInChargeProjectChart extends ChartWidget
         return [
             'datasets' => [
                 [
-                    'label' => 'Number of Projects',
+                    'label' => 'Jumlah Proyek',
                     'data' => $picData->pluck('project_count')->toArray(),
                     'backgroundColor' => [
                         'rgba(54, 162, 235, 0.8)',
