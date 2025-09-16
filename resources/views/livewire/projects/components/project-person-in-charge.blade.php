@@ -1,48 +1,4 @@
 <div class="space-y-6">
-    <style>
-        /* Custom scrollbar for webkit browsers */
-        .custom-scrollbar::-webkit-scrollbar {
-            width: 5px;
-            height: 5px;
-        }
-
-        .custom-scrollbar::-webkit-scrollbar-track {
-            background: #f1f1f1;
-            border-radius: 5px;
-        }
-
-        .custom-scrollbar::-webkit-scrollbar-thumb {
-            background: #d1d5db;
-            border-radius: 5px;
-        }
-
-        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
-            background: #9ca3af;
-        }
-
-        /* Dark mode scrollbar */
-        .dark .custom-scrollbar::-webkit-scrollbar-track {
-            background: #1f2937;
-        }
-
-        .dark .custom-scrollbar::-webkit-scrollbar-thumb {
-            background: #4b5563;
-        }
-
-        .dark .custom-scrollbar::-webkit-scrollbar-thumb:hover {
-            background: #6b7280;
-        }
-
-        /* Avatar ring animation */
-        .avatar-ring {
-            transition: all 0.2s ease-out;
-        }
-
-        .user-selection-item:hover .avatar-ring {
-            ring-width: 3px;
-            ring-color: rgb(245, 158, 11);
-        }
-    </style>
     <!-- Header -->
     <div class="flex items-center gap-4">
         <div class="w-12 h-12 rounded-full bg-info-100 dark:bg-info-900 flex items-center justify-center">

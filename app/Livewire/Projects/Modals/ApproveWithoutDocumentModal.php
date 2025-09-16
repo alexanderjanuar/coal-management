@@ -1,15 +1,14 @@
 <?php
 
-namespace App\Livewire\ProjectDetail;
+namespace App\Livewire\Projects\Modals;
 
-use App\Models\Comment;
+use Livewire\Component;
 use App\Models\RequiredDocument;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Concerns\InteractsWithForms;
 use Filament\Forms\Contracts\HasForms;
 use Filament\Forms\Form;
 use Filament\Notifications\Notification;
-use Livewire\Component;
 
 class ApproveWithoutDocumentModal extends Component implements HasForms
 {
@@ -77,9 +76,8 @@ class ApproveWithoutDocumentModal extends Component implements HasForms
                 ->send();
         }
     }
-
     public function render()
     {
-        return view('livewire.project-detail.approve-without-document-modal');
+        return view('livewire.projects.modals.approve-without-document-modal');
     }
 }

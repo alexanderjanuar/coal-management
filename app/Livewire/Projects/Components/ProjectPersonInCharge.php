@@ -1,13 +1,14 @@
 <?php
 
-namespace App\Livewire\ProjectDetail;
+namespace App\Livewire\Projects\Components;
 
 use App\Models\Project;
 use App\Models\User;
 use Livewire\Component;
 use Filament\Notifications\Notification;
 
-class ProjectPicManager extends Component
+
+class ProjectPersonInCharge extends Component
 {
     public Project $project;
     public $showChangePicModal = false;
@@ -258,9 +259,9 @@ class ProjectPicManager extends Component
                 : 'PIC removed'
             );
     }
-
+    
     public function render()
     {
-        return view('livewire.project-detail.project-pic-manager');
+        return view('livewire.projects.components.project-person-in-charge');
     }
 }

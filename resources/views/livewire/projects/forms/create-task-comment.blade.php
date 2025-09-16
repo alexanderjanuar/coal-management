@@ -6,7 +6,7 @@
 
             <div class="flex justify-end mt-2">
                 <x-filament::button type="submit">
-                    Post Comment
+                    Kirim Komentar
                 </x-filament::button>
             </div>
         </form>
@@ -54,7 +54,7 @@
                                         d="M7.707 3.293a1 1 0 010 1.414L5.414 7H11a7 7 0 017 7v2a1 1 0 11-2 0v-2a5 5 0 00-5-5H5.414l2.293 2.293a1 1 0 11-1.414 1.414l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 0z"
                                         clip-rule="evenodd" />
                                 </svg>
-                                Reply
+                                Balas
                             </button>
                         </div>
                     </div>
@@ -68,10 +68,10 @@
 
                                 <div class="flex justify-end gap-2 mt-2">
                                     <x-filament::button type="button" color="gray" wire:click="toggleReplyForm(null)">
-                                        Cancel
+                                        Kembali
                                     </x-filament::button>
                                     <x-filament::button type="submit">
-                                        Post Reply
+                                        Kirim Balasan
                                     </x-filament::button>
                                 </div>
                             </div>

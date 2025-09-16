@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Livewire;
+namespace App\Livewire\Projects\Modals;
 
 use App\Models\Comment;
 use App\Models\RequiredDocument;
@@ -18,7 +18,7 @@ use Asmit\FilamentMention\Forms\Components\RichMentionEditor;
 use Yaza\LaravelGoogleDriveStorage\Gdrive;
 use File;
 
-class ProjectDetailDocumentModal extends Component implements HasForms
+class DocumentModal extends Component implements HasForms
 {
     use InteractsWithForms;
 
@@ -89,6 +89,10 @@ class ProjectDetailDocumentModal extends Component implements HasForms
 
         $this->isClientInactive = $this->document->projectStep->project->client->status == 'Inactive';
 
+        // Refresh document data dari database untuk memastikan data terbaru
+        $this->document->refresh();
+        $this->document->load('submittedDocuments');
+        
         // Calculate overall status based on submitted documents
         $this->calculateOverallStatus();
     }
@@ -101,7 +105,6 @@ class ProjectDetailDocumentModal extends Component implements HasForms
         $submissions = $this->document->submittedDocuments;
 
         if ($submissions->count() === 0) {
-            // Jika tidak ada submission dan status sudah approved_without_document, jangan ubah
             if ($this->document->status === 'approved_without_document') {
                 $this->overallStatus = 'approved_without_document';
                 return;
@@ -112,27 +115,35 @@ class ProjectDetailDocumentModal extends Component implements HasForms
             return;
         }
 
-        // Rest of the existing logic...
+        // Hitung jumlah setiap status
         $approvedCount = $submissions->where('status', 'approved')->count();
         $rejectedCount = $submissions->where('status', 'rejected')->count();
         $pendingReviewCount = $submissions->where('status', 'pending_review')->count();
+        $uploadedCount = $submissions->where('status', 'uploaded')->count();
+        $totalSubmissions = $submissions->count();
 
-        if ($rejectedCount === $submissions->count()) {
-            $status = 'rejected';
-        } elseif ($approvedCount > 0) {
-            $status = 'approved';
-        } elseif ($pendingReviewCount > 0) {
+        
+        if ($pendingReviewCount > 0) {
             $status = 'pending_review';
-        } else {
+        } elseif ($approvedCount > 0) {
+            // Minimal ada 1 dokumen approved = status approved
+            $status = 'approved';
+        } elseif ($rejectedCount === $totalSubmissions) {
+            // SEMUA dokumen rejected = status rejected
+            $status = 'rejected';
+        } elseif ($uploadedCount > 0) {
             $status = 'uploaded';
+        } else {
+            $status = 'uploaded'; // fallback
         }
 
         $this->overallStatus = $status;
         
+        // Update database dan refresh untuk konsistensi
         if ($this->document->status !== $status) {
-            $oldStatus = $this->document->status;
             $this->document->status = $status;
             $this->document->save();
+            $this->document->refresh();
         }
     }
 
@@ -335,6 +346,10 @@ class ProjectDetailDocumentModal extends Component implements HasForms
 
             // Refresh the view
             $this->dispatch('refresh');
+
+            $this->emitStatusChangeEvent('bulk_approved', [
+                'affected_count' => $affectedCount
+            ]);
 
         } catch (\Exception $e) {
             report($e);
@@ -576,6 +591,10 @@ class ProjectDetailDocumentModal extends Component implements HasForms
             'View Document',
             'document_upload'
         );
+
+        $this->emitStatusChangeEvent('document_uploaded', [
+            'files_count' => is_array($data['document']) ? count($data['document']) : 1
+        ]);
     }
 
     /**
@@ -825,6 +844,28 @@ class ProjectDetailDocumentModal extends Component implements HasForms
                 'pending_review' => 'pending_review',
                 default => 'status_change'
             };
+
+            $this->emitStatusChangeEvent('status_updated', [
+                'submission_id' => $submission->id,
+                'old_status' => $oldStatus,
+                'new_status' => $status
+            ]);
+
+            // Send notifications
+            $this->sendProjectNotifications(
+                "Document Status Updated",
+                sprintf(
+                    "<span style='color: #f59e0b; font-weight: 500;'>%s</span><br><strong>Document:</strong> %s<br><strong>File:</strong> %s<br><strong>New Status:</strong> %s<br><strong>Updated by:</strong> %s",
+                    $client->name,
+                    $this->document->name,
+                    basename($submission->file_path),
+                    ucfirst(str_replace('_', ' ', $status)),
+                    auth()->user()->name
+                ),
+                'info',
+                'View Details',
+                $notificationAction
+            );
         } catch (\Exception $e) {
             $this->sendNotification('error', 'Error updating status', 'Please try again.');
         }
@@ -920,7 +961,12 @@ class ProjectDetailDocumentModal extends Component implements HasForms
                 'rejection'
             );
 
-            $this->dispatch('close-modal', ['id' => 'rejection-reason-modal']);
+            $this->dispatch('close-modal', id : 'rejection-reason-modal');
+
+            $this->emitStatusChangeEvent('document_rejected', [
+                'submission_id' => $rejectedDocument->id,
+                'reason' => $this->rejectData['rejectionReason']
+            ]);
             
             // Show success notification
             Notification::make()
@@ -1088,6 +1134,10 @@ class ProjectDetailDocumentModal extends Component implements HasForms
                 ->send();
 
             $this->dispatch('refresh');
+
+            $this->emitStatusChangeEvent('document_deleted', [
+                'submission_id' => $documentId
+            ]);
         } catch (\Exception $e) {
             Notification::make()
                 ->title('Error')
@@ -1250,14 +1300,26 @@ class ProjectDetailDocumentModal extends Component implements HasForms
         ];
     }
 
-    /**
-     * Render Method
-     */
+    private function emitStatusChangeEvent(string $action, array $data = []): void
+    {
+        $eventData = array_merge([
+            'document_id' => $this->document->id,
+            'required_document_id' => $this->document->id,
+            'project_id' => $this->document->projectStep->project->id,
+            'action' => $action,
+            'timestamp' => now()->toISOString()
+        ], $data);
+
+        // Emit to parent components
+        $this->dispatch('documentStatusChanged', $eventData);
+        $this->dispatch('requirementStatusUpdated', $eventData);
+    }
+
     public function render()
     {
         $sortedDocuments = $this->getOrderedDocuments();
-
-        return view('livewire.project-detail.project-detail-document-modal', [
+        
+        return view('livewire.projects.modals.document-modal',[
             'comments' => $this->document->comments()
                 ->with('user')
                 ->latest()  // Changed from latest() to oldest() to display comments in ascending order

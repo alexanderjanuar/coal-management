@@ -657,8 +657,6 @@
         </div>
     </div>
 
-
-
     <!-- Document Preview Modal with Enhanced UI -->
     <x-filament::modal id="preview-document" wire:model="isPreviewModalOpen" width="7xl">
         @include('components.modal.project-detail.preview-document')
@@ -666,8 +664,9 @@
 
     <x-filament::modal id="confirm-approve-all" alignment="center" width="sm">
         @include('components.modal.project-detail.confirm-approve-all')
-    </x-filament::modal>
+    </x-filament::modal> 
 
-    @livewire('project-detail.approve-without-document-modal', ['document' => $document],
-    key('approve-without-document-'.$document->id))
+    @livewire('projects.modals.approve-without-document-modal', ['document' => $document],
+    key('approve-without-document-'.$document->id . time()))
+
 </div>

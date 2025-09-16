@@ -22,10 +22,22 @@ class ViewProject extends ViewRecord
 {
     use WithRecordNavigation;
     protected static string $resource = ProjectResource::class;
-    protected static string $view = 'filament.pages.project-details';
+    protected static string $view = 'filament.pages.projects.show';
 
     public $newTaskStatus = '';
     public $selectedTaskId = null;
+
+    
+
+    protected $listeners = [
+        'refresh' => '$refresh',
+        'documentStatusChanged' => 'handleDocumentStatusChange',
+        'documentUploaded' => 'handleDocumentUploaded',
+        'documentApprovedWithoutUpload' => 'handleDocumentApprovedWithoutUpload',
+        'documentRejected' => 'handleDocumentRejected',
+        'documentDeleted' => 'handleDocumentDeleted',
+        'requirementStatusUpdated' => 'refreshProjectStatus',
+    ];
 
     /**
      * Add a cache property to track if notification has been sent
@@ -109,29 +121,30 @@ class ViewProject extends ViewRecord
         }
     }
 
-    /**
-     * Determine required document status based on submitted document statuses
-     */
     private function determineRequiredDocumentStatus(array $submittedStatuses): string
     {
-        // Priority order: uploaded > pending_review > approved/rejected
-        // If any document is uploaded, the required document should be "uploaded"
-        if (in_array('uploaded', $submittedStatuses)) {
-            return 'uploaded';
+        if (empty($submittedStatuses)) {
+            return 'draft';
         }
         
-        // If any document is pending review, the required document should be "pending_review"
         if (in_array('pending_review', $submittedStatuses)) {
             return 'pending_review';
         }
         
-        // If all documents are approved or rejected, the required document should be "approved"
-        $onlyApprovedOrRejected = !array_diff($submittedStatuses, ['approved', 'rejected']);
-        if ($onlyApprovedOrRejected && !empty($submittedStatuses)) {
+        if (in_array('approved', $submittedStatuses)) {
             return 'approved';
         }
         
-        // Default fallback
+        // Cek apakah SEMUA status adalah rejected
+        $onlyRejected = !array_diff($submittedStatuses, ['rejected']);
+        if ($onlyRejected && !empty($submittedStatuses)) {
+            return 'rejected';
+        }
+        
+        if (in_array('uploaded', $submittedStatuses)) {
+            return 'uploaded';
+        }
+        
         return 'draft';
     }
 
