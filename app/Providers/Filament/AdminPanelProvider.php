@@ -108,7 +108,7 @@ class AdminPanelProvider extends PanelProvider
                     ->emptyPanelBackgroundImageUrl('https://images.unsplash.com/photo-1662808782878-941ea16adbdc?fm=jpg&q=60&w=3000&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8M3x8amFrYXJ0YSUyMGNpdHl8ZW58MHx8MHx8fDA%3D')
             ])
             
-            ->brandLogo(asset('images/Logo/Logo Horizontal.png'))
+            ->brandLogo(asset('images/Logo/OnlyLogo.png'))
             ->brandLogoHeight('3rem')
             ->viteTheme('resources/css/filament/admin/theme.css')
             ->authMiddleware([
