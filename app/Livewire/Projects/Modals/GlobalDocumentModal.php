@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Livewire\ProjectDetail;
+namespace App\Livewire\Projects\Modals;
 
 use Livewire\Component;
 use App\Models\RequiredDocument;
@@ -18,7 +18,7 @@ use Asmit\FilamentMention\Forms\Components\RichMentionEditor;
 use Yaza\LaravelGoogleDriveStorage\Gdrive;
 use File;
 
-class DocumentModalManager extends Component implements HasForms
+class GlobalDocumentModal extends Component implements HasForms
 {
     use InteractsWithForms;
 
@@ -53,6 +53,7 @@ class DocumentModalManager extends Component implements HasForms
      * Track document being rejected
      */
     public $documentBeingRejected = null;
+    public $isClientInactive = false;
 
     /**
      * Document ordering by priority
@@ -80,6 +81,11 @@ class DocumentModalManager extends Component implements HasForms
         $this->createCommentForm->fill();
         $this->rejectionForm->fill();
         $this->documentNotesForm->fill();
+        
+        // Initialize client inactive status if document is set
+        if (isset($this->document)) {
+            $this->isClientInactive = $this->document->projectStep->project->client->status === 'Inactive';
+        }
     }
 
     public function openDocumentModal($documentId)
@@ -87,6 +93,10 @@ class DocumentModalManager extends Component implements HasForms
         $this->dispatch('close-modal', id: 'database-notifications');
         $this->dispatch('open-modal', id: 'documentModal');
         $this->document = RequiredDocument::find($documentId);
+        
+        // Set client inactive status
+        $this->isClientInactive = $this->document->projectStep->project->client->status === 'Inactive';
+        
         $this->uploadFileForm->fill();
         $this->createCommentForm->fill();
         $this->rejectionForm->fill();
@@ -141,8 +151,10 @@ class DocumentModalManager extends Component implements HasForms
                     ->multiple()
                     ->downloadable()
                     ->openable()
-                    // ->disabled(auth()->user()->hasRole('client'))
                     ->helperText(function () {
+                        if ($this->isClientInactive) {
+                            return 'Klien tidak aktif - Upload dokumen dinonaktifkan';
+                        }
                         if (auth()->user()->hasRole('client')) {
                             return 'You do not have permission to upload documents';
                         }
@@ -169,8 +181,9 @@ class DocumentModalManager extends Component implements HasForms
                         'underline',
                     ])
                     ->extraInputAttributes(['style' => 'font-size:14px'])
-                    ->placeholder('Write your comment here...')
+                    ->placeholder($this->isClientInactive ? 'Klien tidak aktif - Komentar dinonaktifkan' : 'Write your comment here...')
                     ->required()
+                    ->disabled($this->isClientInactive)
             ])
             ->statePath('data');
     }
@@ -654,9 +667,11 @@ class DocumentModalManager extends Component implements HasForms
     public function calculateOverallStatus(): void
     {
         $submissions = $this->document->submittedDocuments;
-        
+
         if ($submissions->count() === 0) {
-            if ($this->document->status === 'approved') {
+            // Jika tidak ada submission dan status sudah approved_without_document, jangan ubah
+            if ($this->document->status === 'approved_without_document') {
+                $this->overallStatus = 'approved_without_document';
                 return;
             }
             $this->overallStatus = 'draft';
@@ -664,34 +679,111 @@ class DocumentModalManager extends Component implements HasForms
             $this->document->save();
             return;
         }
+
+        // Hitung jumlah setiap status
+        $approvedCount = $submissions->where('status', 'approved')->count();
+        $rejectedCount = $submissions->where('status', 'rejected')->count();
+        $pendingReviewCount = $submissions->where('status', 'pending_review')->count();
+        $uploadedCount = $submissions->where('status', 'uploaded')->count();
+        $totalSubmissions = $submissions->count();
+
+        // Business Logic yang benar:
+        // 1. Jika ada pending_review -> pending_review (prioritas tertinggi)
+        // 2. Jika minimal 1 approved -> approved 
+        // 3. Jika SEMUA rejected -> rejected
+        // 4. Jika ada uploaded -> uploaded
         
-        // Check if all documents are in a final state (approved or rejected)
-        $finalizedCount = $submissions->filter(fn($doc) => 
-            $doc->status === 'approved' || $doc->status === 'rejected'
-        )->count();
-        
-        $totalCount = $submissions->count();
-        
-        // Set status based on conditions
-        if ($finalizedCount === $totalCount) {
-            // All documents are either approved or rejected
-            $status = 'approved';
-        } elseif ($submissions->where('status', 'pending_review')->count() > 0) {
-            // At least one document is pending review
+        if ($pendingReviewCount > 0) {
             $status = 'pending_review';
-        } else {
-            // Default to uploaded if not in other states
+        } elseif ($approvedCount > 0) {
+            // Minimal ada 1 dokumen approved = status approved
+            $status = 'approved';
+        } elseif ($rejectedCount === $totalSubmissions) {
+            // SEMUA dokumen rejected = status rejected
+            $status = 'rejected';
+        } elseif ($uploadedCount > 0) {
             $status = 'uploaded';
+        } else {
+            $status = 'uploaded'; // fallback
         }
-        
+
         $this->overallStatus = $status;
         
-        // Only update if status has changed
+        // Update database dan refresh untuk konsistensi
         if ($this->document->status !== $status) {
-            $oldStatus = $this->document->status;
             $this->document->status = $status;
             $this->document->save();
+            $this->document->refresh();
+        }
+    }
 
+
+    /**
+     * Approve document without requiring any file upload
+     */
+    public function approveDocumentWithoutUpload(): void
+    {
+        try {
+            $oldStatus = $this->document->status;
+            
+            // Set document status to approved_without_document
+            $this->document->status = 'approved_without_document';
+            $this->document->save();
+            
+            // Create a comment for this action
+            Comment::create([
+                'user_id' => auth()->id(),
+                'commentable_type' => RequiredDocument::class,
+                'commentable_id' => $this->document->id,
+                'content' => sprintf(
+                    "Document approved without upload by <strong>%s</strong>. Status changed from <strong>%s</strong> to <strong>approved without document</strong>",
+                    auth()->user()->name,
+                    $this->getStatusLabel($oldStatus)
+                ),
+                'status' => 'approved'
+            ]);
+
+            // Update overall status
+            $this->overallStatus = 'approved_without_document';
+            
+            // Close any open modals
+            $this->dispatch('close-modal', ['id' => 'approve-without-upload-modal']);
+            
+            // Refresh the view
+            $this->dispatch('refresh');
+            $this->dispatch('documentApprovedWithoutUpload', [
+                'documentId' => $this->document->id,
+                'oldStatus' => $oldStatus
+            ]);
+
+            // Send notifications
+            $this->sendProjectNotifications(
+                "Document Approved Without Upload",
+                sprintf(
+                    "<span style='color: #f59e0b; font-weight: 500;'>%s</span><br><strong>Document:</strong> %s<br><strong>Action:</strong> Approved without requiring document upload<br><strong>Approved by:</strong> %s",
+                    $this->document->projectStep->project->client->name,
+                    $this->document->name,
+                    auth()->user()->name
+                ),
+                'success',
+                'View Document',
+                'approval'
+            );
+
+            // Show success notification
+            Notification::make()
+                ->title('Document Approved')
+                ->body('Document has been approved without requiring file upload.')
+                ->success()
+                ->send();
+
+        } catch (\Exception $e) {
+            report($e);
+            $this->sendNotification(
+                'error',
+                'Error Approving Document',
+                'An error occurred while approving the document. Please try again.'
+            );
         }
     }
 
@@ -888,39 +980,43 @@ class DocumentModalManager extends Component implements HasForms
      * @param string $status
      * @return array
      */
-    public function getStatusInfo(string $status = '')
-    {
-        return [
-            'title' => match ($status) {
-                'approved' => 'Approved Document',
-                'pending_review' => 'Pending Review',
-                'uploaded' => 'Document Uploaded',
-                'rejected' => 'Document Rejected',
-                default => 'Status Updated'
-            },
-            'color' => match ($status) {
-                'approved' => 'bg-green-50 dark:bg-green-900/20',
-                'pending_review' => 'bg-amber-50 dark:bg-amber-900/20',
-                'uploaded' => 'bg-blue-50 dark:bg-blue-900/20',
-                'rejected' => 'bg-red-50 dark:bg-red-900/20',
-                default => 'bg-gray-50 dark:bg-gray-800/50'
-            },
-            'textColor' => match ($status) {
-                'approved' => 'text-green-600 dark:text-green-400',
-                'pending_review' => 'text-amber-600 dark:text-amber-400',
-                'uploaded' => 'text-blue-600 dark:text-blue-400',
-                'rejected' => 'text-red-600 dark:text-red-400',
-                default => 'text-gray-600 dark:text-gray-400'
-            },
-            'icon' => match ($status) {
-                'approved' => 'heroicon-m-check-badge',
-                'pending_review' => 'heroicon-m-clock',
-                'uploaded' => 'heroicon-m-arrow-up-tray',
-                'rejected' => 'heroicon-m-x-circle',
-                default => 'heroicon-m-document'
-            }
-        ];
-    }
+        public function getStatusInfo(string $status = '')
+        {
+            return [
+                'title' => match ($status) {
+                    'approved' => 'Approved Document',
+                    'pending_review' => 'Pending Review',
+                    'approved_without_document' => 'Approved Without Document',
+                    'uploaded' => 'Document Uploaded',
+                    'rejected' => 'Document Rejected',
+                    default => 'Status Updated'
+                },
+                'color' => match ($status) {
+                    'approved' => 'bg-green-50 dark:bg-green-900/20',
+                    'approved_without_document' => 'bg-emerald-50 dark:bg-emerald-900/20',
+                    'pending_review' => 'bg-amber-50 dark:bg-amber-900/20',
+                    'uploaded' => 'bg-blue-50 dark:bg-blue-900/20',
+                    'rejected' => 'bg-red-50 dark:bg-red-900/20',
+                    default => 'bg-gray-50 dark:bg-gray-800/50'
+                },
+                'textColor' => match ($status) {
+                    'approved' => 'text-green-600 dark:text-green-400',
+                    'approved_without_document' => 'text-emerald-600 dark:text-emerald-400',
+                    'pending_review' => 'text-amber-600 dark:text-amber-400',
+                    'uploaded' => 'text-blue-600 dark:text-blue-400',
+                    'rejected' => 'text-red-600 dark:text-red-400',
+                    default => 'text-gray-600 dark:text-gray-400'
+                },
+                'icon' => match ($status) {
+                    'approved' => 'heroicon-m-check-badge',
+                    'approved_without_document' => 'heroicon-m-check-circle',
+                    'pending_review' => 'heroicon-m-clock',
+                    'uploaded' => 'heroicon-m-arrow-up-tray',
+                    'rejected' => 'heroicon-m-x-circle',
+                    default => 'heroicon-m-document'
+                }
+            ];
+        }
 
     /**
      * Status Management Methods
@@ -1101,10 +1197,11 @@ class DocumentModalManager extends Component implements HasForms
     public function getStatusLabel(string $status): string
     {
         return match ($status) {
-            'draft' => 'Draft', // Added draft status label
+            'draft' => 'Draft',
             'uploaded' => 'Uploaded',
             'pending_review' => 'Pending Review',
             'approved' => 'Approved',
+            'approved_without_document' => 'Disetujui Tanpa Dokumen',
             'rejected' => 'Rejected',
             default => ucwords(str_replace('_', ' ', $status))
         };
@@ -1116,10 +1213,11 @@ class DocumentModalManager extends Component implements HasForms
     public function getStatusIcon(string $status): string
     {
         return match ($status) {
-            'draft' => 'heroicon-m-document', // Added draft status icon
+            'draft' => 'heroicon-m-document',
             'uploaded' => 'heroicon-m-arrow-up-tray',
             'pending_review' => 'heroicon-m-clock',
             'approved' => 'heroicon-m-check-circle',
+            'approved_without_document' => 'heroicon-m-check-badge',
             'rejected' => 'heroicon-m-x-circle',
             default => 'heroicon-m-question-mark-circle'
         };
@@ -1337,7 +1435,7 @@ class DocumentModalManager extends Component implements HasForms
 
     public function render()
     {
-        return view('livewire.project-detail.document-modal-manager', [
+        return view('livewire.projects.modals.global-document-modal',[
             'fileType' => $this->getFileType()
         ]);
     }

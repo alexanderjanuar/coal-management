@@ -197,15 +197,7 @@ class ClientResource extends Resource
                         ->maxLength(255)
                         ->placeholder('Enter Core Tax Password')
                         ->helperText('Password for Core Tax application access')
-                        ->suffixIcon('heroicon-o-lock-closed')
-                        ->dehydrated(false)  // Jangan kirim ke server jika kosong
-                        ->dehydrateStateUsing(function ($state, $record) {
-                            // Jika field kosong dan ada record, pertahankan password lama
-                            if (empty($state) && $record && $record->credential) {
-                                return $record->credential->core_tax_password;
-                            }
-                            return $state;
-                        }),
+                        ->suffixIcon('heroicon-o-lock-closed'),  // Jangan kirim ke server jika kosong,
 
                     // FIELD BARU - DJP CREDENTIALS
                     Forms\Components\TextInput::make('djp_account')
@@ -220,15 +212,7 @@ class ClientResource extends Resource
                         ->maxLength(255)
                         ->placeholder('Enter DJP password')
                         ->helperText('Password untuk akses DJP Online')
-                        ->suffixIcon('heroicon-o-lock-closed')
-                        ->dehydrated(false)  // Jangan kirim ke server jika kosong
-                        ->dehydrateStateUsing(function ($state, $record) {
-                            // Jika field kosong dan ada record, pertahankan password lama
-                            if (empty($state) && $record && $record->credential) {
-                                return $record->credential->djp_password;
-                            }
-                            return $state;
-                        }),
+                        ->suffixIcon('heroicon-o-lock-closed'),  // Jangan kirim ke server jika kosong,
 
                     Forms\Components\TextInput::make('email')
                         ->label('Client Email Account')
@@ -243,15 +227,8 @@ class ClientResource extends Resource
                         ->maxLength(255)
                         ->placeholder('Enter Email Password')
                         ->helperText('Password untuk akses email - kosongkan jika tidak ingin mengubah')
-                        ->suffixIcon('heroicon-o-lock-closed')
-                        ->dehydrated(false)  // Jangan kirim ke server jika kosong
-                        ->dehydrateStateUsing(function ($state, $record) {
-                            // Jika field kosong dan ada record, pertahankan password lama
-                            if (empty($state) && $record && $record->credential) {
-                                return $record->credential->email_password;
-                            }
-                            return $state;
-                        }),
+                        ->suffixIcon('heroicon-o-lock-closed'),  // Jangan kirim ke server jika kosong
+
                     ])
                     ->columns(2)
                     ->collapsible()

@@ -45,7 +45,7 @@ class AppServiceProvider extends ServiceProvider
 
         FilamentView::registerRenderHook(
             PanelsRenderHook::BODY_END,
-            fn(): string => Blade::render('@livewire(\'project-detail.document-modal-manager\')'),
+            fn(): string => Blade::render('@livewire(\'projects.modals.global-document-modal\')'),
         );
 
         FilamentView::registerRenderHook(

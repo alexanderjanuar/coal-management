@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Livewire\Widget;
+namespace App\Livewire\Dashboard\Widget;
 
 use Filament\Widgets\StatsOverviewWidget as BaseWidget;
 use Filament\Widgets\StatsOverviewWidget\Stat;
@@ -9,9 +9,9 @@ use App\Models\RequiredDocument;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 
-class ProjectsStatsOverview extends BaseWidget
+class ProjectStatsOverview extends BaseWidget
 {
-    protected function getStats(): array
+protected function getStats(): array
     {
         // Get base query for projects
         $baseQuery = Project::query();
@@ -114,44 +114,28 @@ class ProjectsStatsOverview extends BaseWidget
                 ->descriptionIcon($totalChange >= 0 ? 'heroicon-m-arrow-trending-up' : 'heroicon-m-arrow-trending-down')
                 ->color($totalChange >= 0 ? 'success' : 'danger')
                 ->icon('heroicon-o-folder')
-                ->chart($chartData->pluck('total')->toArray())
-                ->extraAttributes([
-                    'class' => 'cursor-pointer transition-all duration-200 hover:scale-105',
-                    'wire:click' => "\$dispatch('openProjectModal', { status: 'all', count: {$totalProjects} })",
-                ]),
+                ->chart($chartData->pluck('total')->toArray()),
 
             Stat::make('Proyek Aktif', (string) $activeProjects)
                 ->description($activeChange . '% dari bulan lalu')
                 ->descriptionIcon($activeChange >= 0 ? 'heroicon-m-arrow-trending-up' : 'heroicon-m-arrow-trending-down')
                 ->color($activeChange >= 0 ? 'success' : 'danger')
                 ->icon('heroicon-o-play')
-                ->chart($chartData->pluck('active')->toArray())
-                ->extraAttributes([
-                    'class' => 'cursor-pointer transition-all duration-200 hover:scale-105',
-                    'wire:click' => "\$dispatch('openProjectModal', { status: 'in_progress', count: {$activeProjects} })",
-                ]),
+                ->chart($chartData->pluck('active')->toArray()),
 
             Stat::make('Proyek Selesai', (string) $completedProjects)
                 ->description($completedChange . '% dari bulan lalu')
                 ->descriptionIcon($completedChange >= 0 ? 'heroicon-m-arrow-trending-up' : 'heroicon-m-arrow-trending-down')
                 ->color($completedChange >= 0 ? 'success' : 'danger')
                 ->icon('heroicon-o-check-circle')
-                ->chart($chartData->pluck('completed')->toArray())
-                ->extraAttributes([
-                    'class' => 'cursor-pointer transition-all duration-200 hover:scale-105',
-                    'wire:click' => "\$dispatch('openProjectModal', { status: 'completed', count: {$completedProjects} })",
-                ]),
+                ->chart($chartData->pluck('completed')->toArray()),
 
             Stat::make('Dokumen Pending', (string) $pendingDocuments)
                 ->description($pendingChange . '% dari bulan lalu')
                 ->descriptionIcon($pendingChange <= 0 ? 'heroicon-m-arrow-trending-up' : 'heroicon-m-arrow-trending-down')
                 ->color($pendingChange <= 0 ? 'success' : 'warning')
                 ->icon('heroicon-o-document-text')
-                ->chart($chartData->pluck('pending')->toArray())
-                ->extraAttributes([
-                    'class' => 'cursor-pointer transition-all duration-200 hover:scale-105',
-                    'wire:click' => "\$dispatch('openDocumentModal', { status: 'pending_review', count: {$pendingDocuments} })",
-                ]),
+                ->chart($chartData->pluck('pending')->toArray()),
         ];
     }
 

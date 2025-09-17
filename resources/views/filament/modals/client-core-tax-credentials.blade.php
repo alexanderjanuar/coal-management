@@ -1,5 +1,52 @@
 {{-- File: resources/views/filament/modals/client-core-tax-credentials.blade.php --}}
-<div class="space-y-4">
+<div x-data="{
+    openCoreTax(username) {
+        const coreTaxWindow = window.open('https://coretaxdjp.pajak.go.id/', '_blank');
+        
+        if (!username) return;
+        
+        this.fillCredentials(coreTaxWindow, username);
+    },
+    
+    fillCredentials(targetWindow, username) {
+        setTimeout(() => {
+            this.attemptAutoFill(targetWindow, username);
+        }, 1000);
+    },
+    
+    attemptAutoFill(targetWindow, username) {
+        try {
+            setTimeout(() => {
+                this.fillUsernameField(targetWindow, username);
+            }, 3000);
+        } catch (error) {
+            console.log('Cross-origin access blocked:', error);
+        }
+    },
+    
+    fillUsernameField(targetWindow, username) {
+        try {
+            const usernameField = targetWindow.document.querySelector('#Username.form-control');
+            
+            if (usernameField) {
+                usernameField.value = username;
+                usernameField.dispatchEvent(new Event('input', { bubbles: true }));
+                usernameField.dispatchEvent(new Event('change', { bubbles: true }));
+                
+                this.focusPasswordField(targetWindow);
+            }
+        } catch (error) {
+            console.log('Auto-fill blocked by CORS policy:', error);
+        }
+    },
+    
+    focusPasswordField(targetWindow) {
+        const passwordField = targetWindow.document.querySelector('#Password.form-control, input[type=password]');
+        if (passwordField) {
+            passwordField.focus();
+        }
+    }
+}" class="space-y-4">
     <div
         class="bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 rounded-lg p-6 border border-blue-200 dark:border-blue-800">
         <div class="flex items-center space-x-3 mb-4">
@@ -23,6 +70,32 @@
         @endphp
 
         @if($credential)
+        {{-- Core Tax Access Button Section --}}
+        @if($credential && ($credential->core_tax_user_id || $credential->core_tax_password))
+        <div class="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700">
+            <div class="flex items-center justify-between">
+                <div class="flex items-center space-x-2">
+                    <svg class="w-5 h-5 text-blue-500" fill="currentColor" viewBox="0 0 20 20">
+                        <path fill-rule="evenodd"
+                            d="M4.083 9h1.946c.089-1.546.383-2.97.837-4.118A6.004 6.004 0 004.083 9zM10 2a8 8 0 100 16 8 8 0 000-16zm0 2c-.076 0-.232.032-.465.262-.238.234-.497.623-.737 1.182-.389.907-.673 2.142-.766 3.556h3.936c-.093-1.414-.377-2.649-.766-3.556-.24-.559-.499-.948-.737-1.182C10.232 4.032 10.076 4 10 4zm3.971 5c-.089-1.546-.383-2.97-.837-4.118A6.004 6.004 0 0115.917 9h-1.946zm-2.003 2H8.032c.093 1.414.377 2.649.766 3.556.24.559.499.948.737 1.182.233.23.389.262.465.262.076 0 .232-.032.465-.262.238-.234.497-.623.737-1.182.389-.907.673-2.142.766-3.556zm1.166 4.118c.454-1.148.748-2.572.837-4.118h1.946a6.004 6.004 0 01-2.783 4.118zm-6.268 0C6.412 13.97 6.118 12.546 6.03 11H4.083a6.004 6.004 0 002.783 4.118z" />
+                    </svg>
+                    <span class="text-sm font-medium text-gray-700 dark:text-gray-300">
+                        Akses Core Tax DJP
+                    </span>
+                </div>
+                <button type="button" @click="openCoreTax('{{ $credential->core_tax_user_id }}')"
+                    class="inline-flex items-center px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg shadow-sm transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800">
+                    <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                    </svg>
+                    Buka Core Tax
+                </button>
+            </div>
+        </div>
+        @endif
+
+        {{-- Core Tax Section with Open Button --}}
         <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
             {{-- Core Tax User ID --}}
             <div class="space-y-2">
@@ -44,8 +117,8 @@
                     </div>
                     @if($credential->core_tax_user_id)
                     <button type="button" onclick="navigator.clipboard.writeText('{{ $credential->core_tax_user_id }}'); 
-                                     this.textContent = 'Disalin!'; 
-                                     setTimeout(() => this.textContent = 'Salin', 2000);"
+                             this.textContent = 'Disalin!'; 
+                             setTimeout(() => this.textContent = 'Salin', 2000);"
                         class="px-3 py-2 text-xs bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300 rounded-lg hover:bg-blue-200 dark:hover:bg-blue-800 transition-colors">
                         Salin
                     </button>
@@ -69,16 +142,16 @@
                             class="w-full bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 pr-10 font-mono text-sm {{ $credential->core_tax_password ? 'text-gray-900 dark:text-white' : 'text-gray-500 dark:text-gray-400' }}">
                         @if($credential->core_tax_password)
                         <button type="button" onclick="const hiddenField = document.getElementById('password-hidden-{{ $record->id }}'); 
-                                     const textField = document.getElementById('password-field-{{ $record->id }}');
-                                     if (hiddenField.style.display !== 'none') {
-                                         hiddenField.style.display = 'none';
-                                         textField.style.display = 'block';
-                                         this.innerHTML = '<svg class=&quot;w-4 h-4&quot; fill=&quot;currentColor&quot; viewBox=&quot;0 0 20 20&quot;><path fill-rule=&quot;evenodd&quot; d=&quot;M3.707 2.293a1 1 0 00-1.414 1.414l14 14a1 1 0 001.414-1.414l-1.473-1.473A10.014 10.014 0 0019.542 10C18.268 5.943 14.478 3 10 3a9.958 9.958 0 00-4.512 1.074l-1.78-1.781zm4.261 4.26l1.514 1.515a2.003 2.003 0 012.45 2.45l1.514 1.514a4 4 0 00-5.478-5.478z&quot;/><path d=&quot;M12.454 16.697L9.75 13.992a4 4 0 01-3.742-3.741L2.335 6.578A9.98 9.98 0 00.458 10c1.274 4.057 5.065 7 9.542 7 .847 0 1.669-.105 2.454-.303z&quot;/></svg>';
-                                     } else {
-                                         hiddenField.style.display = 'block';
-                                         textField.style.display = 'none';
-                                         this.innerHTML = '<svg class=&quot;w-4 h-4&quot; fill=&quot;currentColor&quot; viewBox=&quot;0 0 20 20&quot;><path d=&quot;M10 12a2 2 0 100-4 2 2 0 000 4z&quot;/><path fill-rule=&quot;evenodd&quot; d=&quot;M.458 10C1.732 5.943 5.522 3 10 3s8.268 2.943 9.542 7c-1.274 4.057-5.064 7-9.542 7S1.732 14.057.458 10zM14 10a4 4 0 11-8 0 4 4 0 018 0z&quot;/></svg>';
-                                     }"
+                             const textField = document.getElementById('password-field-{{ $record->id }}');
+                             if (hiddenField.style.display !== 'none') {
+                                 hiddenField.style.display = 'none';
+                                 textField.style.display = 'block';
+                                 this.innerHTML = '<svg class=&quot;w-4 h-4&quot; fill=&quot;currentColor&quot; viewBox=&quot;0 0 20 20&quot;><path fill-rule=&quot;evenodd&quot; d=&quot;M3.707 2.293a1 1 0 00-1.414 1.414l14 14a1 1 0 001.414-1.414l-1.473-1.473A10.014 10.014 0 0019.542 10C18.268 5.943 14.478 3 10 3a9.958 9.958 0 00-4.512 1.074l-1.78-1.781zm4.261 4.26l1.514 1.515a2.003 2.003 0 012.45 2.45l1.514 1.514a4 4 0 00-5.478-5.478z&quot;/><path d=&quot;M12.454 16.697L9.75 13.992a4 4 0 01-3.742-3.741L2.335 6.578A9.98 9.98 0 00.458 10c1.274 4.057 5.065 7 9.542 7 .847 0 1.669-.105 2.454-.303z&quot;/></svg>';
+                             } else {
+                                 hiddenField.style.display = 'block';
+                                 textField.style.display = 'none';
+                                 this.innerHTML = '<svg class=&quot;w-4 h-4&quot; fill=&quot;currentColor&quot; viewBox=&quot;0 0 20 20&quot;><path d=&quot;M10 12a2 2 0 100-4 2 2 0 000 4z&quot;/><path fill-rule=&quot;evenodd&quot; d=&quot;M.458 10C1.732 5.943 5.522 3 10 3s8.268 2.943 9.542 7c-1.274 4.057-5.064 7-9.542 7S1.732 14.057.458 10zM14 10a4 4 0 11-8 0 4 4 0 018 0z&quot;/></svg>';
+                             }"
                             class="absolute inset-y-0 right-0 flex items-center pr-3 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors">
                             <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
                                 <path d="M10 12a2 2 0 100-4 2 2 0 000 4z" />
@@ -96,8 +169,8 @@
                     </div>
                     @if($credential->core_tax_password)
                     <button type="button" onclick="navigator.clipboard.writeText('{{ $credential->core_tax_password }}'); 
-                                     this.textContent = 'Disalin!'; 
-                                     setTimeout(() => this.textContent = 'Salin', 2000);"
+                             this.textContent = 'Disalin!'; 
+                             setTimeout(() => this.textContent = 'Salin', 2000);"
                         class="px-3 py-2 text-xs bg-green-100 dark:bg-green-900 text-green-700 dark:text-green-300 rounded-lg hover:bg-green-200 dark:hover:bg-green-800 transition-colors">
                         Salin
                     </button>
@@ -105,6 +178,7 @@
                 </div>
             </div>
         </div>
+
 
 
 
