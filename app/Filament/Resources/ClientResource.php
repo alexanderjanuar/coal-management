@@ -162,13 +162,11 @@ class ClientResource extends Resource
                             ->imageEditor()
                             ->disk('public')
                             ->directory('avatars')
-                            ->visibility('public')
                             ->imageResizeMode('cover')
                             ->imageCropAspectRatio('1:1')
                             ->imageResizeTargetWidth('300')
                             ->imageResizeTargetHeight('300')
                             ->maxSize(5120) // 5MB max
-                            ->acceptedFileTypes(['image/jpeg', 'image/png', 'image/gif', 'image/webp'])
                             ->downloadable()
                             ->columnSpanFull()
                     ])
@@ -349,11 +347,11 @@ class ClientResource extends Resource
                 ImageColumn::make('logo')
                     ->circular()
                     ->defaultImageUrl(fn($record) => 'https://ui-avatars.com/api/?name=' . urlencode($record->name) . '&color=7F9CF5&background=EBF4FF'),
+
                 Tables\Columns\TextColumn::make('name')
                     ->label('Client')
                     ->searchable()
-                    ->sortable()
-                    
+                    ->sortable()                 
                     ->weight(FontWeight::Medium),
                     
                 Tables\Columns\TextColumn::make('pic.name')
@@ -906,7 +904,7 @@ class ClientResource extends Resource
 
     public static function getNavigationBadge(): ?string
     {
-        return static::getModel()::count();
+        return static::getModel()::where('status', 'Active')->count();
     }
 
     public static function getGloballySearchableAttributes(): array

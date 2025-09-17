@@ -724,7 +724,9 @@ class ProjectResource extends Resource
 
     public static function getNavigationBadge(): ?string
     {
-        return static::getModel()::count();
+        return static::getModel()::whereHas('client', function($query) {
+            $query->where('status', 'Active');
+        })->where('status', '!=', 'completed')->count();
     }
 
     public static function getGloballySearchableAttributes(): array
