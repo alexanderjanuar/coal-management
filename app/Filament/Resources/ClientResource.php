@@ -491,20 +491,7 @@ class ClientResource extends Resource
                         ->label('Close')
                         ->color('gray')
                         ->close(),
-                ])
-                ->visible(function ($record) {
-                    // PERUBAHAN: Update kondisi untuk memeriksa credential relationship
-                    $hasCredential = $record->credential && (
-                        $record->credential->core_tax_user_id || 
-                        $record->credential->core_tax_password ||
-                        $record->credential->djp_account ||      // TAMBAHAN: cek DJP account
-                        $record->credential->djp_password ||     // TAMBAHAN: cek DJP password
-                        $record->credential->email ||
-                        $record->credential->email_password
-                    );
-                    
-                    return $hasCredential;
-                }),
+                ]),
 
 
             // PIC Management Actions Group
