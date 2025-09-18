@@ -32,13 +32,13 @@ class ClientsExport implements FromQuery, WithHeadings, WithMapping, WithStyles,
 
     public function query()
     {
-        $query = Client::query()->with(['pic']);
+        $query = Client::query()->with(['pic', 'accountRepresentative', 'clientCredential']);
 
-        // If specific IDs are provided (for selected records), filter by them
+        // Jika ID spesifik disediakan (untuk record terpilih), filter berdasarkan ID tersebut
         if ($this->selectedIds !== null && !empty($this->selectedIds)) {
             $query->whereIn('id', $this->selectedIds);
         } else {
-            // Apply regular filters only if not exporting selected records
+            // Terapkan filter reguler hanya jika tidak mengekspor record terpilih
             if (!empty($this->filters['pic_id'])) {
                 $query->where('pic_id', $this->filters['pic_id']);
             }
@@ -59,24 +59,26 @@ class ClientsExport implements FromQuery, WithHeadings, WithMapping, WithStyles,
     {
         return [
             'No',
-            'Client Name',
-            'Email',
-            'Address',
+            'Nama Klien',
+            'Email Klien',
+            'Alamat',
             'NPWP',
-            'KPP',
-            'PKP Status',
+            'Status PKP',
             'EFIN',
             'Account Representative',
-            'AR Phone',
-            'PIC Name',
-            'PIC NIK',
+            'Telepon AR',
+            'Email AR',
+            'KPP',
+            'Nama PIC',
+            'NIK PIC',
             'Core Tax User ID',
             'Core Tax Password',
-            'PPN Contract',
-            'PPh Contract',
-            'Bupot Contract',
-            'Client Status',
-            'Created Date',
+            'Akun DJP',
+            'Password DJP',
+            'Email Account',
+            'Password Email',
+            'Status Klien',
+            'Tanggal Dibuat',
         ];
     }
 
@@ -91,20 +93,22 @@ class ClientsExport implements FromQuery, WithHeadings, WithMapping, WithStyles,
             $client->email ?? '',
             $client->adress ?? '',
             $client->NPWP ?? '',
-            $client->KPP ?? '',
             $client->pkp_status ?? 'Non-PKP',
             $client->EFIN ?? '',
-            $client->account_representative ?? '',
-            $client->ar_phone_number ?? '',
-            $client->pic?->name ?? 'No PIC Assigned',
+            $client->accountRepresentative?->name ?? '',
+            $client->accountRepresentative?->phone_number ?? '',
+            $client->accountRepresentative?->email ?? '',
+            $client->accountRepresentative?->kpp ?? '',
+            $client->pic?->name ?? '',
             $client->pic?->nik ?? '',
-            $client->core_tax_user_id ?? 'Not Configured',
-            $this->includePasswords ? ($client->core_tax_password ?? 'Not Configured') : ($client->core_tax_password ? 'Configured' : 'Not Configured'),
-            $client->ppn_contract ? 'Yes' : 'No',
-            $client->pph_contract ? 'Yes' : 'No',
-            $client->bupot_contract ? 'Yes' : 'No',
+            $client->clientCredential?->core_tax_user_id ?? '',
+            $client->clientCredential?->core_tax_password ?? '',
+            $client->clientCredential?->djp_account ?? '',
+            $client->clientCredential?->djp_password ?? '',
+            $client->clientCredential?->email ?? '',
+            $client->clientCredential?->email_password ?? '',
             $client->status ?? 'Active',
-            $client->created_at ? $client->created_at->format('Y-m-d H:i') : '',
+            $client->created_at ? $client->created_at->format('d/m/Y H:i') : '',
         ];
     }
 
@@ -112,24 +116,26 @@ class ClientsExport implements FromQuery, WithHeadings, WithMapping, WithStyles,
     {
         return [
             'A' => 5,   // No
-            'B' => 25,  // Client Name
-            'C' => 25,  // Email
-            'D' => 30,  // Address
+            'B' => 25,  // Nama Klien
+            'C' => 25,  // Email Klien
+            'D' => 30,  // Alamat
             'E' => 20,  // NPWP
-            'F' => 20,  // KPP
-            'G' => 15,  // PKP Status
-            'H' => 15,  // EFIN
-            'I' => 20,  // Account Representative
-            'J' => 15,  // AR Phone
-            'K' => 20,  // PIC Name
-            'L' => 18,  // PIC NIK
-            'M' => 18,  // Core Tax User ID
-            'N' => 18,  // Core Tax Password
-            'O' => 12,  // PPN Contract
-            'P' => 12,  // PPh Contract
-            'Q' => 12,  // Bupot Contract
-            'R' => 12,  // Client Status
-            'S' => 18,  // Created Date
+            'F' => 15,  // Status PKP
+            'G' => 15,  // EFIN
+            'H' => 20,  // Account Representative
+            'I' => 15,  // Telepon AR
+            'J' => 20,  // Email AR
+            'K' => 20,  // KPP
+            'L' => 20,  // Nama PIC
+            'M' => 18,  // NIK PIC
+            'N' => 18,  // Core Tax User ID
+            'O' => 18,  // Core Tax Password
+            'P' => 15,  // Akun DJP
+            'Q' => 15,  // Password DJP
+            'R' => 20,  // Email Account
+            'S' => 15,  // Password Email
+            'T' => 12,  // Status Klien
+            'U' => 18,  // Tanggal Dibuat
         ];
     }
 
@@ -137,9 +143,9 @@ class ClientsExport implements FromQuery, WithHeadings, WithMapping, WithStyles,
     {
         if ($this->selectedIds !== null) {
             $count = count($this->selectedIds);
-            return "Selected Clients ({$count} records)";
+            return "Klien Terpilih ({$count} record)";
         }
-        return 'Clients Data';
+        return 'Data Klien';
     }
 
     public function styles(Worksheet $sheet)
@@ -147,25 +153,25 @@ class ClientsExport implements FromQuery, WithHeadings, WithMapping, WithStyles,
         $lastRow = $sheet->getHighestRow();
         $lastColumn = $sheet->getHighestColumn();
 
-        // Add export info at the top
+        // Tambahkan info ekspor di bagian atas
         $sheet->insertNewRowBefore(1, 3);
         
         if ($this->selectedIds !== null) {
-            $sheet->setCellValue('A1', 'SELECTED CLIENTS EXPORT');
-            $sheet->setCellValue('A2', 'Selected Records: ' . count($this->selectedIds));
+            $sheet->setCellValue('A1', 'EKSPOR KLIEN TERPILIH');
+            $sheet->setCellValue('A2', 'Record Terpilih: ' . count($this->selectedIds));
         } else {
-            $sheet->setCellValue('A1', 'CLIENT DATABASE EXPORT');
-            $sheet->setCellValue('A2', 'All Records');
+            $sheet->setCellValue('A1', 'EKSPOR DATABASE KLIEN');
+            $sheet->setCellValue('A2', 'Semua Record');
         }
         
-        $sheet->setCellValue('A3', 'Generated on: ' . now()->format('Y-m-d H:i:s'));
+        $sheet->setCellValue('A3', 'Dibuat pada: ' . now()->format('d/m/Y H:i:s'));
 
-        // Merge title cells
+        // Gabungkan sel judul
         $sheet->mergeCells('A1:' . $lastColumn . '1');
         $sheet->mergeCells('A2:' . $lastColumn . '2');
         $sheet->mergeCells('A3:' . $lastColumn . '3');
 
-        // Title styling
+        // Styling judul
         $sheet->getStyle('A1')->applyFromArray([
             'font' => [
                 'bold' => true,
@@ -182,7 +188,7 @@ class ClientsExport implements FromQuery, WithHeadings, WithMapping, WithStyles,
             ],
         ]);
 
-        // Info styling
+        // Styling info
         $sheet->getStyle('A2:A3')->applyFromArray([
             'font' => [
                 'italic' => true,
@@ -194,7 +200,7 @@ class ClientsExport implements FromQuery, WithHeadings, WithMapping, WithStyles,
             ],
         ]);
 
-        // Header styling (now at row 4)
+        // Styling header (sekarang di baris 4)
         $sheet->getStyle('A4:' . $lastColumn . '4')->applyFromArray([
             'font' => [
                 'bold' => true,
@@ -211,7 +217,7 @@ class ClientsExport implements FromQuery, WithHeadings, WithMapping, WithStyles,
             ],
         ]);
 
-        // All data borders
+        // Border untuk semua data
         $sheet->getStyle('A4:' . $lastColumn . ($lastRow + 3))->applyFromArray([
             'borders' => [
                 'allBorders' => [
@@ -221,12 +227,12 @@ class ClientsExport implements FromQuery, WithHeadings, WithMapping, WithStyles,
             ],
         ]);
 
-        // Center alignment for specific columns
+        // Alignment tengah untuk kolom tertentu
         $sheet->getStyle('A:A')->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER); // No
-        $sheet->getStyle('G:G')->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER); // PKP Status
-        $sheet->getStyle('O:R')->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER); // Contract columns
+        $sheet->getStyle('F:F')->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER); // Status PKP
+        $sheet->getStyle('T:T')->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER); // Status Klien
 
-        // Alternate row colors (starting from row 5)
+        // Warna baris bergantian (mulai dari baris 5)
         for ($i = 5; $i <= ($lastRow + 3); $i++) {
             if (($i - 4) % 2 == 0) {
                 $sheet->getStyle('A' . $i . ':' . $lastColumn . $i)->applyFromArray([
@@ -238,10 +244,10 @@ class ClientsExport implements FromQuery, WithHeadings, WithMapping, WithStyles,
             }
         }
 
-        // Freeze header row
+        // Bekukan baris header
         $sheet->freezePane('A5');
 
-        // Set row heights
+        // Set tinggi baris
         $sheet->getRowDimension('1')->setRowHeight(25);
         $sheet->getRowDimension('4')->setRowHeight(20);
 

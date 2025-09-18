@@ -491,7 +491,8 @@ class ClientResource extends Resource
                         ->label('Close')
                         ->color('gray')
                         ->close(),
-                ]),
+                ])
+                ->visible(),
 
 
             // PIC Management Actions Group
