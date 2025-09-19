@@ -121,16 +121,109 @@ class GreetingCard extends Component
     }
 
     /**
+     * Get projects that are near completion (70%+ progress)
+     */
+    public function getNearCompletionProjects(): array
+    {
+        $user = auth()->user();
+        $isSuperAdmin = $user->hasRole('super-admin');
+        $clientIds = $isSuperAdmin ? null : $user->userClients()->pluck('client_id')->toArray();
+        
+        $nearCompletionProjects = collect();
+        
+        // Query projects with their steps, tasks, and documents - ACTIVE CLIENTS ONLY
+        $projectsQuery = Project::with(['steps.tasks', 'steps.requiredDocuments', 'client'])
+            ->whereNotIn('status', ['completed', 'canceled'])
+            ->whereHas('client', function($query) {
+                $query->where('status', 'Active'); // Only active clients
+            });
+        
+        // Apply role-based filtering
+        if (!$isSuperAdmin && !empty($clientIds)) {
+            $projectsQuery->whereIn('client_id', $clientIds)
+                ->where(function($subQuery) use ($user) {
+                    $subQuery->where('pic_id', $user->id)
+                            ->orWhereHas('userProject', function($q) use ($user) {
+                                $q->where('user_id', $user->id);
+                            });
+                });
+        }
+        
+        $projects = $projectsQuery->get();
+        
+        // Calculate progress for each project
+        foreach ($projects as $project) {
+            $totalItems = 0;
+            $completedItems = 0;
+            
+            foreach ($project->steps as $step) {
+                // Count tasks
+                $tasks = $step->tasks;
+                if ($tasks->count() > 0) {
+                    $totalItems += $tasks->count();
+                    $completedItems += $tasks->where('status', 'completed')->count();
+                }
+                
+                // Count required documents
+                $documents = $step->requiredDocuments;
+                if ($documents->count() > 0) {
+                    $totalItems += $documents->count();
+                    $completedItems += $documents->where('status', 'approved')->count();
+                }
+            }
+            
+            // Calculate progress percentage
+            $progress = $totalItems > 0 ? ($completedItems / $totalItems) * 100 : 0;
+            
+            // Near completion = 70%+ progress but not 100%
+            if ($progress >= 70 && $progress < 100) {
+                $nearCompletionProjects->push([
+                    'project' => [
+                        'id' => $project->id,
+                        'name' => $project->name,
+                        'status' => $project->status,
+                        'priority' => $project->priority,
+                        'client' => [
+                            'id' => $project->client->id ?? null,
+                            'name' => $project->client->name ?? 'No Client'
+                        ]
+                    ],
+                    'progress' => round($progress),
+                    'completed_items' => $completedItems,
+                    'total_items' => $totalItems,
+                    'progress_decimal' => round($progress, 1)
+                ]);
+            }
+        }
+        
+        // Sort by progress descending (highest completion first)
+        return $nearCompletionProjects
+            ->sortByDesc('progress')
+            ->values()
+            ->toArray();
+    }
+
+    
+
+    /**
      * Get sample of user's submitted documents
      */
     public function getUserDocuments(int $limit = 5): array
     {
         $user = auth()->user();
         $isSuperAdmin = $user->hasRole('super-admin');
-        $clientIds = $isSuperAdmin ? null : $user->userClients()->pluck('client_id')->toArray();
+        $clientIds = $isSuperAdmin ? null : $user->userClients()
+            ->whereHas('client', function($query) {
+                $query->where('status', 'Active');
+            })
+            ->pluck('client_id')
+            ->toArray();
 
         $query = SubmittedDocument::with(['requiredDocument.projectStep.project.client'])
-            ->where('user_id', $user->id);
+            ->where('user_id', $user->id)
+            ->whereHas('requiredDocument.projectStep.project.client', function($clientQuery) {
+                $clientQuery->where('status', 'Active'); // Only active clients
+            });
 
         if (!$isSuperAdmin && !empty($clientIds)) {
             $query->whereHas('requiredDocument.projectStep.project', function($q) use ($clientIds) {
@@ -168,6 +261,12 @@ class GreetingCard extends Component
                         $q->where('user_id', $user->id);
                     });
             })
+            ->where(function($projectQuery) {
+                // Only include tasks for projects with active clients or tasks without project
+                $projectQuery->whereHas('project.client', function($q) {
+                    $q->where('status', 'Active');
+                })->orWhereNull('project_id');
+            })
             ->where(function($dateQuery) use ($today) {
                 $dateQuery->where(function($q) use ($today) {
                     $q->where('start_task_date', '<=', $today)
@@ -189,7 +288,7 @@ class GreetingCard extends Component
             ->limit($limit)
             ->get()
             ->toArray();
-    }
+}
 
     /**
      * Get documents that need review
@@ -203,10 +302,18 @@ class GreetingCard extends Component
         }
 
         $isSuperAdmin = $user->hasRole('super-admin');
-        $clientIds = $isSuperAdmin ? null : $user->userClients()->pluck('client_id')->toArray();
+        $clientIds = $isSuperAdmin ? null : $user->userClients()
+            ->whereHas('client', function($query) {
+                $query->where('status', 'Active');
+            })
+            ->pluck('client_id')
+            ->toArray();
 
         $query = SubmittedDocument::with(['requiredDocument.projectStep.project.client', 'user'])
-            ->whereIn('status', ['uploaded', 'pending_review']);
+            ->whereIn('status', ['uploaded', 'pending_review'])
+            ->whereHas('requiredDocument.projectStep.project.client', function($clientQuery) {
+                $clientQuery->where('status', 'Active'); // Only active clients
+            });
 
         if (!$isSuperAdmin && !empty($clientIds)) {
             $query->whereHas('requiredDocument.projectStep.project', function($q) use ($clientIds) {

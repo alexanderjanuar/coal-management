@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Filament\Pages;
+namespace App\Filament\Pages\DailyTask;
 
 use App\Models\DailyTask;
 use App\Models\Project;
@@ -23,7 +23,7 @@ class DailyTaskList extends Page
     
     protected static ?string $navigationLabel = 'Tugas Harian';
     
-    protected static string $view = 'filament.pages.daily-task-list';
+    protected static string $view = 'filament.pages.daily-task.daily-task-list';
 
     /**
      * Get the header actions for the page

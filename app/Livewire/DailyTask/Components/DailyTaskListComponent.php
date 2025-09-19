@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Livewire\DailyTask;
+namespace App\Livewire\DailyTask\Components;
 
 use App\Models\DailyTask;
 use App\Models\User;
@@ -683,7 +683,7 @@ class DailyTaskListComponent extends Component
         // Update filter component with current total tasks
         $this->dispatch('updateTotalTasks', count: $totalTasks);
         
-        return view('livewire.daily-task.daily-task-list-component', [
+        return view('livewire.daily-task.components.daily-task-list-component', [
             'groupedTasks' => $this->getGroupedTasks(),
             'paginatedTasks' => $viewMode === 'list' && $groupBy === 'none' ? $this->getTasks() : null,
             'statusOptions' => $this->getStatusOptions(),

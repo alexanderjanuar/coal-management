@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Livewire\DailyTask;
+namespace App\Livewire\DailyTask\Components;
 
 use App\Models\DailyTask;
 use App\Models\Project;
@@ -326,6 +326,6 @@ class DailyTaskItem extends Component implements HasForms
 
     public function render()
     {
-        return view('livewire.daily-task.daily-task-item');
+        return view('livewire.daily-task.components.daily-task-item');
     }
 }

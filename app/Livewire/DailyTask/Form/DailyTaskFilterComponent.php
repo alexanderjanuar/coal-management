@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Livewire\DailyTask;
+namespace App\Livewire\DailyTask\Form;
 
 use App\Models\Project;
 use App\Models\User;
@@ -503,7 +503,7 @@ class DailyTaskFilterComponent extends Component implements HasForms
 
     public function render()
     {
-        return view('livewire.daily-task.daily-task-filter-component', [
+        return view('livewire.daily-task.form.daily-task-filter-component', [
             'activeFilters' => $this->getActiveFilters(),
         ]);
     }
