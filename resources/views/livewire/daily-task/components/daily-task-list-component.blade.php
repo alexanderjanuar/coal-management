@@ -120,7 +120,8 @@
                             <div class="px-6 py-4 hover:bg-gradient-to-r hover:from-primary-50 hover:to-transparent dark:hover:from-primary-900/20 dark:hover:to-transparent transition-all duration-200 group cursor-pointer border-l-4 border-l-transparent hover:border-l-primary-300 dark:hover:border-l-primary-600"
                                 x-data="{ expanded: false }"
                                 :class="{ 'bg-primary-25 dark:bg-primary-900/30 border-l-primary-500 dark:border-l-primary-400': selectedTasks.includes({{ $task->id }}) }">
-                                <livewire:daily-task.components.daily-task-item :task="$task" :key="'task-'.$task->id . time()" />
+                                <livewire:daily-task.components.daily-task-item :task="$task"
+                                    :key="'task-'.$task->id . time()" />
                             </div>
                             @empty
                             <div class="py-16 text-center">
@@ -193,7 +194,7 @@
                                                 'Low' => 'bg-gray-50 text-gray-800 border-gray-200 dark:bg-gray-700 dark:text-gray-300 dark:border-gray-600',
                                                 default => 'bg-blue-50 text-blue-800 border-blue-200 dark:bg-blue-900/40 dark:text-blue-300 dark:border-blue-700'
                                             } }}">
-                                                                @php
+                                            @php
                                             $priorityIcon = match($groupName) {
                                             'Urgent' => 'heroicon-s-exclamation-triangle',
                                             'High' => 'heroicon-o-exclamation-triangle',
@@ -253,21 +254,29 @@
                                         @case('status')
                                         {{-- Status-specific progress (completed vs total) --}}
                                         @if($groupName !== 'Completed')
-                                        <div class="w-24 h-3 bg-gray-200 dark:bg-gray-600 rounded-full overflow-hidden shadow-inner">
-                                            <div class="h-full bg-green-500 transition-all duration-500 progress-bar shadow-sm" style="width: {{ $progressPercentage }}%"></div>
+                                        <div
+                                            class="w-24 h-3 bg-gray-200 dark:bg-gray-600 rounded-full overflow-hidden shadow-inner">
+                                            <div class="h-full bg-green-500 transition-all duration-500 progress-bar shadow-sm"
+                                                style="width: {{ $progressPercentage }}%"></div>
                                         </div>
-                                        <span class="text-sm font-bold text-gray-700 dark:text-gray-300 min-w-[3rem] text-right">{{ round($progressPercentage) }}%</span>
+                                        <span
+                                            class="text-sm font-bold text-gray-700 dark:text-gray-300 min-w-[3rem] text-right">{{
+                                            round($progressPercentage) }}%</span>
                                         @else
-                                        <div class="w-24 h-3 bg-green-200 dark:bg-green-800 rounded-full overflow-hidden shadow-inner">
-                                            <div class="h-full bg-green-500 transition-all duration-500 progress-bar shadow-sm" style="width: 100%"></div>
+                                        <div
+                                            class="w-24 h-3 bg-green-200 dark:bg-green-800 rounded-full overflow-hidden shadow-inner">
+                                            <div class="h-full bg-green-500 transition-all duration-500 progress-bar shadow-sm"
+                                                style="width: 100%"></div>
                                         </div>
-                                        <span class="text-sm font-bold text-green-700 dark:text-green-300 min-w-[3rem] text-right">100%</span>
+                                        <span
+                                            class="text-sm font-bold text-green-700 dark:text-green-300 min-w-[3rem] text-right">100%</span>
                                         @endif
                                         @break
-                                        
+
                                         @case('priority')
                                         {{-- Priority-specific progress (completion rate) --}}
-                                        <div class="w-24 h-3 bg-gray-200 dark:bg-gray-600 rounded-full overflow-hidden shadow-inner">
+                                        <div
+                                            class="w-24 h-3 bg-gray-200 dark:bg-gray-600 rounded-full overflow-hidden shadow-inner">
                                             <div class="h-full transition-all duration-500 progress-bar shadow-sm
                                                 {{ match($groupName) {
                                                     'Urgent' => 'bg-red-500',
@@ -277,39 +286,57 @@
                                                     default => 'bg-blue-500'
                                                 } }}" style="width: {{ $progressPercentage }}%"></div>
                                         </div>
-                                        <span class="text-sm font-bold text-gray-700 dark:text-gray-300 min-w-[3rem] text-right">{{ round($progressPercentage) }}%</span>
+                                        <span
+                                            class="text-sm font-bold text-gray-700 dark:text-gray-300 min-w-[3rem] text-right">{{
+                                            round($progressPercentage) }}%</span>
                                         @break
-                                        
+
                                         @case('project')
                                         {{-- Project-specific progress (completion rate) --}}
-                                        <div class="w-24 h-3 bg-gray-200 dark:bg-gray-600 rounded-full overflow-hidden shadow-inner">
-                                            <div class="h-full bg-indigo-500 transition-all duration-500 progress-bar shadow-sm" style="width: {{ $progressPercentage }}%"></div>
+                                        <div
+                                            class="w-24 h-3 bg-gray-200 dark:bg-gray-600 rounded-full overflow-hidden shadow-inner">
+                                            <div class="h-full bg-indigo-500 transition-all duration-500 progress-bar shadow-sm"
+                                                style="width: {{ $progressPercentage }}%"></div>
                                         </div>
-                                        <span class="text-sm font-bold text-gray-700 dark:text-gray-300 min-w-[3rem] text-right">{{ round($progressPercentage) }}%</span>
+                                        <span
+                                            class="text-sm font-bold text-gray-700 dark:text-gray-300 min-w-[3rem] text-right">{{
+                                            round($progressPercentage) }}%</span>
                                         @break
-                                        
+
                                         @case('assignee')
                                         {{-- Assignee-specific progress (completion rate) --}}
-                                        <div class="w-24 h-3 bg-gray-200 dark:bg-gray-600 rounded-full overflow-hidden shadow-inner">
-                                            <div class="h-full bg-blue-500 transition-all duration-500 progress-bar shadow-sm" style="width: {{ $progressPercentage }}%"></div>
+                                        <div
+                                            class="w-24 h-3 bg-gray-200 dark:bg-gray-600 rounded-full overflow-hidden shadow-inner">
+                                            <div class="h-full bg-blue-500 transition-all duration-500 progress-bar shadow-sm"
+                                                style="width: {{ $progressPercentage }}%"></div>
                                         </div>
-                                        <span class="text-sm font-bold text-gray-700 dark:text-gray-300 min-w-[3rem] text-right">{{ round($progressPercentage) }}%</span>
+                                        <span
+                                            class="text-sm font-bold text-gray-700 dark:text-gray-300 min-w-[3rem] text-right">{{
+                                            round($progressPercentage) }}%</span>
                                         @break
-                                        
+
                                         @case('date')
                                         {{-- Date-specific progress (completion rate) --}}
-                                        <div class="w-24 h-3 bg-gray-200 dark:bg-gray-600 rounded-full overflow-hidden shadow-inner">
-                                            <div class="h-full bg-purple-500 transition-all duration-500 progress-bar shadow-sm" style="width: {{ $progressPercentage }}%"></div>
+                                        <div
+                                            class="w-24 h-3 bg-gray-200 dark:bg-gray-600 rounded-full overflow-hidden shadow-inner">
+                                            <div class="h-full bg-purple-500 transition-all duration-500 progress-bar shadow-sm"
+                                                style="width: {{ $progressPercentage }}%"></div>
                                         </div>
-                                        <span class="text-sm font-bold text-gray-700 dark:text-gray-300 min-w-[3rem] text-right">{{ round($progressPercentage) }}%</span>
+                                        <span
+                                            class="text-sm font-bold text-gray-700 dark:text-gray-300 min-w-[3rem] text-right">{{
+                                            round($progressPercentage) }}%</span>
                                         @break
-                                        
+
                                         @default
                                         {{-- Default progress bar --}}
-                                        <div class="w-24 h-3 bg-gray-200 dark:bg-gray-600 rounded-full overflow-hidden shadow-inner">
-                                            <div class="h-full bg-green-500 transition-all duration-500 progress-bar shadow-sm" style="width: {{ $progressPercentage }}%"></div>
+                                        <div
+                                            class="w-24 h-3 bg-gray-200 dark:bg-gray-600 rounded-full overflow-hidden shadow-inner">
+                                            <div class="h-full bg-green-500 transition-all duration-500 progress-bar shadow-sm"
+                                                style="width: {{ $progressPercentage }}%"></div>
                                         </div>
-                                        <span class="text-sm font-bold text-gray-700 dark:text-gray-300 min-w-[3rem] text-right">{{ round($progressPercentage) }}%</span>
+                                        <span
+                                            class="text-sm font-bold text-gray-700 dark:text-gray-300 min-w-[3rem] text-right">{{
+                                            round($progressPercentage) }}%</span>
                                         @endswitch
                                     </div>
                                 </div>
@@ -496,7 +523,8 @@
             @forelse($paginatedTasks as $task)
             <div
                 class="bg-white dark:bg-gray-800 rounded-xl border-2 border-gray-200 dark:border-gray-700 shadow-sm hover:shadow-lg hover:border-primary-300 dark:hover:border-primary-600 transition-all duration-300">
-                <livewire:daily-task.components.daily-task-item :task="$task" :key="'mobile-task-'.$task->id . time()" />
+                <livewire:daily-task.components.daily-task-item :task="$task"
+                    :key="'mobile-task-'.$task->id . time()" />
             </div>
             @empty
             <div
@@ -692,84 +720,6 @@
     {{-- Task Detail Modal --}}
     <livewire:daily-task.daily-task-detail-modal />
 
-    {{-- Enhanced CSS for better scrolling --}}
-    <style>
-        /* Custom scrollbar for horizontal scroll */
-        .overflow-x-auto::-webkit-scrollbar {
-            height: 8px;
-        }
-
-        .overflow-x-auto::-webkit-scrollbar-track {
-            background: #f1f5f9;
-            border-radius: 4px;
-        }
-
-        .overflow-x-auto::-webkit-scrollbar-thumb {
-            background: #cbd5e1;
-            border-radius: 4px;
-        }
-
-        .overflow-x-auto::-webkit-scrollbar-thumb:hover {
-            background: #94a3b8;
-        }
-
-        /* Dark mode scrollbar */
-        .dark .overflow-x-auto::-webkit-scrollbar-track {
-            background: #374151;
-        }
-
-        .dark .overflow-x-auto::-webkit-scrollbar-thumb {
-            background: #6b7280;
-        }
-
-        .dark .overflow-x-auto::-webkit-scrollbar-thumb:hover {
-            background: #9ca3af;
-        }
-
-        /* Smooth transitions for group cards */
-        .group-card {
-            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-        }
-
-        .group-card:hover {
-            transform: translateY(-2px);
-        }
-
-        /* Progress bar animation */
-        .progress-bar {
-            transition: width 0.6s ease-in-out;
-        }
-
-        /* Enhanced shadows for depth */
-        .shadow-depth {
-            box-shadow:
-                0 1px 3px 0 rgba(0, 0, 0, 0.1),
-                0 1px 2px 0 rgba(0, 0, 0, 0.06),
-                0 0 0 1px rgba(0, 0, 0, 0.05);
-        }
-
-        .shadow-depth:hover {
-            box-shadow:
-                0 10px 15px -3px rgba(0, 0, 0, 0.1),
-                0 4px 6px -2px rgba(0, 0, 0, 0.05),
-                0 0 0 1px rgba(0, 0, 0, 0.05);
-        }
-
-        /* Scroll indicators */
-        .overflow-x-auto.scroll-left-shadow {
-            box-shadow: inset 10px 0 8px -8px rgba(0, 0, 0, 0.15);
-        }
-
-        .overflow-x-auto.scroll-right-shadow {
-            box-shadow: inset -10px 0 8px -8px rgba(0, 0, 0, 0.15);
-        }
-
-        .overflow-x-auto.scroll-left-shadow.scroll-right-shadow {
-            box-shadow:
-                inset 10px 0 8px -8px rgba(0, 0, 0, 0.15),
-                inset -10px 0 8px -8px rgba(0, 0, 0, 0.15);
-        }
-    </style>
 
     {{-- JavaScript untuk manajemen task --}}
     <script>
