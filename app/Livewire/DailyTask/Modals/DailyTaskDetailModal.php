@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Livewire\DailyTask;
+namespace App\Livewire\DailyTask\Modals;
 
 use App\Models\DailyTask;
 use App\Models\DailyTaskSubtask;
@@ -467,6 +467,6 @@ class DailyTaskDetailModal extends Component implements HasForms, HasActions
 
     public function render()
     {
-        return view('livewire.daily-task.daily-task-detail-modal');
+        return view('livewire.daily-task.modals.daily-task-detail-modal');
     }
 }
