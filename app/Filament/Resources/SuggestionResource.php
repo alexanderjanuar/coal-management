@@ -24,7 +24,7 @@ class SuggestionResource extends Resource
 
     public static function shouldRegisterNavigation(): bool
     {
-        return auth()->user()->hasRole(['super-admin','admin','director','project-manager']);
+        return auth()->user()->hasRole(['super-admin','admin','direktur','project-manager']);
     }   
 
     protected static ?string $navigationIcon = 'heroicon-o-light-bulb';

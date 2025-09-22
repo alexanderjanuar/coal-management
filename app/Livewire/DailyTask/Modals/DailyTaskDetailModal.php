@@ -29,6 +29,7 @@ class DailyTaskDetailModal extends Component implements HasForms, HasActions
     public bool $editingTitle = false;
     public bool $editingDescription = false;
     public ?array $taskEditData = [];
+    public ?array $descriptionData = [];
 
     // Initialize properties
     protected function initializeProperties()
@@ -36,6 +37,7 @@ class DailyTaskDetailModal extends Component implements HasForms, HasActions
         $this->editingTitle = false;
         $this->editingDescription = false;
         $this->taskEditData = [];
+        $this->descriptionData = [];
     }
 
     protected $listeners = [
@@ -76,11 +78,11 @@ class DailyTaskDetailModal extends Component implements HasForms, HasActions
                     ->hiddenLabel()
                     ->required(false),
             ])
-            ->statePath('taskEditData');
+            ->statePath('descriptionData');
     }
 
     /**
-     * Task Edit Form
+     * Task Edit Form - For title only
      */
     public function taskEditForm(Form $form): Form
     {
@@ -89,11 +91,6 @@ class DailyTaskDetailModal extends Component implements HasForms, HasActions
                 Forms\Components\TextInput::make('title')
                     ->required()
                     ->maxLength(255)
-                    ->hiddenLabel(),
-                Forms\Components\Textarea::make('description')
-                    ->placeholder('Tulis deskripsi task...')
-                    ->maxLength(1000)
-                    ->rows(4)
                     ->hiddenLabel(),
             ])
             ->statePath('taskEditData');
@@ -153,6 +150,7 @@ class DailyTaskDetailModal extends Component implements HasForms, HasActions
         $this->editingTitle = false;
         $this->editingDescription = false;
         $this->taskEditData = [];
+        $this->descriptionData = [];
         
         $this->commentForm->fill();
         $this->newSubtaskForm->fill(['title' => '']);
@@ -161,7 +159,7 @@ class DailyTaskDetailModal extends Component implements HasForms, HasActions
     public function openModal(int $taskId): void
     {
         $this->task = DailyTask::with([
-            'project', 
+            'project.client', 
             'creator', 
             'assignedUsers', 
             'subtasks',
@@ -169,10 +167,9 @@ class DailyTaskDetailModal extends Component implements HasForms, HasActions
         ])->find($taskId);
         
         if ($this->task) {
-            // Initialize task edit form
+            // Initialize task edit form with just title
             $this->taskEditForm->fill([
                 'title' => $this->task->title,
-                'description' => $this->task->description,
             ]);
             
             // Initialize description form separately
@@ -189,12 +186,18 @@ class DailyTaskDetailModal extends Component implements HasForms, HasActions
         $this->task = null;
         $this->editingTitle = false;
         $this->editingDescription = false;
+        $this->taskEditData = [];
+        $this->descriptionData = [];
         $this->dispatch('close-modal', id: 'task-detail-modal');
     }
 
     public function startEditTitle(): void
     {
         $this->editingTitle = true;
+        // Re-populate the form with current title
+        $this->taskEditForm->fill([
+            'title' => $this->task->title,
+        ]);
     }
 
     public function saveTitle(): void
@@ -218,15 +221,19 @@ class DailyTaskDetailModal extends Component implements HasForms, HasActions
     public function cancelEditTitle(): void
     {
         $this->editingTitle = false;
+        // Reset form to original title
         $this->taskEditForm->fill([
             'title' => $this->task->title,
-            'description' => $this->task->description,
         ]);
     }
 
     public function startEditDescription(): void
     {
         $this->editingDescription = true;
+        // Re-populate the form with current description
+        $this->descriptionForm->fill([
+            'description' => $this->task->description,
+        ]);
     }
 
     public function saveDescription(): void
@@ -250,6 +257,7 @@ class DailyTaskDetailModal extends Component implements HasForms, HasActions
     public function cancelEditDescription(): void
     {
         $this->editingDescription = false;
+        // Reset form to original description
         $this->descriptionForm->fill([
             'description' => $this->task->description,
         ]);

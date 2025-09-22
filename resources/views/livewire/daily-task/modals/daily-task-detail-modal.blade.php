@@ -36,7 +36,7 @@
                             @if($editingTitle)
                             <div class="flex flex-col sm:flex-row items-start sm:items-center gap-3">
                                 <div class="flex-1 w-full">
-                                    {{ $this->taskEditForm->getComponent('title') }}
+                                    {{ $this->taskEditForm }}
                                 </div>
                                 <div class="flex items-center gap-2">
                                     <button wire:click="saveTitle"
@@ -64,6 +64,8 @@
                         </div>
                     </div>
 
+   
+
                     {{-- Task Meta Information --}}
                     <div class="space-y-3 md:space-y-4">
                         {{-- Created Time --}}
@@ -75,6 +77,22 @@
                             <span class="text-sm text-gray-900 dark:text-gray-100 sm:text-right">{{
                                 $task->created_at->format('F j, Y') }} {{ $task->created_at->format('g:i A') }}</span>
                         </div>
+
+                        {{-- Creator --}}
+                        @if($task->creator)
+                        <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-3">
+                            <div class="flex items-center gap-3">
+                                <x-heroicon-o-user class="w-4 h-4 text-gray-400 dark:text-gray-500 flex-shrink-0" />
+                                <span class="text-sm text-gray-600 dark:text-gray-400">Dibuat oleh</span>
+                            </div>
+                            <div class="flex items-center gap-2">
+                                <div class="w-6 h-6 bg-gradient-to-br from-primary-400 to-primary-600 dark:from-primary-500 dark:to-primary-700 text-white rounded-full flex items-center justify-center text-xs font-semibold">
+                                    {{ strtoupper(substr($task->creator->name, 0, 1)) }}
+                                </div>
+                                <span class="text-sm text-gray-900 dark:text-gray-100">{{ $task->creator->name }}</span>
+                            </div>
+                        </div>
+                        @endif
 
                         {{-- Status --}}
                         <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-3">
@@ -156,8 +174,12 @@
                                 <span class="text-sm text-gray-600 dark:text-gray-400">Due Date</span>
                             </div>
                             <span class="text-sm text-gray-900 dark:text-gray-100 break-words">
-                                {{ $task->task_date->format('M j, Y') }} - {{ $task->task_date->addDays(30)->format('M
-                                j, Y') }}
+                                {{ $task->task_date->format('M j, Y') }}
+                                @if($task->start_task_date && $task->start_task_date != $task->task_date)
+                                    <span class="text-xs text-gray-500 dark:text-gray-400 block">
+                                        Dimulai: {{ $task->start_task_date->format('M j, Y') }}
+                                    </span>
+                                @endif
                             </span>
                         </div>
 
@@ -191,6 +213,28 @@
                                 @endif
                             </div>
                         </div>
+
+                        {{-- Project --}}
+                        @if($task->project)
+                        <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-3">
+                            <div class="flex items-center gap-3">
+                                <x-heroicon-o-folder class="w-4 h-4 text-gray-400 dark:text-gray-500 flex-shrink-0" />
+                                <span class="text-sm text-gray-600 dark:text-gray-400">Project</span>
+                            </div>
+                            <span class="text-sm text-gray-900 dark:text-gray-100 sm:text-right break-words">{{ $task->project->name }}</span>
+                        </div>
+                        @endif
+
+                        {{-- Client --}}
+                        @if($task->project && $task->project->client)
+                        <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-3">
+                            <div class="flex items-center gap-3">
+                                <x-heroicon-o-building-office class="w-4 h-4 text-gray-400 dark:text-gray-500 flex-shrink-0" />
+                                <span class="text-sm text-gray-600 dark:text-gray-400">Client</span>
+                            </div>
+                            <span class="text-sm text-gray-900 dark:text-gray-100 sm:text-right break-words">{{ $task->project->client->name }}</span>
+                        </div>
+                        @endif
                     </div>
 
                     {{-- Project Description --}}
@@ -427,14 +471,12 @@
                                     <div class="text-sm">
                                         <span class="font-medium text-gray-900 dark:text-gray-100">{{
                                             $task->creator->name ?? 'User' }}</span>
-                                        <span class="text-gray-600 dark:text-gray-400">changed the status of</span>
+                                        <span class="text-gray-600 dark:text-gray-400">created task</span>
                                         <span class="font-medium text-gray-900 dark:text-gray-100">"{{ $task->title
                                             }}"</span>
-                                        <span class="text-gray-600 dark:text-gray-400">from To Do to {{
-                                            $this->getStatusOptions()[$task->status] ?? $task->status }}</span>
                                     </div>
                                     <div class="text-xs text-gray-500 dark:text-gray-400 mt-1">{{
-                                        $task->updated_at->format('g:i A') }}</div>
+                                        $task->created_at->format('g:i A') }}</div>
                                 </div>
                             </div>
 
@@ -451,8 +493,9 @@
                                         <span class="font-medium text-gray-900 dark:text-gray-100">{{
                                             $comment->user->name }}</span>
                                         <span class="text-gray-600 dark:text-gray-400">added comment</span>
-                                        <span class="font-medium text-gray-900 dark:text-gray-100">"{{
-                                            Str::limit($comment->content, 50) }}"</span>
+                                    </div>
+                                    <div class="text-sm text-gray-900 dark:text-gray-100 mt-1 bg-gray-50 dark:bg-gray-800 rounded-lg p-3">
+                                        {{ $comment->content }}
                                     </div>
                                     <div class="text-xs text-gray-500 dark:text-gray-400 mt-1">{{
                                         $comment->created_at->format('g:i A') }}</div>
