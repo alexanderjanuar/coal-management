@@ -163,7 +163,7 @@
                 @forelse($groupedTasks as $groupName => $tasks)
                 {{-- Individual Group Card --}}
                 <div class="bg-white dark:bg-gray-800 rounded-2xl border-2 border-gray-200 dark:border-gray-700 
-                            overflow-hidden shadow-lg dark:shadow-xl dark:shadow-gray-900/30 
+                            overflow-hidden dark:shadow-xl dark:shadow-gray-900/30 
                             hover:border-gray-300 dark:hover:border-gray-600 transition-all duration-300"
                     x-data="{ collapsed: false }">
 
@@ -379,7 +379,7 @@
                                 {{-- Enhanced Collapse Button --}}
                                 <button @click="collapsed = !collapsed"
                                     class="group p-3 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600 
-                                           rounded-xl transition-all duration-200 shadow-md border-2 border-gray-200 
+                                           rounded-xl transition-all duration-200 border-2 border-gray-200 
                                            dark:border-gray-600 hover:shadow-lg hover:scale-105">
                                     <x-heroicon-o-chevron-down
                                         class="w-5 h-5 text-gray-600 dark:text-gray-400 group-hover:text-gray-800 
