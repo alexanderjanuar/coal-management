@@ -5,10 +5,11 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\DB;
+use App\Traits\Trackable; // Import trait
 
 class TaxReport extends Model
 {
-    use HasFactory;
+    use HasFactory,Trackable;
 
     protected $fillable = [
         'client_id',
@@ -62,6 +63,51 @@ class TaxReport extends Model
     public function revisionInvoices()
     {
         return $this->invoices()->where('is_revision', true);
+    }
+
+    protected static function booted()
+    {
+        static::created(function ($taxReport) {
+            $taxReport->logActivity(
+                'tax_report_created',
+                "Laporan pajak {$taxReport->month} untuk {$taxReport->client->name} telah dibuat"
+            );
+        });
+
+        static::updated(function ($taxReport) {
+            // Log status changes
+            if ($taxReport->wasChanged('ppn_report_status')) {
+                $status = $taxReport->ppn_report_status;
+                $taxReport->logActivity(
+                    'ppn_report_status_changed',
+                    "Status laporan PPN {$taxReport->month} untuk {$taxReport->client->name} diubah menjadi: {$status}"
+                );
+            }
+
+            if ($taxReport->wasChanged('pph_report_status')) {
+                $status = $taxReport->pph_report_status;
+                $taxReport->logActivity(
+                    'pph_report_status_changed',
+                    "Status laporan PPh {$taxReport->month} untuk {$taxReport->client->name} diubah menjadi: {$status}"
+                );
+            }
+
+            if ($taxReport->wasChanged('bupot_report_status')) {
+                $status = $taxReport->bupot_report_status;
+                $taxReport->logActivity(
+                    'bupot_report_status_changed',
+                    "Status laporan Bupot {$taxReport->month} untuk {$taxReport->client->name} diubah menjadi: {$status}"
+                );
+            }
+
+            if ($taxReport->wasChanged('invoice_tax_status')) {
+                $status = $taxReport->invoice_tax_status;
+                $taxReport->logActivity(
+                    'invoice_tax_status_changed',
+                    "Status pembayaran pajak {$taxReport->month} untuk {$taxReport->client->name} diubah menjadi: {$status}"
+                );
+            }
+        });
     }
 
     /**
@@ -396,6 +442,7 @@ class TaxReport extends Model
         return $ppnKeluar - $ppnMasuk;
     }
 
+    
     /**
      * Apply compensation from previous tax reports
      */

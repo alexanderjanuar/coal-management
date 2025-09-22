@@ -66,7 +66,7 @@ class DailyTaskFilterComponent extends Component implements HasForms
                 Forms\Components\Grid::make()
                     ->schema([
                         // Main Filters Row
-                        Forms\Components\Grid::make(5)
+                        Forms\Components\Grid::make(4)
                             ->schema([
                                 Forms\Components\TextInput::make('search')
                                     ->placeholder('Search tasks or descriptions...')
@@ -79,27 +79,7 @@ class DailyTaskFilterComponent extends Component implements HasForms
                                     ->native(false)
                                     ->live()
                                     ->helperText('Filter by specific date')
-                                    ->columnSpan(1),
-                                    
-                                Forms\Components\Select::make('group_by')
-                                    ->options($this->getGroupByOptions())
-                                    ->native(false)
-                                    ->live()
-                                    ->columnSpan(1),
-                                    
-                                Forms\Components\ToggleButtons::make('view_mode')
-                                    ->options([
-                                        'list' => 'List',
-                                        'kanban' => 'Board',
-                                    ])
-                                    ->icons([
-                                        'list' => 'heroicon-o-list-bullet',
-                                        'kanban' => 'heroicon-o-squares-2x2',
-                                    ])
-                                    ->inline()
-                                    ->default('list')
-                                    ->live()
-                                    ->columnSpan(1),
+                                    ->columnSpan(2),
                             ]),
                             
                         // Date Range Filters

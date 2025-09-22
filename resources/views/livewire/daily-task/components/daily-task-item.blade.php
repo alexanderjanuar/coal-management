@@ -38,7 +38,7 @@
                         <h2 class="font-semibold text-gray-900 dark:text-gray-100 text-sm lg:text-base leading-tight truncate 
                                    group-hover:text-primary-600 dark:group-hover:text-primary-400 transition-colors duration-200
                                    {{ $task->status === 'completed' ? 'line-through text-gray-500 dark:text-gray-400' : '' }}">
-                            {{ $task->title }}
+                            {{ Str::limit(strip_tags($task->title), 60) }}
                         </h2>
                         @if($task->description)
                         <p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5 truncate">

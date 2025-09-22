@@ -154,66 +154,13 @@
 
         {{-- Main Filters Tab --}}
         <div x-show="activeTab === 'main'" class="space-y-4">
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-                {{-- Date Filter --}}
-                <div>
-                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                        Tanggal Spesifik
-                    </label>
-                    {{ $this->filterForm->getComponent('date') }}
-                </div>
-
-                {{-- Date Range Start --}}
-                <div>
-                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                        Dari Tanggal
-                    </label>
-                    {{ $this->filterForm->getComponent('date_start') }}
-                </div>
-
-                {{-- Date Range End --}}
-                <div>
-                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                        Sampai Tanggal
-                    </label>
-                    {{ $this->filterForm->getComponent('date_end') }}
-                </div>
-            </div>
-
-            {{-- Status & Priority --}}
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div>
-                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
-                        Status
-                    </label>
-                    {{ $this->filterForm->getComponent('status') }}
-                </div>
-
-                <div>
-                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
-                        Prioritas
-                    </label>
-                    {{ $this->filterForm->getComponent('priority') }}
-                </div>
-            </div>
+            {{ $this->filterForm }}
         </div>
 
         {{-- Advanced Filters Tab --}}
         <div x-show="activeTab === 'advanced'" class="space-y-4">
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div>
-                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
-                        Project
-                    </label>
-                    {{ $this->filterForm->getComponent('project') }}
-                </div>
-
-                <div>
-                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
-                        Assignee
-                    </label>
-                    {{ $this->filterForm->getComponent('assignee') }}
-                </div>
+            <div class="text-sm text-gray-600 dark:text-gray-400 mb-4">
+                Filter lanjutan akan ditampilkan di sini. Anda dapat menggunakan tab "Utama" untuk semua filter yang tersedia.
             </div>
         </div>
 
@@ -236,16 +183,6 @@
                     Terapkan Filter
                 </button>
             </div>
-        </div>
-    </div>
-
-    {{-- Loading State --}}
-    <div wire:loading.delay class="absolute inset-0 bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm 
-                                   rounded-xl flex items-center justify-center z-10">
-        <div class="flex items-center gap-3 px-4 py-2 bg-white dark:bg-gray-800 rounded-lg shadow-lg 
-                    border border-gray-200 dark:border-gray-700">
-            <x-heroicon-o-arrow-path class="w-4 h-4 animate-spin text-primary-600 dark:text-primary-400" />
-            <span class="text-sm font-medium text-gray-900 dark:text-gray-100">Memuat...</span>
         </div>
     </div>
 </div>

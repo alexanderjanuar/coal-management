@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Traits\Trackable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -12,7 +13,7 @@ use Illuminate\Support\Str;
 
 class Client extends Model
 {
-    use HasFactory;
+    use HasFactory,Trackable;
 
     protected $fillable = ['name', 'email', 'logo'];
 
@@ -114,5 +115,70 @@ class Client extends Model
         if (!Storage::disk('public')->exists($legalFolderPath)) {
             Storage::disk('public')->makeDirectory($legalFolderPath);
         }
+    }
+
+    protected static function booted()
+    {
+        static::created(function ($client) {
+            $client->logActivity(
+                'client_created',
+                "Klien baru '{$client->name}' telah ditambahkan ke sistem"
+            );
+        });
+
+        static::updated(function ($client) {
+            if ($client->wasChanged('status')) {
+                $status = $client->status;
+                $client->logActivity(
+                    'client_status_changed',
+                    "Status klien '{$client->name}' diubah menjadi: {$status}"
+                );
+            }
+
+            if ($client->wasChanged('pic_id')) {
+                $picName = $client->pic?->name ?? 'Tidak ada';
+                $client->logActivity(
+                    'client_pic_changed',
+                    "PIC klien '{$client->name}' diubah menjadi: {$picName}"
+                );
+            }
+
+            if ($client->wasChanged('ar_id')) {
+                $arName = $client->ar?->name ?? 'Tidak ada';
+                $client->logActivity(
+                    'client_ar_changed',
+                    "Account Representative klien '{$client->name}' diubah menjadi: {$arName}"
+                );
+            }
+
+            // Log contract changes
+            $contractFields = ['ppn_contract', 'pph_contract', 'bupot_contract'];
+            foreach ($contractFields as $field) {
+                if ($client->wasChanged($field)) {
+                    $status = $client->$field ? 'Aktif' : 'Tidak Aktif';
+                    $contractType = str_replace('_contract', '', $field);
+                    $client->logActivity(
+                        'client_contract_changed',
+                        "Kontrak {$contractType} klien '{$client->name}' diubah menjadi: {$status}"
+                    );
+                }
+            }
+        });
+
+        static::deleted(function ($client) {
+            $client->logActivity(
+                'client_deleted',
+                "Klien '{$client->name}' telah dihapus dari sistem"
+            );
+        });
+    }
+
+    // Custom method untuk document upload
+    public function logDocumentUpload(string $filename, string $documentType = 'document')
+    {
+        $this->logActivity(
+            'document_uploaded',
+            "Dokumen '{$filename}' ({$documentType}) diunggah untuk klien '{$this->name}'"
+        );
     }
 }

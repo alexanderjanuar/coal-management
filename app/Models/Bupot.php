@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Traits\Trackable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Spatie\Activitylog\Traits\LogsActivity;
@@ -9,7 +10,7 @@ use Spatie\Activitylog\LogOptions;
 
 class Bupot extends Model
 {
-    use HasFactory, LogsActivity;
+    use HasFactory, LogsActivity,Trackable;
 
     protected $fillable = [
         'tax_report_id',
@@ -42,6 +43,40 @@ class Bupot extends Model
         return $this->belongsTo(User::class, 'created_by');
     }
 
+protected static function booted()
+    {
+        static::created(function ($bupot) {
+            $bupot->logActivity(
+                'bupot_created',
+                "Bupot {$bupot->bupot_type} {$bupot->pph_type} untuk {$bupot->company_name} telah dibuat (Periode: {$bupot->tax_period})"
+            );
+        });
+
+        static::updated(function ($bupot) {
+            if ($bupot->wasChanged('bupot_amount')) {
+                $bupot->logActivity(
+                    'bupot_amount_updated',
+                    "Jumlah bupot {$bupot->company_name} diubah menjadi Rp " . number_format($bupot->bupot_amount, 0, ',', '.')
+                );
+            }
+
+            if ($bupot->wasChanged('bukti_setor')) {
+                $bupot->logActivity(
+                    'bupot_bukti_setor_uploaded',
+                    "Bukti setor bupot {$bupot->company_name} telah diunggah"
+                );
+            }
+        });
+
+        static::deleted(function ($bupot) {
+            $bupot->logActivity(
+                'bupot_deleted',
+                "Bupot {$bupot->bupot_type} {$bupot->pph_type} untuk {$bupot->company_name} telah dihapus"
+            );
+        });
+    }
+
+    // Spatie ActivityLog (tetap ada untuk detailed audit)
     public function getActivitylogOptions(): LogOptions
     {
         return LogOptions::defaults()
@@ -66,7 +101,7 @@ class Bupot extends Model
                 
                 return match($eventName) {
                     'created' => "[{$clientName}] 📋 BUPOT BARU: {$typeDisplay} - {$companyName} ({$taxPeriod}) | Dibuat oleh: {$userName}",
-                    'updated' => "[{$clientName}] 🔄 DIPERBARUI: {$typeDisplay} - {$companyName} ({$taxPeriod}) | Diperbarui oleh: {$userName}",
+                    'updated' => "[{$clientName}] 📄 DIPERBARUI: {$typeDisplay} - {$companyName} ({$taxPeriod}) | Diperbarui oleh: {$userName}",
                     'deleted' => "[{$clientName}] 🗑️ DIHAPUS: {$typeDisplay} - {$companyName} ({$taxPeriod}) | Dihapus oleh: {$userName}",
                     default => "[{$clientName}] {$typeDisplay} - {$companyName} ({$taxPeriod}) telah {$eventName} oleh {$userName}"
                 };

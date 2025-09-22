@@ -9,10 +9,13 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Spatie\Activitylog\Traits\LogsActivity;
 use Spatie\Activitylog\LogOptions;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use App\Traits\Trackable;
 
 class Project extends Model
 {
     use HasFactory;
+
+    use Trackable;
     
     use LogsActivity;
 
@@ -21,6 +24,40 @@ class Project extends Model
     protected $casts = [
         'due_date' => 'date'
     ];
+
+    // Auto-logging events
+    protected static function booted()
+    {
+        static::created(function ($project) {
+            $project->logActivity(
+                'project_created',
+                "Proyek '{$project->name}' telah dibuat untuk klien {$project->client->name}"
+            );
+        });
+
+        static::updated(function ($project) {
+            if ($project->wasChanged('status')) {
+                $project->logActivity(
+                    'project_status_changed',
+                    "Status proyek '{$project->name}' diubah dari {$project->getOriginal('status')} menjadi {$project->status}"
+                );
+            }
+            
+            if ($project->wasChanged('priority')) {
+                $project->logActivity(
+                    'project_priority_changed',
+                    "Prioritas proyek '{$project->name}' diubah dari {$project->getOriginal('priority')} menjadi {$project->priority}"
+                );
+            }
+        });
+
+        static::deleted(function ($project) {
+            $project->logActivity(
+                'project_deleted',
+                "Proyek '{$project->name}' telah dihapus"
+            );
+        });
+    }
 
     public function getActivitylogOptions(): LogOptions
     {

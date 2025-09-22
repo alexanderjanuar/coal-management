@@ -462,6 +462,9 @@ class DailyTaskDetailModal extends Component implements HasForms, HasActions
                     ->title('Task berhasil dihapus')
                     ->success()
                     ->send();
+                
+                // Redirect ke Filament page
+                return $this->redirect('/daily-task-list');
             });
     }
 

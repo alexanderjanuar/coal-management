@@ -17,6 +17,9 @@ use Filament\Forms\Concerns\InteractsWithForms;
 use App\Models\User;
 use Livewire\Attributes\On;
 use Asmit\FilamentMention\Forms\Components\RichMentionEditor;
+use Filament\Notifications\Notification;
+use Filament\Forms\Components\Actions;
+use Filament\Forms\Components\Actions\Action;
 
 class CreateSuggestionWidget extends Widget implements HasForms
 {
@@ -38,12 +41,56 @@ class CreateSuggestionWidget extends Widget implements HasForms
 
     public function create(): void
     {
-        Suggestion::create($this->form->getState());
-        $this->form->fill();
-        $this->dispatch('suggestion-created');
+        $data = $this->form->getState();
+        
+        try {
+            Suggestion::create($data);
+            
+            // Reset form setelah berhasil
+            $this->form->fill([
+                'user_id' => auth()->id(),
+                'status' => 'new',
+                'priority' => 'low',
+                'type' => 'other',
+                'title' => '',
+                'description' => '',
+            ]);
+            
+            Notification::make()
+                ->title('Berhasil!')
+                ->body('Usulan pengembangan berhasil dikirim dan akan segera ditinjau oleh tim.')
+                ->success()
+                ->duration(5000)
+                ->send();
+                
+            $this->dispatch('suggestion-created');
+            
+        } catch (\Exception $e) {
+            Notification::make()
+                ->title('Gagal!')
+                ->body('Terjadi kesalahan saat menyimpan usulan: ' . $e->getMessage())
+                ->danger()
+                ->send();
+        }
     }
 
-
+    public function resetForm(): void
+    {
+        $this->form->fill([
+            'user_id' => auth()->id(),
+            'status' => 'new',
+            'priority' => 'low',
+            'type' => 'other',
+            'title' => '',
+            'description' => '',
+        ]);
+        
+        Notification::make()
+            ->title('Form Direset')
+            ->body('Form berhasil dikembalikan ke nilai awal.')
+            ->info()
+            ->send();
+    }
 
     protected static string $view = 'filament.resources.suggestion-resource.widgets.create-suggestion-widget';
 
@@ -51,52 +98,135 @@ class CreateSuggestionWidget extends Widget implements HasForms
     {
         return $form
             ->schema([
-                Section::make('Suggestion Details')
-                    ->description('Please provide the details of your suggestion')
+                Section::make('✨ Usulan Pengembangan Sistem')
+                    ->description('Sampaikan ide, saran, atau laporan untuk meningkatkan kualitas sistem')
+                    ->icon('heroicon-o-light-bulb')
+                    ->collapsible()
+                    ->collapsed(false)
                     ->schema([
                         Grid::make(4)
                             ->schema([
                                 Select::make('user_id')
-                                    ->label('User')
+                                    ->label('👤 Pengguna')
                                     ->options(fn() => User::pluck('name', 'id'))
                                     ->default(auth()->id())
                                     ->disabled()
                                     ->dehydrated()
-                                    ->required(),
+                                    ->required()
+                                    ->helperText('Pengguna yang mengajukan usulan')
+                                    ->columnSpan(1),
+                                    
                                 TextInput::make('title')
+                                    ->label('📝 Judul Usulan')
                                     ->required()
                                     ->maxLength(255)
-                                    ->placeholder('Enter the title of your suggestion'),
+                                    ->placeholder('Contoh: Tambahkan fitur notifikasi untuk deadline proyek')
+                                    ->helperText('Berikan judul yang jelas dan deskriptif')
+                                    ->columnSpan(2),
+                                    
                                 Select::make('type')
+                                    ->label('🏷️ Kategori')
                                     ->required()
                                     ->options([
-                                        'bug' => 'Bug Report',
-                                        'feature' => 'Feature Request',
-                                        'improvement' => 'Improvement',
-                                        'other' => 'Other',
+                                        'bug' => '🐛 Laporan Bug',
+                                        'feature' => '✨ Fitur Baru',
+                                        'improvement' => '🔧 Perbaikan',
+                                        'other' => '💡 Lainnya',
                                     ])
                                     ->default('other')
-                                    ->helperText('Select the type of suggestion')
-                                    ->native(false),
+                                    ->helperText('Pilih kategori yang sesuai')
+                                    ->native(false)
+                                    ->columnSpan(1),
+                            ]),
+                            
+                        Grid::make(2)
+                            ->schema([
                                 Select::make('priority')
+                                    ->label('🎯 Tingkat Prioritas')
                                     ->required()
                                     ->options([
-                                        'low' => 'Low',
-                                        'medium' => 'Medium',
-                                        'high' => 'High',
+                                        'low' => '🟢 Rendah - Bisa ditunda',
+                                        'medium' => '🟡 Sedang - Penting untuk ditangani',
+                                        'high' => '🔴 Tinggi - Perlu segera ditangani',
                                     ])
                                     ->default('low')
-                                    ->helperText('Set the priority level')
-                                    ->native(false),
+                                    ->helperText('Seberapa mendesak usulan ini?')
+                                    ->native(false)
+                                    ->columnSpan(1),
+                                    
+                                Select::make('status')
+                                    ->label('📊 Status')
+                                    ->options([
+                                        'new' => 'Baru',
+                                    ])
+                                    ->default('new')
+                                    ->disabled()
+                                    ->dehydrated()
+                                    ->helperText('Status akan diperbarui oleh admin')
+                                    ->columnSpan(1),
                             ]),
+
                         RichMentionEditor::make('description')
+                            ->label('📋 Deskripsi Detail')
                             ->required()
                             ->lookupKey('name')
-                            ->placeholder('Describe your suggestion in detail')
+                            ->placeholder('Jelaskan usulan Anda secara detail:
+                                • Apa masalah yang ingin diselesaikan?
+                                • Bagaimana cara kerjanya?
+                                • Apa manfaat yang diharapkan?
+                                • Apakah ada contoh atau referensi?
+
+                                Anda dapat mention pengguna lain dengan mengetik @ diikuti nama mereka.')
+                            ->helperText('Gunakan @ untuk mention pengguna lain. Semakin detail penjelasan, semakin mudah untuk dipahami.')
                             ->columnSpanFull(),
-                    ]),
-                // Hidden Fields
+                    ])
+                    ->footerActions([
+                        Action::make('submit')
+                            ->label('🚀 Kirim Usulan')
+                            ->color('primary')
+                            ->size('lg')
+                            ->action('create')
+                            ->keyBindings(['mod+enter'])
+                            ->requiresConfirmation()
+                            ->modalHeading('Kirim Usulan Pengembangan')
+                            ->modalDescription('Apakah Anda yakin ingin mengirim usulan ini? Usulan akan ditinjau oleh tim pengembang.')
+                            ->modalSubmitActionLabel('Ya, Kirim Usulan')
+                            ->modalCancelActionLabel('Batal')
+                            ->modalIcon('heroicon-o-paper-airplane'),
+                            
+                        Action::make('reset')
+                            ->label('🔄 Reset Form')
+                            ->color('gray')
+                            ->action('resetForm')
+                            ->requiresConfirmation()
+                            ->modalHeading('Reset Form')
+                            ->modalDescription('Apakah Anda yakin ingin mereset form? Semua data yang sudah diisi akan hilang.')
+                            ->modalSubmitActionLabel('Ya, Reset')
+                            ->modalCancelActionLabel('Batal')
+                            ->modalIcon('heroicon-o-arrow-path'),
+                            
+                        Action::make('draft')
+                            ->label('💾 Simpan Draft')
+                            ->color('warning')
+                            ->outlined()
+                            ->action(function () {
+                                // Untuk future implementation - simpan sebagai draft
+                                Notification::make()
+                                    ->title('Info')
+                                    ->body('Fitur simpan draft akan segera tersedia.')
+                                    ->info()
+                                    ->send();
+                            })
+                            ->visible(false), // Hide for now, enable when draft feature is ready
+                        ]),
             ])
             ->statePath('data');
+    }
+
+    #[On('suggestion-created')]
+    public function refreshWidget(): void
+    {
+        // Trigger refresh untuk parent component jika diperlukan
+        $this->dispatch('$refresh');
     }
 }

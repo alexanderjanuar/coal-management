@@ -6,10 +6,10 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Spatie\Activitylog\Traits\LogsActivity;
 use Spatie\Activitylog\LogOptions;
-
+use App\Traits\Trackable; 
 class Invoice extends Model
 {
-    use HasFactory;
+    use HasFactory, LogsActivity, Trackable; // Pastikan Trackable ada di sini
 
     protected $fillable = [
         'tax_report_id',
@@ -112,6 +112,35 @@ class Invoice extends Model
         return $name;
     }
 
+    protected static function booted()
+    {
+        static::created(function ($invoice) {
+            // Log dengan UserActivity (custom tracking)
+            $invoice->logActivity(
+                'invoice_created',
+                "Faktur {$invoice->invoice_number} ({$invoice->type}) telah dibuat untuk {$invoice->taxReport->client->name}"
+            );
+        });
+
+        static::updated(function ($invoice) {
+            if ($invoice->wasChanged('dpp') || $invoice->wasChanged('ppn')) {
+                $invoice->logChange(
+                    'updated',
+                    $invoice->getOriginal(),
+                    $invoice->getChanges()
+                );
+            }
+        });
+
+        static::deleted(function ($invoice) {
+            $invoice->logActivity(
+                'invoice_deleted',
+                "Faktur {$invoice->invoice_number} telah dihapus"
+            );
+        });
+    }
+
+    // Spatie ActivityLog tetap ada untuk detailed tracking
     public function getActivitylogOptions(): LogOptions
     {
         return LogOptions::defaults()
@@ -122,7 +151,6 @@ class Invoice extends Model
                 'dpp',
                 'ppn',
                 'is_revision',
-                
                 'original_invoice_id',
                 'revision_number',
                 'revision_reason'
@@ -135,7 +163,6 @@ class Invoice extends Model
                 $invoiceType = $this->type ?? 'Umum';
                 $userName = auth()->user()?->name ?? 'System';
                 
-                // Add revision info to the description
                 $revisionInfo = '';
                 if ($this->is_revision) {
                     $revisionInfo = " (Revisi {$this->revision_number})";
@@ -148,7 +175,7 @@ class Invoice extends Model
                     'created' => $this->is_revision 
                         ? "[{$clientName}] 📝 REVISI BARU: {$invoiceType} {$invoiceNumber}{$revisionInfo} | Dibuat oleh: {$userName}"
                         : "[{$clientName}] 📄 {$invoiceType} BARU: {$invoiceNumber} | Dibuat oleh: {$userName}",
-                    'updated' => "[{$clientName}] 🔄 DIPERBARUI: {$invoiceType} {$invoiceNumber}{$revisionInfo} | Diperbarui oleh: {$userName}",
+                    'updated' => "[{$clientName}] 📄 DIPERBARUI: {$invoiceType} {$invoiceNumber}{$revisionInfo} | Diperbarui oleh: {$userName}",
                     'deleted' => "[{$clientName}] 🗑️ DIHAPUS: {$invoiceType} {$invoiceNumber}{$revisionInfo} | Dihapus oleh: {$userName}",
                     default => "[{$clientName}] {$invoiceType} {$invoiceNumber}{$revisionInfo} telah {$eventName} oleh {$userName}"
                 };

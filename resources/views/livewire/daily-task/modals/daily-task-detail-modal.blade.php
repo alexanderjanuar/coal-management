@@ -195,8 +195,7 @@
 
                     {{-- Project Description --}}
                     <div>
-                        <h3 class="text-base md:text-lg font-semibold text-gray-900 dark:text-gray-100 mb-1">Deskripsi
-                            Task</h3>
+                        <h3 class="text-base md:text-lg font-semibold text-gray-900 dark:text-gray-100 mb-1">Deskripsi Task</h3>
                         @if($editingDescription)
                         <div class="space-y-3 md:space-y-4">
                             {{ $this->descriptionForm }}
@@ -215,7 +214,7 @@
                         <div class="group relative">
                             @if($task->description)
                             <div
-                                class="text-gray-700 dark:text-gray-300 leading-relaxed whitespace-pre-wrap text-sm md:text-base break-words">
+                                class="text-gray-700 dark:text-gray-300 leading-relaxed text-sm md:text-base break-words">
                                 {!! $task->description !!}</div>
                             @else
                             <div class="text-gray-500 dark:text-gray-400 italic text-sm md:text-base">Tidak ada
