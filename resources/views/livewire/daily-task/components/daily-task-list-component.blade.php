@@ -70,18 +70,20 @@
                                     <div class="col-span-1 flex items-center gap-2">
                                         <button wire:click="sortBy('priority')"
                                             class="flex items-center gap-2 hover:text-primary-600 dark:hover:text-primary-400 
-                                                   transition-colors group">
+                                                transition-colors group">
                                             <x-heroicon-o-exclamation-triangle class="w-4 h-4" />
                                             <span>Priority</span>
                                             @if($sortBy === 'priority')
-                                            @if($sortDirection === 'asc')
-                                            <x-heroicon-s-chevron-up class="w-4 h-4 text-primary-600 dark:text-primary-400" />
+                                                @if($sortDirection === 'asc')
+                                                    <x-heroicon-s-chevron-up class="w-4 h-4 text-primary-600 dark:text-primary-400" />
+                                                    <span class="text-xs text-gray-500 dark:text-gray-400">(Low→High)</span>
+                                                @else
+                                                    <x-heroicon-s-chevron-down class="w-4 h-4 text-primary-600 dark:text-primary-400" />
+                                                    <span class="text-xs text-gray-500 dark:text-gray-400">(High→Low)</span>
+                                                @endif
                                             @else
-                                            <x-heroicon-s-chevron-down class="w-4 h-4 text-primary-600 dark:text-primary-400" />
-                                            @endif
-                                            @else
-                                            <x-heroicon-o-chevron-up-down
-                                                class="w-4 h-4 opacity-0 group-hover:opacity-100 transition-opacity" />
+                                                <x-heroicon-o-chevron-up-down
+                                                    class="w-4 h-4 opacity-0 group-hover:opacity-100 transition-opacity" />
                                             @endif
                                         </button>
                                     </div>
@@ -168,7 +170,7 @@
                     x-data="{ collapsed: false }">
 
                     {{-- Enhanced Group Header --}}
-                    <div class="relative bg-white dark:bg-gray-800 px-6 py-6 border-b border-gray-200 dark:border-gray-600">
+                    <div class="relative bg-white dark:bg-gray-800 px-6 py-4 border-b border-gray-200 dark:border-gray-600">
                         {{-- Header Content --}}
                         <div class="flex items-center justify-between">
                             <div class="flex items-center gap-4">
@@ -445,8 +447,7 @@
                                     @foreach($tasks as $task)
                                     <div class="px-6 py-4 hover:bg-gradient-to-r hover:from-primary-50 hover:to-transparent 
                                                dark:hover:from-primary-900/20 dark:hover:to-transparent transition-all duration-200 
-                                               group border-l-4 border-l-transparent hover:border-l-primary-300 
-                                               dark:hover:border-l-primary-600">
+                                               group">
                                         <livewire:daily-task.components.daily-task-item :task="$task"
                                             :key="'group-task-'.$task->id . time()" />
                                     </div>

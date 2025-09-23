@@ -65,8 +65,18 @@ class DailyTaskListComponent extends Component
             'assignee' => [],
             'group_by' => 'status',
             'view_mode' => 'list',
-            'sort_by' => 'task_date',
-            'sort_direction' => 'desc',
+            'sort_by' => 'priority', // Default sort by priority
+            'sort_direction' => 'desc', // Urgent first
+        ];
+    }
+
+    private function getPriorityOrder(): array
+    {
+        return [
+            'urgent' => 4,
+            'high' => 3,
+            'normal' => 2,
+            'low' => 1
         ];
     }
 
@@ -220,7 +230,32 @@ class DailyTaskListComponent extends Component
         // Apply sorting
         $sortBy = $filters['sort_by'];
         $sortDirection = $filters['sort_direction'];
-        $query->orderBy($sortBy, $sortDirection);
+
+        if ($sortBy === 'priority') {
+            // Custom priority sorting berdasarkan order yang sudah ditentukan
+            if ($sortDirection === 'desc') {
+                // Urgent first (highest priority)
+                $query->orderByRaw("CASE priority 
+                    WHEN 'urgent' THEN 4 
+                    WHEN 'high' THEN 3 
+                    WHEN 'normal' THEN 2 
+                    WHEN 'low' THEN 1 
+                    ELSE 0 END DESC");
+            } else {
+                // Low first (ascending)
+                $query->orderByRaw("CASE priority 
+                    WHEN 'urgent' THEN 4 
+                    WHEN 'high' THEN 3 
+                    WHEN 'normal' THEN 2 
+                    WHEN 'low' THEN 1 
+                    ELSE 0 END ASC");
+            }
+            // Secondary sort by task_date
+            $query->orderBy('task_date', 'asc');
+        } else {
+            // Default sorting untuk field lain
+            $query->orderBy($sortBy, $sortDirection);
+        }
         
         return $query;
     }
@@ -311,6 +346,16 @@ class DailyTaskListComponent extends Component
             
             return strcasecmp($a, $b);
         });
+
+        // Sort tasks within each group by priority jika bukan group by priority
+        if ($groupBy !== 'priority') {
+            $sorted = $sorted->map(function ($tasks) {
+                return $tasks->sortBy(function ($task) {
+                    $priorityOrder = ['urgent' => 4, 'high' => 3, 'normal' => 2, 'low' => 1];
+                    return -($priorityOrder[$task->priority] ?? 0); // Negative untuk desc order
+                });
+            });
+        }
         
         return $sorted;
     }

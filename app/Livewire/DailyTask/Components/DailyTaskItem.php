@@ -324,6 +324,29 @@ class DailyTaskItem extends Component implements HasForms
             ->send();
     }
 
+    public function getCreateProjectUrl(): string
+    {
+        // Sesuaikan dengan resource name Filament Anda
+        return route('filament.admin.resources.projects.create', [
+            'client_id' => $this->selectedClientId
+        ]);
+    }
+
+    public function redirectToCreateProject(): void
+    {
+        if (!$this->selectedClientId) {
+            Notification::make()
+                ->title('Client Required')
+                ->body('Pilih client terlebih dahulu untuk membuat project')
+                ->warning()
+                ->send();
+            return;
+        }
+        
+        // Redirect ke halaman create project dengan pre-filled client
+        $this->redirect($this->getCreateProjectUrl());
+    }
+
     public function render()
     {
         return view('livewire.daily-task.components.daily-task-item');
