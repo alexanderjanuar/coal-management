@@ -115,7 +115,7 @@ class CreateSuggestionWidget extends Widget implements HasForms
                             ->helperText('Berikan judul yang jelas dan deskriptif')
                             ->columnSpanFull(),
 
-                        Grid::make(4)
+                        Grid::make(3)
                             ->schema([
                                 Select::make('user_id')
                                     ->label('👤 Pengguna')
@@ -140,15 +140,6 @@ class CreateSuggestionWidget extends Widget implements HasForms
                                     ->helperText('Pilih kategori yang sesuai')
                                     ->native(false)
                                     ->columnSpan(1),
-                                    
-                                Select::make('context_type')
-                                    ->label('📍 Area/Tempat')
-                                    ->options(fn() => Suggestion::getContextTypes())
-                                    ->default('general')
-                                    ->helperText('Dimana usulan ini berkaitan?')
-                                    ->native(false)
-                                    ->columnSpan(1)
-                                    ->visibleOn('edit'),
                                     
                                 Select::make('priority')
                                     ->label('🎯 Prioritas')
