@@ -238,7 +238,6 @@ class ClientResource extends Resource
                     ->schema([
                         Forms\Components\TextInput::make('NPWP')
                             ->label('NPWP')
-                            ->required()
                             ->placeholder('XX.XXX.XXX.X-XXX.XXX'),
                         Forms\Components\TextInput::make('EFIN')
                             ->label('EFIN')
@@ -251,7 +250,6 @@ class ClientResource extends Resource
                                 'PKP' => 'PKP (Pengusaha Kena Pajak)',
                             ])
                             ->default('Non-PKP')
-                            ->required()
                             ->live()
                             ->afterStateUpdated(function (Forms\Get $get, Forms\Set $set, ?string $state) {
                                 // Auto-disable PPN contract if Non-PKP is selected

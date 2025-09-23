@@ -36,6 +36,7 @@ class CreateSuggestionWidget extends Widget implements HasForms
             'status' => 'new',
             'priority' => 'low',
             'type' => 'other',
+            'context_type' => 'general'
         ]);
     }
 
@@ -52,6 +53,7 @@ class CreateSuggestionWidget extends Widget implements HasForms
                 'status' => 'new',
                 'priority' => 'low',
                 'type' => 'other',
+                'context_type' => 'general',
                 'title' => '',
                 'description' => '',
             ]);
@@ -80,6 +82,7 @@ class CreateSuggestionWidget extends Widget implements HasForms
             'user_id' => auth()->id(),
             'status' => 'new',
             'priority' => 'low',
+            'context_type' => 'general',
             'type' => 'other',
             'title' => '',
             'description' => '',
@@ -104,6 +107,14 @@ class CreateSuggestionWidget extends Widget implements HasForms
                     ->collapsible()
                     ->collapsed(false)
                     ->schema([
+                        TextInput::make('title')
+                            ->label('📝 Judul Usulan')
+                            ->required()
+                            ->maxLength(255)
+                            ->placeholder('Contoh: Tambahkan fitur notifikasi untuk deadline proyek')
+                            ->helperText('Berikan judul yang jelas dan deskriptif')
+                            ->columnSpanFull(),
+
                         Grid::make(4)
                             ->schema([
                                 Select::make('user_id')
@@ -116,14 +127,6 @@ class CreateSuggestionWidget extends Widget implements HasForms
                                     ->helperText('Pengguna yang mengajukan usulan')
                                     ->columnSpan(1),
                                     
-                                TextInput::make('title')
-                                    ->label('📝 Judul Usulan')
-                                    ->required()
-                                    ->maxLength(255)
-                                    ->placeholder('Contoh: Tambahkan fitur notifikasi untuk deadline proyek')
-                                    ->helperText('Berikan judul yang jelas dan deskriptif')
-                                    ->columnSpan(2),
-                                    
                                 Select::make('type')
                                     ->label('🏷️ Kategori')
                                     ->required()
@@ -135,6 +138,28 @@ class CreateSuggestionWidget extends Widget implements HasForms
                                     ])
                                     ->default('other')
                                     ->helperText('Pilih kategori yang sesuai')
+                                    ->native(false)
+                                    ->columnSpan(1),
+                                    
+                                Select::make('context_type')
+                                    ->label('📍 Area/Tempat')
+                                    ->options(fn() => Suggestion::getContextTypes())
+                                    ->default('general')
+                                    ->helperText('Dimana usulan ini berkaitan?')
+                                    ->native(false)
+                                    ->columnSpan(1)
+                                    ->visibleOn('edit'),
+                                    
+                                Select::make('priority')
+                                    ->label('🎯 Prioritas')
+                                    ->required()
+                                    ->options([
+                                        'low' => '🟢 Rendah',
+                                        'medium' => '🟡 Sedang',
+                                        'high' => '🔴 Tinggi',
+                                    ])
+                                    ->default('low')
+                                    ->helperText('Tingkat kepentingan')
                                     ->native(false)
                                     ->columnSpan(1),
                             ]),

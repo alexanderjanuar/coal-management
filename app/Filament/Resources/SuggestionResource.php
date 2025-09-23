@@ -41,12 +41,18 @@ class SuggestionResource extends Resource
 
     public static function getNavigationBadge(): ?string
     {
-        return static::getModel()::where('status', 'new')->count();
+        return static::getModel()::where('status', '!=', 'implemented')
+            ->whereIn('status', ['new', 'in_review', 'accepted'])
+            ->count();
     }
 
     public static function getNavigationBadgeColor(): string|array|null
     {
-        return static::getModel()::where('status', 'new')->count() > 5 ? 'warning' : 'primary';
+        $count = static::getModel()::where('status', '!=', 'implemented')
+            ->whereIn('status', ['new', 'in_review', 'accepted'])
+            ->count();
+            
+        return $count > 5 ? 'warning' : 'primary';
     }
 
     public static function form(Form $form): Form
@@ -93,6 +99,15 @@ class SuggestionResource extends Resource
                             ])
                             ->native(false)
                             ->helperText('Pilih jenis usulan pengembangan'),
+                        
+                        Forms\Components\Select::make('context_type')
+                                    ->label('📍 Area/Tempat')
+                                    ->options(fn() => Suggestion::getContextTypes())
+                                    ->default('general')
+                                    ->helperText('Dimana usulan ini berkaitan?')
+                                    ->native(false)
+                                    ->columnSpan(1)
+                                    ->visibleOn('edit'),
 
                         Forms\Components\Select::make('priority')
                             ->label('Prioritas')
@@ -173,14 +188,6 @@ class SuggestionResource extends Resource
     {
         return $table
             ->columns([
-                Tables\Columns\TextColumn::make('user.name')
-                    ->label('Pengguna')
-                    ->searchable()
-                    ->sortable()
-                    ->icon('heroicon-m-user')
-                    ->iconColor('primary')
-                    ->weight(FontWeight::Medium),
-
                 Tables\Columns\TextColumn::make('title')
                     ->label('Judul')
                     ->searchable()
@@ -242,6 +249,13 @@ class SuggestionResource extends Resource
                         default => ucwords(str_replace('_', ' ', $state)),
                     }),
 
+                Tables\Columns\TextColumn::make('context_type')
+                    ->label('Area')
+                    ->badge()
+                    ->formatStateUsing(fn($record): string => $record->getContextTypeLabel())
+                    ->sortable()
+                    ->toggleable(),
+
                 Tables\Columns\TextColumn::make('handler.name')
                     ->label('Ditangani Oleh')
                     ->default('Belum Ditangani')
@@ -261,8 +275,55 @@ class SuggestionResource extends Resource
                     ->sortable()
                     ->toggleable(isToggledHiddenByDefault: true),
             ])
-            ->defaultSort('created_at', 'desc')
-            ->filters([
+            ->defaultSort('status', 'asc') // Tambah ini - sort by status first
+            ->groups([
+                Tables\Grouping\Group::make('context_type')
+                    ->label('Area/Tempat')
+                    ->collapsible()
+                    ->getDescriptionFromRecordUsing(fn ($record) => $record->getContextTypeLabel()),
+                    
+                Tables\Grouping\Group::make('status')
+                    ->label('Status')
+                    ->collapsible()
+                    ->getDescriptionFromRecordUsing(fn ($record) => match($record->status) {
+                        'new' => 'Baru',
+                        'in_review' => 'Sedang Ditinjau',
+                        'accepted' => 'Diterima',
+                        'rejected' => 'Ditolak',
+                        'implemented' => 'Sudah Diterapkan',
+                        default => ucwords(str_replace('_', ' ', $record->status)),
+                    }),
+                    
+                Tables\Grouping\Group::make('priority')
+                    ->label('Prioritas')
+                    ->collapsible()
+                    ->getDescriptionFromRecordUsing(fn ($record) => match($record->priority) {
+                        'low' => 'Rendah',
+                        'medium' => 'Sedang',
+                        'high' => 'Tinggi',
+                        default => ucfirst($record->priority),
+                    }),
+                    
+                Tables\Grouping\Group::make('type')
+                    ->label('Jenis')
+                    ->collapsible()
+                    ->getDescriptionFromRecordUsing(fn ($record) => match($record->type) {
+                        'bug' => 'Perbaikan Bug',
+                        'feature' => 'Fitur Baru',
+                        'improvement' => 'Peningkatan',
+                        'other' => 'Lainnya',
+                        default => ucfirst($record->type),
+                    }),
+            ])
+            ->filters([              
+                Tables\Filters\SelectFilter::make('priority')
+                    ->label('Prioritas')
+                    ->options([
+                        'low' => 'Rendah',
+                        'medium' => 'Sedang',
+                        'high' => 'Tinggi',
+                    ]),
+                
                 Tables\Filters\SelectFilter::make('type')
                     ->label('Jenis')
                     ->options([
@@ -271,7 +332,7 @@ class SuggestionResource extends Resource
                         'improvement' => 'Peningkatan',
                         'other' => 'Lainnya',
                     ]),
-                    
+                
                 Tables\Filters\SelectFilter::make('priority')
                     ->label('Prioritas')
                     ->options([
@@ -288,7 +349,9 @@ class SuggestionResource extends Resource
                         'accepted' => 'Diterima',
                         'rejected' => 'Ditolak',
                         'implemented' => 'Sudah Diterapkan',
-                    ]),
+                    ])
+                    ->multiple()
+                    ->default(['new', 'in_review', 'accepted', 'rejected']),
 
                 Tables\Filters\Filter::make('handled')
                     ->label('Sudah Ditangani')
