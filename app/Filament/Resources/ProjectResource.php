@@ -95,8 +95,15 @@ class ProjectResource extends Resource
                                         $set('pic_id', null);
                                     })
                                     ->native(false)
-                                    ->columnSpan(2),
-                                
+                                    ->columnSpan(2)
+                                    ->createOptionForm([
+                                        Forms\Components\TextInput::make('name')
+                                            ->label('Nama Client')
+                                            ->required()
+                                            ->maxLength(255)
+                                            ->placeholder('Masukkan nama client baru')
+                                    ]),
+      
                             Select::make('pic_id')
                                 ->label('Person in Charge (PIC)')
                                 ->options(function (Forms\Get $get) {
@@ -737,55 +744,6 @@ class ProjectResource extends Resource
     public static function getGlobalSearchResultUrl(Model $record): string
     {
         return ProjectResource::getUrl('view', ['record' => $record]);
-    }
-
-
-    public static function infolist(Infolist $infolist): Infolist
-    {
-        return $infolist
-            ->schema([
-                Section::make('Project Detail')
-                    ->description('Detail about the project for the client')
-                    ->aside()
-                    ->schema([
-                        ProgressBarEntry::make('bar')
-                            ->label('Progress')
-                            ->getStateUsing(function ($record) {
-                                // Use an optimized query that counts directly in the database
-                                $stats = \DB::table('project_steps')
-                                    ->selectRaw('COUNT(*) as total, SUM(CASE WHEN status = "completed" THEN 1 ELSE 0 END) as completed')
-                                    ->where('project_id', $record->id)
-                                    ->first();
-                                
-                                return [
-                                    'total' => $stats->total ?: 1, // Prevent division by zero
-                                    'progress' => $stats->completed ?: 0,
-                                ];
-                            })
-                            ->columnSpanFull(),
-                        TextEntry::make('client.name'),
-                        TextEntry::make('name')
-                            ->label('Project Name'),
-                        TextEntry::make('pic.name')
-                            ->label('Person in Charge')
-                            ->badge()
-                            ->color('info')
-                            ->placeholder('No PIC assigned'),
-                        TextEntry::make('status')
-                            ->label('Status')->badge()
-                            ->color(fn(string $state): string => match ($state) {
-                                'draft' => 'gray',
-                                'on_hold' => 'gray',
-                                'in_progress' => 'warning',
-                                'completed' => 'success',
-                                'canceled' => 'danger',
-                            })
-                            ->formatStateUsing(fn(string $state): string => __(Str::title($state))),
-                        TextEntry::make('description')
-
-                    ])
-                    ->columns(2)
-            ]);
     }
 
 
