@@ -78,12 +78,31 @@ class UserActivity extends Model
     // Helper Methods
     public static function log(array $data): self
     {
+        // FILTER OUT actions yang tidak boleh create daily task
+        $excludedActions = [
+            'document_status_changed',
+            'document_approved', 
+            'document_rejected',
+            'document_pending_review',
+            'document_review',
+            'legal_document_approved',
+            'legal_document_rejected',
+            'client_document_approved', 
+            'client_document_rejected',
+            // Tambahkan action lain yang tidak boleh create task
+        ];
+
+        // Jika action dalam excluded list, jangan create daily task
+        $shouldCreateTask = !in_array($data['action'] ?? '', $excludedActions);
+
         $activity = self::create(array_merge($data, [
             'user_id' => auth()->id(),
         ]));
 
-        // Auto-create daily task untuk user
-        $activity->createDailyTask();
+        // Hanya create daily task jika action tidak dalam excluded list
+        if ($shouldCreateTask) {
+            $activity->createDailyTask();
+        }
 
         return $activity;
     }
@@ -93,21 +112,33 @@ class UserActivity extends Model
      */
     public function createDailyTask(): void
     {
-        // Define actions yang perlu generate daily task
+        // Define actions yang perlu generate daily task - HANYA UPLOAD DOKUMEN
         $taskGeneratingActions = [
             'tax_report_created' => 'Review laporan pajak',
             'invoice_created' => 'Validasi faktur',
-            'document_submitted' => 'Review dokumen',
-            'document_status_changed' => 'Follow up dokumen',
+            'document_submitted' => 'Review dokumen', // Hanya saat upload dokumen
             'project_created' => 'Setup proyek',
             'bupot_created' => 'Verifikasi Bupot',
             'income_tax_created' => 'Verifikasi PPh 21',
             'client_created' => 'Setup klien baru',
-            // TAMBAHAN BARU untuk legal documents
+            // UPLOAD DOKUMEN SAJA
             'legal_document_uploaded' => 'Review dokumen legal',
             'client_document_uploaded' => 'Verifikasi dokumen klien',
             'document_uploaded' => 'Review dokumen',
         ];
+
+        // Actions yang tidak perlu daily task (status changes, approvals, rejections)
+        $excludedActions = [
+            'document_status_changed',
+            'document_approved',
+            'document_rejected',
+            'document_pending_review',
+        ];
+
+        // Skip jika action dalam excluded list
+        if (in_array($this->action, $excludedActions)) {
+            return;
+        }
 
         // Cek apakah action ini perlu daily task
         if (!array_key_exists($this->action, $taskGeneratingActions)) {
@@ -123,7 +154,7 @@ class UserActivity extends Model
         $projectId = $this->determineTaskProjectId();
         $clientId = $this->determineTaskClientId();
 
-        // Create daily task
+        // Create daily task dengan status pending (karena upload perlu direview)
         $dailyTask = \App\Models\DailyTask::create([
             'title' => $taskTitle,
             'description' => $taskDescription,
@@ -269,34 +300,24 @@ class UserActivity extends Model
             '/Faktur (.+?) telah diperbarui/' => 'Memperbarui faktur $1',
             '/Faktur (.+?) telah dihapus/' => 'Menghapus faktur $1',
             
-            // Laporan pajak patterns - MEMBUAT/MENGUPDATE
+            // Laporan pajak patterns - MEMBUAT SAJA
             '/Laporan pajak (.+?) untuk (.+?) telah dibuat/' => 'Membuat laporan pajak $1 untuk $2',
-            '/Status laporan (.+?) (.+?) untuk (.+?) diubah menjadi: (.+)/' => 'Mengupdate status $1 $2 untuk $3',
             
-            // Project patterns - MEMBUAT/MENGUPDATE
+            // Project patterns - MEMBUAT SAJA (STATUS & PRIORITAS PATTERNS REMOVED)
             '/Proyek \'(.+?)\' telah dibuat untuk klien (.+)/' => 'Membuat proyek $1 untuk $2',
-            '/Status proyek \'(.+?)\' diubah dari (.+?) menjadi (.+)/' => 'Mengupdate status proyek $1 menjadi $3',
-            '/Prioritas proyek \'(.+?)\' diubah dari (.+?) menjadi (.+)/' => 'Mengupdate prioritas proyek $1 menjadi $3',
             
-            // Document patterns - MENGUPLOAD
+            // Document patterns - MENGUPLOAD SAJA (APPROVAL/REJECTION PATTERNS REMOVED)
             '/Dokumen \'(.+?)\' .+ diunggah untuk klien (.+)/' => 'Mengupload dokumen $1 untuk $2',
-            '/Dokumen \'(.+?)\' .+ telah DISETUJUI - (.+)/' => 'Menyetujui dokumen $1 untuk $2',
-            '/Dokumen \'(.+?)\' .+ DITOLAK - (.+)/' => 'Menolak dokumen $1 untuk $2',
             
-            // Submitted Document patterns - MENGUPLOAD/SUBMIT
+            // Submitted Document patterns - MENGUPLOAD SAJA (APPROVAL/REJECTION/REVIEW PATTERNS REMOVED)
             '/Dokumen \'(.+?)\' untuk persyaratan \'(.+?)\' telah diunggah untuk (.+) - (.+)/' => 'Mengupload dokumen $1 untuk $3',
-            '/Dokumen \'(.+?)\' untuk persyaratan \'(.+?)\' telah DISETUJUI - (.+)/' => 'Menyetujui dokumen $1 untuk $3',
-            '/Dokumen \'(.+?)\' untuk persyaratan \'(.+?)\' telah DITOLAK - (.+)/' => 'Menolak dokumen $1 untuk $3',
-            '/Dokumen \'(.+?)\' untuk persyaratan \'(.+?)\' sedang DIPERIKSA - (.+)/' => 'Memeriksa dokumen $1 untuk $3',
             
-            // Bupot patterns - MEMBUAT/MENGUPDATE
+            // Bupot patterns - MEMBUAT SAJA (UPDATE AMOUNT PATTERN REMOVED)
             '/Bupot (.+?) (.+?) untuk (.+?) telah dibuat \(Periode: (.+?)\)/' => 'Membuat Bupot $1 $2 untuk $3',
-            '/Jumlah bupot (.+?) diubah menjadi (.+)/' => 'Mengupdate jumlah Bupot $1',
             '/Bukti setor bupot (.+?) telah diunggah/' => 'Mengupload bukti setor Bupot $1',
             
-            // PPh patterns - MEMBUAT/MENGUPDATE
+            // PPh patterns - MEMBUAT SAJA (UPDATE AMOUNT PATTERN REMOVED)
             '/PPh 21 untuk (.+?) telah dibuat \(TER: (.+?), PPh 21: (.+?)\)/' => 'Membuat PPh 21 untuk $1',
-            '/Jumlah PPh 21 untuk (.+?) telah diperbarui/' => 'Mengupdate PPh 21 untuk $1',
             '/Bukti setor PPh 21 untuk (.+?) telah diunggah/' => 'Mengupload bukti setor PPh 21 untuk $1',
             
             // Client patterns - MEMBUAT/MENGUPDATE
@@ -306,15 +327,12 @@ class UserActivity extends Model
             '/Account Representative klien \'(.+?)\' diubah menjadi: (.+)/' => 'Mengupdate AR klien $1 menjadi $2',
             '/Kontrak (.+?) klien \'(.+?)\' diubah menjadi: (.+)/' => 'Mengupdate kontrak $1 klien $2',
             
-            // Task patterns - MEMBUAT/MENYELESAIKAN
-            '/Tugas harian \'(.+?)\' telah dibuat/' => 'Membuat tugas $1',
+            // Task patterns - MENYELESAIKAN SAJA (DAILY TASK CREATION PATTERN REMOVED)
             '/Tugas \'(.+?)\' telah diselesaikan/' => 'Menyelesaikan tugas $1',
             '/Mulai mengerjakan tugas \'(.+?)\'/' => 'Memulai tugas $1',
 
-            // TAMBAHAN BARU - Legal Document patterns
+            // Legal Document patterns - MENGUPLOAD SAJA (APPROVAL/REJECTION PATTERNS REMOVED)
             '/Dokumen legal \'(.+?)\' telah diunggah untuk klien (.+)/' => 'Mengupload dokumen legal $1 untuk $2',
-            '/Dokumen legal \'(.+?)\' telah disetujui untuk klien (.+)/' => 'Menyetujui dokumen legal $1 untuk $2',
-            '/Dokumen legal \'(.+?)\' telah ditolak untuk klien (.+)/' => 'Menolak dokumen legal $1 untuk $2',
             
             // Client Document patterns
             '/Dokumen klien \'(.+?)\' telah diunggah untuk (.+)/' => 'Mengupload dokumen $1 untuk $2',
@@ -414,13 +432,11 @@ class UserActivity extends Model
      */
     private function determineTaskPriority(): string
     {
-        // High priority actions
+        // High priority actions - HANYA UNTUK UPLOAD DOKUMEN
         $highPriorityActions = [
             'tax_report_created',
-            'document_submitted',
-            'document_status_changed',
-            // TAMBAHAN BARU
-            'legal_document_uploaded', // Legal documents are high priority
+            'document_submitted', // Upload dokumen submitted documents
+            'legal_document_uploaded', // Upload legal documents
         ];
 
         // Urgent priority actions  
@@ -428,10 +444,10 @@ class UserActivity extends Model
             'project_created',
         ];
 
-        // Normal priority actions - TAMBAHAN BARU
+        // Normal priority actions - UPLOAD DOKUMEN LAINNYA
         $normalPriorityActions = [
-            'client_document_uploaded',
-            'document_uploaded',
+            'client_document_uploaded', // Upload client documents
+            'document_uploaded', // Upload general documents
         ];
 
         if (in_array($this->action, $urgentPriorityActions)) {

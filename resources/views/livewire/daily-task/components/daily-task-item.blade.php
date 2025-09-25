@@ -321,7 +321,6 @@
                         </button>
 
                         {{-- Project Dropdown with Client Selection --}}
-                        {{-- Project Dropdown with Client Selection --}}
                         <template x-teleport="body">
                             <div x-show="projectOpen" x-cloak @click.away="projectOpen = false"
                                 @keydown.escape="projectOpen = false"

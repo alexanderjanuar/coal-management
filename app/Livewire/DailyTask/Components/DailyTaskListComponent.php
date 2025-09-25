@@ -53,20 +53,20 @@ class DailyTaskListComponent extends Component
 
     public function mount(): void
     {
-        // Initialize default filters
+        // Initialize default filters dengan filter untuk user saat ini dan task hari ini
         $this->currentFilters = [
             'search' => '',
-            'date' => null,
+            'date' => today(), // Filter untuk task hari ini
             'date_start' => null,
             'date_end' => null,
             'status' => [],
             'priority' => [],
             'project' => [],
-            'assignee' => [],
+            'assignee' => [auth()->id()], // Filter untuk user yang sedang login
             'group_by' => 'status',
             'view_mode' => 'list',
-            'sort_by' => 'priority', // Default sort by priority
-            'sort_direction' => 'desc', // Urgent first
+            'sort_by' => 'priority',
+            'sort_direction' => 'desc',
         ];
     }
 
@@ -155,35 +155,35 @@ class DailyTaskListComponent extends Component
             $searchTerm = $filters['search'];
             $query->where(function ($q) use ($searchTerm) {
                 $q->where('title', 'like', '%' . $searchTerm . '%')
-                  ->orWhere('description', 'like', '%' . $searchTerm . '%');
+                ->orWhere('description', 'like', '%' . $searchTerm . '%');
             });
         }
         
-        // Apply date filters
+        // Apply date filters - Ubah untuk menggunakan start_task_date
         if (!empty($filters['date'])) {
             $date = $filters['date'];
             if ($date instanceof \Carbon\Carbon) {
-                $query->whereDate('task_date', $date->format('Y-m-d'));
+                $query->whereDate('start_task_date', $date->format('Y-m-d'));
             } elseif (is_string($date)) {
                 try {
                     $carbonDate = Carbon::parse($date);
-                    $query->whereDate('task_date', $carbonDate->format('Y-m-d'));
+                    $query->whereDate('start_task_date', $carbonDate->format('Y-m-d'));
                 } catch (\Exception $e) {
                     // Handle silently, skip invalid dates
                 }
             }
         }
         
-        // Apply date range filters
+        // Apply date range filters - Ubah untuk menggunakan start_task_date
         if (!empty($filters['date_start']) || !empty($filters['date_end'])) {
             if (!empty($filters['date_start'])) {
                 $startDate = $filters['date_start'];
                 if ($startDate instanceof \Carbon\Carbon) {
-                    $query->whereDate('task_date', '>=', $startDate->format('Y-m-d'));
+                    $query->whereDate('start_task_date', '>=', $startDate->format('Y-m-d'));
                 } elseif (is_string($startDate)) {
                     try {
                         $carbonStartDate = Carbon::parse($startDate);
-                        $query->whereDate('task_date', '>=', $carbonStartDate->format('Y-m-d'));
+                        $query->whereDate('start_task_date', '>=', $carbonStartDate->format('Y-m-d'));
                     } catch (\Exception $e) {
                         // Handle silently
                     }
@@ -193,11 +193,11 @@ class DailyTaskListComponent extends Component
             if (!empty($filters['date_end'])) {
                 $endDate = $filters['date_end'];
                 if ($endDate instanceof \Carbon\Carbon) {
-                    $query->whereDate('task_date', '<=', $endDate->format('Y-m-d'));
+                    $query->whereDate('start_task_date', '<=', $endDate->format('Y-m-d'));
                 } elseif (is_string($endDate)) {
                     try {
                         $carbonEndDate = Carbon::parse($endDate);
-                        $query->whereDate('task_date', '<=', $carbonEndDate->format('Y-m-d'));
+                        $query->whereDate('start_task_date', '<=', $carbonEndDate->format('Y-m-d'));
                     } catch (\Exception $e) {
                         // Handle silently
                     }
@@ -207,7 +207,7 @@ class DailyTaskListComponent extends Component
         
         // Apply status filter
         if (!empty($filters['status'])) {
-            $query->whereIn('status', $filters['status']);
+        $query->whereIn('status', $filters['status']);
         }
         
         // Apply priority filter
