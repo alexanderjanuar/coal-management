@@ -345,7 +345,7 @@ class DocumentModal extends Component implements HasForms
                 ->send();
 
             // Refresh the view
-            $this->dispatch('refresh');
+            // $this->dispatch('refresh');
 
             $this->emitStatusChangeEvent('bulk_approved', [
                 'affected_count' => $affectedCount
@@ -447,7 +447,7 @@ class DocumentModal extends Component implements HasForms
         $this->calculateOverallStatus();
 
 
-        $this->dispatch('refresh');
+        // $this->dispatch('refresh');
     }
 
     /**
@@ -570,7 +570,7 @@ class DocumentModal extends Component implements HasForms
         $this->uploadFileForm->fill();
 
         $this->dispatch('refresh');
-        $this->dispatch('documentUploaded', documentId: $this->document->id);
+        // $this->dispatch('documentUploaded', documentId: $this->document->id);
 
         // Get related project information
         $projectStep = $this->document->projectStep;
@@ -831,7 +831,7 @@ class DocumentModal extends Component implements HasForms
             // Recalculate overall document status
             $this->calculateOverallStatus();
 
-            $this->dispatch('refresh');
+            // $this->dispatch('refresh');
 
             // Get related project information
             $projectStep = $this->document->projectStep;
@@ -939,7 +939,7 @@ class DocumentModal extends Component implements HasForms
             // Recalculate overall status
             $this->calculateOverallStatus();
 
-            $this->dispatch('refresh');
+            // $this->dispatch('refresh');
             $this->dispatch('close-modal', ['id' => 'rejection-reason-modal']);
 
             // Send notification - now using the stored variables
@@ -1026,7 +1026,7 @@ class DocumentModal extends Component implements HasForms
 
             // Reset form and refresh
             $this->createCommentForm->fill();
-            $this->dispatch('refresh');
+            // $this->dispatch('refresh');
 
             // Send notification
             $plainContent = strip_tags($comment->content);
@@ -1090,7 +1090,7 @@ class DocumentModal extends Component implements HasForms
             // Delete the comment
             $comment->delete();
 
-            $this->dispatch('refresh');
+            // $this->dispatch('refresh');
 
         } catch (\Exception $e) {
             $this->sendNotification('error', 'Error', 'Unable to delete comment.');
@@ -1133,7 +1133,7 @@ class DocumentModal extends Component implements HasForms
                 ->success()
                 ->send();
 
-            $this->dispatch('refresh');
+            // $this->dispatch('refresh');
 
             $this->emitStatusChangeEvent('document_deleted', [
                 'submission_id' => $documentId
