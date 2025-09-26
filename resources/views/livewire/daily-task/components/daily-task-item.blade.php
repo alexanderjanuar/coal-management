@@ -13,9 +13,7 @@
                 {{-- Checkbox & Completion Toggle --}}
                 <div class="col-span-1 flex items-center justify-center h-full">
                     <button wire:click="toggleTaskCompletion"
-                        class="flex-shrink-0 hover:scale-110 transition-transform duration-200 w-6 h-6 flex items-center justify-center group"
-                        x-bind:class="{ 'animate-bounce': completionToggling }"
-                        @click="completionToggling = true; setTimeout(() => completionToggling = false, 600)">
+                        class="flex-shrink-0 hover:scale-110 transition-transform duration-200 w-6 h-6 flex items-center justify-center group">
                         @if($task->status === 'completed')
                         <div class="relative">
                             <x-heroicon-s-check-circle class="w-5 h-5 text-green-500 dark:text-green-400" />
