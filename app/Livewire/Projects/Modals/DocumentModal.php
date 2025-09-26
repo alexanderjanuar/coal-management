@@ -55,7 +55,7 @@ class DocumentModal extends Component implements HasForms
      * Listeners
      */
     protected $listeners = [
-        'refresh' => '$refresh',
+        // 'refresh' => '$refresh',
         'documentUploaded' => 'handleDocumentUploaded',
         'documentApprovedWithoutUpload' => 'handleDocumentApprovedWithoutUpload',
     ];
@@ -90,7 +90,7 @@ class DocumentModal extends Component implements HasForms
         $this->isClientInactive = $this->document->projectStep->project->client->status == 'Inactive';
 
         // Refresh document data dari database untuk memastikan data terbaru
-        $this->document->refresh();
+        // $this->document->refresh();
         $this->document->load('submittedDocuments');
         
         // Calculate overall status based on submitted documents
@@ -444,6 +444,8 @@ class DocumentModal extends Component implements HasForms
     {
         // Refresh document
         $this->document->refresh();
+
+
         $this->calculateOverallStatus();
 
 
@@ -569,7 +571,7 @@ class DocumentModal extends Component implements HasForms
 
         $this->uploadFileForm->fill();
 
-        $this->dispatch('refresh');
+        // $this->dispatch('refresh');
         // $this->dispatch('documentUploaded', documentId: $this->document->id);
 
         // Get related project information

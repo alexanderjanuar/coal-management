@@ -1,5 +1,5 @@
 {{-- Desktop View with Enhanced Dark Mode Styling --}}
-<div class="hidden lg:block">
+<div class="block">
     {{-- Horizontal Scrollable Container --}}
     <div
         class="overflow-x-auto scrollbar-thin scrollbar-thumb-gray-300 dark:scrollbar-thumb-gray-600 scrollbar-track-gray-100 dark:scrollbar-track-gray-800 scroll-smooth">
