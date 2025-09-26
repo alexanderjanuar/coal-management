@@ -1088,11 +1088,11 @@
                                                     </div>
                                                 </div>
                                             </div>
-                                        </button>
+                                        </button>  
 
                                         <!-- Document Modal -->
                                         <x-filament::modal id="document-modal-{{ $document->id }}" width="4xl" slide-over>
-                                            @livewire('projects.modals.document-modal', ['document' => $document],key('document-modal-'.$document->id. time()))
+                                            @livewire('projects.modals.document-modal', ['document' => $document],key('document-modal-'.$document->id))
                                         </x-filament::modal>
 
                                         @endforeach
@@ -1106,8 +1106,6 @@
                 </div>
             </div>
         </div>
-
-
     </div>
 
 
