@@ -22,6 +22,16 @@ class Client extends Model
         return $this->hasMany(Project::class);
     }
 
+    public function applicationCredentials(): HasMany
+    {
+        return $this->hasMany(ApplicationClient::class);
+    }
+
+    public function activeApplications(): HasMany
+    {
+        return $this->hasMany(ApplicationClient::class)->where('is_active', true);
+    }   
+
     public function applications()
     {
         return $this->hasMany(ApplicationClient::class);
@@ -49,6 +59,8 @@ class Client extends Model
     {
         return $this->hasMany(UserClient::class);
     }
+
+    
 
     /**
      * Relationship ke credential utama

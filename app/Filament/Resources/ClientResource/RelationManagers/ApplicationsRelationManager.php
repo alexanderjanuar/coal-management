@@ -1,4 +1,5 @@
 <?php
+// app/Filament/Resources/ClientResource/RelationManagers/ApplicationsRelationManager.php
 
 namespace App\Filament\Resources\ClientResource\RelationManagers;
 
@@ -9,69 +10,62 @@ use Filament\Forms\Form;
 use Filament\Resources\RelationManagers\RelationManager;
 use Filament\Tables;
 use Filament\Tables\Table;
-use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Database\Eloquent\SoftDeletingScope;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Section;
 use Filament\Forms\Components\Grid;
+use Filament\Forms\Components\KeyValue;
 use Filament\Forms\Get;
-use Illuminate\Database\Eloquent\Model;
-use Closure;
-use Filament\Resources\Pages\Concerns\InteractsWithRecord;
+use Illuminate\Support\Facades\Crypt;
 
 class ApplicationsRelationManager extends RelationManager
 {
-    use InteractsWithRecord;
-    protected static string $relationship = 'applications';
+    protected static string $relationship = 'applicationCredentials';
+    protected static ?string $title = 'Application Credentials';
+    protected static ?string $recordTitleAttribute = 'username';
 
     public function form(Form $form): Form
     {
-        return $form
-            ->schema([
-                Section::make('Application Details')
-                    ->description('Select the application and set account credentials')
-                    ->schema([
-                        Select::make('application_id')
+        return $form->schema([
+            Section::make('Application Selection')
+                ->description('Pilih aplikasi dan atur kredensial akun')
+                ->schema([
+                    Select::make('application_id')
+                        ->required()
+                        ->label('Application')
+                        ->options(Application::pluck('name', 'id'))
+                        ->searchable()
+                        ->preload()
+                        ->live()
+                        ->afterStateUpdated(fn (Forms\Set $set) => $set('additional_data', []))
+                        ->helperText('Pilih aplikasi yang akan dikonfigurasi'),
+                ]),
+
+            Section::make('Basic Credentials')
+                ->description('Username dan password untuk aplikasi')
+                ->schema([
+                    Grid::make(2)->schema([
+                        Forms\Components\TextInput::make('username')
                             ->required()
-                            ->label('Application')
-                            ->options(Application::all()->pluck('name', 'id'))
-                            ->searchable()
-                            ->preload()
-                            ->helperText('Choose the application this account belongs to'),
-                        Grid::make(2)
-                            ->schema([
-                                Forms\Components\TextInput::make('username')
-                                    ->required()
-                                    ->maxLength(255)
-                                    ->autocomplete(false)
-                                    ->helperText('Enter the account username'),
+                            ->maxLength(255)
+                            ->autocomplete(false)
+                            ->placeholder('Enter username/email')
+                            ->helperText('Username untuk login'),
 
-                                Forms\Components\TextInput::make('password')
-                                    ->required()
-                                    ->password()
-                                    ->maxLength(255)
-                                    ->autocomplete('new-password')
-                                    ->helperText('Enter a secure password'),
-                            ]),
+                        Forms\Components\TextInput::make('password')
+                            ->required(fn (string $operation) => $operation === 'create')
+                            ->password()
+                            ->revealable()
+                            ->maxLength(255)
+                            ->autocomplete('new-password')
+                            ->dehydrateStateUsing(fn ($state) => filled($state) ? $state : null)
+                            ->placeholder('Enter password')
+                            ->helperText(fn (string $operation) => $operation === 'edit' 
+                                ? 'Kosongkan jika tidak ingin mengubah password' 
+                                : 'Password untuk login'),
                     ]),
-
-                Section::make('Account Settings (Optional)')
-                    ->description('Configure account activation and period settings')
-                    ->schema([
-                        Grid::make(2)
-                            ->schema([
-                                Forms\Components\TextInput::make('activation_code')
-                                    ->maxLength(255)
-                                    ->helperText('Optional activation code for the account'),
-
-                                DatePicker::make('account_period')
-                                    ->label('Account Period')
-                                    ->displayFormat('d/m/Y')
-                                    ->helperText('Select the account validity period'),
-                            ]),
-                    ]),
-            ]);
+                ]),
+        ]);
     }
 
     public function table(Table $table): Table
@@ -79,66 +73,97 @@ class ApplicationsRelationManager extends RelationManager
         return $table
             ->recordTitleAttribute('username')
             ->columns([
+                Tables\Columns\ImageColumn::make('application.logo')
+                    ->label('')
+                    ->circular()
+                    ->size(40)
+                    ->defaultImageUrl(fn($record) => 'https://ui-avatars.com/api/?name=' . urlencode($record->application->name ?? 'App') . '&color=7F9CF5&background=EBF4FF'),
+
                 Tables\Columns\TextColumn::make('application.name')
                     ->label('Application')
                     ->searchable()
-                    ->sortable(),
+                    ->sortable()
+                    ->weight('medium')
+                    ->badge()
+                    ->color(fn ($record) => match($record->application->category) {
+                        'tax' => 'success',
+                        'accounting' => 'info',
+                        'email' => 'warning',
+                        default => 'gray',
+                    }),
 
                 Tables\Columns\TextColumn::make('username')
                     ->searchable()
                     ->sortable()
                     ->copyable()
-                    ->tooltip('Click to copy username'),
+                    ->copyMessage('Username copied!'),
 
-                Tables\Columns\IconColumn::make('password')
-                    ->label('Has Password')
-                    ->boolean()
-                    ->trueIcon('heroicon-o-check-circle')
-                    ->falseIcon('heroicon-o-x-circle'),
+                Tables\Columns\TextColumn::make('password')
+                    ->label('Password')
+                    ->copyable()
+                    ->copyMessage('Password copied!'),
 
-                Tables\Columns\TextColumn::make('activation_code')
-                    ->label('Activation Code')
-                    ->searchable()
-                    ->toggleable()
-                    ->copyable(),
-
-                Tables\Columns\TextColumn::make('account_period')
-                    ->label('Account Period')
-                    ->date('d M Y')
+                Tables\Columns\TextColumn::make('last_used_at')
+                    ->label('Last Used')
+                    ->dateTime('d M Y, H:i')
                     ->sortable()
-                    ->badge()
-                    ->color(
-                        fn($record) =>
-                        $record->account_period > now() ? 'success' : 'danger'
-                    ),
+                    ->toggleable(isToggledHiddenByDefault: true)
+                    ->placeholder('Never used'),
 
                 Tables\Columns\TextColumn::make('created_at')
-                    ->label('Created Date')
-                    ->dateTime('d M Y, H:i')
-                    ->sortable()
-                    ->toggleable(isToggledHiddenByDefault: true),
-
-                Tables\Columns\TextColumn::make('updated_at')
-                    ->label('Last Updated')
-                    ->dateTime('d M Y, H:i')
+                    ->label('Created')
+                    ->dateTime('d M Y')
                     ->sortable()
                     ->toggleable(isToggledHiddenByDefault: true),
             ])
             ->filters([
-                //
+                Tables\Filters\SelectFilter::make('application_id')
+                    ->label('Application')
+                    ->relationship('application', 'name')
+                    ->searchable()
+                    ->preload(),
+                
+                Tables\Filters\SelectFilter::make('application.category')
+                    ->label('Category')
+                    ->options([
+                        'tax' => 'Tax Applications',
+                        'accounting' => 'Accounting',
+                        'email' => 'Email',
+                        'api' => 'API Services',
+                        'other' => 'Other',
+                    ]),
+                
+                Tables\Filters\TernaryFilter::make('is_active')
+                    ->label('Active Status')
+                    ->placeholder('All')
+                    ->trueLabel('Active Only')
+                    ->falseLabel('Inactive Only'),
+                
+                Tables\Filters\Filter::make('expired')
+                    ->label('Expired Accounts')
+                    ->query(fn ($query) => $query->where('account_period', '<', now()))
+                    ->toggle(),
             ])
             ->headerActions([
                 Tables\Actions\CreateAction::make()
-                    ->label('Add New Account'),
+                    ->label('Add Credential')
+                    ->icon('heroicon-o-plus')
+                    ->modalWidth('3xl'),
             ])
-            ->actions([
-                Tables\Actions\EditAction::make(),
+            ->actions([            
+                Tables\Actions\EditAction::make()
+                    ->modalWidth('3xl'),
+                
                 Tables\Actions\DeleteAction::make(),
             ])
-            ->bulkActions([
-                Tables\Actions\BulkActionGroup::make([
-                    Tables\Actions\DeleteBulkAction::make(),
-                ]),
+            ->defaultSort('created_at', 'desc')
+            ->emptyStateHeading('No Application Credentials')
+            ->emptyStateDescription('Add credentials for applications used by this client.')
+            ->emptyStateIcon('heroicon-o-key')
+            ->emptyStateActions([
+                Tables\Actions\CreateAction::make()
+                    ->label('Add First Credential')
+                    ->icon('heroicon-o-plus'),
             ]);
     }
 }

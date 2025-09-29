@@ -3,6 +3,7 @@
 namespace App\Filament\Resources;
 
 use App\Filament\Resources\ClientResource\Pages;
+use App\Filament\Resources\ClientResource\RelationManagers\ApplicationsRelationManager;
 use App\Filament\Resources\ClientResource\RelationManagers\ClientDocumentsRelationManager;
 use App\Filament\Resources\ClientResource\RelationManagers\ProgressRelationManager;
 use Filament\Forms\Components\Section;
@@ -178,59 +179,6 @@ class ClientResource extends Resource
                     ->content(fn (?Client $record) => $record && $record->pic ? view('filament.components.client-pic-info', ['record' => $record]) : '')
                     ->hiddenOn(['create', 'edit'])
                     ->columnSpanFull(),
-
-                Section::make('Kredensial Client')
-                    ->description('Kredensial Klien untuk akses aplikasi perpajakan dan email')
-                    ->icon('heroicon-o-key')
-                    ->schema([
-                        Forms\Components\TextInput::make('core_tax_user_id')
-                        ->label('Core Tax User ID')
-                        ->maxLength(255)
-                        ->placeholder('Enter Core Tax User ID')
-                        ->helperText('Unique identifier for Core Tax application login')
-                        ->suffixIcon('heroicon-o-identification'),
-                        
-                    Forms\Components\TextInput::make('core_tax_password')
-                        ->label('Core Tax Password')
-                        ->maxLength(255)
-                        ->placeholder('Enter Core Tax Password')
-                        ->helperText('Password for Core Tax application access')
-                        ->suffixIcon('heroicon-o-lock-closed'),  // Jangan kirim ke server jika kosong,
-
-                    // FIELD BARU - DJP CREDENTIALS
-                    Forms\Components\TextInput::make('djp_account')
-                        ->label('DJP Account')
-                        ->maxLength(255)
-                        ->placeholder('Enter DJP account username')
-                        ->helperText('Username untuk akses DJP Online')
-                        ->suffixIcon('heroicon-o-building-office'),
-                        
-                    Forms\Components\TextInput::make('djp_password')
-                        ->label('DJP Password')
-                        ->maxLength(255)
-                        ->placeholder('Enter DJP password')
-                        ->helperText('Password untuk akses DJP Online')
-                        ->suffixIcon('heroicon-o-lock-closed'),  // Jangan kirim ke server jika kosong,
-
-                    Forms\Components\TextInput::make('email')
-                        ->label('Client Email Account')
-                        ->email()
-                        ->maxLength(255)
-                        ->placeholder('client@example.com')
-                        ->helperText('Email account for client access')
-                        ->suffixIcon('heroicon-o-envelope'),
-                        
-                    Forms\Components\TextInput::make('email_password')
-                        ->label('Email Password')
-                        ->maxLength(255)
-                        ->placeholder('Enter Email Password')
-                        ->helperText('Password untuk akses email - kosongkan jika tidak ingin mengubah')
-                        ->suffixIcon('heroicon-o-lock-closed'),  // Jangan kirim ke server jika kosong
-
-                    ])
-                    ->columns(2)
-                    ->collapsible()
-                    ->relationship('clientCredential'),
                 
                 Section::make('Client Tax Information')
                     ->description('Tax registration and compliance details')
@@ -478,19 +426,12 @@ class ClientResource extends Resource
                 ])
             ->actions([
             // Existing Core Tax action
-            Tables\Actions\Action::make('view_client_credentials')
+            RelationManagerAction::make('core-tax-credentials')
                 ->label('')
                 ->icon('heroicon-o-key')
-                ->color('info')
-                ->modalHeading('Client Application Credentials')
-                ->modalContent(fn ($record) => view('filament.modals.client-core-tax-credentials', ['record' => $record]))
-                ->modalActions([
-                    Tables\Actions\Action::make('close')
-                        ->label('Close')
-                        ->color('gray')
-                        ->close(),
-                ])
-                ->visible(),
+                ->color('secondary')
+                ->modalWidth('7xl')
+                ->relationManager(ClientResource\RelationManagers\ApplicationsRelationManager::make()),
 
 
             // PIC Management Actions Group
@@ -900,6 +841,7 @@ class ClientResource extends Resource
     {
         return [
             ProgressRelationManager::class,
+            ApplicationsRelationManager::class, // TAMBAH INI
             ClientDocumentsRelationManager::class,
         ];
     }
