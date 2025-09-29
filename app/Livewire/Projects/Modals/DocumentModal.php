@@ -55,7 +55,7 @@ class DocumentModal extends Component implements HasForms
      * Listeners
      */
     protected $listeners = [
-        // 'refresh' => '$refresh',
+        'refresh' => '$refresh',
         'documentUploaded' => 'handleDocumentUploaded',
         'documentApprovedWithoutUpload' => 'handleDocumentApprovedWithoutUpload',
     ];
@@ -833,7 +833,7 @@ class DocumentModal extends Component implements HasForms
             // Recalculate overall document status
             $this->calculateOverallStatus();
 
-            // $this->dispatch('refresh');
+            $this->dispatch('refresh');
 
             // Get related project information
             $projectStep = $this->document->projectStep;
@@ -1313,8 +1313,8 @@ class DocumentModal extends Component implements HasForms
         ], $data);
 
         // Emit to parent components
-        $this->dispatch('documentStatusChanged', $eventData);
-        $this->dispatch('requirementStatusUpdated', $eventData);
+        // $this->dispatch('documentStatusChanged', $eventData);
+        // $this->dispatch('requirementStatusUpdated', $eventData);
     }
 
     public function render()
