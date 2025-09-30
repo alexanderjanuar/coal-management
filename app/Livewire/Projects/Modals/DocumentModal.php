@@ -180,7 +180,7 @@ class DocumentModal extends Component implements HasForms
                         'application/csv',
                         'text/x-csv'
                     ])
-                    ->maxSize(10240)
+                    ->maxSize(100240)
                     ->preserveFilenames()
                     ->disk('public')
                     ->directory(function () {
