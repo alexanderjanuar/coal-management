@@ -426,12 +426,15 @@ class ClientResource extends Resource
                 ])
             ->actions([
             // Existing Core Tax action
-            RelationManagerAction::make('core-tax-credentials')
+            Tables\Actions\Action::make('view_all_credentials')
                 ->label('')
                 ->icon('heroicon-o-key')
-                ->color('secondary')
-                ->modalWidth('7xl')
-                ->relationManager(ClientResource\RelationManagers\ApplicationsRelationManager::make()),
+                ->color('info')
+                ->tooltip('Lihat Semua Kredensial')
+                ->modalHeading(fn ($record) => 'Kredensial Aplikasi - ' . $record->name)
+                ->modalContent(fn ($record) => view('filament.modals.clients.client-all-credentials', ['record' => $record]))
+                ->modalWidth('4xl')
+                ->slideOver(),
 
 
             // PIC Management Actions Group
