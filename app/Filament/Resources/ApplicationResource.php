@@ -81,14 +81,8 @@ class ApplicationResource extends Resource
 
                         FileUpload::make('logo')
                             ->label('Logo Aplikasi')
-                            ->image()
-                            ->imageEditor()
                             ->disk('public')
                             ->directory('applications')
-                            ->imageResizeMode('cover')
-                            ->imageCropAspectRatio('1:1')
-                            ->imageResizeTargetWidth('200')
-                            ->imageResizeTargetHeight('200')
                             ->maxSize(2048) // 2MB max
                             ->helperText('Upload logo aplikasi (JPG, PNG - Maks 2MB)')
                             ->columnSpanFull(),
