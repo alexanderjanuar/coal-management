@@ -83,7 +83,7 @@ trait InvoiceFormTrait
                                     ->placeholder('Pilih file faktur (PDF atau gambar)')
                                     ->disk('public')
                                     ->directory('temp/ai-processing')
-                                    ->acceptedFileTypes(FileManagementService::getAcceptedFileTypes())
+                                    // ->acceptedFileTypes(FileManagementService::getAcceptedFileTypes())
                                     ->maxSize(FileManagementService::getMaxFileSize())
                                     ->helperText('Format yang didukung: PDF, JPG, PNG, WEBP (Maksimal 10MB)')
                                     ->live()
@@ -426,7 +426,7 @@ trait InvoiceFormTrait
                                     ? $this->generateFileName($get, $file->getClientOriginalName())
                                     : $file->getClientOriginalName()
                             )
-                            ->acceptedFileTypes(FileManagementService::getAcceptedFileTypes())
+                            // ->acceptedFileTypes(FileManagementService::getAcceptedFileTypes())
                             ->helperText(function (Forms\Get $get) {
                                 if (method_exists($this, 'generateDirectoryPath')) {
                                     $path = $this->generateDirectoryPath($get);
@@ -454,7 +454,7 @@ trait InvoiceFormTrait
                                 
                                 return FileManagementService::generateBuktiSetorFileName($invoiceType, $invoiceNumber, $file->getClientOriginalName());
                             })
-                            ->acceptedFileTypes(FileManagementService::getAcceptedFileTypes())
+                            // ->acceptedFileTypes(FileManagementService::getAcceptedFileTypes())
                             ->helperText(function (Forms\Get $get) {
                                 if (method_exists($this, 'generateDirectoryPath')) {
                                     $path = $this->generateDirectoryPath($get);
