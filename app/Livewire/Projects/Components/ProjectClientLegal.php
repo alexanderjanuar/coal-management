@@ -67,17 +67,6 @@ class ProjectClientLegal extends Component implements HasForms, HasActions
                         $sluggedName = Str::slug($this->client->name);
                         return "clients/{$sluggedName}/Legal";
                     })
-                    ->acceptedFileTypes([
-                        'application/pdf',
-                        'image/jpeg',
-                        'image/jpg', 
-                        'image/png',
-                        'image/gif',
-                        'application/msword',
-                        'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-                        'application/vnd.ms-excel',
-                        'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
-                    ])
                     ->maxSize(10240) // 10MB per file
                     ->maxFiles(10)
                     ->downloadable()
@@ -182,17 +171,6 @@ class ProjectClientLegal extends Component implements HasForms, HasActions
                         $sluggedName = Str::slug($this->client->name);
                         return "clients/{$sluggedName}/Legal";
                     })
-                    ->acceptedFileTypes([
-                        'application/pdf',
-                        'image/jpeg',
-                        'image/jpg', 
-                        'image/png',
-                        'image/gif',
-                        'application/msword',
-                        'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-                        'application/vnd.ms-excel',
-                        'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
-                    ])
                     ->maxSize(10240) // 10MB per file
                     ->maxFiles(10)
                     ->downloadable()

@@ -50,17 +50,6 @@ class DocumentClientModal extends Component implements HasForms
                     ->schema([
                         FileUpload::make('document')
                             ->required()
-                            ->acceptedFileTypes([
-                                'application/pdf',
-                                'application/msword',
-                                'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-                                'application/vnd.ms-excel',
-                                'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-                                'image/jpeg',
-                                'image/png',
-                                'image/jpg',
-                                'image/gif'
-                            ])
                             ->maxSize(10240)
                             ->disk('public')
                             ->directory('client-documents')

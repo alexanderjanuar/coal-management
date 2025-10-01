@@ -167,19 +167,6 @@ class DocumentModal extends Component implements HasForms
                 FileUpload::make('document')
                     ->label('Select Document')
                     ->required()
-                    ->acceptedFileTypes([
-                        'application/pdf',
-                        'image/*',
-                        'application/msword',
-                        'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-                        // Excel file types
-                        'application/vnd.ms-excel',
-                        'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-                        'application/vnd.oasis.opendocument.spreadsheet',
-                        'text/csv',
-                        'application/csv',
-                        'text/x-csv'
-                    ])
                     ->maxSize(100240)
                     ->preserveFilenames()
                     ->disk('public')

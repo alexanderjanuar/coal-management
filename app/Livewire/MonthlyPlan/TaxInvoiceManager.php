@@ -254,8 +254,7 @@ class TaxInvoiceManager extends Component implements Tables\Contracts\HasTable, 
                 ->label('File Faktur')
                 ->required()
                 ->disk('public')
-                ->directory('invoices')
-                ->acceptedFileTypes(['application/pdf']),
+                ->directory('invoices'),
                 
             Forms\Components\Textarea::make('notes')
                 ->label('Catatan')
