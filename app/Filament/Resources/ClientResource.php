@@ -58,12 +58,35 @@ class ClientResource extends Resource
                     ->label('')
                     ->content(fn (?Client $record) => $record ? view('filament.components.client-hero', ['record' => $record]) : '')
                     ->hiddenOn('create')
-                    ->columnSpanFull(),
+                    ->columnSpanFull(), 
 
                 Section::make('Client Profile')
                     ->description('Detail dari Client')
                     ->icon('heroicon-o-building-office-2')
                     ->schema([
+                        Forms\Components\Select::make('client_type')
+                            ->label('Tipe Klien')
+                            ->options([
+                                'Badan' => 'Badan/Perusahaan',
+                                'Pribadi' => 'Pribadi/Perorangan',
+                            ])
+                            ->default('Pribadi')
+                            ->required()
+                            ->live() // Penting untuk reactive behavior
+                            ->afterStateUpdated(function (Forms\Get $get, Forms\Set $set, ?string $state) {
+                                // Auto-clear PIC jika diubah ke Pribadi
+                                if ($state === 'Pribadi') {
+                                    $set('pic_id', null);
+                                }
+                            })
+                            ->native(false)
+                            ->helperText(function (Forms\Get $get) {
+                                if ($get('client_type') === 'Badan') {
+                                    return '✅ Klien Badan memerlukan PIC (Person In Charge)';
+                                }
+                                return 'ℹ️ Klien Pribadi tidak memerlukan PIC';
+                            })
+                            ->columnSpanFull(),
                         Forms\Components\TextInput::make('name')
                             ->required()
                             ->label('Client Name')
@@ -77,61 +100,26 @@ class ClientResource extends Resource
                         Forms\Components\TextInput::make('adress')
                             ->label('Address'),
                         Select::make('pic_id')
-                            ->label('Person In Charge (PIC)')
-                            ->relationship('pic', 'name')
-                            ->searchable()
-                            ->preload()
-                            ->createOptionForm([
-                                Forms\Components\TextInput::make('name')
-                                    ->required()
-                                    ->maxLength(255),
-                                Forms\Components\TextInput::make('nik')
-                                    ->label('NIK')
-                                    ->required()
-                                    ->unique()
-                                    ->length(16)
-                                    ->numeric(),
-                                Forms\Components\TextInput::make('password')
-                                    ->password()
-                                    ->required()
-                                    ->minLength(8),
-                                Forms\Components\Select::make('status')
-                                    ->options([
-                                        'active' => 'Active',
-                                        'inactive' => 'Inactive',
-                                    ])
-                                    ->default('active')
-                                    ->required(),
-                            ])
-                            ->helperText('Select or create a new PIC for this client'),
-                        
-                            Select::make('ar_id')
-                                ->label('Account Representative (AR)')
-                                ->relationship('accountRepresentative', 'name')
+                                ->label('Person In Charge (PIC)')
+                                ->relationship('pic', 'name')
                                 ->searchable()
                                 ->preload()
+                                ->visible(fn (Forms\Get $get) => $get('client_type') === 'Badan') // HANYA TAMPIL JIKA BADAN
+                                ->disabled(fn (Forms\Get $get) => $get('client_type') !== 'Badan')
                                 ->createOptionForm([
                                     Forms\Components\TextInput::make('name')
                                         ->required()
-                                        ->maxLength(255)
-                                        ->label('AR Name'),
-                                    Forms\Components\TextInput::make('phone_number')
-                                        ->tel()
-                                        ->label('Phone Number')
-                                        ->placeholder('+62 XXX XXXX XXXX'),
-                                    Forms\Components\TextInput::make('email')
-                                        ->email()
+                                        ->maxLength(255),
+                                    Forms\Components\TextInput::make('nik')
+                                        ->label('NIK')
+                                        ->required()
                                         ->unique()
-                                        ->label('Email'),
-                                    Forms\Components\Select::make('kpp')
-                                        ->label('KPP')
-                                        ->options(\App\Services\Clients\KppService::getKppOptions())
-                                        ->searchable()
-                                        ->placeholder('Pilih atau cari KPP...')
-                                        ->helperText('Pilih KPP tempat AR bertugas'),
-                                    Forms\Components\Textarea::make('notes')
-                                        ->label('Notes')
-                                        ->rows(2),
+                                        ->length(16)
+                                        ->numeric(),
+                                    Forms\Components\TextInput::make('password')
+                                        ->password()
+                                        ->required()
+                                        ->minLength(8),
                                     Forms\Components\Select::make('status')
                                         ->options([
                                             'active' => 'Active',
@@ -140,13 +128,55 @@ class ClientResource extends Resource
                                         ->default('active')
                                         ->required(),
                                 ])
-                                ->createOptionAction(function (Forms\Components\Actions\Action $action) {
-                                    return $action
-                                        ->modalHeading('Create New Account Representative')
-                                        ->modalSubmitActionLabel('Create AR')
-                                        ->modalWidth('lg');
-                                })
-                                ->helperText('Select or create a new Account Representative for this client'),
+                                ->helperText(function (Forms\Get $get) {
+                                    if ($get('client_type') === 'Badan') {
+                                        return 'Pilih atau buat PIC baru untuk klien Badan';
+                                    }
+                                    return 'PIC tidak diperlukan untuk klien Pribadi';
+                                }),
+                        
+                        Select::make('ar_id')
+                            ->label('Account Representative (AR)')
+                            ->relationship('accountRepresentative', 'name')
+                            ->searchable()
+                            ->preload()
+                            ->createOptionForm([
+                                Forms\Components\TextInput::make('name')
+                                    ->required()
+                                    ->maxLength(255)
+                                    ->label('AR Name'),
+                                Forms\Components\TextInput::make('phone_number')
+                                    ->tel()
+                                    ->label('Phone Number')
+                                    ->placeholder('+62 XXX XXXX XXXX'),
+                                Forms\Components\TextInput::make('email')
+                                    ->email()
+                                    ->unique()
+                                    ->label('Email'),
+                                Forms\Components\Select::make('kpp')
+                                    ->label('KPP')
+                                    ->options(\App\Services\Clients\KppService::getKppOptions())
+                                    ->searchable()
+                                    ->placeholder('Pilih atau cari KPP...')
+                                    ->helperText('Pilih KPP tempat AR bertugas'),
+                                Forms\Components\Textarea::make('notes')
+                                    ->label('Notes')
+                                    ->rows(2),
+                                Forms\Components\Select::make('status')
+                                    ->options([
+                                        'active' => 'Active',
+                                        'inactive' => 'Inactive',
+                                    ])
+                                    ->default('active')
+                                    ->required(),
+                            ])
+                            ->createOptionAction(function (Forms\Components\Actions\Action $action) {
+                                return $action
+                                    ->modalHeading('Create New Account Representative')
+                                    ->modalSubmitActionLabel('Create AR')
+                                    ->modalWidth('lg');
+                            })
+                            ->helperText('Select or create a new Account Representative for this client'),
                         Select::make('status')
                             ->label('Client Status')
                             ->options([
@@ -330,19 +360,18 @@ class ClientResource extends Resource
                     ->sortable()
                     ->searchable(),
                 
-                    
-                                    
-                Tables\Columns\TextColumn::make('clientCredential.core_tax_user_id')
-                    ->label('Core Tax ID')
-                    ->searchable()
-                    ->copyable()
-                    ->badge()
-                    ->color('gray')
-                    ->copyMessage('Core Tax ID copied!')
-                    ->placeholder('Not configured')
-                    ->formatStateUsing(fn ($state) => $state ?: '—'),
-                    
-                    
+                Tables\Columns\BadgeColumn::make('client_type')
+                    ->label('Tipe')
+                    ->colors([
+                        'primary' => 'Badan',
+                        'warning' => 'Pribadi',
+                    ])
+                    ->icons([
+                        'heroicon-o-building-office' => 'Badan',
+                        'heroicon-o-user' => 'Pribadi',
+                    ])
+                    ->sortable(),
+                  
                 // PKP STATUS COLUMN
                 Tables\Columns\BadgeColumn::make('pkp_status')
                     ->label('PKP Status')
@@ -371,6 +400,14 @@ class ClientResource extends Resource
                     ->relationship('pic', 'name')
                     ->searchable()
                     ->preload(),
+
+                Tables\Filters\SelectFilter::make('client_type')
+                    ->label('Tipe Klien')
+                    ->options([
+                        'Badan' => 'Badan/Perusahaan',
+                        'Pribadi' => 'Pribadi/Perorangan',
+                    ])
+                    ->native(false),
          
                 Tables\Filters\SelectFilter::make('status')
                     ->label('Client Status')
