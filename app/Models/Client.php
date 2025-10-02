@@ -129,6 +129,94 @@ class Client extends Model
         }
     }
 
+
+    /**
+     * Get SOP legal documents yang applicable untuk client ini
+     */
+    public function getApplicableSopDocuments()
+    {
+        return SopLegalDocument::forClientType($this->client_type)
+                            ->active()
+                            ->orderBy('category')
+                            ->orderBy('order')
+                            ->get();
+    }
+
+    /**
+     * Get dokumen checklist dengan status upload
+     * Return collection dengan info: SOP template + status upload
+     */
+    public function getLegalDocumentsChecklist()
+    {
+        // Ambil semua SOP dokumen yang applicable untuk tipe klien ini
+        $sopDocuments = $this->getApplicableSopDocuments();
+        
+        // Map setiap SOP dengan status uploadnya
+        return $sopDocuments->map(function ($sopDoc) {
+            // Cari dokumen yang sudah diupload untuk SOP ini
+            $uploadedDoc = $this->clientDocuments()
+                            ->where('sop_legal_document_id', $sopDoc->id)
+                            ->latest()
+                            ->first();
+            
+            return [
+                'sop_id' => $sopDoc->id,
+                'name' => $sopDoc->name,
+                'description' => $sopDoc->description,
+                'category' => $sopDoc->category,
+                'is_required' => $sopDoc->is_required,
+                'is_uploaded' => $uploadedDoc !== null,
+                'uploaded_document' => $uploadedDoc,
+                'file_path' => $uploadedDoc?->file_path,
+                'uploaded_at' => $uploadedDoc?->created_at,
+                'uploaded_by' => $uploadedDoc?->user,
+            ];
+        });
+    }
+
+    /**
+     * Get statistics dokumen legal
+     */
+    public function getLegalDocumentsStats()
+    {
+        $checklist = $this->getLegalDocumentsChecklist();
+        
+        $totalRequired = $checklist->where('is_required', true)->count();
+        $uploadedRequired = $checklist->where('is_required', true)
+                                    ->where('is_uploaded', true)
+                                    ->count();
+        
+        return [
+            'total_documents' => $checklist->count(),
+            'total_required' => $totalRequired,
+            'total_optional' => $checklist->where('is_required', false)->count(),
+            'uploaded' => $checklist->where('is_uploaded', true)->count(),
+            'not_uploaded' => $checklist->where('is_uploaded', false)->count(),
+            'completion_percentage' => $totalRequired > 0 
+                ? round(($uploadedRequired / $totalRequired) * 100, 2) 
+                : 100,
+        ];
+    }
+
+    /**
+     * Get missing required documents
+     */
+    public function getMissingRequiredDocuments()
+    {
+        return $this->getLegalDocumentsChecklist()
+                    ->where('is_required', true)
+                    ->where('is_uploaded', false)
+                    ->pluck('name');
+    }
+
+    /**
+     * Check if all required documents are uploaded
+     */
+    public function hasAllRequiredDocuments(): bool
+    {
+        return $this->getMissingRequiredDocuments()->isEmpty();
+    }
+    
     protected static function booted()
     {
         static::created(function ($client) {

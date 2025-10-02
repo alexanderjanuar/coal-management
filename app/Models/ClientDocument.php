@@ -28,6 +28,14 @@ class ClientDocument extends Model
     {
         return $this->belongsTo(User::class);
     }
+    
+    /**
+     * Relationship to SOP template
+     */
+    public function sopLegalDocument(): BelongsTo
+    {
+        return $this->belongsTo(SopLegalDocument::class);
+    }
 
     // Activity logging hanya untuk upload (created event)
     protected static function booted()

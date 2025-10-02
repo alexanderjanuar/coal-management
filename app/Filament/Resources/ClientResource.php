@@ -644,13 +644,15 @@ class ClientResource extends Resource
             ->icon('heroicon-o-users')
             ->color('primary'),
 
-            // Existing actions
-            RelationManagerAction::make('progress-relation-manager')
+
+            Tables\Actions\Action::make('manage_legal_documents')
                 ->label('')
                 ->icon('heroicon-o-folder')
                 ->color('warning')
+                ->tooltip('Kelola Legal Documents')
                 ->modalWidth('7xl')
-                ->relationManager(ClientDocumentsRelationManager::make()),
+                ->modalHeading(fn ($record) => 'Legal Documents - ' . $record->name)
+                ->modalDescription('Kelola dokumen legal klien berdasarkan SOP atau upload dokumen custom')
             ])
             ->bulkActions([
                 Tables\Actions\BulkActionGroup::make([
