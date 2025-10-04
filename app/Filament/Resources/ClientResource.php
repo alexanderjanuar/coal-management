@@ -640,9 +640,9 @@ class ClientResource extends Resource
                             ->send();
                     }),
             ])
-            ->label('PIC Management')
-            ->icon('heroicon-o-users')
-            ->color('primary'),
+                ->label('PIC Management')
+                ->icon('heroicon-o-users')
+                ->color('primary'),
 
 
             Tables\Actions\Action::make('manage_legal_documents')

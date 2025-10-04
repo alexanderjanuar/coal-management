@@ -1,5 +1,37 @@
 {{-- Redesigned Daily Task Detail Modal - Responsive & Dark Mode --}}
 <div>
+
+    <style>
+        @keyframes fade-in-up {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        @keyframes fade-in {
+            from {
+                opacity: 0;
+            }
+
+            to {
+                opacity: 1;
+            }
+        }
+
+        .animate-fade-in-up {
+            animation: fade-in-up 0.5s ease-out;
+        }
+
+        .animate-fade-in {
+            animation: fade-in 0.5s ease-out;
+        }
+    </style>
     <x-filament::modal id="task-detail-modal" width="2xl" slide-over>
         @if($task)
         <div class="flex flex-col bg-white dark:bg-gray-900 min-h-screen md:min-h-auto">
@@ -64,7 +96,7 @@
                         </div>
                     </div>
 
-   
+
 
                     {{-- Task Meta Information --}}
                     <div class="space-y-3 md:space-y-4">
@@ -86,7 +118,8 @@
                                 <span class="text-sm text-gray-600 dark:text-gray-400">Dibuat oleh</span>
                             </div>
                             <div class="flex items-center gap-2">
-                                <div class="w-6 h-6 bg-gradient-to-br from-primary-400 to-primary-600 dark:from-primary-500 dark:to-primary-700 text-white rounded-full flex items-center justify-center text-xs font-semibold">
+                                <div
+                                    class="w-6 h-6 bg-gradient-to-br from-primary-400 to-primary-600 dark:from-primary-500 dark:to-primary-700 text-white rounded-full flex items-center justify-center text-xs font-semibold">
                                     {{ strtoupper(substr($task->creator->name, 0, 1)) }}
                                 </div>
                                 <span class="text-sm text-gray-900 dark:text-gray-100">{{ $task->creator->name }}</span>
@@ -176,9 +209,9 @@
                             <span class="text-sm text-gray-900 dark:text-gray-100 break-words">
                                 {{ $task->task_date->format('M j, Y') }}
                                 @if($task->start_task_date && $task->start_task_date != $task->task_date)
-                                    <span class="text-xs text-gray-500 dark:text-gray-400 block">
-                                        Dimulai: {{ $task->start_task_date->format('M j, Y') }}
-                                    </span>
+                                <span class="text-xs text-gray-500 dark:text-gray-400 block">
+                                    Dimulai: {{ $task->start_task_date->format('M j, Y') }}
+                                </span>
                                 @endif
                             </span>
                         </div>
@@ -221,7 +254,8 @@
                                 <x-heroicon-o-folder class="w-4 h-4 text-gray-400 dark:text-gray-500 flex-shrink-0" />
                                 <span class="text-sm text-gray-600 dark:text-gray-400">Project</span>
                             </div>
-                            <span class="text-sm text-gray-900 dark:text-gray-100 sm:text-right break-words">{{ $task->project->name }}</span>
+                            <span class="text-sm text-gray-900 dark:text-gray-100 sm:text-right break-words">{{
+                                $task->project->name }}</span>
                         </div>
                         @endif
 
@@ -229,17 +263,20 @@
                         @if($task->project && $task->project->client)
                         <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-3">
                             <div class="flex items-center gap-3">
-                                <x-heroicon-o-building-office class="w-4 h-4 text-gray-400 dark:text-gray-500 flex-shrink-0" />
+                                <x-heroicon-o-building-office
+                                    class="w-4 h-4 text-gray-400 dark:text-gray-500 flex-shrink-0" />
                                 <span class="text-sm text-gray-600 dark:text-gray-400">Client</span>
                             </div>
-                            <span class="text-sm text-gray-900 dark:text-gray-100 sm:text-right break-words">{{ $task->project->client->name }}</span>
+                            <span class="text-sm text-gray-900 dark:text-gray-100 sm:text-right break-words">{{
+                                $task->project->client->name }}</span>
                         </div>
                         @endif
                     </div>
 
                     {{-- Project Description --}}
                     <div>
-                        <h3 class="text-base md:text-lg font-semibold text-gray-900 dark:text-gray-100 mb-1">Deskripsi Task</h3>
+                        <h3 class="text-base md:text-lg font-semibold text-gray-900 dark:text-gray-100 mb-1">Deskripsi
+                            Task</h3>
                         @if($editingDescription)
                         <div class="space-y-3 md:space-y-4">
                             {{ $this->descriptionForm }}
@@ -450,76 +487,263 @@
 
                 {{-- Activity Tabs --}}
                 <div class="border-t border-gray-200 dark:border-gray-700">
-                    <div class="flex border-b border-gray-200 dark:border-gray-700 overflow-x-auto">
-                        <button
-                            class="flex-shrink-0 px-4 md:px-6 py-3 text-sm font-medium text-primary-600 dark:text-primary-400 border-b-2 border-primary-600 dark:border-primary-400 bg-primary-50 dark:bg-primary-900/30">
-                            Activity
+                    {{-- Tab Navigation --}}
+                    <div class="flex border-b border-gray-200 dark:border-gray-700 overflow-x-auto"
+                        x-data="{ activeTab: @entangle('activeTab') }">
+                        <button @click="activeTab = 'comments'"
+                            class="relative flex-shrink-0 px-4 md:px-6 py-3 text-sm font-medium transition-all duration-300 {{ $activeTab === 'comments' ? 'text-primary-600 dark:text-primary-400' : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100' }}">
+                            <div class="flex items-center gap-2">
+                                <x-heroicon-o-chat-bubble-left-right class="w-4 h-4 transition-transform duration-300"
+                                    ::class="activeTab === 'comments' ? 'scale-110' : ''" />
+                                <span>Komentar</span>
+                                @if($task->comments && $task->comments->count() > 0)
+                                <span
+                                    class="px-1.5 py-0.5 text-xs rounded-full transition-all duration-300 {{ $activeTab === 'comments' ? 'bg-primary-100 dark:bg-primary-900/50 text-primary-700 dark:text-primary-300 scale-105' : 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400' }}">
+                                    {{ $task->comments->count() }}
+                                </span>
+                                @endif
+                            </div>
+                            {{-- Active Indicator --}}
+                            <div class="absolute bottom-0 left-0 right-0 h-0.5 bg-primary-600 dark:bg-primary-400 transition-all duration-300 transform"
+                                :class="activeTab === 'comments' ? 'scale-x-100' : 'scale-x-0'">
+                            </div>
+                        </button>
+
+                        <button @click="activeTab = 'activity'"
+                            class="relative flex-shrink-0 px-4 md:px-6 py-3 text-sm font-medium transition-all duration-300 {{ $activeTab === 'activity' ? 'text-primary-600 dark:text-primary-400' : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100' }}">
+                            <div class="flex items-center gap-2">
+                                <x-heroicon-o-clock class="w-4 h-4 transition-transform duration-300"
+                                    ::class="activeTab === 'activity' ? 'scale-110' : ''" />
+                                <span>Aktivitas</span>
+                                @if($activityLogs && $activityLogs->count() > 0)
+                                <span
+                                    class="px-1.5 py-0.5 text-xs rounded-full transition-all duration-300 {{ $activeTab === 'activity' ? 'bg-primary-100 dark:bg-primary-900/50 text-primary-700 dark:text-primary-300 scale-105' : 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400' }}">
+                                    {{ $activityLogs->count() }}
+                                </span>
+                                @endif
+                            </div>
+                            {{-- Active Indicator --}}
+                            <div class="absolute bottom-0 left-0 right-0 h-0.5 bg-primary-600 dark:bg-primary-400 transition-all duration-300 transform"
+                                :class="activeTab === 'activity' ? 'scale-x-100' : 'scale-x-0'">
+                            </div>
                         </button>
                     </div>
-                    {{-- Activity Content --}}
-                    <div class="px-4 md:px-6 py-4 md:py-6">
-                        <div class="text-sm font-medium text-gray-900 dark:text-gray-100 mb-4">Today</div>
 
+                    {{-- Comments Tab Content with Animation --}}
+                    <div class="px-4 md:px-6 py-4 md:py-6 transition-all duration-500 ease-in-out"
+                        x-show="$wire.activeTab === 'comments'" x-transition:enter="transition ease-out duration-300"
+                        x-transition:enter-start="opacity-0 transform translate-x-4"
+                        x-transition:enter-end="opacity-100 transform translate-x-0"
+                        x-transition:leave="transition ease-in duration-200"
+                        x-transition:leave-start="opacity-100 transform translate-x-0"
+                        x-transition:leave-end="opacity-0 transform -translate-x-4">
+
+                        @if($task->comments && $task->comments->count() > 0)
                         <div class="space-y-4">
-                            {{-- Activity Item --}}
-                            <div class="flex gap-3">
+                            @foreach($task->comments->sortByDesc('created_at') as $index => $comment)
+                            <div class="flex gap-3 animate-fade-in-up opacity-0"
+                                style="animation-delay: {{ $index * 50 }}ms; animation-fill-mode: forwards;">
                                 <div
-                                    class="w-8 h-8 bg-gray-500 dark:bg-gray-600 text-white rounded-full flex items-center justify-center text-xs font-medium flex-shrink-0">
-                                    {{ strtoupper(substr($task->creator->name ?? 'U', 0, 1)) }}
-                                </div>
-                                <div class="flex-1 min-w-0">
-                                    <div class="text-sm">
-                                        <span class="font-medium text-gray-900 dark:text-gray-100">{{
-                                            $task->creator->name ?? 'User' }}</span>
-                                        <span class="text-gray-600 dark:text-gray-400">created task</span>
-                                        <span class="font-medium text-gray-900 dark:text-gray-100">"{{ $task->title
-                                            }}"</span>
-                                    </div>
-                                    <div class="text-xs text-gray-500 dark:text-gray-400 mt-1">{{
-                                        $task->created_at->format('g:i A') }}</div>
-                                </div>
-                            </div>
-
-                            {{-- Comments --}}
-                            @if($task->comments && $task->comments->count() > 0)
-                            @foreach($task->comments->sortByDesc('created_at') as $comment)
-                            <div class="flex gap-3">
-                                <div
-                                    class="w-8 h-8 bg-gray-500 dark:bg-gray-600 text-white rounded-full flex items-center justify-center text-xs font-medium flex-shrink-0">
+                                    class="w-8 h-8 bg-gradient-to-br from-primary-400 to-primary-600 dark:from-primary-500 dark:to-primary-700 text-white rounded-full flex items-center justify-center text-xs font-semibold flex-shrink-0 shadow-md">
                                     {{ strtoupper(substr($comment->user->name, 0, 1)) }}
                                 </div>
                                 <div class="flex-1 min-w-0">
-                                    <div class="text-sm">
+                                    <div class="flex items-center gap-2 mb-1">
                                         <span class="font-medium text-gray-900 dark:text-gray-100">{{
                                             $comment->user->name }}</span>
-                                        <span class="text-gray-600 dark:text-gray-400">added comment</span>
+                                        <span class="text-xs text-gray-500 dark:text-gray-400">{{
+                                            $comment->created_at->diffForHumans() }}</span>
                                     </div>
-                                    <div class="text-sm text-gray-900 dark:text-gray-100 mt-1 bg-gray-50 dark:bg-gray-800 rounded-lg p-3">
-                                        {{ $comment->content }}
+                                    <div
+                                        class="text-sm text-gray-700 dark:text-gray-300 bg-gray-50 dark:bg-gray-800 rounded-lg p-3 border border-gray-100 dark:border-gray-700 hover:border-gray-200 dark:hover:border-gray-600 transition-colors">
+                                        {!! nl2br(e($comment->content)) !!}
                                     </div>
-                                    <div class="text-xs text-gray-500 dark:text-gray-400 mt-1">{{
-                                        $comment->created_at->format('g:i A') }}</div>
                                 </div>
                             </div>
                             @endforeach
-                            @endif
-
-                            {{-- Add Comment Form --}}
-                            <form wire:submit="addComment"
-                                class="flex gap-3 pt-4 border-t border-gray-100 dark:border-gray-700">
-                                <div
-                                    class="w-8 h-8 bg-gray-500 dark:bg-gray-600 text-white rounded-full flex items-center justify-center text-xs font-medium flex-shrink-0">
-                                    {{ strtoupper(substr(auth()->user()->name, 0, 1)) }}
-                                </div>
-                                <div class="flex-1 space-y-3">
-                                    {{ $this->commentForm }}
-                                    <button type="submit"
-                                        class="w-full sm:w-auto px-4 py-2 bg-primary-600 dark:bg-primary-700 text-white rounded-lg hover:bg-primary-700 dark:hover:bg-primary-800 text-sm transition-colors">
-                                        Kirim Komentar
-                                    </button>
-                                </div>
-                            </form>
                         </div>
+                        @else
+                        <div class="text-center py-8 animate-fade-in">
+                            <div
+                                class="w-16 h-16 bg-gradient-to-br from-gray-100 to-gray-200 dark:from-gray-800 dark:to-gray-700 rounded-full flex items-center justify-center mx-auto mb-4 shadow-inner">
+                                <x-heroicon-o-chat-bubble-left-right class="w-8 h-8 text-gray-400 dark:text-gray-500" />
+                            </div>
+                            <h4 class="text-lg font-medium text-gray-900 dark:text-gray-100 mb-2">Belum ada komentar
+                            </h4>
+                            <p class="text-gray-500 dark:text-gray-400 text-sm">Jadilah yang pertama memberikan komentar
+                                pada task ini</p>
+                        </div>
+                        @endif
+
+                        {{-- Add Comment Form --}}
+                        <form wire:submit="addComment"
+                            class="flex gap-3 pt-4 mt-4 border-t border-gray-100 dark:border-gray-700">
+                            <div
+                                class="w-8 h-8 bg-gradient-to-br from-blue-400 to-blue-600 dark:from-blue-500 dark:to-blue-700 text-white rounded-full flex items-center justify-center text-xs font-semibold flex-shrink-0 shadow-md">
+                                {{ strtoupper(substr(auth()->user()->name, 0, 1)) }}
+                            </div>
+                            <div class="flex-1 space-y-3">
+                                {{ $this->commentForm }}
+                                <button type="submit"
+                                    class="w-full sm:w-auto px-4 py-2 bg-primary-600 dark:bg-primary-700 text-white rounded-lg hover:bg-primary-700 dark:hover:bg-primary-800 text-sm font-medium transition-all duration-200 hover:shadow-lg hover:scale-105 active:scale-95">
+                                    <div class="flex items-center justify-center gap-2">
+                                        <x-heroicon-o-paper-airplane class="w-4 h-4" />
+                                        Kirim Komentar
+                                    </div>
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+
+                    {{-- Activity Tab Content with Animation --}}
+                    <div class="px-4 md:px-6 py-4 md:py-6 transition-all duration-500 ease-in-out"
+                        x-show="$wire.activeTab === 'activity'" x-transition:enter="transition ease-out duration-300"
+                        x-transition:enter-start="opacity-0 transform translate-x-4"
+                        x-transition:enter-end="opacity-100 transform translate-x-0"
+                        x-transition:leave="transition ease-in duration-200"
+                        x-transition:leave-start="opacity-100 transform translate-x-0"
+                        x-transition:leave-end="opacity-0 transform -translate-x-4">
+
+                        @if($activityLogs && $activityLogs->count() > 0)
+                        {{-- Timeline Container --}}
+                        <div class="relative">
+                            {{-- Vertical Line --}}
+                            <div
+                                class="absolute left-4 top-0 bottom-0 w-0.5 bg-gradient-to-b from-primary-200 via-gray-200 to-transparent dark:from-primary-800 dark:via-gray-700">
+                            </div>
+
+                            <div class="space-y-6">
+                                @foreach($activityLogs as $index => $activity)
+                                <div class="relative flex gap-4 animate-fade-in-up opacity-0"
+                                    style="animation-delay: {{ $index * 50 }}ms; animation-fill-mode: forwards;">
+                                    {{-- Timeline Dot --}}
+                                    <div class="relative z-10 flex-shrink-0">
+                                        <div class="w-8 h-8 rounded-full flex items-center justify-center text-xs font-medium shadow-lg transition-all duration-300 hover:scale-110 {{ 
+                                            str_contains(strtolower($activity->description), 'membuat') ? 'bg-gradient-to-br from-green-400 to-green-600 dark:from-green-500 dark:to-green-700 text-white' :
+                                            (str_contains(strtolower($activity->description), 'mengubah status') ? 'bg-gradient-to-br from-blue-400 to-blue-600 dark:from-blue-500 dark:to-blue-700 text-white' :
+                                            (str_contains(strtolower($activity->description), 'menghapus') ? 'bg-gradient-to-br from-red-400 to-red-600 dark:from-red-500 dark:to-red-700 text-white' :
+                                            (str_contains(strtolower($activity->description), 'selesai') ? 'bg-gradient-to-br from-purple-400 to-purple-600 dark:from-purple-500 dark:to-purple-700 text-white' :
+                                            'bg-gradient-to-br from-gray-400 to-gray-600 dark:from-gray-500 dark:to-gray-700 text-white')))
+                                        }}">
+                                            {{ $activity->causer ? strtoupper(substr($activity->causer->name, 0, 1)) :
+                                            'S' }}
+                                        </div>
+
+                                    </div>
+
+                                    {{-- Activity Content --}}
+                                    <div class="flex-1 min-w-0 pb-6">
+                                        <div
+                                            class="bg-white dark:bg-gray-800 rounded-lg p-4 shadow-sm border border-gray-100 dark:border-gray-700 hover:shadow-md hover:border-gray-200 dark:hover:border-gray-600 transition-all duration-300">
+                                            {{-- User and Action --}}
+                                            <div class="flex items-start justify-between gap-2 mb-2">
+                                                <div class="flex-1">
+                                                    <span class="font-semibold text-gray-900 dark:text-gray-100">
+                                                        {{ $activity->causer->name ?? 'System' }}
+                                                    </span>
+                                                    <span class="text-gray-700 dark:text-gray-300 ml-1">
+                                                        {{ $activity->description }}
+                                                    </span>
+                                                </div>
+
+                                                {{-- Activity Icon Based on Type --}}
+                                                <div class="flex-shrink-0">
+                                                    @if(str_contains(strtolower($activity->description), 'membuat'))
+                                                    <x-heroicon-o-plus-circle
+                                                        class="w-5 h-5 text-green-500 dark:text-green-400" />
+                                                    @elseif(str_contains(strtolower($activity->description), 'mengubah
+                                                    status'))
+                                                    <x-heroicon-o-arrow-path
+                                                        class="w-5 h-5 text-blue-500 dark:text-blue-400" />
+                                                    @elseif(str_contains(strtolower($activity->description),
+                                                    'menghapus'))
+                                                    <x-heroicon-o-trash
+                                                        class="w-5 h-5 text-red-500 dark:text-red-400" />
+                                                    @elseif(str_contains(strtolower($activity->description), 'selesai'))
+                                                    <x-heroicon-o-check-circle
+                                                        class="w-5 h-5 text-purple-500 dark:text-purple-400" />
+                                                    @else
+                                                    <x-heroicon-o-pencil
+                                                        class="w-5 h-5 text-gray-500 dark:text-gray-400" />
+                                                    @endif
+                                                </div>
+                                            </div>
+
+                                            {{-- Timestamp --}}
+                                            <div
+                                                class="flex items-center gap-2 text-xs text-gray-500 dark:text-gray-400">
+                                                <x-heroicon-o-clock class="w-3.5 h-3.5" />
+                                                <span class="font-medium">{{ $activity->created_at->diffForHumans()
+                                                    }}</span>
+                                                <span class="text-gray-400 dark:text-gray-500">•</span>
+                                                <span>{{ $activity->created_at->format('d M Y, H:i') }}</span>
+                                            </div>
+
+                                            {{-- Changes Detail (if any) --}}
+                                            @if($activity->properties && ($activity->properties->get('old') ||
+                                            $activity->properties->get('attributes')))
+                                            <div class="mt-3 space-y-2">
+                                                @if($activity->properties->get('old'))
+                                                <div class="flex items-start gap-2 text-xs">
+                                                    <x-heroicon-o-arrow-right
+                                                        class="w-3.5 h-3.5 text-red-500 dark:text-red-400 flex-shrink-0 mt-0.5" />
+                                                    <div class="flex-1">
+                                                        <span
+                                                            class="font-medium text-red-600 dark:text-red-400">Sebelumnya:</span>
+                                                        <span class="text-gray-600 dark:text-gray-400 ml-1">
+                                                            @foreach($activity->properties->get('old') as $key =>
+                                                            $value)
+                                                            <span
+                                                                class="inline-block bg-red-50 dark:bg-red-900/20 px-2 py-0.5 rounded">
+                                                                {{ ucfirst($key) }}: {{ is_array($value) ?
+                                                                json_encode($value) : $value }}
+                                                            </span>
+                                                            @endforeach
+                                                        </span>
+                                                    </div>
+                                                </div>
+                                                @endif
+
+                                                @if($activity->properties->get('attributes'))
+                                                <div class="flex items-start gap-2 text-xs">
+                                                    <x-heroicon-o-arrow-right
+                                                        class="w-3.5 h-3.5 text-green-500 dark:text-green-400 flex-shrink-0 mt-0.5" />
+                                                    <div class="flex-1">
+                                                        <span
+                                                            class="font-medium text-green-600 dark:text-green-400">Menjadi:</span>
+                                                        <span class="text-gray-600 dark:text-gray-400 ml-1">
+                                                            @foreach($activity->properties->get('attributes') as $key =>
+                                                            $value)
+                                                            <span
+                                                                class="inline-block bg-green-50 dark:bg-green-900/20 px-2 py-0.5 rounded">
+                                                                {{ ucfirst($key) }}: {{ is_array($value) ?
+                                                                json_encode($value) : $value }}
+                                                            </span>
+                                                            @endforeach
+                                                        </span>
+                                                    </div>
+                                                </div>
+                                                @endif
+                                            </div>
+                                            @endif
+                                        </div>
+                                    </div>
+                                </div>
+                                @endforeach
+                            </div>
+                        </div>
+                        @else
+                        <div class="text-center py-8 animate-fade-in">
+                            <div
+                                class="w-16 h-16 bg-gradient-to-br from-gray-100 to-gray-200 dark:from-gray-800 dark:to-gray-700 rounded-full flex items-center justify-center mx-auto mb-4 shadow-inner">
+                                <x-heroicon-o-clock class="w-8 h-8 text-gray-400 dark:text-gray-500" />
+                            </div>
+                            <h4 class="text-lg font-medium text-gray-900 dark:text-gray-100 mb-2">Belum ada aktivitas
+                            </h4>
+                            <p class="text-gray-500 dark:text-gray-400 text-sm">Riwayat perubahan task akan muncul di
+                                sini</p>
+                        </div>
+                        @endif
                     </div>
                 </div>
             </div>

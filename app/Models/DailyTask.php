@@ -30,7 +30,7 @@ class DailyTask extends Model
         'start_task_date' => 'date',
     ];
 
-    // Basic Relationships (we'll add more as we create other models)
+    // Basic Relationships
     public function project(): BelongsTo
     {
         return $this->belongsTo(Project::class);
@@ -59,7 +59,7 @@ class DailyTask extends Model
         return $this->hasMany(DailyTaskSubtask::class);
     }
 
-    // Relationship to comments (using your existing Comment model)
+    // Relationship to comments
     public function comments()
     {
         return $this->morphMany(Comment::class, 'commentable');
@@ -119,7 +119,7 @@ class DailyTask extends Model
         return round(($completedSubtasks / $totalSubtasks) * 100);
     }
 
-    // Activity Log Configuration
+    // Activity Log Configuration with Custom Descriptions
     public function getActivitylogOptions(): LogOptions
     {
         return LogOptions::defaults()
@@ -130,10 +130,87 @@ class DailyTask extends Model
                 'status',
                 'task_date',
                 'start_task_date',
-                'project.name'
+                'project_id'
             ])
             ->logOnlyDirty()
-            ->dontSubmitEmptyLogs();
+            ->dontSubmitEmptyLogs()
+            ->setDescriptionForEvent(function(string $eventName) {
+                $userName = auth()->user()?->name ?? 'System';
+                
+                return match($eventName) {
+                    'created' => "membuat task baru dengan judul \"{$this->title}\"",
+                    'updated' => $this->getUpdateDescription(),
+                    'deleted' => "menghapus task \"{$this->title}\"",
+                    default => "melakukan aksi {$eventName} pada task"
+                };
+            });
+    }
+
+    /**
+     * Generate detailed update description based on what changed
+     */
+    protected function getUpdateDescription(): string
+    {
+        $changes = [];
+        
+        if ($this->wasChanged('title')) {
+            $old = $this->getOriginal('title');
+            $new = $this->title;
+            $changes[] = "mengubah judul dari \"{$old}\" menjadi \"{$new}\"";
+        }
+        
+        if ($this->wasChanged('status')) {
+            $statusLabels = [
+                'pending' => 'Tertunda',
+                'in_progress' => 'Sedang Dikerjakan',
+                'completed' => 'Selesai',
+                'cancelled' => 'Dibatalkan'
+            ];
+            $old = $statusLabels[$this->getOriginal('status')] ?? $this->getOriginal('status');
+            $new = $statusLabels[$this->status] ?? $this->status;
+            $changes[] = "mengubah status dari \"{$old}\" menjadi \"{$new}\"";
+        }
+        
+        if ($this->wasChanged('priority')) {
+            $priorityLabels = [
+                'low' => 'Rendah',
+                'normal' => 'Normal',
+                'high' => 'Tinggi',
+                'urgent' => 'Mendesak'
+            ];
+            $old = $priorityLabels[$this->getOriginal('priority')] ?? $this->getOriginal('priority');
+            $new = $priorityLabels[$this->priority] ?? $this->priority;
+            $changes[] = "mengubah prioritas dari \"{$old}\" menjadi \"{$new}\"";
+        }
+        
+        if ($this->wasChanged('task_date')) {
+            $old = \Carbon\Carbon::parse($this->getOriginal('task_date'))->format('d M Y');
+            $new = $this->task_date->format('d M Y');
+            $changes[] = "mengubah tanggal deadline dari {$old} menjadi {$new}";
+        }
+        
+        if ($this->wasChanged('start_task_date')) {
+            if ($this->getOriginal('start_task_date')) {
+                $old = \Carbon\Carbon::parse($this->getOriginal('start_task_date'))->format('d M Y');
+                $new = $this->start_task_date->format('d M Y');
+                $changes[] = "mengubah tanggal mulai dari {$old} menjadi {$new}";
+            } else {
+                $new = $this->start_task_date->format('d M Y');
+                $changes[] = "memulai task pada tanggal {$new}";
+            }
+        }
+        
+        if ($this->wasChanged('description')) {
+            $changes[] = "memperbarui deskripsi task";
+        }
+        
+        if ($this->wasChanged('project_id')) {
+            $oldProject = $this->getOriginal('project_id') ? \App\Models\Project::find($this->getOriginal('project_id'))?->name : 'Tanpa Project';
+            $newProject = $this->project?->name ?? 'Tanpa Project';
+            $changes[] = "memindahkan task dari project \"{$oldProject}\" ke \"{$newProject}\"";
+        }
+        
+        return !empty($changes) ? implode(', dan ', $changes) : 'memperbarui task';
     }
 
     // Helper Methods
@@ -146,7 +223,6 @@ class DailyTask extends Model
     {
         $this->update(['status' => 'in_progress']);
         
-        // Set start_task_date to today if not already set
         if (!$this->start_task_date) {
             $this->update(['start_task_date' => today()]);
         }
@@ -167,10 +243,7 @@ class DailyTask extends Model
         $this->assignments()->where('user_id', $user->id)->delete();
     }
 
-    public function isAssignedTo(User $user): bool
-    {
-        return $this->assignments()->where('user_id', $user->id)->exists();
-    }
+
 
     public function addSubtask(string $title): DailyTaskSubtask
     {
@@ -189,7 +262,6 @@ class DailyTask extends Model
         return $this->subtasks()->count();
     }
 
-    // New helper methods for start task date
     public function hasStarted(): bool
     {
         return !is_null($this->start_task_date);

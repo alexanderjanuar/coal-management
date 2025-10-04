@@ -1,414 +1,360 @@
 {{-- Desktop View with Enhanced Dark Mode Styling --}}
-<div class="block">
-    {{-- Horizontal Scrollable Container --}}
-    <div
-        class="overflow-x-auto scrollbar-thin scrollbar-thumb-gray-300 dark:scrollbar-thumb-gray-600 scrollbar-track-gray-100 dark:scrollbar-track-gray-800 scroll-smooth">
-        {{-- Set minimum width to ensure horizontal scroll when needed --}}
-        <div class="min-w-[1200px]">
-            <div class="grid grid-cols-12 gap-2 lg:gap-4 items-center h-12 px-3 py-2 
-                        hover:bg-gray-50 dark:hover:bg-gray-800/50 
-                        rounded-lg transition-all duration-200 
-                        border border-transparent hover:border-gray-200 dark:hover:border-gray-700">
+<div class="w-full">
+    {{-- Desktop View - Full Width Table Row --}}
+    <div class="hidden lg:block w-full">
+        <div class="grid grid-cols-12 gap-2 xl:gap-4 items-center min-h-[48px] px-3 py-2 
+                hover:bg-gray-50 dark:hover:bg-gray-800/50 
+                rounded-lg transition-all duration-200 
+                border border-transparent hover:border-gray-200 dark:hover:border-gray-700">
+            {{-- 1. Checkbox Column (1/12) --}}
+            <div class="col-span-1 flex items-center justify-center">
+                <button wire:click="toggleTaskCompletion"
+                    class="flex-shrink-0 hover:scale-110 transition-transform duration-200 w-6 h-6 flex items-center justify-center group">
+                    @if($task->status === 'completed')
+                    <div class="relative">
+                        <x-heroicon-s-check-circle class="w-5 h-5 text-green-500 dark:text-green-400" />
+                        <div
+                            class="absolute inset-0 bg-green-500 dark:bg-green-400 rounded-full animate-ping opacity-25">
+                        </div>
+                    </div>
+                    @else
+                    <div class="w-5 h-5 rounded-full border-2 border-gray-300 dark:border-gray-600 
+                            group-hover:border-primary-500 dark:group-hover:border-primary-400 
+                            group-hover:bg-primary-50 dark:group-hover:bg-primary-900/30 
+                            transition-all duration-200 flex items-center justify-center">
+                        <div class="w-0 h-0 bg-primary-500 dark:bg-primary-400 rounded-full 
+                                group-hover:w-2 group-hover:h-2 transition-all duration-200"></div>
+                    </div>
+                    @endif
+                </button>
+            </div>
 
-                {{-- Checkbox & Completion Toggle --}}
-                <div class="col-span-1 flex items-center justify-center h-full">
-                    <button wire:click="toggleTaskCompletion"
-                        class="flex-shrink-0 hover:scale-110 transition-transform duration-200 w-6 h-6 flex items-center justify-center group">
-                        @if($task->status === 'completed')
-                        <div class="relative">
-                            <x-heroicon-s-check-circle class="w-5 h-5 text-green-500 dark:text-green-400" />
-                            <div
-                                class="absolute inset-0 bg-green-500 dark:bg-green-400 rounded-full animate-ping opacity-25">
-                            </div>
-                        </div>
-                        @else
-                        <div class="w-5 h-5 rounded-full border-2 border-gray-300 dark:border-gray-600 
-                                    group-hover:border-primary-500 dark:group-hover:border-primary-400 
-                                    group-hover:bg-primary-50 dark:group-hover:bg-primary-900/30 
-                                    transition-all duration-200 flex items-center justify-center">
-                            <div class="w-0 h-0 bg-primary-500 dark:bg-primary-400 rounded-full 
-                                        group-hover:w-2 group-hover:h-2 transition-all duration-200"></div>
-                        </div>
-                        @endif
+            {{-- 2. Task Info Column (4/12) --}}
+            <div class="col-span-4 min-w-0">
+                <div class="cursor-pointer group" wire:click="viewDetails">
+                    <h2 class="font-semibold text-gray-900 dark:text-gray-100 text-sm xl:text-base leading-tight truncate 
+                           group-hover:text-primary-600 dark:group-hover:text-primary-400 transition-colors duration-200
+                           {{ $task->status === 'completed' ? 'line-through text-gray-500 dark:text-gray-400' : '' }}">
+                        {{ Str::limit(strip_tags($task->title), 60) }}
+                    </h2>
+                    @if($task->description)
+                    <p class="text-xs text-gray-500 dark:text-gray-400 truncate mt-0.5">
+                        {{ Str::limit(strip_tags($task->description), 60) }}
+                    </p>
+                    @endif
+                </div>
+            </div>
+
+            {{-- 3. Status Dropdown (2/12) --}}
+            <div class="col-span-2 min-w-0">
+                <div class="relative w-full" x-data="{ statusOpen: false, buttonRect: {} }">
+                    <button @click="statusOpen = !statusOpen; buttonRect = $el.getBoundingClientRect()" class="inline-flex items-center gap-2 px-2 xl:px-3 py-2 h-8 rounded-lg text-xs font-semibold 
+                           transition-all duration-200 hover:scale-105 w-full justify-center shadow-sm border
+                           {{ match($task->status) {
+                               'completed' => 'bg-green-100 dark:bg-green-900/40 text-green-800 dark:text-green-300 border-green-200 dark:border-green-700/60',
+                               'in_progress' => 'bg-yellow-100 dark:bg-yellow-900/40 text-yellow-800 dark:text-yellow-300 border-yellow-200 dark:border-yellow-700/60',
+                               'pending' => 'bg-gray-100 dark:bg-gray-700/60 text-gray-700 dark:text-gray-300 border-gray-200 dark:border-gray-600/60',
+                               'cancelled' => 'bg-red-100 dark:bg-red-900/40 text-red-800 dark:text-red-300 border-red-200 dark:border-red-700/60',
+                               default => 'bg-gray-100 dark:bg-gray-700/60 text-gray-700 dark:text-gray-300 border-gray-200 dark:border-gray-600/60'
+                           } }}">
+                        <div class="w-2 h-2 rounded-full flex-shrink-0
+                        {{ match($task->status) {
+                            'completed' => 'bg-green-500 dark:bg-green-400',
+                            'in_progress' => 'bg-yellow-500 dark:bg-yellow-400 animate-pulse',
+                            'pending' => 'bg-gray-400 dark:bg-gray-500',
+                            'cancelled' => 'bg-red-500 dark:bg-red-400',
+                            default => 'bg-gray-400 dark:bg-gray-500'
+                        } }}"></div>
+                        <span class="truncate hidden xl:inline">{{ ucfirst(str_replace('_', ' ', $task->status))
+                            }}</span>
+                        <span class="truncate xl:hidden">{{ Str::limit(ucfirst(str_replace('_', ' ', $task->status)), 8,
+                            '') }}</span>
+                        <x-heroicon-o-chevron-down class="w-3 h-3 transition-transform duration-200 flex-shrink-0"
+                            x-bind:class="{ 'rotate-180': statusOpen }" />
                     </button>
+
+                    {{-- Status Dropdown Menu --}}
+                    <template x-teleport="body">
+                        <div x-show="statusOpen" x-cloak @click.away="statusOpen = false"
+                            @keydown.escape="statusOpen = false" x-transition:enter="transition ease-out duration-200"
+                            x-transition:enter-start="opacity-0 scale-95" x-transition:enter-end="opacity-100 scale-100"
+                            x-transition:leave="transition ease-in duration-150"
+                            x-transition:leave-start="opacity-100 scale-100" x-transition:leave-end="opacity-0 scale-95"
+                            class="fixed w-44 bg-white dark:bg-gray-800 rounded-xl shadow-xl border border-gray-200 dark:border-gray-600 
+                               py-2 z-[9999] backdrop-blur-sm dark:shadow-2xl max-h-[80vh] overflow-y-auto"
+                            x-bind:style="{
+                            top: Math.min(buttonRect.bottom + window.scrollY + 8, window.innerHeight + window.scrollY - 300) + 'px',
+                            left: Math.max(8, Math.min(buttonRect.left + window.scrollX, window.innerWidth - 176 - 8)) + 'px'
+                        }">
+                            @foreach($this->getStatusOptions() as $statusValue => $statusLabel)
+                            <button wire:click="updateStatus('{{ $statusValue }}')" @click="statusOpen = false"
+                                class="w-full text-left px-4 py-3 text-sm text-gray-700 dark:text-gray-300 
+                                   hover:bg-gradient-to-r hover:from-primary-50 hover:to-transparent 
+                                   dark:hover:from-primary-900/30 dark:hover:to-transparent 
+                                   transition-all duration-200 flex items-center gap-3 
+                                   {{ $task->status === $statusValue ? 'bg-primary-50 dark:bg-primary-900/40 text-primary-700 dark:text-primary-300 border-l-4 border-l-primary-500' : '' }}">
+                                <div class="w-3 h-3 rounded-full 
+                                {{ match($statusValue) {
+                                    'completed' => 'bg-green-500 dark:bg-green-400',
+                                    'in_progress' => 'bg-yellow-500 dark:bg-yellow-400',
+                                    'pending' => 'bg-gray-400 dark:bg-gray-500',
+                                    'cancelled' => 'bg-red-500 dark:bg-red-400',
+                                    default => 'bg-gray-400'
+                                } }}"></div>
+                                <span class="font-medium">{{ $statusLabel }}</span>
+                                @if($task->status === $statusValue)
+                                <x-heroicon-s-check class="w-4 h-4 text-primary-600 dark:text-primary-400 ml-auto" />
+                                @endif
+                            </button>
+                            @endforeach
+                        </div>
+                    </template>
                 </div>
+            </div>
 
-                {{-- Task Info --}}
-                <div class="col-span-4 h-full flex items-center">
-                    <div class="flex-1 cursor-pointer group" wire:click="viewDetails">
-                        <h2
-                            class="font-semibold text-gray-900 dark:text-gray-100 text-sm lg:text-base leading-tight truncate 
-                                   group-hover:text-primary-600 dark:group-hover:text-primary-400 transition-colors duration-200
-                                   {{ $task->status === 'completed' ? 'line-through text-gray-500 dark:text-gray-400' : '' }}">
-                            {{ Str::limit(strip_tags($task->title), 60) }}
-                        </h2>
-                        @if($task->description)
-                        <p class="text-xs text-gray-500 dark:text-gray-400 truncate">
-                            {{ Str::limit(strip_tags($task->description), 60) }}
-                        </p>
-                        @endif
-                    </div>
+            {{-- 4. Priority Dropdown (1/12) --}}
+            <div class="col-span-1 min-w-0">
+                <div class="relative" x-data="{ priorityOpen: false, buttonRect: {} }">
+                    <button @click="priorityOpen = !priorityOpen; buttonRect = $el.getBoundingClientRect()" class="inline-flex items-center gap-1.5 px-2 py-2 h-8 rounded-lg text-xs font-bold 
+                           transition-all duration-200 hover:scale-105 shadow-sm border justify-center w-full
+                           {{ match($task->priority) {
+                               'urgent' => 'bg-red-100 dark:bg-red-900/40 text-red-800 dark:text-red-300 border-red-200 dark:border-red-700/60 animate-pulse',
+                               'high' => 'bg-orange-100 dark:bg-orange-900/40 text-orange-800 dark:text-orange-300 border-orange-200 dark:border-orange-700/60',
+                               'normal' => 'bg-blue-100 dark:bg-blue-900/40 text-blue-800 dark:text-blue-300 border-blue-200 dark:border-blue-700/60',
+                               'low' => 'bg-gray-100 dark:bg-gray-700/60 text-gray-600 dark:text-gray-300 border-gray-200 dark:border-gray-600/60',
+                               default => 'bg-gray-100 dark:bg-gray-700/60 text-gray-600 dark:text-gray-300'
+                           } }}">
+                        @php
+                        $priorityIcon = match($task->priority) {
+                        'urgent' => 'heroicon-s-exclamation-triangle',
+                        'high' => 'heroicon-o-exclamation-triangle',
+                        'normal' => 'heroicon-o-minus',
+                        'low' => 'heroicon-o-arrow-down',
+                        default => 'heroicon-o-minus'
+                        };
+                        @endphp
+                        <x-dynamic-component :component="$priorityIcon" class="w-3 h-3 flex-shrink-0" />
+                        <span class="hidden 2xl:inline truncate">{{ ucfirst($task->priority) }}</span>
+                        <x-heroicon-o-chevron-down class="w-3 h-3 transition-transform flex-shrink-0"
+                            x-bind:class="{ 'rotate-180': priorityOpen }" />
+                    </button>
+
+                    {{-- Priority Dropdown Menu --}}
+                    <template x-teleport="body">
+                        <div x-show="priorityOpen" x-cloak @click.away="priorityOpen = false"
+                            x-transition:enter="transition ease-out duration-200"
+                            x-transition:enter-start="opacity-0 scale-95" x-transition:enter-end="opacity-100 scale-100"
+                            class="fixed w-44 bg-white dark:bg-gray-800 rounded-xl shadow-xl border border-gray-200 dark:border-gray-600 
+                               py-2 z-[9999] backdrop-blur-sm max-h-[80vh] overflow-y-auto" x-bind:style="{
+                            top: Math.min(buttonRect.bottom + window.scrollY + 8, window.innerHeight + window.scrollY - 300) + 'px',
+                            left: Math.max(8, Math.min(buttonRect.left + window.scrollX, window.innerWidth - 176 - 8)) + 'px'
+                        }">
+                            @foreach($this->getPriorityOptions() as $priorityValue => $priorityLabel)
+                            <button wire:click="updatePriority('{{ $priorityValue }}')" @click="priorityOpen = false"
+                                class="w-full text-left px-4 py-3 text-sm text-gray-700 dark:text-gray-300 
+                                   hover:bg-gradient-to-r hover:from-primary-50 hover:to-transparent 
+                                   transition-all duration-200 flex items-center gap-3 
+                                   {{ $task->priority === $priorityValue ? 'bg-primary-50 dark:bg-primary-900/40 border-l-4 border-l-primary-500' : '' }}">
+                                @php
+                                $icon = match($priorityValue) {
+                                'urgent' => 'heroicon-s-exclamation-triangle',
+                                'high' => 'heroicon-o-exclamation-triangle',
+                                'normal' => 'heroicon-o-minus',
+                                'low' => 'heroicon-o-arrow-down',
+                                default => 'heroicon-o-minus'
+                                };
+                                @endphp
+                                <x-dynamic-component :component="$icon" class="w-4 h-4" />
+                                <span class="font-medium">{{ $priorityLabel }}</span>
+                                @if($task->priority === $priorityValue)
+                                <x-heroicon-s-check class="w-4 h-4 text-primary-600 ml-auto" />
+                                @endif
+                            </button>
+                            @endforeach
+                        </div>
+                    </template>
                 </div>
+            </div>
 
-                {{-- Status Dropdown --}}
-                <div class="col-span-2 h-full flex items-center">
-                    <div class="relative w-full" x-data="{ statusOpen: false, buttonRect: {} }">
-                        <button @click="statusOpen = !statusOpen; buttonRect = $el.getBoundingClientRect()" class="inline-flex items-center gap-2 px-3 py-2 h-8 rounded-lg text-xs font-semibold 
-                                   transition-all duration-200 hover:scale-105 w-full justify-center shadow-sm border
-                                   {{ match($task->status) {
-                                       'completed' => 'bg-green-100 dark:bg-green-900/40 text-green-800 dark:text-green-300 border-green-200 dark:border-green-700/60 hover:bg-green-200 dark:hover:bg-green-900/60 hover:shadow-md dark:hover:shadow-green-900/20',
-                                       'in_progress' => 'bg-yellow-100 dark:bg-yellow-900/40 text-yellow-800 dark:text-yellow-300 border-yellow-200 dark:border-yellow-700/60 hover:bg-yellow-200 dark:hover:bg-yellow-900/60 hover:shadow-md dark:hover:shadow-yellow-900/20',
-                                       'pending' => 'bg-gray-100 dark:bg-gray-700/60 text-gray-700 dark:text-gray-300 border-gray-200 dark:border-gray-600/60 hover:bg-gray-200 dark:hover:bg-gray-600/80 hover:shadow-md dark:hover:shadow-gray-900/20',
-                                       'cancelled' => 'bg-red-100 dark:bg-red-900/40 text-red-800 dark:text-red-300 border-red-200 dark:border-red-700/60 hover:bg-red-200 dark:hover:bg-red-900/60 hover:shadow-md dark:hover:shadow-red-900/20',
-                                       default => 'bg-gray-100 dark:bg-gray-700/60 text-gray-700 dark:text-gray-300 border-gray-200 dark:border-gray-600/60 hover:bg-gray-200 dark:hover:bg-gray-600/80'
-                                   } }}">
-                            <div class="w-2 h-2 rounded-full animate-pulse
-                            {{ match($task->status) {
-                                'completed' => 'bg-green-500 dark:bg-green-400',
-                                'in_progress' => 'bg-yellow-500 dark:bg-yellow-400',
-                                'pending' => 'bg-gray-400 dark:bg-gray-500',
-                                'cancelled' => 'bg-red-500 dark:bg-red-400',
-                                default => 'bg-gray-400 dark:bg-gray-500'
-                            } }}"></div>
-                            <span class="truncate">{{ ucfirst(str_replace('_', ' ', $task->status)) }}</span>
-                            <x-heroicon-o-chevron-down class="w-3 h-3 transition-transform duration-200 flex-shrink-0"
-                                x-bind:class="{ 'rotate-180': statusOpen }" />
-                        </button>
-
-                        {{-- Status Dropdown Menu --}}
-                        <template x-teleport="body">
-                            <div x-show="statusOpen" x-cloak @click.away="statusOpen = false"
-                                @keydown.escape="statusOpen = false"
-                                x-transition:enter="transition ease-out duration-200"
-                                x-transition:enter-start="opacity-0 scale-95 translate-y-2"
-                                x-transition:enter-end="opacity-100 scale-100 translate-y-0"
-                                x-transition:leave="transition ease-in duration-150"
-                                x-transition:leave-start="opacity-100 scale-100 translate-y-0"
-                                x-transition:leave-end="opacity-0 scale-95 translate-y-2"
-                                class="fixed w-44 bg-white dark:bg-gray-800 rounded-xl shadow-xl border border-gray-200 dark:border-gray-600 
-                                       py-2 overflow-hidden z-50 backdrop-blur-sm dark:shadow-2xl dark:shadow-gray-900/40" x-bind:style="{
-                                    top: (buttonRect.bottom + window.scrollY + 8) + 'px',
-                                    left: Math.max(8, Math.min(buttonRect.left + window.scrollX, window.innerWidth - 176 - 8)) + 'px'
-                                }">
-
-                                @foreach($this->getStatusOptions() as $statusValue => $statusLabel)
-                                <button wire:click="updateStatus('{{ $statusValue }}')" @click="statusOpen = false"
-                                    class="w-full text-left px-4 py-3 text-sm text-gray-700 dark:text-gray-300 
-                                           hover:bg-gradient-to-r hover:from-primary-50 hover:to-transparent 
-                                           dark:hover:from-primary-900/30 dark:hover:to-transparent 
-                                           transition-all duration-200 flex items-center gap-3 
-                                           {{ $task->status === $statusValue ? 'bg-primary-50 dark:bg-primary-900/40 text-primary-700 dark:text-primary-300 border-l-4 border-l-primary-500 dark:border-l-primary-400' : '' }}">
-                                    <div class="w-3 h-3 rounded-full 
-                                    {{ match($statusValue) {
-                                        'completed' => 'bg-green-500 dark:bg-green-400',
-                                        'in_progress' => 'bg-yellow-500 dark:bg-yellow-400',
-                                        'pending' => 'bg-gray-400 dark:bg-gray-500',
-                                        'cancelled' => 'bg-red-500 dark:bg-red-400',
-                                        default => 'bg-gray-400 dark:bg-gray-500'
-                                    } }}"></div>
-                                    <span class="font-medium">{{ $statusLabel }}</span>
-                                    @if($task->status === $statusValue)
-                                    <x-heroicon-s-check
-                                        class="w-4 h-4 text-primary-600 dark:text-primary-400 ml-auto" />
-                                    @endif
-                                </button>
-                                @endforeach
-                            </div>
-                        </template>
-                    </div>
-                </div>
-
-                {{-- Priority Dropdown --}}
-                <div class="col-span-1 h-full flex items-center justify-center">
-                    <div class="relative" x-data="{ priorityOpen: false, buttonRect: {} }">
-                        <button @click="priorityOpen = !priorityOpen; buttonRect = $el.getBoundingClientRect()" class="inline-flex items-center gap-1.5 px-3 py-2 h-8 rounded-lg text-xs font-bold 
-                                   transition-all duration-200 hover:scale-105 shadow-sm border justify-center w-full
-                                   {{ match($task->priority) {
-                                       'urgent' => 'bg-red-100 dark:bg-red-900/40 text-red-800 dark:text-red-300 border-red-200 dark:border-red-700/60 animate-pulse hover:shadow-md dark:hover:shadow-red-900/20',
-                                       'high' => 'bg-orange-100 dark:bg-orange-900/40 text-orange-800 dark:text-orange-300 border-orange-200 dark:border-orange-700/60 hover:shadow-md dark:hover:shadow-orange-900/20',
-                                       'normal' => 'bg-blue-100 dark:bg-blue-900/40 text-blue-800 dark:text-blue-300 border-blue-200 dark:border-blue-700/60 hover:shadow-md dark:hover:shadow-blue-900/20',
-                                       'low' => 'bg-gray-100 dark:bg-gray-700/60 text-gray-600 dark:text-gray-300 border-gray-200 dark:border-gray-600/60 hover:shadow-md dark:hover:shadow-gray-900/20',
-                                       default => 'bg-gray-100 dark:bg-gray-700/60 text-gray-600 dark:text-gray-300 border-gray-200 dark:border-gray-600/60'
-                                   } }}">
-                            @php
-                            $priorityIcon = match($task->priority) {
-                            'urgent' => 'heroicon-s-exclamation-triangle',
-                            'high' => 'heroicon-o-exclamation-triangle',
-                            'normal' => 'heroicon-o-minus',
-                            'low' => 'heroicon-o-arrow-down',
-                            default => 'heroicon-o-minus'
-                            };
-                            @endphp
-                            <x-dynamic-component :component="$priorityIcon" class="w-3 h-3 flex-shrink-0" />
-                            <span class="hidden xl:inline truncate">{{ ucfirst($task->priority) }}</span>
-                            <x-heroicon-o-chevron-down class="w-3 h-3 transition-transform duration-200 flex-shrink-0"
-                                x-bind:class="{ 'rotate-180': priorityOpen }" />
-                        </button>
-
-                        {{-- Priority Dropdown Menu --}}
-                        <template x-teleport="body">
-                            <div x-show="priorityOpen" x-cloak @click.away="priorityOpen = false"
-                                @keydown.escape="priorityOpen = false"
-                                x-transition:enter="transition ease-out duration-200"
-                                x-transition:enter-start="opacity-0 scale-95 translate-y-2"
-                                x-transition:enter-end="opacity-100 scale-100 translate-y-0"
-                                x-transition:leave="transition ease-in duration-150"
-                                x-transition:leave-start="opacity-100 scale-100 translate-y-0"
-                                x-transition:leave-end="opacity-0 scale-95 translate-y-2"
-                                class="fixed w-44 bg-white dark:bg-gray-800 rounded-xl shadow-xl border border-gray-200 dark:border-gray-600 
-                                       py-2 overflow-hidden z-50 backdrop-blur-sm dark:shadow-2xl dark:shadow-gray-900/40" x-bind:style="{
-                                    top: (buttonRect.bottom + window.scrollY + 8) + 'px',
-                                    left: Math.max(8, Math.min(buttonRect.left + window.scrollX, window.innerWidth - 176 - 8)) + 'px'
-                                }">
-
-                                @foreach($this->getPriorityOptions() as $priorityValue => $priorityLabel)
-                                <button wire:click="updatePriority('{{ $priorityValue }}')"
-                                    @click="priorityOpen = false"
-                                    class="w-full text-left px-4 py-3 text-sm text-gray-700 dark:text-gray-300 
-                                           hover:bg-gradient-to-r hover:from-primary-50 hover:to-transparent 
-                                           dark:hover:from-primary-900/30 dark:hover:to-transparent 
-                                           transition-all duration-200 flex items-center gap-3 
-                                           {{ $task->priority === $priorityValue ? 'bg-primary-50 dark:bg-primary-900/40 text-primary-700 dark:text-primary-300 border-l-4 border-l-primary-500 dark:border-l-primary-400' : '' }}">
-                                    @php
-                                    $icon = match($priorityValue) {
-                                    'urgent' => 'heroicon-s-exclamation-triangle',
-                                    'high' => 'heroicon-o-exclamation-triangle',
-                                    'normal' => 'heroicon-o-minus',
-                                    'low' => 'heroicon-o-arrow-down',
-                                    default => 'heroicon-o-minus'
-                                    };
-                                    @endphp
-                                    <x-dynamic-component :component="$icon" class="w-4 h-4 {{ match($priorityValue) {
-                                        'urgent' => 'text-red-500 dark:text-red-400',
-                                        'high' => 'text-orange-500 dark:text-orange-400',
-                                        'normal' => 'text-blue-500 dark:text-blue-400',
-                                        'low' => 'text-gray-400 dark:text-gray-500',
-                                        default => 'text-gray-400 dark:text-gray-500'
-                                    } }}" />
-                                    <span class="font-medium">{{ $priorityLabel }}</span>
-                                    @if($task->priority === $priorityValue)
-                                    <x-heroicon-s-check
-                                        class="w-4 h-4 text-primary-600 dark:text-primary-400 ml-auto" />
-                                    @endif
-                                </button>
-                                @endforeach
-                            </div>
-                        </template>
-                    </div>
-                </div>
-
-                {{-- Assignee Section --}}
-                <div class="col-span-2 h-full flex items-center">
-                    <div class="relative w-full" x-data="{ assigneeOpen: false, buttonRect: {} }">
-                        <button @click="assigneeOpen = !assigneeOpen; buttonRect = $el.getBoundingClientRect()" class="w-full flex items-center gap-2.5 px-2.5 py-1.5 h-8 rounded-lg border border-gray-200 dark:border-gray-700 
-                                   hover:border-primary-300 dark:hover:border-primary-600 transition-all duration-200 
-                                   bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-750 hover:shadow-sm">
-                            @if($task->assignedUsers && $task->assignedUsers->count() > 0)
-                            <div class="flex items-center gap-2 flex-1 min-w-0">
-                                <div class="flex -space-x-1.5">
-                                    @foreach($task->assignedUsers->take(2) as $user)
-                                    <div class="w-5 h-5 bg-gradient-to-br from-primary-400 to-primary-600 dark:from-primary-500 dark:to-primary-700 
-                                                text-white rounded-full flex items-center justify-center text-xs font-bold 
-                                                border-1.5 border-white dark:border-gray-800 shadow-sm"
-                                        title="{{ $user->name }}">
-                                        {{ strtoupper(substr($user->name, 0, 1)) }}
-                                    </div>
-                                    @endforeach
-                                    @if($task->assignedUsers->count() > 2)
-                                    <div class="w-5 h-5 bg-gray-400 dark:bg-gray-600 text-white rounded-full flex items-center justify-center text-xs font-bold 
-                                                border-1.5 border-white dark:border-gray-800 shadow-sm">
-                                        +{{ $task->assignedUsers->count() - 2 }}
-                                    </div>
-                                    @endif
+            {{-- 5. Assignee Dropdown (2/12) --}}
+            <div class="col-span-2 min-w-0">
+                <div class="relative w-full" x-data="{ assigneeOpen: false, buttonRect: {} }">
+                    <button @click="assigneeOpen = !assigneeOpen; buttonRect = $el.getBoundingClientRect()" class="w-full flex items-center gap-2 px-2 py-1.5 h-8 rounded-lg border border-gray-200 dark:border-gray-700 
+                           hover:border-primary-300 dark:hover:border-primary-600 transition-all duration-200 
+                           bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-750">
+                        @if($task->assignedUsers && $task->assignedUsers->count() > 0)
+                        <div class="flex items-center gap-2 flex-1 min-w-0">
+                            <div class="flex -space-x-1.5">
+                                @foreach($task->assignedUsers->take(2) as $user)
+                                <div class="w-5 h-5 bg-gradient-to-br from-primary-400 to-primary-600 text-white rounded-full 
+                                        flex items-center justify-center text-xs font-bold border border-white dark:border-gray-800"
+                                    title="{{ $user->name }}">
+                                    {{ strtoupper(substr($user->name, 0, 1)) }}
                                 </div>
-                                @if($task->assignedUsers->count() === 1)
-                                <span
-                                    class="hidden xl:inline text-xs font-medium text-gray-700 dark:text-gray-300 truncate">
-                                    {{ $task->assignedUsers->first()->name }}
-                                </span>
-                                @else
-                                <span class="hidden lg:inline text-xs text-gray-500 dark:text-gray-400">
-                                    {{ $task->assignedUsers->count() }} orang
-                                </span>
+                                @endforeach
+                                @if($task->assignedUsers->count() > 2)
+                                <div
+                                    class="w-5 h-5 bg-gray-400 text-white rounded-full flex items-center justify-center text-xs font-bold border border-white dark:border-gray-800">
+                                    +{{ $task->assignedUsers->count() - 2 }}
+                                </div>
                                 @endif
                             </div>
-                            @else
-                            <div class="flex items-center gap-2 text-gray-400 dark:text-gray-500 flex-1">
-                                <div class="w-5 h-5 bg-gray-100 dark:bg-gray-700 border-1.5 border-dashed border-gray-300 dark:border-gray-600 
-                                            rounded-full flex items-center justify-center">
-                                    <x-heroicon-o-plus class="w-2.5 h-2.5" />
-                                </div>
-                                <span class="hidden lg:inline text-xs truncate">Belum ditugaskan</span>
-                            </div>
-                            @endif
-                            <x-heroicon-o-chevron-down
-                                class="w-3.5 h-3.5 text-gray-400 dark:text-gray-500 flex-shrink-0 transition-transform duration-200"
-                                x-bind:class="{ 'rotate-180': assigneeOpen }" />
-                        </button>
-
-                        {{-- Assignee Dropdown Menu --}}
-                        <template x-teleport="body">
-                            <div x-show="assigneeOpen" x-cloak @click.away="assigneeOpen = false"
-                                @keydown.escape="assigneeOpen = false"
-                                x-transition:enter="transition ease-out duration-200"
-                                x-transition:enter-start="opacity-0 scale-95 translate-y-2"
-                                x-transition:enter-end="opacity-100 scale-100 translate-y-0"
-                                x-transition:leave="transition ease-in duration-150"
-                                x-transition:leave-start="opacity-100 scale-100 translate-y-0"
-                                x-transition:leave-end="opacity-0 scale-95 translate-y-2"
-                                class="fixed w-64 bg-white dark:bg-gray-800 rounded-xl shadow-xl border border-gray-200 dark:border-gray-600 
-                                       py-2 overflow-hidden max-h-80 overflow-y-auto z-50 backdrop-blur-sm dark:shadow-2xl dark:shadow-gray-900/40" x-bind:style="{
-                                    top: (buttonRect.bottom + window.scrollY + 8) + 'px',
-                                    left: Math.max(8, Math.min(buttonRect.left + window.scrollX, window.innerWidth - 256 - 8)) + 'px'
-                                }">
-
-                                <div class="px-4 py-2 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide 
-                                            border-b border-gray-100 dark:border-gray-700">
-                                    Assign Users
-                                </div>
-
-                                @foreach($this->getUserOptions() as $userId => $userName)
-                                @php $isAssigned = $task->assignedUsers->contains($userId); @endphp
-                                <button wire:click="{{ $isAssigned ? 'unassignUser' : 'assignUser' }}({{ $userId }})"
-                                    @click="assigneeOpen = false" class="w-full text-left px-4 py-3 text-sm text-gray-700 dark:text-gray-300 
-                                           hover:bg-gradient-to-r hover:from-primary-50 hover:to-transparent 
-                                           dark:hover:from-primary-900/30 dark:hover:to-transparent 
-                                           transition-all duration-200 flex items-center gap-3">
-                                    <div
-                                        class="w-8 h-8 bg-gradient-to-br from-primary-400 to-primary-600 dark:from-primary-500 dark:to-primary-700 
-                                                text-white rounded-full flex items-center justify-center text-xs font-bold">
-                                        {{ strtoupper(substr($userName, 0, 1)) }}
-                                    </div>
-                                    <span class="font-medium flex-1 truncate">{{ $userName }}</span>
-                                    @if($isAssigned)
-                                    <x-heroicon-s-check class="w-4 h-4 text-green-600 dark:text-green-400" />
-                                    @else
-                                    <x-heroicon-o-plus class="w-4 h-4 text-gray-400 dark:text-gray-500" />
-                                    @endif
-                                </button>
-                                @endforeach
-                            </div>
-                        </template>
-                    </div>
-                </div>
-
-                {{-- Project Dropdown --}}
-                <div class="col-span-1 h-full flex items-center justify-center">
-                    <div class="relative" x-data="{ projectOpen: false, buttonRect: {} }">
-                        <button @click="projectOpen = !projectOpen; buttonRect = $el.getBoundingClientRect()" class="flex items-center gap-1.5 px-3 py-2 h-8 rounded-lg text-xs font-semibold 
-                                   transition-all duration-200 hover:scale-105 border shadow-sm w-full justify-center
-                                   @if($task->project)
-                                       bg-gradient-to-r from-indigo-100 to-purple-100 dark:from-indigo-900/40 dark:to-purple-900/40 
-                                       text-indigo-800 dark:text-indigo-300 border-indigo-200 dark:border-indigo-700/60
-                                       hover:shadow-md dark:hover:shadow-indigo-900/20
-                                   @else
-                                       bg-gray-100 dark:bg-gray-700/60 border-2 border-dashed border-gray-300 dark:border-gray-600/60 
-                                       text-gray-500 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-600/80
-                                   @endif">
-                            @if($task->project)
-                            <x-heroicon-o-folder class="w-3 h-3 flex-shrink-0" />
-                            <span class="hidden xl:inline truncate" title="{{ $task->project->name }}">
-                                {{ Str::limit($task->project->name, 8) }}
+                            <span
+                                class="hidden xl:inline text-xs font-medium text-gray-700 dark:text-gray-300 truncate">
+                                @if($task->assignedUsers->count() === 1)
+                                {{ Str::limit($task->assignedUsers->first()->name, 12) }}
+                                @else
+                                {{ $task->assignedUsers->count() }} orang
+                                @endif
                             </span>
-                            @else
-                            <x-heroicon-o-folder-plus class="w-3 h-3 flex-shrink-0" />
-                            <span class="hidden lg:inline">None</span>
-                            @endif
-                            <x-heroicon-o-chevron-down class="w-3 h-3 transition-transform duration-200 flex-shrink-0"
-                                x-bind:class="{ 'rotate-180': projectOpen }" />
-                        </button>
+                        </div>
+                        @else
+                        <div class="flex items-center gap-2 text-gray-400 dark:text-gray-500 flex-1 min-w-0">
+                            <div
+                                class="w-5 h-5 bg-gray-100 dark:bg-gray-700 border border-dashed border-gray-300 dark:border-gray-600 rounded-full flex items-center justify-center">
+                                <x-heroicon-o-plus class="w-2.5 h-2.5" />
+                            </div>
+                            <span class="hidden lg:inline text-xs truncate">Unassigned</span>
+                        </div>
+                        @endif
+                        <x-heroicon-o-chevron-down class="w-3.5 h-3.5 text-gray-400 flex-shrink-0"
+                            x-bind:class="{ 'rotate-180': assigneeOpen }" />
+                    </button>
 
-                        {{-- Project Dropdown with Client Selection --}}
-                        <template x-teleport="body">
-                            <div x-show="projectOpen" x-cloak @click.away="projectOpen = false"
-                                @keydown.escape="projectOpen = false"
-                                x-transition:enter="transition ease-out duration-200"
-                                x-transition:enter-start="opacity-0 scale-95 translate-y-2"
-                                x-transition:enter-end="opacity-100 scale-100 translate-y-0"
-                                x-transition:leave="transition ease-in duration-150"
-                                x-transition:leave-start="opacity-100 scale-100 translate-y-0"
-                                x-transition:leave-end="opacity-0 scale-95 translate-y-2" class="fixed w-80 bg-white dark:bg-gray-800 rounded-xl shadow-xl border border-gray-200 dark:border-gray-600 
-                                overflow-hidden max-h-96 overflow-y-auto z-50 backdrop-blur-sm dark:shadow-2xl dark:shadow-gray-900/40"
-                                x-bind:style="{
-                                top: (buttonRect.bottom + window.scrollY + 8) + 'px',
+                    {{-- Assignee Dropdown Menu --}}
+                    <template x-teleport="body">
+                        <div x-show="assigneeOpen" x-cloak @click.away="assigneeOpen = false" class="fixed w-64 bg-white dark:bg-gray-800 rounded-xl shadow-xl border border-gray-200 dark:border-gray-600 
+                               z-[9999] backdrop-blur-sm max-h-80 overflow-y-auto" x-bind:style="{
+                            top: Math.min(buttonRect.bottom + window.scrollY + 8, window.innerHeight + window.scrollY - 350) + 'px',
+                            left: Math.max(8, Math.min(buttonRect.left + window.scrollX, window.innerWidth - 256 - 8)) + 'px'
+                        }">
+                            <div
+                                class="px-4 py-2 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide border-b border-gray-100 dark:border-gray-700 sticky top-0 bg-white dark:bg-gray-800 z-10">
+                                Assign Users
+                            </div>
+                            @foreach($this->getUserOptions() as $userId => $userName)
+                            @php $isAssigned = $task->assignedUsers->contains($userId); @endphp
+                            <button wire:click="{{ $isAssigned ? 'unassignUser' : 'assignUser' }}({{ $userId }})"
+                                @click="assigneeOpen = false"
+                                class="w-full text-left px-4 py-3 text-sm text-gray-700 dark:text-gray-300 
+                                   hover:bg-gradient-to-r hover:from-primary-50 hover:to-transparent flex items-center gap-3">
+                                <div class="w-8 h-8 bg-gradient-to-br from-primary-400 to-primary-600 text-white rounded-full 
+                                        flex items-center justify-center text-xs font-bold">
+                                    {{ strtoupper(substr($userName, 0, 1)) }}
+                                </div>
+                                <span class="font-medium flex-1 truncate">{{ $userName }}</span>
+                                @if($isAssigned)
+                                <x-heroicon-s-check class="w-4 h-4 text-green-600" />
+                                @endif
+                            </button>
+                            @endforeach
+                        </div>
+                    </template>
+                </div>
+            </div>
+
+            {{-- 6. Project Dropdown (1/12) --}}
+            <div class="col-span-1 min-w-0">
+                <div class="relative" x-data="{ projectOpen: false, buttonRect: {} }">
+                    <button @click="projectOpen = !projectOpen; buttonRect = $el.getBoundingClientRect()" class="flex items-center gap-1 px-2 py-2 h-8 rounded-lg text-xs font-semibold 
+                   transition-all duration-200 border shadow-sm w-full justify-center
+                   @if($task->project)
+                       bg-gradient-to-r from-indigo-100 to-purple-100 dark:from-indigo-900/40 dark:to-purple-900/40 
+                       text-indigo-800 dark:text-indigo-300 border-indigo-200 dark:border-indigo-700/60
+                       hover:shadow-md
+                   @else
+                       bg-gray-100 dark:bg-gray-700/60 border-dashed border-gray-300 dark:border-gray-600/60 
+                       text-gray-500 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-600/80
+                   @endif">
+                        @if($task->project)
+                        <x-heroicon-o-folder class="w-3 h-3 flex-shrink-0" />
+                        <span class="hidden 2xl:inline truncate" title="{{ $task->project->name }}">
+                            {{ Str::limit($task->project->name, 8) }}
+                        </span>
+                        @else
+                        <x-heroicon-o-folder-plus class="w-3 h-3 flex-shrink-0" />
+                        <span class="hidden 2xl:inline">Add</span>
+                        @endif
+                        <x-heroicon-o-chevron-down class="w-3 h-3 flex-shrink-0"
+                            x-bind:class="{ 'rotate-180': projectOpen }" />
+                    </button>
+
+                    {{-- Project Dropdown Menu --}}
+                    <template x-teleport="body">
+                        <div x-show="projectOpen" x-cloak @click.away="projectOpen = false"
+                            @keydown.escape="projectOpen = false" x-transition:enter="transition ease-out duration-200"
+                            x-transition:enter-start="opacity-0 scale-95" x-transition:enter-end="opacity-100 scale-100"
+                            x-transition:leave="transition ease-in duration-150"
+                            x-transition:leave-start="opacity-100 scale-100" x-transition:leave-end="opacity-0 scale-95"
+                            class="fixed w-80 bg-white dark:bg-gray-800 rounded-xl shadow-2xl border border-gray-200 dark:border-gray-600 
+                                z-[9999] backdrop-blur-sm dark:shadow-2xl max-h-[90vh] flex flex-col" x-bind:style="{
+                                top: Math.min(buttonRect.bottom + window.scrollY + 8, window.innerHeight + window.scrollY - 450) + 'px',
                                 left: Math.max(8, Math.min(buttonRect.left + window.scrollX, window.innerWidth - 320 - 8)) + 'px'
                             }">
 
-                                {{-- Header dengan Create Project Button --}}
-                                <div class="px-4 py-3 bg-gradient-to-r from-gray-50 to-gray-100 dark:from-gray-700 dark:to-gray-600 
-                                    border-b border-gray-200 dark:border-gray-600">
-                                    <div class="flex items-center justify-between">
-                                        <h3 class="text-sm font-semibold text-gray-700 dark:text-gray-300 flex items-center gap-2">
-                                            <x-heroicon-o-building-office class="w-4 h-4" />
-                                            Select Project
-                                        </h3>
-
-                                        {{-- Create Project Button - Always show but with different states --}}
-                                        @if($selectedClientId)
-                                        <button wire:click="redirectToCreateProject" @click="projectOpen = false" 
-                                            class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium 
-                                                bg-primary-600 hover:bg-primary-700 dark:bg-primary-500 dark:hover:bg-primary-600 
-                                                text-white rounded-lg transition-all duration-200 hover:scale-105 
-                                                shadow-sm hover:shadow-md">
-                                            <x-heroicon-o-plus class="w-3 h-3" />
-                                            <span>Buat Project</span>
-                                        </button>
-                                        @else
-                                        <button disabled 
-                                            class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium 
-                                                bg-gray-300 dark:bg-gray-600 text-gray-500 dark:text-gray-400 
-                                                rounded-lg cursor-not-allowed opacity-60"
-                                            title="Pilih client terlebih dahulu">
-                                            <x-heroicon-o-plus class="w-3 h-3" />
-                                            <span>Buat Project</span>
-                                        </button>
-                                        @endif
-                                    </div>
-                                    
-                                    {{-- Client info when selected --}}
-                                    @if($selectedClientId)
-                                    <div class="mt-2 text-xs text-gray-600 dark:text-gray-400 flex items-center gap-1">
-                                        <x-heroicon-o-information-circle class="w-3 h-3" />
-                                        <span>Client: {{ $this->getClientOptions()[$selectedClientId] ?? 'Unknown' }}</span>
-                                    </div>
-                                    @endif
+                            {{-- Fixed Header --}}
+                            <div class="px-4 py-3 bg-gradient-to-r from-gray-50 to-gray-100 dark:from-gray-700 dark:to-gray-600 
+                            border-b border-gray-200 dark:border-gray-600 flex-shrink-0 rounded-t-xl">
+                                <div class="flex items-center justify-between">
+                                    <h3
+                                        class="text-sm font-semibold text-gray-700 dark:text-gray-300 flex items-center gap-2">
+                                        <x-heroicon-o-building-office class="w-4 h-4" />
+                                        Select Project
+                                    </h3>
+                                    <button wire:click="redirectToCreateProject" @click="projectOpen = false" class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium 
+                                        bg-primary-600 hover:bg-primary-700 dark:bg-primary-500 dark:hover:bg-primary-600 
+                                        text-white rounded-lg transition-all duration-200 hover:scale-105 shadow-sm">
+                                                <x-heroicon-o-plus class="w-3 h-3" />
+                                        <span>Create</span>
+                                    </button>
                                 </div>
 
-                                {{-- No Project Option --}}
+                                @if($selectedClientId)
+                                <div class="mt-2 text-xs text-gray-600 dark:text-gray-400 flex items-center gap-1">
+                                    <x-heroicon-o-information-circle class="w-3 h-3" />
+                                    <span>Client: {{ $this->getClientOptions()[$selectedClientId] ?? 'Unknown' }}</span>
+                                </div>
+                                @endif
+                            </div>
+
+                            {{-- Scrollable Content --}}
+                            <div class="overflow-y-auto flex-1">
+                                {{-- Remove Project Option --}}
                                 <button wire:click="updateProject(null)" @click="projectOpen = false"
                                     class="w-full text-left px-4 py-3 text-sm text-gray-700 dark:text-gray-300 
-                                            hover:bg-gradient-to-r hover:from-red-50 hover:to-transparent 
-                                            dark:hover:from-red-900/20 dark:hover:to-transparent 
-                                            transition-all duration-200 flex items-center gap-3 border-b border-gray-100 dark:border-gray-700 
-                                        {{ !$task->project_id ? 'bg-red-50 dark:bg-red-900/30 text-red-700 dark:text-red-300 border-l-4 border-l-red-500 dark:border-l-red-400' : '' }}">
-                                    <x-heroicon-o-minus-circle class="w-4 h-4 text-red-500 dark:text-red-400" />
+                               hover:bg-gradient-to-r hover:from-red-50 hover:to-transparent 
+                               dark:hover:from-red-900/20 dark:hover:to-transparent 
+                               transition-all duration-200 flex items-center gap-3 
+                               border-b border-gray-100 dark:border-gray-700
+                               {{ !$task->project_id ? 'bg-red-50 dark:bg-red-900/30 text-red-700 dark:text-red-300 border-l-4 border-l-red-500 dark:border-l-red-400' : '' }}">
+                                    <x-heroicon-o-minus-circle
+                                        class="w-4 h-4 text-red-500 dark:text-red-400 flex-shrink-0" />
                                     <span class="font-medium">Remove Project</span>
                                     @if(!$task->project_id)
                                     <x-heroicon-s-check class="w-4 h-4 text-red-600 dark:text-red-400 ml-auto" />
                                     @endif
                                 </button>
 
-                                {{-- Client Selection dengan Create Project hint --}}
+                                {{-- Client Selection --}}
                                 <div
                                     class="p-4 bg-gray-50 dark:bg-gray-700/50 border-b border-gray-200 dark:border-gray-600">
                                     <label class="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-2">
                                         <x-heroicon-o-users class="w-3 h-3 inline mr-1" />
-                                        Pilih Client:
+                                        Select Client:
                                     </label>
                                     <select wire:model.live="selectedClientId" class="w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-lg 
-                                            focus:ring-2 focus:ring-primary-500 focus:border-primary-500 
-                                            dark:bg-gray-800 dark:text-gray-100 bg-white">
-                                        <option value="">-- Pilih Client --</option>
+                                   focus:ring-2 focus:ring-primary-500 focus:border-primary-500 
+                                   dark:bg-gray-800 dark:text-gray-100 bg-white">
+                                        <option value="">-- Select Client --</option>
                                         @foreach($this->getClientOptions() as $clientId => $clientName)
                                         <option value="{{ $clientId }}">{{ $clientName }}</option>
                                         @endforeach
                                     </select>
 
-                                    {{-- Hint untuk create project --}}
                                     @if($selectedClientId)
-                                    <p class="text-xs text-gray-500 dark:text-gray-400 mt-1 flex items-center gap-1">
+                                    <p class="text-xs text-gray-500 dark:text-gray-400 mt-2 flex items-center gap-1">
                                         <x-heroicon-o-information-circle class="w-3 h-3" />
-                                        Tidak menemukan project? Klik "Buat Project" di atas
+                                        No project? Click "Create" button above
                                     </p>
                                     @endif
                                 </div>
@@ -425,10 +371,10 @@
                                     @foreach($projects as $projectId => $projectName)
                                     <button wire:click="updateProject({{ $projectId }})" @click="projectOpen = false"
                                         class="w-full text-left px-4 py-3 text-sm text-gray-700 dark:text-gray-300 
-                                                hover:bg-gradient-to-r hover:from-primary-50 hover:to-transparent 
-                                                dark:hover:from-primary-900/30 dark:hover:to-transparent 
-                                                transition-all duration-200 flex items-center gap-3 
-                                                {{ $task->project_id == $projectId ? 'bg-primary-50 dark:bg-primary-900/40 text-primary-700 dark:text-primary-300 border-l-4 border-l-primary-500 dark:border-l-primary-400' : '' }}">
+                                   hover:bg-gradient-to-r hover:from-primary-50 hover:to-transparent 
+                                   dark:hover:from-primary-900/30 dark:hover:to-transparent 
+                                   transition-all duration-200 flex items-center gap-3 
+                                   {{ $task->project_id == $projectId ? 'bg-primary-50 dark:bg-primary-900/40 text-primary-700 dark:text-primary-300 border-l-4 border-l-primary-500 dark:border-l-primary-400' : '' }}">
                                         <x-heroicon-o-folder
                                             class="w-4 h-4 text-indigo-500 dark:text-indigo-400 flex-shrink-0" />
                                         <div class="flex-1 min-w-0">
@@ -445,140 +391,1224 @@
                                     @endforeach
                                 </div>
                                 @else
-                                {{-- No projects dengan Create Project CTA --}}
-                                <div class="px-4 py-6 text-center text-gray-500 dark:text-gray-400">
+                                <div class="px-4 py-8 text-center text-gray-500 dark:text-gray-400">
                                     <x-heroicon-o-folder-open class="w-12 h-12 mx-auto mb-3 opacity-50" />
-                                    <p class="text-sm font-medium mb-2">Tidak ada project untuk client ini</p>
+                                    <p class="text-sm font-medium mb-2">No projects for this client</p>
                                     <button wire:click="redirectToCreateProject" @click="projectOpen = false" class="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium 
-                                        bg-primary-600 hover:bg-primary-700 dark:bg-primary-500 dark:hover:bg-primary-600 
-                                        text-white rounded-lg transition-all duration-200 hover:scale-105 
-                                        shadow-sm hover:shadow-md">
+                                   bg-primary-600 hover:bg-primary-700 dark:bg-primary-500 dark:hover:bg-primary-600 
+                                   text-white rounded-lg transition-all duration-200 hover:scale-105 shadow-sm">
                                         <x-heroicon-o-plus class="w-4 h-4" />
-                                        Buat Project Pertama
+                                        Create First Project
                                     </button>
                                 </div>
                                 @endif
                                 @else
                                 <div class="px-4 py-8 text-center text-gray-500 dark:text-gray-400">
                                     <x-heroicon-o-building-office class="w-8 h-8 mx-auto mb-2 opacity-50" />
-                                    <p class="text-sm">Pilih client terlebih dahulu</p>
-                                    <p class="text-xs mt-1">untuk melihat daftar project</p>
+                                    <p class="text-sm font-medium">Select client first</p>
+                                    <p class="text-xs mt-1">to view projects list</p>
                                 </div>
                                 @endif
                             </div>
-                        </template>
+                        </div>
+                    </template>
+                </div>
+            </div>
+
+            {{-- 7. Due Date (1/12) --}}
+            <div class="col-span-1 min-w-0">
+                <div class="relative" x-data="{ dateOpen: false, buttonRect: {} }">
+                    @php
+                    $isOverdue = $task->task_date->isPast() && $task->status !== 'completed';
+                    $isToday = $task->task_date->isToday();
+                    $isTomorrow = $task->task_date->isTomorrow();
+                    @endphp
+
+                    <button @click="dateOpen = !dateOpen; buttonRect = $el.getBoundingClientRect()" class="flex items-center gap-1 px-2 py-2 h-8 rounded-lg transition-all duration-200 
+                            border shadow-sm w-full justify-center
+                            {{ $isOverdue ? 
+                                'bg-red-100 dark:bg-red-900/40 text-red-600 dark:text-red-400 border-red-200 dark:border-red-700/60 hover:bg-red-200 dark:hover:bg-red-900/60' : 
+                                ($isToday ? 
+                                    'bg-yellow-100 dark:bg-yellow-900/40 text-yellow-600 dark:text-yellow-400 border-yellow-200 dark:border-yellow-700/60 hover:bg-yellow-200 dark:hover:bg-yellow-900/60' : 
+                                    'bg-gray-100 dark:bg-gray-700/60 text-gray-600 dark:text-gray-400 border-gray-200 dark:border-gray-600/60 hover:bg-gray-200 dark:hover:bg-gray-600/80'
+                                ) 
+                    }}">
+                        <x-heroicon-o-calendar-days class="w-3 h-3 flex-shrink-0" />
+                        <span class="font-medium text-xs truncate">
+                            @if($isToday) Today
+                            @elseif($isTomorrow) Tom
+                            @else {{ $task->task_date->format('M d') }}
+                            @endif
+                        </span>
+                        <x-heroicon-o-pencil class="w-2.5 h-2.5 opacity-60 flex-shrink-0" />
+                    </button>
+
+                    {{-- Date Picker Dropdown --}}
+                    <template x-teleport="body">
+                        <div x-show="dateOpen" x-cloak @click.away="dateOpen = false" @keydown.escape="dateOpen = false"
+                            x-transition:enter="transition ease-out duration-200"
+                            x-transition:enter-start="opacity-0 scale-95" x-transition:enter-end="opacity-100 scale-100"
+                            x-transition:leave="transition ease-in duration-150"
+                            x-transition:leave-start="opacity-100 scale-100" x-transition:leave-end="opacity-0 scale-95"
+                            class="fixed w-80 bg-white dark:bg-gray-800 rounded-xl shadow-2xl border border-gray-200 dark:border-gray-600 
+                                z-[9999] backdrop-blur-sm dark:shadow-2xl max-h-[90vh] flex flex-col" x-bind:style="{
+                                top: Math.min(buttonRect.bottom + window.scrollY + 8, window.innerHeight + window.scrollY - 450) + 'px',
+                                left: Math.max(8, Math.min(buttonRect.left + window.scrollX, window.innerWidth - 320 - 8)) + 'px'
+                            }">
+
+                            {{-- Fixed Header --}}
+                            <div class="px-4 py-3 bg-gradient-to-r from-gray-50 to-gray-100 dark:from-gray-700 dark:to-gray-600 
+                            border-b border-gray-200 dark:border-gray-600 flex-shrink-0 rounded-t-xl">
+                                <h3
+                                    class="text-sm font-semibold text-gray-700 dark:text-gray-300 flex items-center gap-2">
+                                    <x-heroicon-o-calendar-days class="w-4 h-4" />
+                                    Edit Due Date
+                                </h3>
+                            </div>
+
+                            {{-- Scrollable Content --}}
+                            <div class="p-4 overflow-y-auto flex-1">
+                                {{ $this->dueDateForm }}
+                            </div>
+
+                            {{-- Fixed Quick Options Footer --}}
+                            <div class="px-4 pb-4 pt-3 border-t border-gray-100 dark:border-gray-700 flex-shrink-0">
+                                <div
+                                    class="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-2">
+                                    Quick Options
+                                </div>
+                                <div class="grid grid-cols-2 gap-2">
+                                    <button wire:click="updateTaskDate('{{ today()->format('Y-m-d') }}')"
+                                        @click="dateOpen = false" class="px-3 py-2 text-xs font-medium text-gray-700 dark:text-gray-300 
+                                   bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 
+                                   rounded-lg transition-colors border border-gray-200 dark:border-gray-600">
+                                        Today
+                                    </button>
+                                    <button wire:click="updateTaskDate('{{ today()->addDay()->format('Y-m-d') }}')"
+                                        @click="dateOpen = false" class="px-3 py-2 text-xs font-medium text-gray-700 dark:text-gray-300 
+                                   bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 
+                                   rounded-lg transition-colors border border-gray-200 dark:border-gray-600">
+                                        Tomorrow
+                                    </button>
+                                    <button wire:click="updateTaskDate('{{ today()->addDays(7)->format('Y-m-d') }}')"
+                                        @click="dateOpen = false" class="px-3 py-2 text-xs font-medium text-gray-700 dark:text-gray-300 
+                                   bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 
+                                   rounded-lg transition-colors border border-gray-200 dark:border-gray-600">
+                                        Next Week
+                                    </button>
+                                    <button wire:click="updateTaskDate('{{ today()->addMonth()->format('Y-m-d') }}')"
+                                        @click="dateOpen = false" class="px-3 py-2 text-xs font-medium text-gray-700 dark:text-gray-300 
+                                   bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 
+                                   rounded-lg transition-colors border border-gray-200 dark:border-gray-600">
+                                        Next Month
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </template>
+                </div>
+            </div>
+        </div>
+    </div>
+
+
+    {{-- Tablet View - Compact Two-Row Layout --}}
+    <div class="hidden md:block lg:hidden w-full">
+        <div class="p-3 space-y-3 hover:bg-gray-50 dark:hover:bg-gray-800/50 rounded-lg transition-all duration-200 
+                border border-transparent hover:border-gray-200 dark:hover:border-gray-700">
+
+            {{-- Row 1: Main Info --}}
+            <div class="flex items-start gap-3">
+                {{-- Checkbox --}}
+                <button wire:click="toggleTaskCompletion" class="flex-shrink-0 mt-1">
+                    @if($task->status === 'completed')
+                    <div class="relative">
+                        <x-heroicon-s-check-circle class="w-5 h-5 text-green-500 dark:text-green-400" />
                     </div>
+                    @else
+                    <div class="w-5 h-5 rounded-full border-2 border-gray-300 dark:border-gray-600 
+                            hover:border-primary-500 dark:hover:border-primary-400 transition-all"></div>
+                    @endif
+                </button>
+
+                {{-- Task Title & Description --}}
+                <div class="flex-1 min-w-0 cursor-pointer" wire:click="viewDetails">
+                    <h2 class="font-semibold text-gray-900 dark:text-gray-100 text-sm leading-tight
+                           hover:text-primary-600 dark:hover:text-primary-400 transition-colors
+                           {{ $task->status === 'completed' ? 'line-through text-gray-500 dark:text-gray-400' : '' }}">
+                        {{ $task->title }}
+                    </h2>
+                    @if($task->description)
+                    <p class="text-xs text-gray-500 dark:text-gray-400 mt-1 line-clamp-2">
+                        {{ strip_tags($task->description) }}
+                    </p>
+                    @endif
                 </div>
 
-                {{-- Due Date with Clickable Edit --}}
-                <div class="col-span-1 h-full flex items-center justify-center">
-                    <div class="relative" x-data="{ dateOpen: false, buttonRect: {} }">
+                {{-- Status Badge --}}
+                <div x-data="{ statusOpen: false, buttonRect: {} }">
+                    <button @click="statusOpen = !statusOpen; buttonRect = $el.getBoundingClientRect()" class="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-semibold shadow-sm border
+                           {{ match($task->status) {
+                               'completed' => 'bg-green-100 dark:bg-green-900/40 text-green-800 dark:text-green-300 border-green-200',
+                               'in_progress' => 'bg-yellow-100 dark:bg-yellow-900/40 text-yellow-800 dark:text-yellow-300 border-yellow-200',
+                               'pending' => 'bg-gray-100 dark:bg-gray-700/60 text-gray-700 dark:text-gray-300 border-gray-200',
+                               'cancelled' => 'bg-red-100 dark:bg-red-900/40 text-red-800 dark:text-red-300 border-red-200',
+                               default => 'bg-gray-100 text-gray-700 border-gray-200'
+                           } }}">
+                        <div class="w-2 h-2 rounded-full bg-current"></div>
+                        <span class="whitespace-nowrap">{{ ucfirst(str_replace('_', ' ', $task->status)) }}</span>
+                        <x-heroicon-o-chevron-down class="w-3 h-3" x-bind:class="{ 'rotate-180': statusOpen }" />
+                    </button>
+
+                    {{-- Status Dropdown --}}
+                    <template x-teleport="body">
+                        <div x-show="statusOpen" x-cloak @click.away="statusOpen = false"
+                            x-transition:enter="transition ease-out duration-200"
+                            x-transition:enter-start="opacity-0 scale-95" x-transition:enter-end="opacity-100 scale-100"
+                            class="fixed w-44 bg-white dark:bg-gray-800 rounded-xl shadow-xl border border-gray-200 dark:border-gray-600 
+                               py-2 z-[9999] max-h-[80vh] overflow-y-auto" x-bind:style="{
+                            top: Math.min(buttonRect.bottom + window.scrollY + 8, window.innerHeight + window.scrollY - 300) + 'px',
+                            left: Math.max(8, Math.min(buttonRect.left + window.scrollX, window.innerWidth - 176 - 8)) + 'px'
+                        }">
+                            @foreach($this->getStatusOptions() as $statusValue => $statusLabel)
+                            <button wire:click="updateStatus('{{ $statusValue }}')" @click="statusOpen = false"
+                                class="w-full text-left px-4 py-3 text-sm hover:bg-gradient-to-r hover:from-primary-50 
+                                   hover:to-transparent flex items-center gap-3 
+                                   {{ $task->status === $statusValue ? 'bg-primary-50 dark:bg-primary-900/40 border-l-4 border-l-primary-500' : '' }}">
+                                <div class="w-3 h-3 rounded-full 
+                                {{ match($statusValue) {
+                                    'completed' => 'bg-green-500',
+                                    'in_progress' => 'bg-yellow-500',
+                                    'pending' => 'bg-gray-400',
+                                    'cancelled' => 'bg-red-500',
+                                    default => 'bg-gray-400'
+                                } }}"></div>
+                                <span class="font-medium text-gray-700 dark:text-gray-300">{{ $statusLabel }}</span>
+                                @if($task->status === $statusValue)
+                                <x-heroicon-s-check class="w-4 h-4 text-primary-600 ml-auto" />
+                                @endif
+                            </button>
+                            @endforeach
+                        </div>
+                    </template>
+                </div>
+            </div>
+
+            {{-- Row 2: Metadata (Priority, Assignee, Project, Date) --}}
+            <div class="flex items-center gap-2 flex-wrap">
+                {{-- Priority --}}
+                <div x-data="{ priorityOpen: false, buttonRect: {} }">
+                    <button @click="priorityOpen = !priorityOpen; buttonRect = $el.getBoundingClientRect()" class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold shadow-sm border
+                           {{ match($task->priority) {
+                               'urgent' => 'bg-red-100 dark:bg-red-900/40 text-red-800 dark:text-red-300 border-red-200',
+                               'high' => 'bg-orange-100 dark:bg-orange-900/40 text-orange-800 dark:text-orange-300 border-orange-200',
+                               'normal' => 'bg-blue-100 dark:bg-blue-900/40 text-blue-800 dark:text-blue-300 border-blue-200',
+                               'low' => 'bg-gray-100 dark:bg-gray-700/60 text-gray-600 dark:text-gray-300 border-gray-200',
+                               default => 'bg-gray-100 text-gray-700 border-gray-200'
+                           } }}">
                         @php
-                        $isOverdue = $task->task_date->isPast() && $task->status !== 'completed';
-                        $isToday = $task->task_date->isToday();
-                        $isTomorrow = $task->task_date->isTomorrow();
+                        $priorityIcon = match($task->priority) {
+                        'urgent' => 'heroicon-s-exclamation-triangle',
+                        'high' => 'heroicon-o-exclamation-triangle',
+                        'normal' => 'heroicon-o-minus',
+                        'low' => 'heroicon-o-arrow-down',
+                        default => 'heroicon-o-minus'
+                        };
                         @endphp
+                        <x-dynamic-component :component="$priorityIcon" class="w-3 h-3" />
+                        <span>{{ ucfirst($task->priority) }}</span>
+                    </button>
 
-                        <button @click="dateOpen = !dateOpen; buttonRect = $el.getBoundingClientRect()" class="flex items-center gap-1.5 px-3 py-2 h-8 rounded-lg transition-all duration-200 hover:scale-105 
-                                   border shadow-sm w-full justify-center
-                                   {{ $isOverdue ? 
-                                       'bg-red-100 dark:bg-red-900/40 text-red-600 dark:text-red-400 border-red-200 dark:border-red-700/60 hover:bg-red-200 dark:hover:bg-red-900/60 hover:shadow-md dark:hover:shadow-red-900/20' : 
-                                       ($isToday ? 
-                                           'bg-yellow-100 dark:bg-yellow-900/40 text-yellow-600 dark:text-yellow-400 border-yellow-200 dark:border-yellow-700/60 hover:bg-yellow-200 dark:hover:bg-yellow-900/60 hover:shadow-md dark:hover:shadow-yellow-900/20' : 
-                                           'bg-gray-100 dark:bg-gray-700/60 text-gray-600 dark:text-gray-400 border-gray-200 dark:border-gray-600/60 hover:bg-gray-200 dark:hover:bg-gray-600/80 hover:shadow-sm'
-                                       ) 
-                                   }}">
+                    {{-- Priority Dropdown --}}
+                    <template x-teleport="body">
+                        <div x-show="priorityOpen" x-cloak @click.away="priorityOpen = false"
+                            class="fixed w-44 bg-white dark:bg-gray-800 rounded-xl shadow-xl border py-2 z-[9999]"
+                            x-bind:style="{
+                            top: Math.min(buttonRect.bottom + window.scrollY + 8, window.innerHeight + window.scrollY - 250) + 'px',
+                            left: Math.max(8, Math.min(buttonRect.left + window.scrollX, window.innerWidth - 176 - 8)) + 'px'
+                        }">
+                            @foreach($this->getPriorityOptions() as $priorityValue => $priorityLabel)
+                            <button wire:click="updatePriority('{{ $priorityValue }}')" @click="priorityOpen = false"
+                                class="w-full text-left px-4 py-3 text-sm hover:bg-primary-50 flex items-center gap-3
+                                   {{ $task->priority === $priorityValue ? 'bg-primary-50 dark:bg-primary-900/40 border-l-4 border-l-primary-500' : '' }}">
+                                @php
+                                $icon = match($priorityValue) {
+                                'urgent' => 'heroicon-s-exclamation-triangle',
+                                'high' => 'heroicon-o-exclamation-triangle',
+                                'normal' => 'heroicon-o-minus',
+                                'low' => 'heroicon-o-arrow-down',
+                                default => 'heroicon-o-minus'
+                                };
+                                @endphp
+                                <x-dynamic-component :component="$icon" class="w-4 h-4" />
+                                <span class="font-medium text-gray-700 dark:text-gray-300">{{ $priorityLabel }}</span>
+                                @if($task->priority === $priorityValue)
+                                <x-heroicon-s-check class="w-4 h-4 text-primary-600 ml-auto" />
+                                @endif
+                            </button>
+                            @endforeach
+                        </div>
+                    </template>
+                </div>
+
+                {{-- Assignee --}}
+                <div x-data="{ assigneeOpen: false, buttonRect: {} }">
+                    <button @click="assigneeOpen = !assigneeOpen; buttonRect = $el.getBoundingClientRect()" class="inline-flex items-center gap-2 px-2.5 py-1 rounded-lg border border-gray-200 dark:border-gray-700 
+                           hover:border-primary-300 bg-white dark:bg-gray-800 shadow-sm">
+                        @if($task->assignedUsers && $task->assignedUsers->count() > 0)
+                        <div class="flex -space-x-1.5">
+                            @foreach($task->assignedUsers->take(2) as $user)
+                            <div class="w-5 h-5 bg-gradient-to-br from-primary-400 to-primary-600 text-white rounded-full 
+                                    flex items-center justify-center text-xs font-bold border border-white"
+                                title="{{ $user->name }}">
+                                {{ strtoupper(substr($user->name, 0, 1)) }}
+                            </div>
+                            @endforeach
+                            @if($task->assignedUsers->count() > 2)
                             <div
-                                class="p-0.5 rounded flex-shrink-0 
-                                        {{ $isOverdue ? 'bg-red-200 dark:bg-red-800/60' : ($isToday ? 'bg-yellow-200 dark:bg-yellow-800/60' : 'bg-gray-200 dark:bg-gray-600/60') }}">
-                                <x-heroicon-o-calendar-days class="w-3 h-3" />
+                                class="w-5 h-5 bg-gray-400 text-white rounded-full flex items-center justify-center text-xs font-bold border border-white">
+                                +{{ $task->assignedUsers->count() - 2 }}
+                            </div>
+                            @endif
+                        </div>
+                        <span class="text-xs font-medium text-gray-700 dark:text-gray-300">
+                            @if($task->assignedUsers->count() === 1)
+                            {{ Str::limit($task->assignedUsers->first()->name, 15) }}
+                            @else
+                            {{ $task->assignedUsers->count() }} assigned
+                            @endif
+                        </span>
+                        @else
+                        <x-heroicon-o-user-plus class="w-4 h-4 text-gray-400" />
+                        <span class="text-xs text-gray-500">Unassigned</span>
+                        @endif
+                    </button>
+
+                    {{-- Assignee Dropdown --}}
+                    <template x-teleport="body">
+                        <div x-show="assigneeOpen" x-cloak @click.away="assigneeOpen = false"
+                            class="fixed w-64 bg-white dark:bg-gray-800 rounded-xl shadow-xl border z-[9999] max-h-80 overflow-y-auto"
+                            x-bind:style="{
+                            top: Math.min(buttonRect.bottom + window.scrollY + 8, window.innerHeight + window.scrollY - 350) + 'px',
+                            left: Math.max(8, Math.min(buttonRect.left + window.scrollX, window.innerWidth - 256 - 8)) + 'px'
+                        }">
+                            <div
+                                class="px-4 py-2 text-xs font-semibold text-gray-500 uppercase border-b sticky top-0 bg-white dark:bg-gray-800">
+                                Assign Users
+                            </div>
+                            @foreach($this->getUserOptions() as $userId => $userName)
+                            @php $isAssigned = $task->assignedUsers->contains($userId); @endphp
+                            <button wire:click="{{ $isAssigned ? 'unassignUser' : 'assignUser' }}({{ $userId }})"
+                                @click="assigneeOpen = false"
+                                class="w-full text-left px-4 py-3 text-sm hover:bg-primary-50 flex items-center gap-3">
+                                <div class="w-7 h-7 bg-gradient-to-br from-primary-400 to-primary-600 text-white rounded-full 
+                                        flex items-center justify-center text-xs font-bold">
+                                    {{ strtoupper(substr($userName, 0, 1)) }}
+                                </div>
+                                <span class="font-medium flex-1 text-gray-700 dark:text-gray-300">{{ $userName }}</span>
+                                @if($isAssigned)
+                                <x-heroicon-s-check class="w-4 h-4 text-green-600" />
+                                @endif
+                            </button>
+                            @endforeach
+                        </div>
+                    </template>
+                </div>
+
+                {{-- Project --}}
+                @if($task->project)
+                <div x-data="{ projectOpen: false, buttonRect: {} }">
+                    <button @click="projectOpen = !projectOpen; buttonRect = $el.getBoundingClientRect()" class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold shadow-sm border
+                            bg-gradient-to-r from-indigo-100 to-purple-100 dark:from-indigo-900/40 dark:to-purple-900/40 
+                            text-indigo-800 dark:text-indigo-300 border-indigo-200 dark:border-indigo-700">
+                        <x-heroicon-o-folder class="w-3 h-3" />
+                        <span>{{ Str::limit($task->project->name, 15) }}</span>
+                        <x-heroicon-o-pencil class="w-3 h-3 opacity-60" />
+                    </button>
+
+                    {{-- Project Dropdown - Same structure as desktop but mobile-optimized positioning --}}
+                    <template x-teleport="body">
+                        <div x-show="projectOpen" x-cloak @click.away="projectOpen = false"
+                            x-transition:enter="transition ease-out duration-200"
+                            x-transition:enter-start="opacity-0 scale-95" x-transition:enter-end="opacity-100 scale-100"
+                            class="fixed w-80 bg-white dark:bg-gray-800 rounded-xl shadow-2xl border z-[9999] max-h-[80vh] flex flex-col"
+                            x-bind:style="{
+                                top: Math.min(buttonRect.bottom + window.scrollY + 8, window.innerHeight + window.scrollY - 450) + 'px',
+                                left: Math.max(8, Math.min(buttonRect.left + window.scrollX - 160, window.innerWidth - 320 - 8)) + 'px'
+                            }">
+
+                            {{-- Same content as desktop --}}
+                            <div class="px-4 py-3 bg-gradient-to-r from-gray-50 to-gray-100 dark:from-gray-700 dark:to-gray-600 
+                                        border-b flex-shrink-0 rounded-t-xl">
+                                <div class="flex items-center justify-between">
+                                    <h3
+                                        class="text-sm font-semibold text-gray-700 dark:text-gray-300 flex items-center gap-2">
+                                        <x-heroicon-o-building-office class="w-4 h-4" />
+                                        Select Project
+                                    </h3>
+                                    <button @click="projectOpen = false"
+                                        class="p-1 hover:bg-gray-200 dark:hover:bg-gray-600 rounded-lg">
+                                        <x-heroicon-o-x-mark class="w-5 h-5 text-gray-500" />
+                                    </button>
+                                </div>
                             </div>
 
-                            <div class="flex flex-col min-w-0">
-                                <span class="font-medium text-xs truncate">
-                                    @if($isToday)
-                                    Today
-                                    @elseif($isTomorrow)
-                                    <span class="hidden lg:inline">Tomorrow</span>
-                                    <span class="lg:hidden">Tom</span>
-                                    @else
-                                    {{ $task->task_date->format('M d') }}
-                                    @endif
-                                </span>
+                            <div class="overflow-y-auto flex-1">
+                                <button wire:click="updateProject(null)" @click="projectOpen = false"
+                                    class="w-full text-left px-4 py-3 text-sm hover:bg-red-50 flex items-center gap-3 border-b">
+                                    <x-heroicon-o-minus-circle class="w-4 h-4 text-red-500" />
+                                    <span class="font-medium text-gray-700 dark:text-gray-300">Remove Project</span>
+                                </button>
+
+                                <div class="p-4 bg-gray-50 dark:bg-gray-700/50 border-b">
+                                    <label class="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-2">
+                                        Select Client:
+                                    </label>
+                                    <select wire:model.live="selectedClientId"
+                                        class="w-full px-3 py-2 text-sm border rounded-lg dark:bg-gray-800 dark:text-gray-100">
+                                        <option value="">-- Select Client --</option>
+                                        @foreach($this->getClientOptions() as $clientId => $clientName)
+                                        <option value="{{ $clientId }}">{{ $clientName }}</option>
+                                        @endforeach
+                                    </select>
+                                </div>
+
+                                @if($selectedClientId)
+                                @php $projects = $this->getProjectOptions(); @endphp
+                                @if(!empty($projects))
+                                <div class="py-2">
+                                    @foreach($projects as $projectId => $projectName)
+                                    <button wire:click="updateProject({{ $projectId }})" @click="projectOpen = false"
+                                        class="w-full text-left px-4 py-3 text-sm hover:bg-primary-50 flex items-center gap-3
+                                            {{ $task->project_id == $projectId ? 'bg-primary-50 border-l-4 border-l-primary-500' : '' }}">
+                                        <x-heroicon-o-folder class="w-4 h-4 text-indigo-500" />
+                                        <span class="font-medium flex-1 text-gray-700 dark:text-gray-300">{{
+                                            $projectName }}</span>
+                                        @if($task->project_id == $projectId)
+                                        <x-heroicon-s-check class="w-4 h-4 text-primary-600" />
+                                        @endif
+                                    </button>
+                                    @endforeach
+                                </div>
+                                @else
+                                <div class="px-4 py-6 text-center text-gray-500">
+                                    <x-heroicon-o-folder-open class="w-10 h-10 mx-auto mb-2 opacity-50" />
+                                    <p class="text-sm">No projects available</p>
+                                </div>
+                                @endif
+                                @endif
                             </div>
+                        </div>
+                    </template>
+                </div>
+                @else
+                <button wire:click="$set('selectedClientId', null)" class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold shadow-sm 
+                        border-dashed border-gray-300 dark:border-gray-600 bg-gray-100 dark:bg-gray-700 
+                        text-gray-500 dark:text-gray-400">
+                    <x-heroicon-o-folder-plus class="w-3 h-3" />
+                    <span>Add Project</span>
+                </button>
+                @endif
 
-                            <x-heroicon-o-pencil class="w-3 h-3 opacity-60 flex-shrink-0" />
-                        </button>
+                {{-- Due Date --}}
+                <div x-data="{ dateOpen: false, buttonRect: {} }">
+                    @php
+                    $isOverdue = $task->task_date->isPast() && $task->status !== 'completed';
+                    $isToday = $task->task_date->isToday();
+                    @endphp
 
-                        {{-- Date Picker Dropdown --}}
-                        <template x-teleport="body">
-                            <div x-show="dateOpen" x-cloak @click.away="dateOpen = false"
-                                @keydown.escape="dateOpen = false" x-transition:enter="transition ease-out duration-200"
-                                x-transition:enter-start="opacity-0 scale-95 translate-y-2"
-                                x-transition:enter-end="opacity-100 scale-100 translate-y-0"
-                                x-transition:leave="transition ease-in duration-150"
-                                x-transition:leave-start="opacity-100 scale-100 translate-y-0"
-                                x-transition:leave-end="opacity-0 scale-95 translate-y-2" class="fixed w-80 bg-white dark:bg-gray-800 rounded-xl shadow-xl border border-gray-200 dark:border-gray-600 
-                                       z-50 backdrop-blur-sm dark:shadow-2xl dark:shadow-gray-900/40" x-bind:style="{
-                                    top: (buttonRect.bottom + window.scrollY + 8) + 'px',
-                                    left: Math.max(8, Math.min(buttonRect.left + window.scrollX, window.innerWidth - 320 - 8)) + 'px'
-                                }">
+                    <button @click="dateOpen = !dateOpen; buttonRect = $el.getBoundingClientRect()" class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold shadow-sm border
+                        {{ $isOverdue ? 
+                            'bg-red-100 dark:bg-red-900/40 text-red-700 dark:text-red-300 border-red-200' : 
+                            ($isToday ? 
+                            'bg-yellow-100 dark:bg-yellow-900/40 text-yellow-700 dark:text-yellow-300 border-yellow-200' : 
+                            'bg-gray-100 dark:bg-gray-700/60 text-gray-700 dark:text-gray-300 border-gray-200') }}">
+                        <x-heroicon-o-calendar-days class="w-3 h-3" />
+                        <span>
+                            @if($isToday) Today
+                            @elseif($task->task_date->isTomorrow()) Tomorrow
+                            @else {{ $task->task_date->format('M d, Y') }}
+                            @endif
+                        </span>
+                        <x-heroicon-o-pencil class="w-3 h-3 opacity-60" />
+                    </button>
 
-                                {{-- Header --}}
-                                <div class="px-4 py-3 bg-gradient-to-r from-gray-50 to-gray-100 dark:from-gray-700 dark:to-gray-600 
-                                            border-b border-gray-200 dark:border-gray-600">
+                    {{-- Date Picker Dropdown --}}
+                    <template x-teleport="body">
+                        <div x-show="dateOpen" x-cloak @click.away="dateOpen = false"
+                            class="fixed w-80 bg-white dark:bg-gray-800 rounded-xl shadow-2xl border z-[9999] max-h-[85vh] flex flex-col"
+                            x-bind:style="{
+                        top: Math.min(buttonRect.bottom + window.scrollY + 8, window.innerHeight + window.scrollY - 450) + 'px',
+                        left: Math.max(8, Math.min(buttonRect.left + window.scrollX - 240, window.innerWidth - 320 - 8)) + 'px'
+                        }">
+
+                            <div class="px-4 py-3 bg-gradient-to-r from-gray-50 to-gray-100 dark:from-gray-700 dark:to-gray-600 
+                        border-b flex-shrink-0 rounded-t-xl">
+                                <div class="flex items-center justify-between">
                                     <h3
                                         class="text-sm font-semibold text-gray-700 dark:text-gray-300 flex items-center gap-2">
                                         <x-heroicon-o-calendar-days class="w-4 h-4" />
                                         Edit Due Date
                                     </h3>
-                                </div>
-
-                                {{-- Date Form --}}
-                                <div class="p-4">
-                                    {{ $this->dueDateForm }}
-                                </div>
-
-                                {{-- Quick Date Options --}}
-                                <div class="px-4 pb-4 border-t border-gray-100 dark:border-gray-700">
-                                    <div
-                                        class="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-2 pt-3">
-                                        Quick Options
-                                    </div>
-                                    <div class="grid grid-cols-2 gap-2">
-                                        <button wire:click="updateTaskDate('{{ today()->format('Y-m-d') }}')"
-                                            @click="dateOpen = false"
-                                            class="px-3 py-2 text-xs text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 
-                                                   hover:bg-gray-200 dark:hover:bg-gray-600 rounded-lg transition-colors">
-                                            Today
-                                        </button>
-                                        <button wire:click="updateTaskDate('{{ today()->addDay()->format('Y-m-d') }}')"
-                                            @click="dateOpen = false"
-                                            class="px-3 py-2 text-xs text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 
-                                                   hover:bg-gray-200 dark:hover:bg-gray-600 rounded-lg transition-colors">
-                                            Tomorrow
-                                        </button>
-                                        <button
-                                            wire:click="updateTaskDate('{{ today()->addDays(7)->format('Y-m-d') }}')"
-                                            @click="dateOpen = false"
-                                            class="px-3 py-2 text-xs text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 
-                                                   hover:bg-gray-200 dark:hover:bg-gray-600 rounded-lg transition-colors">
-                                            Next Week
-                                        </button>
-                                        <button
-                                            wire:click="updateTaskDate('{{ today()->addMonth()->format('Y-m-d') }}')"
-                                            @click="dateOpen = false"
-                                            class="px-3 py-2 text-xs text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 
-                                                   hover:bg-gray-200 dark:hover:bg-gray-600 rounded-lg transition-colors">
-                                            Next Month
-                                        </button>
-                                    </div>
+                                    <button @click="dateOpen = false"
+                                        class="p-1 hover:bg-gray-200 dark:hover:bg-gray-600 rounded-lg">
+                                        <x-heroicon-o-x-mark class="w-5 h-5 text-gray-500" />
+                                    </button>
                                 </div>
                             </div>
-                        </template>
-                    </div>
+
+                            <div class="p-4 overflow-y-auto flex-1">
+                                {{ $this->dueDateForm }}
+                            </div>
+
+                            <div class="px-4 pb-4 pt-3 border-t flex-shrink-0">
+                                <div class="text-xs font-semibold text-gray-500 uppercase mb-2">Quick Options</div>
+                                <div class="grid grid-cols-2 gap-2">
+                                    <button wire:click="updateTaskDate('{{ today()->format('Y-m-d') }}')"
+                                        @click="dateOpen = false" class="px-3 py-2 text-xs font-medium bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 
+                               dark:hover:bg-gray-600 rounded-lg text-gray-700 dark:text-gray-300">
+                                        Today
+                                    </button>
+                                    <button wire:click="updateTaskDate('{{ today()->addDay()->format('Y-m-d') }}')"
+                                        @click="dateOpen = false" class="px-3 py-2 text-xs font-medium bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 
+                               dark:hover:bg-gray-600 rounded-lg text-gray-700 dark:text-gray-300">
+                                        Tomorrow
+                                    </button>
+                                    <button wire:click="updateTaskDate('{{ today()->addDays(7)->format('Y-m-d') }}')"
+                                        @click="dateOpen = false"
+                                        class="px-3 py-2 text-xs font-medium bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 
+                               dark:hover:bg-gray-600 rounded-lg text-gray-600 rounded-lg text-gray-700 dark:text-gray-300">
+                                        Next Week
+                                    </button>
+                                    <button wire:click="updateTaskDate('{{ today()->addMonth()->format('Y-m-d') }}')"
+                                        @click="dateOpen = false" class="px-3 py-2 text-xs font-medium bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 
+                               dark:hover:bg-gray-600 rounded-lg text-gray-700 dark:text-gray-300">
+                                        Next Month
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </template>
                 </div>
             </div>
         </div>
     </div>
+
+    {{-- Mobile View - Stacked Card Layout --}}
+    <div class="block md:hidden w-full">
+        <div class="p-4 space-y-3 bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 
+                shadow-sm hover:shadow-md transition-all duration-200">
+
+            {{-- Header Row: Checkbox + Title --}}
+            <div class="flex items-start gap-3">
+                {{-- Checkbox --}}
+                <button wire:click="toggleTaskCompletion" class="flex-shrink-0 mt-0.5">
+                    @if($task->status === 'completed')
+                    <div class="relative">
+                        <x-heroicon-s-check-circle class="w-6 h-6 text-green-500 dark:text-green-400" />
+                        <div class="absolute inset-0 bg-green-500 rounded-full animate-ping opacity-25"></div>
+                    </div>
+                    @else
+                    <div class="w-6 h-6 rounded-full border-2 border-gray-300 dark:border-gray-600 
+                            active:scale-95 transition-transform"></div>
+                    @endif
+                </button>
+
+                {{-- Task Title & Description --}}
+                <div class="flex-1 min-w-0" wire:click="viewDetails">
+                    <h2 class="font-semibold text-gray-900 dark:text-gray-100 text-base leading-snug
+                           {{ $task->status === 'completed' ? 'line-through text-gray-500 dark:text-gray-400' : '' }}">
+                        {{ $task->title }}
+                    </h2>
+                    @if($task->description)
+                    <p class="text-sm text-gray-500 dark:text-gray-400 mt-1.5 line-clamp-2 leading-relaxed">
+                        {{ strip_tags($task->description) }}
+                    </p>
+                    @endif
+                </div>
+            </div>
+
+            {{-- Status & Priority Row --}}
+            <div class="flex items-center gap-2">
+                {{-- Status Badge --}}
+                <div class="flex-1" x-data="{ statusOpen: false, buttonRect: {} }">
+                    <button @click="statusOpen = !statusOpen; buttonRect = $el.getBoundingClientRect()" class="w-full inline-flex items-center justify-center gap-2 px-3 py-2 rounded-lg text-sm font-semibold shadow-sm border
+                           {{ match($task->status) {
+                               'completed' => 'bg-green-100 dark:bg-green-900/40 text-green-800 dark:text-green-300 border-green-200 dark:border-green-700',
+                               'in_progress' => 'bg-yellow-100 dark:bg-yellow-900/40 text-yellow-800 dark:text-yellow-300 border-yellow-200 dark:border-yellow-700',
+                               'pending' => 'bg-gray-100 dark:bg-gray-700/60 text-gray-700 dark:text-gray-300 border-gray-200 dark:border-gray-600',
+                               'cancelled' => 'bg-red-100 dark:bg-red-900/40 text-red-800 dark:text-red-300 border-red-200 dark:border-red-700',
+                               default => 'bg-gray-100 text-gray-700 border-gray-200'
+                           } }}">
+                        <div class="w-2.5 h-2.5 rounded-full bg-current 
+                        {{ $task->status === 'in_progress' ? 'animate-pulse' : '' }}"></div>
+                        <span class="flex-1 text-center">{{ ucfirst(str_replace('_', ' ', $task->status)) }}</span>
+                        <x-heroicon-o-chevron-down class="w-4 h-4" x-bind:class="{ 'rotate-180': statusOpen }" />
+                    </button>
+
+                    {{-- Status Dropdown - Mobile Optimized --}}
+                    <template x-teleport="body">
+                        <div x-show="statusOpen" x-cloak @click.away="statusOpen = false"
+                            x-transition:enter="transition ease-out duration-200"
+                            x-transition:enter-start="opacity-0 translate-y-2"
+                            x-transition:enter-end="opacity-100 translate-y-0" class="fixed inset-x-4 bg-white dark:bg-gray-800 rounded-2xl shadow-2xl border border-gray-200 dark:border-gray-600 
+                               z-[9999] max-h-[70vh] overflow-y-auto" x-bind:style="{
+                            top: Math.min(buttonRect.bottom + window.scrollY + 12, window.innerHeight + window.scrollY - 400) + 'px'
+                        }">
+
+                            {{-- Header --}}
+                            <div
+                                class="px-4 py-3 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/50 sticky top-0 z-10">
+                                <div class="flex items-center justify-between">
+                                    <h3 class="text-sm font-semibold text-gray-900 dark:text-gray-100">Change Status
+                                    </h3>
+                                    <button @click="statusOpen = false"
+                                        class="p-1 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-lg">
+                                        <x-heroicon-o-x-mark class="w-5 h-5 text-gray-500" />
+                                    </button>
+                                </div>
+                            </div>
+
+                            {{-- Status Options --}}
+                            <div class="p-2">
+                                @foreach($this->getStatusOptions() as $statusValue => $statusLabel)
+                                <button wire:click="updateStatus('{{ $statusValue }}')" @click="statusOpen = false"
+                                    class="w-full text-left px-4 py-3.5 rounded-xl text-base font-medium
+                                       hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors
+                                       flex items-center gap-3 mb-1
+                                       {{ $task->status === $statusValue ? 'bg-primary-50 dark:bg-primary-900/30 text-primary-700 dark:text-primary-300' : 'text-gray-700 dark:text-gray-300' }}">
+                                    <div class="w-10 h-10 rounded-full flex items-center justify-center
+                                    {{ match($statusValue) {
+                                        'completed' => 'bg-green-100 dark:bg-green-900/40',
+                                        'in_progress' => 'bg-yellow-100 dark:bg-yellow-900/40',
+                                        'pending' => 'bg-gray-100 dark:bg-gray-700',
+                                        'cancelled' => 'bg-red-100 dark:bg-red-900/40',
+                                        default => 'bg-gray-100'
+                                    } }}">
+                                        <div class="w-3 h-3 rounded-full 
+                                        {{ match($statusValue) {
+                                            'completed' => 'bg-green-500',
+                                            'in_progress' => 'bg-yellow-500',
+                                            'pending' => 'bg-gray-400',
+                                            'cancelled' => 'bg-red-500',
+                                            default => 'bg-gray-400'
+                                        } }}"></div>
+                                    </div>
+                                    <span class="flex-1">{{ $statusLabel }}</span>
+                                    @if($task->status === $statusValue)
+                                    <x-heroicon-s-check class="w-5 h-5 text-primary-600 dark:text-primary-400" />
+                                    @endif
+                                </button>
+                                @endforeach
+                            </div>
+                        </div>
+                    </template>
+                </div>
+
+                {{-- Priority Badge --}}
+                <div x-data="{ priorityOpen: false, buttonRect: {} }">
+                    <button @click="priorityOpen = !priorityOpen; buttonRect = $el.getBoundingClientRect()" class="inline-flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-bold shadow-sm border
+                           {{ match($task->priority) {
+                               'urgent' => 'bg-red-100 dark:bg-red-900/40 text-red-800 dark:text-red-300 border-red-200',
+                               'high' => 'bg-orange-100 dark:bg-orange-900/40 text-orange-800 dark:text-orange-300 border-orange-200',
+                               'normal' => 'bg-blue-100 dark:bg-blue-900/40 text-blue-800 dark:text-blue-300 border-blue-200',
+                               'low' => 'bg-gray-100 dark:bg-gray-700/60 text-gray-600 dark:text-gray-300 border-gray-200',
+                               default => 'bg-gray-100 text-gray-700'
+                           } }}">
+                        @php
+                        $priorityIcon = match($task->priority) {
+                        'urgent' => 'heroicon-s-exclamation-triangle',
+                        'high' => 'heroicon-o-exclamation-triangle',
+                        'normal' => 'heroicon-o-minus',
+                        'low' => 'heroicon-o-arrow-down',
+                        default => 'heroicon-o-minus'
+                        };
+                        @endphp
+                        <x-dynamic-component :component="$priorityIcon" class="w-4 h-4" />
+                        <span>{{ ucfirst($task->priority) }}</span>
+                    </button>
+
+                    {{-- Priority Dropdown - Mobile Optimized --}}
+                    <template x-teleport="body">
+                        <div x-show="priorityOpen" x-cloak @click.away="priorityOpen = false"
+                            x-transition:enter="transition ease-out duration-200"
+                            x-transition:enter-start="opacity-0 translate-y-2"
+                            x-transition:enter-end="opacity-100 translate-y-0"
+                            class="fixed inset-x-4 bg-white dark:bg-gray-800 rounded-2xl shadow-2xl border z-[9999]"
+                            x-bind:style="{
+                            top: Math.min(buttonRect.bottom + window.scrollY + 12, window.innerHeight + window.scrollY - 350) + 'px'
+                        }">
+
+                            {{-- Header --}}
+                            <div
+                                class="px-4 py-3 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/50">
+                                <div class="flex items-center justify-between">
+                                    <h3 class="text-sm font-semibold text-gray-900 dark:text-gray-100">Set Priority</h3>
+                                    <button @click="priorityOpen = false"
+                                        class="p-1 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-lg">
+                                        <x-heroicon-o-x-mark class="w-5 h-5 text-gray-500" />
+                                    </button>
+                                </div>
+                            </div>
+
+                            {{-- Priority Options --}}
+                            <div class="p-2">
+                                @foreach($this->getPriorityOptions() as $priorityValue => $priorityLabel)
+                                <button wire:click="updatePriority('{{ $priorityValue }}')"
+                                    @click="priorityOpen = false"
+                                    class="w-full text-left px-4 py-3.5 rounded-xl text-base font-medium
+                                       hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors
+                                       flex items-center gap-3 mb-1
+                                       {{ $task->priority === $priorityValue ? 'bg-primary-50 dark:bg-primary-900/30 text-primary-700 dark:text-primary-300' : 'text-gray-700 dark:text-gray-300' }}">
+                                    <div class="w-10 h-10 rounded-full flex items-center justify-center
+                                    {{ match($priorityValue) {
+                                        'urgent' => 'bg-red-100 dark:bg-red-900/40',
+                                        'high' => 'bg-orange-100 dark:bg-orange-900/40',
+                                        'normal' => 'bg-blue-100 dark:bg-blue-900/40',
+                                        'low' => 'bg-gray-100 dark:bg-gray-700',
+                                        default => 'bg-gray-100'
+                                    } }}">
+                                        @php
+                                        $icon = match($priorityValue) {
+                                        'urgent' => 'heroicon-s-exclamation-triangle',
+                                        'high' => 'heroicon-o-exclamation-triangle',
+                                        'normal' => 'heroicon-o-minus',
+                                        'low' => 'heroicon-o-arrow-down',
+                                        default => 'heroicon-o-minus'
+                                        };
+                                        @endphp
+                                        <x-dynamic-component :component="$icon" class="w-5 h-5" />
+                                    </div>
+                                    <span class="flex-1">{{ $priorityLabel }}</span>
+                                    @if($task->priority === $priorityValue)
+                                    <x-heroicon-s-check class="w-5 h-5 text-primary-600 dark:text-primary-400" />
+                                    @endif
+                                </button>
+                                @endforeach
+                            </div>
+                        </div>
+                    </template>
+                </div>
+            </div>
+
+            {{-- Assignee Section --}}
+            <div x-data="{ assigneeOpen: false, buttonRect: {} }">
+                <button @click="assigneeOpen = !assigneeOpen; buttonRect = $el.getBoundingClientRect()"
+                    class="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg border border-gray-200 dark:border-gray-700 
+                       hover:border-primary-300 dark:hover:border-primary-600 bg-white dark:bg-gray-800 shadow-sm transition-colors">
+                    @if($task->assignedUsers && $task->assignedUsers->count() > 0)
+                    <div class="flex -space-x-2">
+                        @foreach($task->assignedUsers->take(3) as $user)
+                        <div class="w-8 h-8 bg-gradient-to-br from-primary-400 to-primary-600 text-white rounded-full 
+                                flex items-center justify-center text-sm font-bold border-2 border-white dark:border-gray-800"
+                            title="{{ $user->name }}">
+                            {{ strtoupper(substr($user->name, 0, 1)) }}
+                        </div>
+                        @endforeach
+                        @if($task->assignedUsers->count() > 3)
+                        <div class="w-8 h-8 bg-gray-400 text-white rounded-full flex items-center justify-center 
+                                text-xs font-bold border-2 border-white dark:border-gray-800">
+                            +{{ $task->assignedUsers->count() - 3 }}
+                        </div>
+                        @endif
+                    </div>
+                    <div class="flex-1 text-left">
+                        <p class="text-xs text-gray-500 dark:text-gray-400">Assigned to</p>
+                        <p class="text-sm font-medium text-gray-900 dark:text-gray-100">
+                            @if($task->assignedUsers->count() === 1)
+                            {{ $task->assignedUsers->first()->name }}
+                            @else
+                            {{ $task->assignedUsers->count() }} people
+                            @endif
+                        </p>
+                    </div>
+                    @else
+                    <x-heroicon-o-user-plus class="w-8 h-8 text-gray-400" />
+                    <div class="flex-1 text-left">
+                        <p class="text-sm font-medium text-gray-500 dark:text-gray-400">Not assigned yet</p>
+                        <p class="text-xs text-gray-400 dark:text-gray-500">Tap to assign users</p>
+                    </div>
+                    @endif
+                    <x-heroicon-o-chevron-right class="w-5 h-5 text-gray-400 flex-shrink-0" />
+                </button>
+
+                {{-- Assignee Modal - Full Screen Bottom Sheet --}}
+                <template x-teleport="body">
+                    <div x-show="assigneeOpen" x-cloak x-transition:enter="transition ease-out duration-300"
+                        x-transition:enter-start="opacity-0" x-transition:enter-end="opacity-100"
+                        x-transition:leave="transition ease-in duration-200" x-transition:leave-start="opacity-100"
+                        x-transition:leave-end="opacity-0" class="fixed inset-0 bg-black/50 z-[9998]"
+                        @click="assigneeOpen = false">
+                    </div>
+
+                    <div x-show="assigneeOpen" x-cloak @click.away="assigneeOpen = false"
+                        x-transition:enter="transition ease-out duration-300"
+                        x-transition:enter-start="translate-y-full" x-transition:enter-end="translate-y-0"
+                        x-transition:leave="transition ease-in duration-200" x-transition:leave-start="translate-y-0"
+                        x-transition:leave-end="translate-y-full"
+                        class="fixed inset-x-0 bottom-0 bg-white dark:bg-gray-800 rounded-t-3xl shadow-2xl z-[9999] max-h-[85vh] flex flex-col">
+
+                        {{-- Handle Bar --}}
+                        <div class="flex justify-center pt-3 pb-2">
+                            <div class="w-12 h-1.5 bg-gray-300 dark:bg-gray-600 rounded-full"></div>
+                        </div>
+
+                        {{-- Header --}}
+                        <div class="px-4 pb-3 border-b border-gray-200 dark:border-gray-700 flex-shrink-0">
+                            <div class="flex items-center justify-between">
+                                <h3 class="text-lg font-bold text-gray-900 dark:text-gray-100">Assign Users</h3>
+                                <button @click="assigneeOpen = false"
+                                    class="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-xl transition-colors">
+                                    <x-heroicon-o-x-mark class="w-6 h-6 text-gray-500" />
+                                </button>
+                            </div>
+                        </div>
+
+                        {{-- User List - Scrollable --}}
+                        <div class="flex-1 overflow-y-auto p-4 space-y-2">
+                            @foreach($this->getUserOptions() as $userId => $userName)
+                            @php $isAssigned = $task->assignedUsers->contains($userId); @endphp
+                            <button wire:click="{{ $isAssigned ? 'unassignUser' : 'assignUser' }}({{ $userId }})"
+                                class="w-full flex items-center gap-3 p-3 rounded-xl transition-all
+                                   {{ $isAssigned ? 'bg-primary-50 dark:bg-primary-900/30 border-2 border-primary-500 dark:border-primary-400' : 'bg-gray-50 dark:bg-gray-700/50 border-2 border-transparent hover:border-gray-300 dark:hover:border-gray-600' }}">
+                                <div class="w-12 h-12 bg-gradient-to-br from-primary-400 to-primary-600 text-white rounded-full 
+                                        flex items-center justify-center text-lg font-bold flex-shrink-0">
+                                    {{ strtoupper(substr($userName, 0, 1)) }}
+                                </div>
+                                <span class="flex-1 text-left font-medium text-gray-900 dark:text-gray-100">{{ $userName
+                                    }}</span>
+                                @if($isAssigned)
+                                <div
+                                    class="w-10 h-10 bg-green-100 dark:bg-green-900/40 rounded-full flex items-center justify-center">
+                                    <x-heroicon-s-check class="w-6 h-6 text-green-600 dark:text-green-400" />
+                                </div>
+                                @else
+                                <div
+                                    class="w-10 h-10 bg-gray-200 dark:bg-gray-600 rounded-full flex items-center justify-center">
+                                    <x-heroicon-o-plus class="w-5 h-5 text-gray-400" />
+                                </div>
+                                @endif
+                            </button>
+                            @endforeach
+                        </div>
+                    </div>
+                </template>
+            </div>
+
+            {{-- Project & Due Date Row --}}
+            {{-- MOBILE VIEW - Project & Due Date Section (< 768px) --}} <div class="block md:hidden w-full">
+                {{-- Project Section - Full Width Button --}}
+                <div x-data="{ projectOpen: false }">
+                    <button @click="projectOpen = !projectOpen" class="w-full flex items-center gap-3 px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-700 
+                   hover:border-primary-300 dark:hover:border-primary-600 bg-white dark:bg-gray-800 
+                   shadow-sm hover:shadow-md transition-all active:scale-98">
+                        @if($task->project)
+                        <div
+                            class="w-12 h-12 bg-gradient-to-br from-indigo-500 to-purple-500 rounded-xl flex items-center justify-center flex-shrink-0 shadow-sm">
+                            <x-heroicon-o-folder class="w-6 h-6 text-white" />
+                        </div>
+                        <div class="flex-1 text-left min-w-0">
+                            <p class="text-xs font-medium text-gray-500 dark:text-gray-400 mb-0.5">Project</p>
+                            <p class="text-sm font-bold text-gray-900 dark:text-gray-100 truncate">
+                                {{ $task->project->name }}
+                            </p>
+                            <p class="text-xs text-gray-500 dark:text-gray-400 truncate">
+                                {{ $task->project->client->name ?? 'Client' }}
+                            </p>
+                        </div>
+                        @else
+                        <div
+                            class="w-12 h-12 bg-gray-100 dark:bg-gray-700 border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-xl flex items-center justify-center flex-shrink-0">
+                            <x-heroicon-o-folder-plus class="w-6 h-6 text-gray-400 dark:text-gray-500" />
+                        </div>
+                        <div class="flex-1 text-left">
+                            <p class="text-sm font-semibold text-gray-500 dark:text-gray-400">Add to project</p>
+                            <p class="text-xs text-gray-400 dark:text-gray-500">Tap to select or create</p>
+                        </div>
+                        @endif
+                        <x-heroicon-o-chevron-right class="w-5 h-5 text-gray-400 dark:text-gray-500 flex-shrink-0" />
+                    </button>
+
+                    {{-- Project Modal - Full Screen Bottom Sheet --}}
+                    <template x-teleport="body">
+                        {{-- Backdrop Overlay --}}
+                        <div x-show="projectOpen" x-cloak x-transition:enter="transition ease-out duration-300"
+                            x-transition:enter-start="opacity-0" x-transition:enter-end="opacity-100"
+                            x-transition:leave="transition ease-in duration-200" x-transition:leave-start="opacity-100"
+                            x-transition:leave-end="opacity-0"
+                            class="fixed inset-0 bg-black/60 backdrop-blur-sm z-[9998]" @click="projectOpen = false">
+                        </div>
+
+                        {{-- Bottom Sheet Modal --}}
+                        <div x-show="projectOpen" x-cloak @click.away="projectOpen = false"
+                            x-transition:enter="transition ease-out duration-300"
+                            x-transition:enter-start="translate-y-full" x-transition:enter-end="translate-y-0"
+                            x-transition:leave="transition ease-in duration-200"
+                            x-transition:leave-start="translate-y-0" x-transition:leave-end="translate-y-full" class="fixed inset-x-0 bottom-0 bg-white dark:bg-gray-800 rounded-t-3xl shadow-2xl 
+                       z-[9999] max-h-[90vh] flex flex-col">
+
+                            {{-- Drag Handle Bar --}}
+                            <div class="flex justify-center pt-4 pb-2 flex-shrink-0">
+                                <div class="w-12 h-1.5 bg-gray-300 dark:bg-gray-600 rounded-full"></div>
+                            </div>
+
+                            {{-- Modal Header --}}
+                            <div class="px-5 pb-4 border-b border-gray-200 dark:border-gray-700 flex-shrink-0">
+                                <div class="flex items-center justify-between">
+                                    <div class="flex items-center gap-3">
+                                        <div
+                                            class="w-10 h-10 bg-gradient-to-br from-indigo-500 to-purple-500 rounded-xl flex items-center justify-center">
+                                            <x-heroicon-o-building-office class="w-5 h-5 text-white" />
+                                        </div>
+                                        <div>
+                                            <h3 class="text-lg font-bold text-gray-900 dark:text-gray-100">Select
+                                                Project</h3>
+                                            <p class="text-xs text-gray-500 dark:text-gray-400">Choose from list or
+                                                create new</p>
+                                        </div>
+                                    </div>
+                                    <button @click="projectOpen = false"
+                                        class="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-xl transition-colors active:scale-95">
+                                        <x-heroicon-o-x-mark class="w-6 h-6 text-gray-500 dark:text-gray-400" />
+                                    </button>
+                                </div>
+                            </div>
+
+                            {{-- Scrollable Content Area --}}
+                            <div class="flex-1 overflow-y-auto overscroll-contain">
+                                {{-- Remove Project Option --}}
+                                <div
+                                    class="p-4 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/50">
+                                    <button wire:click="updateProject(null)" @click="projectOpen = false"
+                                        class="w-full flex items-center gap-3 p-4 rounded-xl transition-all active:scale-98
+                                   {{ !$task->project_id 
+                                       ? 'bg-red-50 dark:bg-red-900/30 border-2 border-red-500 dark:border-red-400 shadow-sm' 
+                                       : 'bg-white dark:bg-gray-800 border-2 border-transparent hover:border-red-300 dark:hover:border-red-700' }}">
+                                        <div
+                                            class="w-12 h-12 bg-red-100 dark:bg-red-900/40 rounded-xl flex items-center justify-center flex-shrink-0">
+                                            <x-heroicon-o-minus-circle class="w-6 h-6 text-red-600 dark:text-red-400" />
+                                        </div>
+                                        <span
+                                            class="flex-1 text-left text-base font-bold text-gray-900 dark:text-gray-100">Remove
+                                            Project</span>
+                                        @if(!$task->project_id)
+                                        <div
+                                            class="w-8 h-8 bg-red-600 dark:bg-red-500 rounded-full flex items-center justify-center">
+                                            <x-heroicon-s-check class="w-5 h-5 text-white" />
+                                        </div>
+                                        @endif
+                                    </button>
+                                </div>
+
+                                {{-- Client Selection Section --}}
+                                <div class="p-5 bg-gradient-to-b from-gray-50 to-white dark:from-gray-900/50 dark:to-gray-800 
+                                border-b border-gray-200 dark:border-gray-700">
+                                    <label
+                                        class="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-3 flex items-center gap-2">
+                                        <x-heroicon-o-users class="w-5 h-5" />
+                                        Select Client First:
+                                    </label>
+                                    <select wire:model.live="selectedClientId" class="w-full px-4 py-3.5 text-base font-medium border-2 border-gray-300 dark:border-gray-600 
+                                   rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500 
+                                   dark:bg-gray-800 dark:text-gray-100 bg-white shadow-sm transition-all">
+                                        <option value="">-- Choose a client --</option>
+                                        @foreach($this->getClientOptions() as $clientId => $clientName)
+                                        <option value="{{ $clientId }}">{{ $clientName }}</option>
+                                        @endforeach
+                                    </select>
+
+                                    {{-- Create Project Button - Show when client selected --}}
+                                    @if($selectedClientId)
+                                    <button wire:click="redirectToCreateProject" @click="projectOpen = false" class="w-full mt-3 inline-flex items-center justify-center gap-2 px-5 py-3.5 text-base font-bold 
+                                   bg-gradient-to-r from-primary-600 to-primary-700 hover:from-primary-700 hover:to-primary-800 
+                                   text-white rounded-xl transition-all shadow-md hover:shadow-lg active:scale-98">
+                                        <x-heroicon-o-plus class="w-5 h-5" />
+                                        Create New Project
+                                    </button>
+                                    <p class="text-xs text-center text-gray-500 dark:text-gray-400 mt-2">
+                                        Can't find your project? Create one now
+                                    </p>
+                                    @endif
+                                </div>
+
+                                {{-- Projects List --}}
+                                @if($selectedClientId)
+                                @php $projects = $this->getProjectOptions(); @endphp
+
+                                @if(!empty($projects))
+                                <div class="p-4 space-y-2">
+                                    <p
+                                        class="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider px-2 mb-3 flex items-center gap-2">
+                                        <x-heroicon-o-rectangle-stack class="w-4 h-4" />
+                                        Available Projects ({{ count($projects) }})
+                                    </p>
+
+                                    @foreach($projects as $projectId => $projectName)
+                                    <button wire:click="updateProject({{ $projectId }})" @click="projectOpen = false"
+                                        class="w-full flex items-center gap-3 p-4 rounded-xl transition-all active:scale-98
+                                       {{ $task->project_id == $projectId 
+                                           ? 'bg-primary-50 dark:bg-primary-900/30 border-2 border-primary-500 dark:border-primary-400 shadow-sm' 
+                                           : 'bg-gray-50 dark:bg-gray-700/50 border-2 border-transparent hover:border-primary-300 dark:hover:border-primary-600' }}">
+                                        <div class="w-14 h-14 bg-gradient-to-br from-indigo-500 to-purple-500 rounded-xl 
+                                            flex items-center justify-center flex-shrink-0 shadow-sm">
+                                            <x-heroicon-o-folder class="w-7 h-7 text-white" />
+                                        </div>
+                                        <div class="flex-1 text-left min-w-0">
+                                            <p
+                                                class="font-bold text-base text-gray-900 dark:text-gray-100 truncate mb-0.5">
+                                                {{ $projectName }}
+                                            </p>
+                                            <p
+                                                class="text-xs text-gray-500 dark:text-gray-400 truncate flex items-center gap-1">
+                                                <x-heroicon-o-building-office class="w-3 h-3" />
+                                                {{ $this->getClientOptions()[$selectedClientId] }}
+                                            </p>
+                                        </div>
+                                        @if($task->project_id == $projectId)
+                                        <div
+                                            class="w-10 h-10 bg-primary-600 dark:bg-primary-500 rounded-full flex items-center justify-center flex-shrink-0">
+                                            <x-heroicon-s-check class="w-6 h-6 text-white" />
+                                        </div>
+                                        @else
+                                        <div
+                                            class="w-10 h-10 bg-gray-200 dark:bg-gray-600 rounded-full flex items-center justify-center flex-shrink-0">
+                                            <x-heroicon-o-arrow-right class="w-5 h-5 text-gray-400" />
+                                        </div>
+                                        @endif
+                                    </button>
+                                    @endforeach
+                                </div>
+                                @else
+                                {{-- Empty State - No Projects --}}
+                                <div class="p-8 text-center">
+                                    <div class="w-24 h-24 bg-gradient-to-br from-gray-100 to-gray-200 dark:from-gray-700 dark:to-gray-600 
+                                        rounded-3xl flex items-center justify-center mx-auto mb-4 shadow-inner">
+                                        <x-heroicon-o-folder-open class="w-12 h-12 text-gray-400 dark:text-gray-500" />
+                                    </div>
+                                    <p class="text-lg font-bold text-gray-900 dark:text-gray-100 mb-2">No projects yet
+                                    </p>
+                                    <p class="text-sm text-gray-500 dark:text-gray-400 mb-6 px-4">
+                                        Create your first project for {{ $this->getClientOptions()[$selectedClientId] ??
+                                        'this client' }}
+                                    </p>
+                                    <button wire:click="redirectToCreateProject" @click="projectOpen = false" class="inline-flex items-center gap-2 px-6 py-3.5 text-base font-bold 
+                                       bg-gradient-to-r from-primary-600 to-primary-700 hover:from-primary-700 hover:to-primary-800 
+                                       text-white rounded-xl transition-all shadow-md hover:shadow-lg active:scale-95">
+                                        <x-heroicon-o-plus class="w-5 h-5" />
+                                        Create Project
+                                    </button>
+                                </div>
+                                @endif
+                                @else
+                                {{-- Empty State - No Client Selected --}}
+                                <div class="p-8 text-center">
+                                    <div class="w-24 h-24 bg-gradient-to-br from-gray-100 to-gray-200 dark:from-gray-700 dark:to-gray-600 
+                                    rounded-3xl flex items-center justify-center mx-auto mb-4 shadow-inner">
+                                        <x-heroicon-o-building-office
+                                            class="w-12 h-12 text-gray-400 dark:text-gray-500" />
+                                    </div>
+                                    <p class="text-lg font-bold text-gray-900 dark:text-gray-100 mb-2">Select a client
+                                    </p>
+                                    <p class="text-sm text-gray-500 dark:text-gray-400 px-4">
+                                        Choose a client from the dropdown above to see their projects
+                                    </p>
+                                </div>
+                                @endif
+                            </div>
+                        </div>
+                    </template>
+                </div>
+
+                {{-- Due Date Section - Full Width Button --}}
+                <div x-data="{ dateOpen: false }" class="mt-3">
+                    @php
+                    $isOverdue = $task->task_date->isPast() && $task->status !== 'completed';
+                    $isToday = $task->task_date->isToday();
+                    $isTomorrow = $task->task_date->isTomorrow();
+                    $isYesterday = $task->task_date->isYesterday();
+                    @endphp
+
+                    <button @click="dateOpen = !dateOpen"
+                        class="w-full flex items-center gap-3 px-4 py-3 rounded-xl shadow-sm hover:shadow-md transition-all active:scale-98
+                        {{ $isOverdue 
+                        ? 'bg-red-50 dark:bg-red-900/30 border-2 border-red-200 dark:border-red-700 hover:bg-red-100 dark:hover:bg-red-900/40' 
+                       : ($isToday 
+                           ? 'bg-yellow-50 dark:bg-yellow-900/30 border-2 border-yellow-200 dark:border-yellow-700 hover:bg-yellow-100 dark:hover:bg-yellow-900/40' 
+                           : 'bg-white dark:bg-gray-800 border-2 border-gray-200 dark:border-gray-700 hover:border-primary-300 dark:hover:border-primary-600') }}">
+                        <div class="w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0 shadow-sm
+                            {{ $isOverdue 
+                            ? 'bg-red-100 dark:bg-red-900/40' 
+                            : ($isToday 
+                                ? 'bg-yellow-100 dark:bg-yellow-900/40' 
+                                : 'bg-gray-100 dark:bg-gray-700') }}">
+                            <x-heroicon-o-calendar-days class="w-6 h-6 
+                                {{ $isOverdue 
+                                ? 'text-red-600 dark:text-red-400' 
+                                : ($isToday 
+                                    ? 'text-yellow-600 dark:text-yellow-400' 
+                                    : 'text-gray-500 dark:text-gray-400') }}" />
+                        </div>
+                        <div class="flex-1 text-left">
+                            <p class="text-xs font-medium text-gray-500 dark:text-gray-400 mb-0.5">Due Date</p>
+                            <p class="text-sm font-bold 
+                                {{ $isOverdue 
+                                    ? 'text-red-700 dark:text-red-300' 
+                                    : ($isToday 
+                                        ? 'text-yellow-700 dark:text-yellow-300' 
+                                        : 'text-gray-900 dark:text-gray-100') }}">
+                                @if($isToday)
+                                Today
+                                @elseif($isTomorrow)
+                                Tomorrow
+                                @elseif($isYesterday)
+                                Yesterday
+                                @else
+                                {{ $task->task_date->format('l') }}
+                                @endif
+                            <p class="text-xs text-gray-500 dark:text-gray-400">
+                                {{ $task->task_date->format('M d, Y') }}
+                                @if($isOverdue)
+                                <span class="text-red-600 dark:text-red-400 font-semibold">• Overdue!</span>
+                                @endif
+                            </p>
+                        </div>
+                        <x-heroicon-o-chevron-right class="w-5 h-5 text-gray-400 dark:text-gray-500 flex-shrink-0" />
+                    </button>
+
+                    {{-- Date Picker Modal - Full Screen Bottom Sheet --}}
+                    <template x-teleport="body">
+                        {{-- Backdrop Overlay --}}
+                        <div x-show="dateOpen" x-cloak x-transition:enter="transition ease-out duration-300"
+                            x-transition:enter-start="opacity-0" x-transition:enter-end="opacity-100"
+                            x-transition:leave="transition ease-in duration-200" x-transition:leave-start="opacity-100"
+                            x-transition:leave-end="opacity-0"
+                            class="fixed inset-0 bg-black/60 backdrop-blur-sm z-[9998]" @click="dateOpen = false">
+                        </div>
+
+                        {{-- Bottom Sheet Modal --}}
+                        <div x-show="dateOpen" x-cloak @click.away="dateOpen = false"
+                            x-transition:enter="transition ease-out duration-300"
+                            x-transition:enter-start="translate-y-full" x-transition:enter-end="translate-y-0"
+                            x-transition:leave="transition ease-in duration-200"
+                            x-transition:leave-start="translate-y-0" x-transition:leave-end="translate-y-full" class="fixed inset-x-0 bottom-0 bg-white dark:bg-gray-800 rounded-t-3xl shadow-2xl 
+                       z-[9999] max-h-[90vh] flex flex-col">
+
+                            {{-- Drag Handle Bar --}}
+                            <div class="flex justify-center pt-4 pb-2 flex-shrink-0">
+                                <div class="w-12 h-1.5 bg-gray-300 dark:bg-gray-600 rounded-full"></div>
+                            </div>
+
+                            {{-- Modal Header --}}
+                            <div class="px-5 pb-4 border-b border-gray-200 dark:border-gray-700 flex-shrink-0">
+                                <div class="flex items-center justify-between">
+                                    <div class="flex items-center gap-3">
+                                        <div
+                                            class="w-10 h-10 bg-gradient-to-br from-blue-500 to-indigo-500 rounded-xl flex items-center justify-center">
+                                            <x-heroicon-o-calendar-days class="w-5 h-5 text-white" />
+                                        </div>
+                                        <div>
+                                            <h3 class="text-lg font-bold text-gray-900 dark:text-gray-100">Change Due
+                                                Date</h3>
+                                            <p class="text-xs text-gray-500 dark:text-gray-400">Select a new date for
+                                                this task</p>
+                                        </div>
+                                    </div>
+                                    <button @click="dateOpen = false"
+                                        class="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-xl transition-colors active:scale-95">
+                                        <x-heroicon-o-x-mark class="w-6 h-6 text-gray-500 dark:text-gray-400" />
+                                    </button>
+                                </div>
+                            </div>
+
+                            {{-- Scrollable Content Area --}}
+                            <div class="flex-1 overflow-y-auto overscroll-contain">
+                                {{-- Date Picker Form --}}
+                                <div class="p-5 bg-gray-50 dark:bg-gray-900/50">
+                                    {{ $this->dueDateForm }}
+                                </div>
+
+                                {{-- Quick Date Options --}}
+                                <div class="p-5">
+                                    <p
+                                        class="text-sm font-bold text-gray-700 dark:text-gray-300 mb-4 flex items-center gap-2">
+                                        <x-heroicon-o-bolt class="w-4 h-4" />
+                                        Quick Select:
+                                    </p>
+                                    <div class="grid grid-cols-2 gap-3">
+                                        <button wire:click="updateTaskDate('{{ today()->format('Y-m-d') }}')"
+                                            @click="dateOpen = false"
+                                            class="flex flex-col items-center justify-center p-4 rounded-2xl border-2 transition-all active:scale-95
+                                            {{ $isToday 
+                                           ? 'bg-primary-50 dark:bg-primary-900/30 border-primary-500 dark:border-primary-400 shadow-md' 
+                                           : 'bg-gray-50 dark:bg-gray-700/50 border-gray-200 dark:border-gray-600 hover:border-primary-300 dark:hover:border-primary-600 hover:shadow-sm' }}">
+                                            <div
+                                                class="w-12 h-12 rounded-xl flex items-center justify-center mb-2
+                                            {{ $isToday ? 'bg-primary-500 dark:bg-primary-600' : 'bg-gray-200 dark:bg-gray-600' }}">
+                                                <x-heroicon-o-calendar
+                                                    class="w-6 h-6 {{ $isToday ? 'text-white' : 'text-gray-500' }}" />
+                                            </div>
+                                            <span
+                                                class="text-sm font-bold text-gray-900 dark:text-gray-100">Today</span>
+                                            <span class="text-xs text-gray-500 dark:text-gray-400 mt-1">{{
+                                                today()->format('M d') }}</span>
+                                        </button>
+
+                                        <button wire:click="updateTaskDate('{{ today()->addDay()->format('Y-m-d') }}')"
+                                            @click="dateOpen = false"
+                                            class="flex flex-col items-center justify-center p-4 rounded-2xl border-2 transition-all active:scale-95
+                                       {{ $isTomorrow 
+                                           ? 'bg-primary-50 dark:bg-primary-900/30 border-primary-500 dark:border-primary-400 shadow-md' 
+                                           : 'bg-gray-50 dark:bg-gray-700/50 border-gray-200 dark:border-gray-600 hover:border-primary-300 dark:hover:border-primary-600 hover:shadow-sm' }}">
+                                            <div
+                                                class="w-12 h-12 rounded-xl flex items-center justify-center mb-2
+                                    {{ $isTomorrow ? 'bg-primary-500 dark:bg-primary-600' : 'bg-gray-200 dark:bg-gray-600' }}">
+                                                <x-heroicon-o-calendar-days
+                                                    class="w-6 h-6 {{ $isTomorrow ? 'text-white' : 'text-gray-500' }}" />
+                                            </div>
+                                            <span
+                                                class="text-sm font-bold text-gray-900 dark:text-gray-100">Tomorrow</span>
+                                            <span class="text-xs text-gray-500 dark:text-gray-400 mt-1">{{
+                                                today()->addDay()->format('M d') }}</span>
+                                        </button>
+
+                                        <button
+                                            wire:click="updateTaskDate('{{ today()->addDays(7)->format('Y-m-d') }}')"
+                                            @click="dateOpen = false" class="flex flex-col items-center justify-center p-4 rounded-2xl border-2 transition-all active:scale-95
+                                       bg-gray-50 dark:bg-gray-700/50 border-gray-200 dark:border-gray-600 
+                                       hover:border-primary-300 dark:hover:border-primary-600 hover:shadow-sm">
+                                            <div
+                                                class="w-12 h-12 bg-gray-200 dark:bg-gray-600 rounded-xl flex items-center justify-center mb-2">
+                                                <x-heroicon-o-arrow-right
+                                                    class="w-6 h-6 text-gray-500 dark:text-gray-400" />
+                                            </div>
+                                            <span class="text-sm font-bold text-gray-900 dark:text-gray-100">Next
+                                                Week</span>
+                                            <span class="text-xs text-gray-500 dark:text-gray-400 mt-1">{{
+                                                today()->addDays(7)->format('M d') }}</span>
+                                        </button>
+
+                                        <button
+                                            wire:click="updateTaskDate('{{ today()->addMonth()->format('Y-m-d') }}')"
+                                            @click="dateOpen = false" class="flex flex-col items-center justify-center p-4 rounded-2xl border-2 transition-all active:scale-95
+                                       bg-gray-50 dark:bg-gray-700/50 border-gray-200 dark:border-gray-600 
+                                       hover:border-primary-300 dark:hover:border-primary-600 hover:shadow-sm">
+                                            <div
+                                                class="w-12 h-12 bg-gray-200 dark:bg-gray-600 rounded-xl flex items-center justify-center mb-2">
+                                                <x-heroicon-o-forward
+                                                    class="w-6 h-6 text-gray-500 dark:text-gray-400" />
+                                            </div>
+                                            <span class="text-sm font-bold text-gray-900 dark:text-gray-100">Next
+                                                Month</span>
+                                            <span class="text-xs text-gray-500 dark:text-gray-400 mt-1">{{
+                                                today()->addMonth()->format('M d') }}</span>
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </template>
+                </div>
+        </div>
+    </div>
+</div>
 </div>

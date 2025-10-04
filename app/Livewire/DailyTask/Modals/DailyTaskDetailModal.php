@@ -14,6 +14,7 @@ use Filament\Notifications\Notification;
 use Filament\Actions\Concerns\InteractsWithActions;
 use Filament\Actions\Contracts\HasActions;
 use Filament\Actions;
+use Spatie\Activitylog\Models\Activity;
 
 class DailyTaskDetailModal extends Component implements HasForms, HasActions
 {
@@ -31,14 +32,8 @@ class DailyTaskDetailModal extends Component implements HasForms, HasActions
     public ?array $taskEditData = [];
     public ?array $descriptionData = [];
 
-    // Initialize properties
-    protected function initializeProperties()
-    {
-        $this->editingTitle = false;
-        $this->editingDescription = false;
-        $this->taskEditData = [];
-        $this->descriptionData = [];
-    }
+    // Tab management
+    public string $activeTab = 'comments';
 
     protected $listeners = [
         'openTaskDetailModal' => 'openModal',
@@ -146,11 +141,11 @@ class DailyTaskDetailModal extends Component implements HasForms, HasActions
 
     public function mount(): void
     {
-        // Initialize properties
         $this->editingTitle = false;
         $this->editingDescription = false;
         $this->taskEditData = [];
         $this->descriptionData = [];
+        $this->activeTab = 'comments';
         
         $this->commentForm->fill();
         $this->newSubtaskForm->fill(['title' => '']);
@@ -167,15 +162,15 @@ class DailyTaskDetailModal extends Component implements HasForms, HasActions
         ])->find($taskId);
         
         if ($this->task) {
-            // Initialize task edit form with just title
             $this->taskEditForm->fill([
                 'title' => $this->task->title,
             ]);
             
-            // Initialize description form separately
             $this->descriptionForm->fill([
                 'description' => $this->task->description,
             ]);
+            
+            $this->activeTab = 'comments';
             
             $this->dispatch('open-modal', id: 'task-detail-modal');
         }
@@ -188,13 +183,18 @@ class DailyTaskDetailModal extends Component implements HasForms, HasActions
         $this->editingDescription = false;
         $this->taskEditData = [];
         $this->descriptionData = [];
+        $this->activeTab = 'comments';
         $this->dispatch('close-modal', id: 'task-detail-modal');
+    }
+
+    public function switchTab(string $tab): void
+    {
+        $this->activeTab = $tab;
     }
 
     public function startEditTitle(): void
     {
         $this->editingTitle = true;
-        // Re-populate the form with current title
         $this->taskEditForm->fill([
             'title' => $this->task->title,
         ]);
@@ -221,7 +221,6 @@ class DailyTaskDetailModal extends Component implements HasForms, HasActions
     public function cancelEditTitle(): void
     {
         $this->editingTitle = false;
-        // Reset form to original title
         $this->taskEditForm->fill([
             'title' => $this->task->title,
         ]);
@@ -230,7 +229,6 @@ class DailyTaskDetailModal extends Component implements HasForms, HasActions
     public function startEditDescription(): void
     {
         $this->editingDescription = true;
-        // Re-populate the form with current description
         $this->descriptionForm->fill([
             'description' => $this->task->description,
         ]);
@@ -257,7 +255,6 @@ class DailyTaskDetailModal extends Component implements HasForms, HasActions
     public function cancelEditDescription(): void
     {
         $this->editingDescription = false;
-        // Reset form to original description
         $this->descriptionForm->fill([
             'description' => $this->task->description,
         ]);
@@ -430,6 +427,20 @@ class DailyTaskDetailModal extends Component implements HasForms, HasActions
             ->send();
     }
 
+    /**
+     * Get activity logs for this task
+     */
+    public function getActivityLogs()
+    {
+        if (!$this->task) return collect();
+
+        return Activity::where('subject_type', DailyTask::class)
+            ->where('subject_id', $this->task->id)
+            ->with('causer')
+            ->orderBy('created_at', 'desc')
+            ->get();
+    }
+
     public function getStatusOptions(): array
     {
         return [
@@ -471,13 +482,14 @@ class DailyTaskDetailModal extends Component implements HasForms, HasActions
                     ->success()
                     ->send();
                 
-                // Redirect ke Filament page
                 return $this->redirect('/daily-task-list');
             });
     }
 
     public function render()
     {
-        return view('livewire.daily-task.modals.daily-task-detail-modal');
+        return view('livewire.daily-task.modals.daily-task-detail-modal', [
+            'activityLogs' => $this->getActivityLogs(),
+        ]);
     }
 }

@@ -3,6 +3,7 @@
 namespace App\Livewire\DailyTask\Components;
 
 use App\Models\DailyTask;
+use App\Models\DailyTaskSubtask;
 use App\Models\Project;
 use App\Models\User;
 use Livewire\Component;
@@ -333,16 +334,7 @@ class DailyTaskItem extends Component implements HasForms
     }
 
     public function redirectToCreateProject(): void
-    {
-        if (!$this->selectedClientId) {
-            Notification::make()
-                ->title('Client Required')
-                ->body('Pilih client terlebih dahulu untuk membuat project')
-                ->warning()
-                ->send();
-            return;
-        }
-        
+    {  
         // Redirect ke halaman create project dengan pre-filled client
         $this->redirect($this->getCreateProjectUrl());
     }

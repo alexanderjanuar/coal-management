@@ -164,13 +164,11 @@
             <div class="space-y-6">
                 @forelse($groupedTasks as $groupName => $tasks)
                 {{-- Individual Group Card --}}
-                <div class="bg-white dark:bg-gray-800 rounded-2xl border-2 border-gray-200 dark:border-gray-700 
-                            overflow-hidden dark:shadow-xl dark:shadow-gray-900/30 
-                            hover:border-gray-300 dark:hover:border-gray-600 transition-all duration-300"
+                <div class=" transition-all duration-300"
                     x-data="{ collapsed: false }">
 
                     {{-- Enhanced Group Header --}}
-                    <div class="relative bg-white dark:bg-gray-800 px-6 py-4 border-b border-gray-200 dark:border-gray-600">
+                    <div class="relative px-6 py-4">
                         {{-- Header Content --}}
                         <div class="flex items-center justify-between">
                             <div class="flex items-center gap-4">
@@ -411,7 +409,8 @@
                                 'assignee' => 'from-blue-400 via-blue-500 to-blue-400 dark:from-blue-500 dark:via-blue-400 dark:to-blue-500',
                                 'date' => 'from-purple-400 via-purple-500 to-purple-400 dark:from-purple-500 dark:via-purple-400 dark:to-purple-500',
                                 default => 'from-gray-300 via-gray-400 to-gray-300 dark:from-gray-600 dark:via-gray-500 dark:to-gray-600'
-                            } }}"></div>
+                            } }}">
+                        </div>
                     </div>
 
                     {{-- Group Content with Horizontal Scroll --}}
@@ -445,7 +444,7 @@
                                 {{-- Group Tasks --}}
                                 <div class="divide-y divide-gray-100 dark:divide-gray-700">
                                     @foreach($tasks as $task)
-                                    <div class="px-6 py-4 hover:bg-gradient-to-r hover:from-primary-50 hover:to-transparent 
+                                    <div class="hover:bg-gradient-to-r hover:from-primary-50 hover:to-transparent 
                                                dark:hover:from-primary-900/20 dark:hover:to-transparent transition-all duration-200 
                                                group">
                                         <livewire:daily-task.components.daily-task-item :task="$task"
