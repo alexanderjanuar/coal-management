@@ -53,16 +53,15 @@ class DailyTaskListComponent extends Component
 
     public function mount(): void
     {
-        // Initialize default filters dengan filter untuk user saat ini dan task hari ini
         $this->currentFilters = [
             'search' => '',
-            'date' => today(), // Filter untuk task hari ini
+            'date' => null, // Hapus filter date default
             'date_start' => null,
             'date_end' => null,
             'status' => [],
             'priority' => [],
             'project' => [],
-            'assignee' => [auth()->id()], // Filter untuk user yang sedang login
+            'assignee' => [auth()->id()], // Filter hanya untuk user yang sedang login
             'group_by' => 'status',
             'view_mode' => 'list',
             'sort_by' => 'priority',
@@ -309,7 +308,16 @@ class DailyTaskListComponent extends Component
                     }
                     break;
                 case 'date':
-                    $groupValue = $task->task_date->format('M d, Y');
+                    // Group by date categories based on task_date (deadline)
+                    if ($task->status === 'completed') {
+                        $groupValue = 'Selesai';
+                    } elseif (!$task->task_date) {
+                        $groupValue = 'Tanpa Deadline';
+                    } elseif ($task->task_date->isPast()) {
+                        $groupValue = 'Terlambat';
+                    } else {
+                        $groupValue = 'Mendatang';
+                    }
                     break;
                 default:
                     $groupValue = 'All Tasks';
@@ -341,7 +349,14 @@ class DailyTaskListComponent extends Component
                     break;
                     
                 case 'date':
-                    return strcmp($a, $b);
+                    // Custom order for date groups
+                    $order = ['Terlambat', 'Mendatang', 'Tanpa Deadline', 'Selesai'];
+                    $aPos = array_search($a, $order);
+                    $bPos = array_search($b, $order);
+                    if ($aPos !== false && $bPos !== false) {
+                        return $aPos <=> $bPos;
+                    }
+                    break;
             }
             
             return strcasecmp($a, $b);
@@ -352,7 +367,7 @@ class DailyTaskListComponent extends Component
             $sorted = $sorted->map(function ($tasks) {
                 return $tasks->sortBy(function ($task) {
                     $priorityOrder = ['urgent' => 4, 'high' => 3, 'normal' => 2, 'low' => 1];
-                    return -($priorityOrder[$task->priority] ?? 0); // Negative untuk desc order
+                    return -($priorityOrder[$task->priority] ?? 0);
                 });
             });
         }
@@ -458,6 +473,7 @@ class DailyTaskListComponent extends Component
     {
         $defaults = [
             'task_date' => today(),
+            'start_task_date' => today(),
         ];
         
         switch ($groupType) {
@@ -494,11 +510,32 @@ class DailyTaskListComponent extends Component
                 break;
                 
             case 'date':
-                try {
-                    $date = Carbon::createFromFormat('M d, Y', $groupValue);
-                    $defaults['task_date'] = $date;
-                } catch (\Exception $e) {
-                    // Keep default date
+                // Set defaults based on date category
+                switch ($groupValue) {
+                    case 'Terlambat':
+                        // For overdue, set to yesterday
+                        $defaults['task_date'] = today()->subDay();
+                        $defaults['start_task_date'] = today();
+                        $defaults['status'] = 'pending';
+                        break;
+                    case 'Mendatang':
+                        // For future, set to tomorrow
+                        $defaults['task_date'] = today()->addDay();
+                        $defaults['start_task_date'] = today();
+                        $defaults['status'] = 'pending';
+                        break;
+                    case 'Tanpa Deadline':
+                        // For no due date, set task_date to null
+                        $defaults['task_date'] = null;
+                        $defaults['start_task_date'] = today();
+                        $defaults['status'] = 'pending';
+                        break;
+                    case 'Selesai':
+                        // For done, set status to completed
+                        $defaults['task_date'] = today();
+                        $defaults['start_task_date'] = today();
+                        $defaults['status'] = 'completed';
+                        break;
                 }
                 break;
         }
@@ -522,13 +559,71 @@ class DailyTaskListComponent extends Component
         $this->editingGroup = $groupKey;
         
         // Set default values based on group
+        $groupDefaults = $this->getDefaultsForGroup($groupType, $groupValue);
+        
+        // Get defaults from current filters
+        $filterDefaults = $this->getDefaultsFromFilters($groupType);
+        
+        // Merge: filter defaults first, then group defaults override
         $this->newTaskData[$groupKey] = array_merge([
             'title' => '',
             'task_date' => today(),
+            'start_task_date' => today(),
             'status' => 'pending',
             'priority' => 'normal',
             'project_id' => null,
-        ], $this->getDefaultsForGroup($groupType, $groupValue));
+            'assigned_users' => [],
+        ], $filterDefaults, $groupDefaults);
+    }
+
+    /**
+     * Get default values from current active filters (excluding group by field)
+     */
+    private function getDefaultsFromFilters(string $excludeGroupType): array
+    {
+        $defaults = [];
+        $filters = $this->currentFilters;
+        
+        // Apply assignee filter (if not grouping by assignee)
+        if ($excludeGroupType !== 'assignee' && !empty($filters['assignee'])) {
+            $defaults['assigned_users'] = $filters['assignee'];
+        }
+        
+        // Apply project filter (if not grouping by project)
+        if ($excludeGroupType !== 'project' && !empty($filters['project']) && count($filters['project']) === 1) {
+            $defaults['project_id'] = $filters['project'][0];
+        }
+        
+        // Apply status filter (if not grouping by status)
+        if ($excludeGroupType !== 'status' && !empty($filters['status']) && count($filters['status']) === 1) {
+            $defaults['status'] = $filters['status'][0];
+        }
+        
+        // Apply priority filter (if not grouping by priority)
+        if ($excludeGroupType !== 'priority' && !empty($filters['priority']) && count($filters['priority']) === 1) {
+            $defaults['priority'] = $filters['priority'][0];
+        }
+        
+        // Apply date filter (if not grouping by date)
+        if ($excludeGroupType !== 'date') {
+            if (!empty($filters['date'])) {
+                $date = $filters['date'];
+                if ($date instanceof \Carbon\Carbon) {
+                    $defaults['task_date'] = $date;
+                    $defaults['start_task_date'] = $date;
+                } elseif (is_string($date)) {
+                    try {
+                        $carbonDate = Carbon::parse($date);
+                        $defaults['task_date'] = $carbonDate;
+                        $defaults['start_task_date'] = $carbonDate;
+                    } catch (\Exception $e) {
+                        // Skip invalid dates
+                    }
+                }
+            }
+        }
+        
+        return $defaults;
     }
 
     /**
@@ -547,14 +642,21 @@ class DailyTaskListComponent extends Component
 
         $data = $this->newTaskData[$groupKey];
         
+        // Create task
         $task = DailyTask::create([
             'title' => $data['title'],
-            'status' => $data['status'],
-            'priority' => $data['priority'],
-            'task_date' => $data['task_date'],
-            'project_id' => $data['project_id'],
+            'status' => $data['status'] ?? 'pending',
+            'priority' => $data['priority'] ?? 'normal',
+            'task_date' => $data['task_date'] ?? today(),
+            'start_task_date' => $data['start_task_date'] ?? today(),
+            'project_id' => $data['project_id'] ?? null,
             'created_by' => auth()->id(),
         ]);
+
+        // Assign users if any
+        if (!empty($data['assigned_users']) && is_array($data['assigned_users'])) {
+            $task->assignedUsers()->sync($data['assigned_users']);
+        }
 
         // Clear the creating state
         unset($this->creatingNewTasks[$groupKey]);
