@@ -59,6 +59,50 @@ class UserClientResource extends Resource
                         ->placeholder('email@contoh.com')
                         ->label('Email'),
 
+                    Forms\Components\Select::make('user.department')
+                        ->label('Departemen')
+                        ->options([
+                            'Accounting' => 'Accounting',
+                            'Tax' => 'Tax',
+                            'Finance' => 'Finance',
+                            'HR' => 'Human Resources',
+                            'IT' => 'Information Technology',
+                            'Operations' => 'Operations',
+                            'Legal' => 'Legal',
+                            'Administration' => 'Administration',
+                        ])
+                        ->native(false)
+                        ->searchable()
+                        ->placeholder('Pilih departemen')
+                        ->helperText('Departemen tempat karyawan bekerja'),
+                    
+                    Forms\Components\Select::make('user.position')
+                        ->label('Jabatan')
+                        ->options([
+                            'Director' => 'Director',
+                            'Manager' => 'Manager',
+                            'Supervisor' => 'Supervisor',
+                            'Senior Staff' => 'Senior Staff',
+                            'Staff' => 'Staff',
+                            'Junior Staff' => 'Junior Staff',
+                            'Intern' => 'Intern',
+                        ])
+                        ->native(false)
+                        ->searchable()
+                        ->placeholder('Pilih jabatan')
+                        ->helperText('Jabatan karyawan di perusahaan'),
+                    
+                    Forms\Components\Select::make('user.status')
+                        ->label('Status')
+                        ->options([
+                            'active' => 'Aktif',
+                            'inactive' => 'Tidak Aktif',
+                        ])
+                        ->default('active')
+                        ->required()
+                        ->native(false)
+                        ->helperText('Status aktif/tidak aktif karyawan'),
+
                     Forms\Components\FileUpload::make('user.avatar_path')
                         ->label('Foto Avatar')
                         ->image()
@@ -149,25 +193,38 @@ class UserClientResource extends Resource
                     ->copyable()
                     ->sortable(),
                     
-                TextColumn::make('roles.name')
-                    ->label('Role')
+                TextColumn::make('department')
+                    ->label('Departemen')
+                    ->searchable()
+                    ->sortable()
+                    ->badge()
+                    ->color('info')
+                    ->default('-')
+                    ->toggleable(),
+
+                TextColumn::make('position')
+                    ->label('Jabatan')
+                    ->searchable()
+                    ->sortable()
+                    ->badge()
+                    ->color('primary')
+                    ->default('-')
+                    ->toggleable(),
+
+                TextColumn::make('status')
+                    ->label('Status')
                     ->badge()
                     ->color(fn(string $state): string => match ($state) {
-                        'project-manager' => 'success',
-                        'direktur' => 'warning',
-                        'staff' => 'info',
-                        'client' => 'primary',
-                        'verificator' => 'gray',
+                        'active' => 'success',
+                        'inactive' => 'danger',
                         default => 'gray',
                     })
                     ->formatStateUsing(fn(string $state): string => match ($state) {
-                        'project-manager' => 'Manajer Proyek',
-                        'direktur' => 'Direktur',
-                        'staff' => 'Staf',
-                        'client' => 'Klien',
-                        'verificator' => 'Verifikator',
+                        'active' => 'Aktif',
+                        'inactive' => 'Tidak Aktif',
                         default => $state,
-                    }),
+                    })
+                    ->sortable(),
                     
                 TextColumn::make('user_clients_count')
                     ->label('Klien yang Ditugaskan')
@@ -220,10 +277,235 @@ class UserClientResource extends Resource
                             });
                         }
                     })
-                    ->visible(fn() => !auth()->user()->hasRole('staff'))
+                    ->visible(fn() => !auth()->user()->hasRole('staff')),
+                
+                Tables\Filters\SelectFilter::make('department')
+                    ->label('Departemen')
+                    ->native(false)
+                    ->options([
+                        'Accounting' => 'Accounting',
+                        'Tax' => 'Tax',
+                        'Finance' => 'Finance',
+                        'HR' => 'Human Resources',
+                        'IT' => 'Information Technology',
+                        'Operations' => 'Operations',
+                        'Legal' => 'Legal',
+                        'Administration' => 'Administration',
+                    ])
+                    ->searchable(),
+
+                Tables\Filters\SelectFilter::make('position')
+                    ->label('Jabatan')
+                    ->native(false)
+                    ->options([
+                        'Director' => 'Director',
+                        'Manager' => 'Manager',
+                        'Supervisor' => 'Supervisor',
+                        'Senior Staff' => 'Senior Staff',
+                        'Staff' => 'Staff',
+                        'Junior Staff' => 'Junior Staff',
+                        'Intern' => 'Intern',
+                    ])
+                    ->searchable(),
+
+                Tables\Filters\SelectFilter::make('status')
+                    ->label('Status')
+                    ->native(false)
+                    ->options([
+                        'active' => 'Aktif',
+                        'inactive' => 'Tidak Aktif',
+                    ])
+                    ->default('active'),
             ])
+            ->recordClasses(fn (User $record) => match ($record->status) {
+                'inactive' => 'opacity-50 bg-gray-50',
+                default => null,
+            })
             ->actions([
                 Tables\Actions\ActionGroup::make([
+                    Tables\Actions\Action::make('edit')
+                        ->label('Edit')
+                        ->icon('heroicon-m-pencil')
+                        ->color('warning')
+                        ->modalHeading(fn($record) => "Edit Karyawan: {$record->name}")
+                        ->modalWidth('7xl')
+                        ->fillForm(function ($record): array {
+                            return [
+                                'name' => $record->name,
+                                'email' => $record->email,
+                                'department' => $record->department,
+                                'position' => $record->position,
+                                'status' => $record->status,
+                                'avatar_path' => $record->avatar_path,
+                                'avatar_url' => $record->avatar_url,
+                                'client_ids' => UserClient::where('user_id', $record->id)
+                                    ->pluck('client_id')
+                                    ->toArray(),
+                            ];
+                        })
+                        ->form([
+                            Forms\Components\Section::make('Detail Pengguna')
+                                ->schema([
+                                    Forms\Components\TextInput::make('name')
+                                        ->required()
+                                        ->placeholder('Masukkan nama lengkap')
+                                        ->maxLength(255)
+                                        ->label('Nama'),
+
+                                    Forms\Components\TextInput::make('email')
+                                        ->email()
+                                        ->required()
+                                        ->placeholder('email@contoh.com')
+                                        ->label('Email'),
+
+                                    Forms\Components\Select::make('department')
+                                        ->label('Departemen')
+                                        ->options([
+                                            'Accounting' => 'Accounting',
+                                            'Tax' => 'Tax',
+                                            'Finance' => 'Finance',
+                                            'HR' => 'Human Resources',
+                                            'IT' => 'Information Technology',
+                                            'Operations' => 'Operations',
+                                            'Legal' => 'Legal',
+                                            'Administration' => 'Administration',
+                                        ])
+                                        ->native(false)
+                                        ->searchable()
+                                        ->placeholder('Pilih departemen')
+                                        ->helperText('Departemen tempat karyawan bekerja'),
+
+                                    Forms\Components\Select::make('position')
+                                        ->label('Jabatan')
+                                        ->options([
+                                            'Director' => 'Director',
+                                            'Manager' => 'Manager',
+                                            'Supervisor' => 'Supervisor',
+                                            'Senior Staff' => 'Senior Staff',
+                                            'Staff' => 'Staff',
+                                            'Junior Staff' => 'Junior Staff',
+                                            'Intern' => 'Intern',
+                                        ])
+                                        ->native(false)
+                                        ->searchable()
+                                        ->placeholder('Pilih jabatan')
+                                        ->helperText('Jabatan karyawan di perusahaan'),
+
+                                    Forms\Components\Select::make('status')
+                                        ->label('Status')
+                                        ->options([
+                                            'active' => 'Aktif',
+                                            'inactive' => 'Tidak Aktif',
+                                        ])
+                                        ->default('active')
+                                        ->required()
+                                        ->native(false)
+                                        ->helperText('Status aktif/tidak aktif karyawan')
+                                        ->columnSpanFull(),
+                                ])
+                                ->columns(2),
+
+                            Forms\Components\Section::make('Avatar')
+                                ->schema([
+                                    Forms\Components\FileUpload::make('avatar_path')
+                                        ->label('Foto Avatar')
+                                        ->image()
+                                        ->imageEditor()
+                                        ->disk('public')
+                                        ->directory('avatars')
+                                        ->visibility('public')
+                                        ->imageResizeMode('cover')
+                                        ->imageCropAspectRatio('1:1')
+                                        ->imageResizeTargetWidth('300')
+                                        ->imageResizeTargetHeight('300')
+                                        ->maxSize(5120)
+                                        ->acceptedFileTypes(['image/jpeg', 'image/png', 'image/gif', 'image/webp'])
+                                        ->helperText('Unggah dan edit file gambar (maksimal 5MB).'),
+
+                                ])
+                                ->columns(1)
+                                ->collapsible(),
+
+                            Forms\Components\Section::make('Kata Sandi')
+                                ->schema([
+                                    Forms\Components\TextInput::make('password')
+                                        ->password()
+                                        ->dehydrated(fn($state) => filled($state))
+                                        ->revealable()
+                                        ->autocomplete('new-password')
+                                        ->label('Kata Sandi Baru')
+                                        ->helperText('Kosongkan jika tidak ingin mengubah kata sandi'),
+                                ])
+                                ->columns(1)
+                                ->collapsible(),
+
+                            Forms\Components\Section::make('Penugasan Klien')
+                                ->schema([
+                                    Forms\Components\Select::make('client_ids')
+                                        ->multiple()
+                                        ->searchable()
+                                        ->label('Klien')
+                                        ->preload()
+                                        ->required()
+                                        ->loadingMessage('Memuat klien...')
+                                        ->optionsLimit(50)
+                                        ->options(fn() => !auth()->user()->hasRole('super-admin')
+                                            ? \App\Models\Client::where('id', auth()->user()->userClients()->first()->client_id)->pluck('name', 'id')
+                                            : \App\Models\Client::pluck('name', 'id')),
+                                ])
+                                ->columns(1)
+                        ])
+                        ->action(function (array $data, User $record): void {
+                            // Update user data
+                            $updateData = [
+                                'name' => $data['name'],
+                                'email' => $data['email'],
+                                'department' => $data['department'] ?? null,
+                                'position' => $data['position'] ?? null,
+                                'status' => $data['status'] ?? 'active',
+                            ];
+
+                            // Handle avatar_path
+                            if (isset($data['avatar_path']) && $data['avatar_path']) {
+                                $record->deleteOldAvatar();
+                                $updateData['avatar_path'] = $data['avatar_path'];
+                                $updateData['avatar_url'] = 'storage/' . $data['avatar_path'];
+                            }
+
+                            // Handle avatar_url only if no file uploaded
+                            if (isset($data['avatar_url']) && $data['avatar_url'] && !isset($data['avatar_path'])) {
+                                $updateData['avatar_url'] = $data['avatar_url'];
+                            }
+
+                            // Update password if provided
+                            if (!empty($data['password'])) {
+                                $updateData['password'] = Hash::make($data['password']);
+                            }
+
+                            $record->update($updateData);
+
+                            // Update client assignments
+                            if (isset($data['client_ids'])) {
+                                // Delete existing assignments
+                                UserClient::where('user_id', $record->id)->delete();
+                                
+                                // Create new assignments
+                                foreach ($data['client_ids'] as $clientId) {
+                                    UserClient::create([
+                                        'user_id' => $record->id,
+                                        'client_id' => $clientId
+                                    ]);
+                                }
+                            }
+
+                            Notification::make()
+                                ->title('Karyawan Diperbarui')
+                                ->success()
+                                ->body("Berhasil memperbarui data {$record->name}")
+                                ->send();
+                        })
+                        ->modalSubmitActionLabel('Simpan Perubahan')
+                        ->modalCancelActionLabel('Batal'),
                     Tables\Actions\Action::make('change_avatar')
                         ->label('Ubah Avatar')
                         ->icon('heroicon-m-camera')

@@ -55,6 +55,11 @@ class AppServiceProvider extends ServiceProvider
         );
 
         FilamentView::registerRenderHook(
+            PanelsRenderHook::SIDEBAR_NAV_START,
+            fn(): string => Blade::render('@livewire(\'profile.user-profile\')'),
+        );
+
+        FilamentView::registerRenderHook(
             PanelsRenderHook::GLOBAL_SEARCH_BEFORE,
             fn(): string => Blade::render('@livewire(\'notification.notification-button\')'),
         );

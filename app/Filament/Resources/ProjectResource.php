@@ -70,47 +70,61 @@ class ProjectResource extends Resource
                                 ->label('Project Name')
                                 ->maxLength(255)
                                 ->columnSpanFull(),
-                                Select::make('client_id')
-                                    ->required()
-                                    ->label('Client')
-                                    ->options(function () {
-                                        // For super-admin, show all clients
-                                        if (auth()->user()->hasRole('super-admin')) {
-                                            return Client::pluck('name', 'id');
-                                        }
+                            Select::make('client_id')
+                                ->required()
+                                ->label('Client')
+                                ->options(function () {
+                                    // For super-admin, show all clients
+                                    if (auth()->user()->hasRole('super-admin')) {
+                                        return Client::pluck('name', 'id');
+                                    }
 
-                                        // For other users, only show their assigned clients
-                                        return Client::whereIn(
-                                            'id',
-                                            auth()->user()->userClients()->pluck('client_id')
-                                        )->pluck('name', 'id');
-                                    })
-                                    ->disableOptionWhen(fn (string $value): bool => 
-                                        Client::find($value)?->status === 'Inactive'
-                                    )
-                                    ->searchable()
-                                    ->live()
-                                    ->afterStateUpdated(function ($state, Forms\Set $set) {
-                                        // Reset PIC when client changes
-                                        $set('pic_id', null);
-                                    })
-                                    ->native(false)
-                                    ->columnSpan(2)
-                                    ->createOptionForm([
-                                        Forms\Components\TextInput::make('name')
-                                            ->label('Nama Client')
-                                            ->required()
-                                            ->maxLength(255)
-                                            ->placeholder('Masukkan nama client baru')
-                                    ])
-                                    ->createOptionUsing(function (array $data): int {
-                                        $client = Client::create([
-                                            'name' => $data['name'],
-                                            'status' => 'Active', // Set default status
-                                        ]);
-                                        
-                                        return $client->id;
-                                    }),
+                                    // For other users, only show their assigned clients
+                                    return Client::whereIn(
+                                        'id',
+                                        auth()->user()->userClients()->pluck('client_id')
+                                    )->pluck('name', 'id');
+                                })
+                                ->disableOptionWhen(fn (string $value): bool => 
+                                    Client::find($value)?->status === 'Inactive'
+                                )
+                                ->searchable()
+                                ->live()
+                                ->afterStateUpdated(function ($state, Forms\Set $set) {
+                                    // Reset PIC when client changes
+                                    $set('pic_id', null);
+                                })
+                                ->native(false)
+                                ->columnSpan(2)
+                                ->createOptionForm([
+                                    Forms\Components\TextInput::make('name')
+                                        ->label('Nama Client')
+                                        ->required()
+                                        ->maxLength(255)
+                                        ->placeholder('Masukkan nama client baru')
+                                ])
+                                ->createOptionUsing(function (array $data): int {
+                                    // Create client
+                                    $client = Client::create([
+                                        'name' => $data['name'],
+                                        'status' => 'Active', // Set default status
+                                    ]);
+                                    
+                                    // Automatically assign current user to this client
+                                    \App\Models\UserClient::create([
+                                        'user_id' => auth()->id(),
+                                        'client_id' => $client->id,
+                                    ]);
+                                    
+                                    // Send notification to user
+                                    \Filament\Notifications\Notification::make()
+                                        ->title('Client Baru Dibuat')
+                                        ->body("Client '{$client->name}' berhasil dibuat dan Anda telah ditugaskan sebagai anggota tim.")
+                                        ->success()
+                                        ->send();
+                                    
+                                    return $client->id;
+                                }),
                                     
                             Select::make('pic_id')
                                 ->label('Person in Charge (PIC)')
@@ -122,8 +136,13 @@ class ProjectResource extends Resource
                                     }
 
                                     // Get users related to the selected client through user_clients
+                                    // FILTER: hanya user aktif dengan role tertentu
                                     return User::whereHas('userClients', function ($query) use ($clientId) {
                                         $query->where('client_id', $clientId);
+                                    })
+                                    ->where('status', 'active')
+                                    ->whereHas('roles', function ($query) {
+                                        $query->whereIn('name', ['project-manager', 'direktur', 'super-admin']);
                                     })
                                     ->pluck('name', 'id');
                                 })
@@ -133,7 +152,7 @@ class ProjectResource extends Resource
                                 ->helperText(function (Forms\Get $get) {
                                     $clientId = $get('client_id');
                                     return $clientId
-                                        ? 'Select a user assigned to this client as Person in Charge'
+                                        ? 'Select a Project Manager, Director, or Super Admin as PIC'
                                         : 'Please select a client first';
                                 })
                                 ->columnSpan(2),
@@ -317,10 +336,11 @@ class ProjectResource extends Resource
                                             return User::whereHas('userClients', function ($query) use ($clientId) {
                                                 $query->where('client_id', $clientId);
                                             })
-                                                ->whereDoesntHave('roles', function ($query) {
-                                                    $query->where('name', 'direktur');
-                                                })
-                                                ->pluck('name', 'id');
+                                            ->whereDoesntHave('roles', function ($query) {
+                                                $query->where('name', 'direktur');
+                                            })
+                                            ->where('status', 'active')
+                                            ->pluck('name', 'id');
                                         })
                                         ->live()
                                         ->required()
@@ -521,34 +541,43 @@ class ProjectResource extends Resource
                         if ($user->hasRole('super-admin')) {
                             // Super admin can see all users as PIC options
                             return User::whereHas('userClients')
+                                ->where('status', 'active')
+                                ->whereHas('roles', function ($query) {
+                                    $query->whereIn('name', ['project-manager', 'direktur', 'super-admin']);
+                                })
                                 ->pluck('name', 'id');
                         }
                         
                         // Regular users can only see PICs from their clients
                         return User::whereHas('userClients', function ($query) use ($user) {
                             $query->whereIn('client_id', $user->userClients()->pluck('client_id'));
-                        })->pluck('name', 'id');
+                        })
+                        ->where('status', 'active')
+                        ->whereHas('roles', function ($query) {
+                            $query->whereIn('name', ['project-manager', 'direktur', 'super-admin']);
+                        })
+                        ->pluck('name', 'id');
                     })
                     ->searchable()
                     ->preload(),
-                    SelectFilter::make('client_status')
-                        ->label('Client Status')
-                        ->query(function (Builder $query, array $data): Builder {
-                            if (empty($data['values'])) {
-                                return $query;
-                            }
-                            
-                            return $query->whereHas('client', function (Builder $query) use ($data) {
-                                $query->whereIn('status', $data['values']);
-                            });
-                        })
-                        ->options([
-                            'Active' => 'Active',
-                            'Inactive' => 'Inactive',
-                        ])
-                        ->multiple()
-                        ->default(['Active']) // Default hanya tampilkan client dengan status Active
-                        ->preload(),
+                SelectFilter::make('client_status')
+                    ->label('Client Status')
+                    ->query(function (Builder $query, array $data): Builder {
+                        if (empty($data['values'])) {
+                            return $query;
+                        }
+                        
+                        return $query->whereHas('client', function (Builder $query) use ($data) {
+                            $query->whereIn('status', $data['values']);
+                        });
+                    })
+                    ->options([
+                        'Active' => 'Active',
+                        'Inactive' => 'Inactive',
+                    ])
+                    ->multiple()
+                    ->default(['Active']) // Default hanya tampilkan client dengan status Active
+                    ->preload(),
                     
                 SelectFilter::make('client_id')
                     ->label('Client')
@@ -635,18 +664,28 @@ class ProjectResource extends Resource
                                     
                                     if ($user->hasRole('super-admin')) {
                                         // Super admin can assign any user as PIC
-                                        return User::whereHas('userClients')->pluck('name', 'id');
+                                        return User::whereHas('userClients')
+                                            ->where('status', 'active')
+                                            ->whereHas('roles', function ($query) {
+                                                $query->whereIn('name', ['project-manager', 'direktur', 'super-admin']);
+                                            })
+                                            ->pluck('name', 'id');
                                     }
                                     
                                     // Regular users can only assign PICs from their clients
                                     return User::whereHas('userClients', function ($query) use ($user) {
                                         $query->whereIn('client_id', $user->userClients()->pluck('client_id'));
-                                    })->pluck('name', 'id');
+                                    })
+                                    ->where('status', 'active')
+                                    ->whereHas('roles', function ($query) {
+                                        $query->whereIn('name', ['project-manager', 'direktur', 'super-admin']);
+                                    })
+                                    ->pluck('name', 'id');
                                 })
                                 ->searchable()
                                 ->required()
                                 ->native(false)
-                                ->helperText('This PIC will be assigned to all selected projects'),
+                                ->helperText('Only Project Managers, Directors, and Super Admins can be assigned as PIC'),
                         ])
                         ->action(function (Collection $records, array $data): void {
                             $picUser = User::find($data['pic_id']);
