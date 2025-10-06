@@ -49,16 +49,16 @@ class DailyTaskListComponent extends Component
     
     // Load more settings untuk grouped view
     public array $groupLoadedCounts = [];
-    public int $initialGroupLoad = 10;
+    public int $initialGroupLoad = 5;
     public int $groupLoadIncrement = 5;
 
     protected $listeners = [
-        'taskUpdated' => 'refreshTasks',
-        'task-created' => 'refreshTasks',
-        'taskStatusChanged' => 'refreshTasks',
-        'taskDeleted' => 'refreshTasks',
-        'subtaskAdded' => 'refreshTasks',
-        'subtaskUpdated' => 'refreshTasks',
+        'taskUpdated' => 'handleTaskUpdated',          // Changed
+        'task-created' => 'handleTaskCreated',          // Changed
+        'taskStatusChanged' => 'handleTaskStatusChanged', // Changed
+        'taskDeleted' => 'handleTaskDeleted',          // Changed
+        'subtaskAdded' => 'handleSubtaskUpdated',      // Changed
+        'subtaskUpdated' => 'handleSubtaskUpdated',    // Changed
         'cancelNewTask' => 'cancelNewTask',
         'filtersChanged' => 'updateFilters',
     ];
@@ -88,24 +88,79 @@ class DailyTaskListComponent extends Component
     }
 
     /**
-     * Update filters from filter component
+     * Update filters from filter component - RESET pagination
      */
     public function updateFilters(array $filters): void
     {
         $this->currentFilters = array_merge($this->currentFilters, $filters);
-        $this->resetPage();
+        $this->resetPage(); // Reset pagination when filters change
         $this->groupLoadedCounts = [];
         $this->dispatch('$refresh');
     }
 
     /**
-     * Refresh tasks list
+     * Handle task updated - DON'T reset pagination
+     */
+    public function handleTaskUpdated(): void
+    {
+        unset($this->tasksQuery);
+        unset($this->groupedTasks);
+        // DON'T reset page here
+        $this->dispatch('$refresh');
+    }
+
+    /**
+     * Handle task created - DON'T reset pagination
+     */
+    public function handleTaskCreated(): void
+    {
+        unset($this->tasksQuery);
+        unset($this->groupedTasks);
+        // DON'T reset page here
+        $this->dispatch('$refresh');
+    }
+
+    /**
+     * Handle task status changed - DON'T reset pagination
+     */
+    public function handleTaskStatusChanged(): void
+    {
+        unset($this->tasksQuery);
+        unset($this->groupedTasks);
+        // DON'T reset page here
+        $this->dispatch('$refresh');
+    }
+
+    /**
+     * Handle task deleted - DON'T reset pagination
+     */
+    public function handleTaskDeleted(): void
+    {
+        unset($this->tasksQuery);
+        unset($this->groupedTasks);
+        // DON'T reset page here
+        $this->dispatch('$refresh');
+    }
+
+    /**
+     * Handle subtask updated - DON'T reset pagination
+     */
+    public function handleSubtaskUpdated(): void
+    {
+        unset($this->tasksQuery);
+        unset($this->groupedTasks);
+        // DON'T reset page here
+        $this->dispatch('$refresh');
+    }
+
+    /**
+     * Refresh tasks - Manual refresh, RESET pagination
      */
     public function refreshTasks(): void
     {
         unset($this->tasksQuery);
         unset($this->groupedTasks);
-        $this->resetPage();
+        $this->resetPage(); // Reset when manually refreshed
         $this->groupLoadedCounts = [];
         $this->dispatch('$refresh');
     }
@@ -173,12 +228,13 @@ class DailyTaskListComponent extends Component
     }
 
     /**
-     * Load more tasks in a specific group
+     * Load more tasks in a specific group - DON'T reset pagination
      */
     public function loadMoreInGroup(string $groupKey): void
     {
         $currentCount = $this->groupLoadedCounts[$groupKey] ?? $this->initialGroupLoad;
         $this->groupLoadedCounts[$groupKey] = $currentCount + $this->groupLoadIncrement;
+        // No page reset
     }
 
     /**
@@ -204,16 +260,16 @@ class DailyTaskListComponent extends Component
     }
 
     /**
-     * Update per page setting
+     * Update per page setting - RESET pagination
      */
     public function updatePerPage(int $perPage): void
     {
         $this->perPage = $perPage;
-        $this->resetPage();
+        $this->resetPage(); // Reset when changing per page
     }
 
     /**
-     * Update task status
+     * Update task status - DON'T reset pagination
      */
     public function updateTaskStatus(int $taskId, string $status): void
     {
@@ -236,11 +292,12 @@ class DailyTaskListComponent extends Component
             ->success()
             ->send();
             
-        $this->dispatch('taskStatusChanged');
+        // Use the new handler that doesn't reset page
+        $this->handleTaskStatusChanged();
     }
 
     /**
-     * Sort by field
+     * Sort by field - RESET pagination
      */
     public function sortBy(string $field): void
     {
@@ -251,31 +308,30 @@ class DailyTaskListComponent extends Component
             $this->currentFilters['sort_direction'] = 'asc';
         }
         
-        $this->resetPage();
+        $this->resetPage(); // Reset when sorting changes
     }
 
     /**
-     * Open task detail modal
+     * Open task detail modal - DON'T reset pagination
      */
     public function openTaskDetail(int $taskId): void
     {
         $this->dispatch('openTaskDetailModal', taskId: $taskId);
+        // No page reset
     }
 
     /**
-     * Start creating new task in group
+     * Start creating new task in group - DON'T reset pagination
      */
     public function startCreatingTask(string $groupType, string $groupValue): void
     {
         $groupKey = $this->getGroupKey($groupType, $groupValue);
         
-        // Reset all creation states
         $this->creatingNewTasks = [];
         $this->newTaskData = [];
         $this->creatingNewTasks[$groupKey] = true;
         $this->editingGroup = $groupKey;
         
-        // Get defaults from group and filters
         $groupDefaults = $this->getDefaultsForGroup($groupType, $groupValue);
         $filterDefaults = $this->getDefaultsFromFilters($groupType);
         
@@ -288,6 +344,8 @@ class DailyTaskListComponent extends Component
             'project_id' => null,
             'assigned_users' => [],
         ], $filterDefaults, $groupDefaults);
+        
+        // No page reset
     }
 
     /**
@@ -347,7 +405,7 @@ class DailyTaskListComponent extends Component
     }
 
     /**
-     * Save new task
+     * Save new task - DON'T reset pagination
      */
     public function saveNewTask(string $groupKey): void
     {
@@ -386,11 +444,12 @@ class DailyTaskListComponent extends Component
             ->success()
             ->send();
 
-        $this->refreshTasks();
+        // Use handler that doesn't reset page
+        $this->handleTaskCreated();
     }
 
     /**
-     * Cancel new task creation
+     * Cancel new task creation - DON'T reset pagination
      */
     public function cancelNewTask(string $groupKey = null): void
     {
@@ -403,6 +462,7 @@ class DailyTaskListComponent extends Component
         }
         
         $this->editingGroup = null;
+        // No page reset
     }
 
     /**
