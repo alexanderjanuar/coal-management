@@ -49,7 +49,7 @@ class DailyTaskListComponent extends Component
     
     // Load more settings untuk grouped view
     public array $groupLoadedCounts = [];
-    public int $initialGroupLoad = 5;
+    public int $initialGroupLoad = 10;
     public int $groupLoadIncrement = 5;
 
     protected $listeners = [
