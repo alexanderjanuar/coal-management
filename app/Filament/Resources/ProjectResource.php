@@ -102,8 +102,16 @@ class ProjectResource extends Resource
                                             ->required()
                                             ->maxLength(255)
                                             ->placeholder('Masukkan nama client baru')
-                                    ]),
-      
+                                    ])
+                                    ->createOptionUsing(function (array $data): int {
+                                        $client = Client::create([
+                                            'name' => $data['name'],
+                                            'status' => 'Active', // Set default status
+                                        ]);
+                                        
+                                        return $client->id;
+                                    }),
+                                    
                             Select::make('pic_id')
                                 ->label('Person in Charge (PIC)')
                                 ->options(function (Forms\Get $get) {
