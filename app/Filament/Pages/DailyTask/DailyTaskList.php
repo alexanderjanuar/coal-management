@@ -25,6 +25,8 @@ class DailyTaskList extends Page
     
     protected static string $view = 'filament.pages.daily-task.daily-task-list';
 
+    protected static ?int $navigationSort = 2;
+
     /**
      * Get the header actions for the page
      */

@@ -4,7 +4,7 @@ namespace App\Providers\Filament;
 
 
 use App\Filament\Pages\DailyTask\DailyTaskList;
-use App\Filament\Pages\DailyTaskDashboard;
+use App\Filament\Pages\DailyTask\DailyTaskDashboard;
 use App\Filament\Resources\TaxReportResource\Pages\TaxReportDashboard;
 use Filament\Http\Middleware\Authenticate;
 use Filament\Http\Middleware\AuthenticateSession;
