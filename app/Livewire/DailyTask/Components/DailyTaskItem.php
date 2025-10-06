@@ -106,10 +106,15 @@ class DailyTaskItem extends Component implements HasForms
 
     public function getClientOptions(): array
     {
-        return Client::where('status', 'Active')
-            ->orderBy('name')
-            ->pluck('name', 'id')
-            ->toArray();
+        // Cache active clients karena jarang berubah
+        return cache()->remember(
+            'active_clients_list', 
+            300, // cache for 5 minutes
+            fn() => Client::where('status', 'Active')
+                ->orderBy('name')
+                ->pluck('name', 'id')
+                ->toArray()
+        );
     }
 
     public function getProjectOptions(): array
@@ -118,10 +123,16 @@ class DailyTaskItem extends Component implements HasForms
             return [];
         }
         
-        return Project::where('client_id', $this->selectedClientId)
-            ->orderBy('name')
-            ->pluck('name', 'id')
-            ->toArray();
+        // Cache query result untuk menghindari multiple calls
+        return cache()->remember(
+            "projects_for_client_{$this->selectedClientId}", 
+            60, // cache for 1 minute
+            fn() => Project::where('client_id', $this->selectedClientId)
+                ->whereIn('status', ['draft', 'in_progress', 'review'])
+                ->orderBy('name')
+                ->pluck('name', 'id')
+                ->toArray()
+        );
     }
 
     public function updateStatus(string $status): void
@@ -286,9 +297,15 @@ class DailyTaskItem extends Component implements HasForms
 
     public function getUserOptions(): array
     {
-        return User::orderBy('name')->pluck('name', 'id')->toArray();
+        // Cache user list
+        return cache()->remember(
+            'active_users_list', 
+            600, // cache for 10 minutes
+            fn() => User::orderBy('name')
+                ->pluck('name', 'id')
+                ->toArray()
+        );
     }
-
     // Tambahkan method baru ini
     public function dueDateForm(Form $form): Form
     {
