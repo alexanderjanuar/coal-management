@@ -8,7 +8,7 @@ class DailyTaskDashboard extends Page
 {
     protected static ?string $navigationGroup = 'Manajemen Tugas';
     
-    protected static ?string $title = 'Dashboard Tugas Harian';
+    protected static ?string $title = '';
     
     protected static ?string $navigationLabel = 'Dashboard';
 
