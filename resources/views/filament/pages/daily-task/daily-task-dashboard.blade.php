@@ -5,16 +5,15 @@
         {{-- Stats Cards Widget --}}
         @livewire('daily-task.dashboard.stats-overview')
 
-        {{-- Additional widgets will be added here --}}
-        {{-- 
+        
         <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
             <div class="lg:col-span-2">
-                Add your main content widgets here
+                @livewire('daily-task.dashboard.daily-task-timeline')
             </div>
             <div>
                 Add your sidebar widgets here
             </div>
         </div>
-        --}}
+       
     </div>
 </x-filament-panels::page>
