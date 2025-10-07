@@ -32,6 +32,8 @@ class DailyTaskListComponent extends Component
         'priority' => [],
         'project' => [],
         'assignee' => [],
+        'department' => [],
+        'position' => [],
         'group_by' => 'status',
         'view_mode' => 'list',
         'sort_by' => 'task_date',

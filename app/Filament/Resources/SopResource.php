@@ -18,12 +18,12 @@ use Filament\Forms\Components\TextInput;
 class SopResource extends Resource
 {
     protected static ?string $model = Sop::class;
-    protected static ?string $navigationGroup = 'Project Management';
+    protected static ?string $navigationGroup = 'Standard Operating Procedures';
 
-    protected static ?string $navigationLabel = 'Standard Procedures';
+    protected static ?string $navigationLabel = 'Prosedur Proyek';
     protected static ?string $navigationIcon = 'heroicon-o-document-chart-bar';
-    protected static ?string $modelLabel = 'Standard Operating Procedure';
-    protected static ?string $pluralModelLabel = 'Standard Operating Procedures';
+    protected static ?string $modelLabel = 'Prosedur Proyek';
+    protected static ?string $pluralModelLabel = 'Prosedur Proyek';
 
     public static function shouldRegisterNavigation(): bool
     {

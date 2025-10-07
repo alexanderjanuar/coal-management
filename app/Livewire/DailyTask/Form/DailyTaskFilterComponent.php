@@ -47,6 +47,8 @@ class DailyTaskFilterComponent extends Component implements HasForms
             'priority' => [],
             'project' => [],
             'assignee' => [],
+            'department' => [],
+            'position' => [],
             'group_by' => 'status',
             'view_mode' => 'list',
             'sort_by' => 'task_date',
@@ -139,6 +141,28 @@ class DailyTaskFilterComponent extends Component implements HasForms
                                             ->native(false)
                                             ->live()
                                             ->searchable(),
+                                        
+                                        Forms\Components\Select::make('department')
+                                            ->label('Department')
+                                            ->options($this->getDepartmentOptions())
+                                            ->multiple()
+                                            ->prefixIcon('heroicon-o-building-office')
+                                            ->native(false)
+                                            ->live()
+                                            ->searchable()
+                                            ->helperText('Filter berdasarkan departemen user')
+                                            ->columnSpan(2),
+                                        
+                                        Forms\Components\Select::make('position')
+                                            ->label('Position')
+                                            ->options($this->getPositionOptions())
+                                            ->multiple()
+                                            ->prefixIcon('heroicon-o-briefcase')
+                                            ->native(false)
+                                            ->live()
+                                            ->searchable()
+                                            ->helperText('Filter berdasarkan jabatan user')
+                                            ->columnSpan(2),
                                     ]),
                             ])
                             ->collapsible()
@@ -191,6 +215,16 @@ class DailyTaskFilterComponent extends Component implements HasForms
         $this->emitFiltersChanged();
     }
     
+    public function updatedFilterDataDepartment(): void
+    {
+        $this->emitFiltersChanged();
+    }
+    
+    public function updatedFilterDataPosition(): void
+    {
+        $this->emitFiltersChanged();
+    }
+    
     public function updatedFilterDataGroupBy(): void
     {
         $this->emitFiltersChanged();
@@ -223,6 +257,8 @@ class DailyTaskFilterComponent extends Component implements HasForms
             'priority' => [],
             'project' => [],
             'assignee' => [],
+            'department' => [],
+            'position' => [],
             'group_by' => 'status',
             'view_mode' => 'list',
             'sort_by' => 'task_date',
@@ -249,6 +285,8 @@ class DailyTaskFilterComponent extends Component implements HasForms
             'priority' => is_array($data['priority'] ?? null) ? array_values(array_filter($data['priority'])) : [],
             'project' => is_array($data['project'] ?? null) ? array_values(array_filter($data['project'])) : [],
             'assignee' => is_array($data['assignee'] ?? null) ? array_values(array_filter($data['assignee'])) : [],
+            'department' => is_array($data['department'] ?? null) ? array_values(array_filter($data['department'])) : [],
+            'position' => is_array($data['position'] ?? null) ? array_values(array_filter($data['position'])) : [],
             'group_by' => $data['group_by'] ?? 'status',
             'view_mode' => $data['view_mode'] ?? 'list',
             'sort_by' => $data['sort_by'] ?? 'task_date',
@@ -379,6 +417,32 @@ class DailyTaskFilterComponent extends Component implements HasForms
             ];
         }
 
+        // Department filter
+        if (!empty($filters['department'])) {
+            $deptLabels = array_map(fn($dept) => $this->getDepartmentOptions()[$dept] ?? $dept, $filters['department']);
+            $activeFilters[] = [
+                'type' => 'department',
+                'label' => 'Department',
+                'value' => implode(', ', $deptLabels),
+                'color' => 'info',
+                'icon' => 'heroicon-o-building-office',
+                'count' => count($filters['department']),
+            ];
+        }
+
+        // Position filter
+        if (!empty($filters['position'])) {
+            $posLabels = array_map(fn($pos) => $this->getPositionOptions()[$pos] ?? $pos, $filters['position']);
+            $activeFilters[] = [
+                'type' => 'position',
+                'label' => 'Position',
+                'value' => implode(', ', $posLabels),
+                'color' => 'warning',
+                'icon' => 'heroicon-o-briefcase',
+                'count' => count($filters['position']),
+            ];
+        }
+
         return $activeFilters;
     }
 
@@ -409,6 +473,12 @@ class DailyTaskFilterComponent extends Component implements HasForms
                 break;
             case 'assignee':
                 $this->filterData['assignee'] = [];
+                break;
+            case 'department':
+                $this->filterData['department'] = [];
+                break;
+            case 'position':
+                $this->filterData['position'] = [];
                 break;
         }
         
@@ -478,7 +548,36 @@ class DailyTaskFilterComponent extends Component implements HasForms
      */
     protected function getUserOptions(): array
     {
-        return User::orderBy('name')->pluck('name', 'id')->toArray();
+        return User::where('status', 'active')
+            ->orderBy('name')
+            ->pluck('name', 'id')
+            ->toArray();
+    }
+
+    /**
+     * Get department options
+     */
+    protected function getDepartmentOptions(): array
+    {
+        return User::whereNotNull('department')
+            ->where('status', 'active')
+            ->distinct()
+            ->orderBy('department')
+            ->pluck('department', 'department')
+            ->toArray();
+    }
+
+    /**
+     * Get position options
+     */
+    protected function getPositionOptions(): array
+    {
+        return User::whereNotNull('position')
+            ->where('status', 'active')
+            ->distinct()
+            ->orderBy('position')
+            ->pluck('position', 'position')
+            ->toArray();
     }
 
     public function render()

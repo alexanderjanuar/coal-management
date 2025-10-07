@@ -405,27 +405,6 @@ class UserClientResource extends Resource
                                 ])
                                 ->columns(2),
 
-                            Forms\Components\Section::make('Avatar')
-                                ->schema([
-                                    Forms\Components\FileUpload::make('avatar_path')
-                                        ->label('Foto Avatar')
-                                        ->image()
-                                        ->imageEditor()
-                                        ->disk('public')
-                                        ->directory('avatars')
-                                        ->visibility('public')
-                                        ->imageResizeMode('cover')
-                                        ->imageCropAspectRatio('1:1')
-                                        ->imageResizeTargetWidth('300')
-                                        ->imageResizeTargetHeight('300')
-                                        ->maxSize(5120)
-                                        ->acceptedFileTypes(['image/jpeg', 'image/png', 'image/gif', 'image/webp'])
-                                        ->helperText('Unggah dan edit file gambar (maksimal 5MB).'),
-
-                                ])
-                                ->columns(1)
-                                ->collapsible(),
-
                             Forms\Components\Section::make('Kata Sandi')
                                 ->schema([
                                     Forms\Components\TextInput::make('password')
@@ -464,18 +443,6 @@ class UserClientResource extends Resource
                                 'position' => $data['position'] ?? null,
                                 'status' => $data['status'] ?? 'active',
                             ];
-
-                            // Handle avatar_path
-                            if (isset($data['avatar_path']) && $data['avatar_path']) {
-                                $record->deleteOldAvatar();
-                                $updateData['avatar_path'] = $data['avatar_path'];
-                                $updateData['avatar_url'] = 'storage/' . $data['avatar_path'];
-                            }
-
-                            // Handle avatar_url only if no file uploaded
-                            if (isset($data['avatar_url']) && $data['avatar_url'] && !isset($data['avatar_path'])) {
-                                $updateData['avatar_url'] = $data['avatar_url'];
-                            }
 
                             // Update password if provided
                             if (!empty($data['password'])) {

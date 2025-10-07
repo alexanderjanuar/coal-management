@@ -34,6 +34,12 @@ class TaskFilterService
             )
             ->when(!empty($filters['assignee']), fn($q) => 
                 $this->applyAssigneeFilter($q, $filters['assignee'])
+            )
+            ->when(!empty($filters['department']), fn($q) => 
+                $this->applyDepartmentFilter($q, $filters['department'])
+            )
+            ->when(!empty($filters['position']), fn($q) => 
+                $this->applyPositionFilter($q, $filters['position'])
             );
     }
 
@@ -51,7 +57,7 @@ class TaskFilterService
             $carbonDate = $date instanceof Carbon ? $date : Carbon::parse($date);
             return $query->whereDate('start_task_date', $carbonDate->format('Y-m-d'));
         } catch (\Exception $e) {
-            return $query; // Skip invalid dates
+            return $query;
         }
     }
 
@@ -79,6 +85,20 @@ class TaskFilterService
     {
         return $query->whereHas('assignedUsers', function ($q) use ($assignees) {
             $q->whereIn('users.id', $assignees);
+        });
+    }
+
+    private function applyDepartmentFilter(Builder $query, array $departments): Builder
+    {
+        return $query->whereHas('assignedUsers', function ($q) use ($departments) {
+            $q->whereIn('users.department', $departments);
+        });
+    }
+
+    private function applyPositionFilter(Builder $query, array $positions): Builder
+    {
+        return $query->whereHas('assignedUsers', function ($q) use ($positions) {
+            $q->whereIn('users.position', $positions);
         });
     }
 

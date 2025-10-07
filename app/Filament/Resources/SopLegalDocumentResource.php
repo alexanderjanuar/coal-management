@@ -16,9 +16,9 @@ class SopLegalDocumentResource extends Resource
 
     protected static ?string $navigationIcon = 'heroicon-o-document-check';
     
-    protected static ?string $navigationLabel = 'SOP Legal Documents';
+    protected static ?string $navigationLabel = 'Legal Documents';
     
-    protected static ?string $navigationGroup = 'Master Data';
+    protected static ?string $navigationGroup = 'Standard Operating Procedures';
     
     protected static ?int $navigationSort = 3;
 
