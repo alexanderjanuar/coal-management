@@ -10,6 +10,7 @@
         "@tailwindcss/typography": "^0.5.15",
         "autoprefixer": "^10.4.20",
         "axios": "^1.6.4",
+        "chartjs-plugin-datalabels": "^2.2.0",
         "laravel-echo": "^1.19.0",
         "laravel-vite-plugin": "^1.0.0",
         "postcss": "^8.4.49",

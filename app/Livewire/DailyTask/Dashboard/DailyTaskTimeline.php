@@ -86,16 +86,34 @@ class DailyTaskTimeline extends ChartWidget
         // Get task data per user
         $taskData = $this->getTaskDataPerUser($users);
         
-        // Generate teal color variations for each bar
-        $tealColors = $this->generateTealColors(count($taskData['userNames']));
-        
         return [
             'datasets' => [
                 [
-                    'label' => 'Jumlah Tugas',
-                    'data' => $taskData['taskCounts'],
-                    'backgroundColor' => $tealColors['background'],
-                    'borderColor' => $tealColors['border'],
+                    'label' => 'Selesai',
+                    'data' => $taskData['completed'],
+                    'backgroundColor' => 'rgba(13, 148, 136, 0.9)', // teal-600 - darkest
+                    'borderColor' => 'rgb(13, 148, 136)',
+                    'borderWidth' => 1,
+                ],
+                [
+                    'label' => 'Sedang Dikerjakan',
+                    'data' => $taskData['in_progress'],
+                    'backgroundColor' => 'rgba(20, 184, 166, 0.8)', // teal-500 - medium dark
+                    'borderColor' => 'rgb(20, 184, 166)',
+                    'borderWidth' => 1,
+                ],
+                [
+                    'label' => 'Tertunda',
+                    'data' => $taskData['pending'],
+                    'backgroundColor' => 'rgba(45, 212, 191, 0.7)', // teal-400 - medium light
+                    'borderColor' => 'rgb(45, 212, 191)',
+                    'borderWidth' => 1,
+                ],
+                [
+                    'label' => 'Dibatalkan',
+                    'data' => $taskData['cancelled'],
+                    'backgroundColor' => 'rgba(153, 246, 228, 0.6)', // teal-200 - lightest
+                    'borderColor' => 'rgb(153, 246, 228)',
                     'borderWidth' => 1,
                 ],
             ],
@@ -146,6 +164,7 @@ class DailyTaskTimeline extends ChartWidget
             'scales' => [
                 'y' => [
                     'beginAtZero' => true,
+                    'stacked' => true, // Enable stacking for Y-axis
                     'ticks' => [
                         'stepSize' => 1,
                         'precision' => 0,
@@ -156,6 +175,7 @@ class DailyTaskTimeline extends ChartWidget
                     ],
                 ],
                 'x' => [
+                    'stacked' => true, // Enable stacking for X-axis
                     'grid' => [
                         'display' => false,
                     ],
@@ -169,6 +189,11 @@ class DailyTaskTimeline extends ChartWidget
                 'legend' => [
                     'display' => false, // Hide legend karena hanya 1 dataset
                 ],
+            ],
+            'animation' => [
+                'duration' => 1500,
+                'animateRotate' => true,
+                'animateScale' => true,
             ],
         ];
     }
@@ -203,42 +228,58 @@ class DailyTaskTimeline extends ChartWidget
         $userData = [];
 
         foreach ($users as $user) {
-            // Get total task count for this user dengan date filter
-            $totalTasks = DailyTask::whereHas('assignedUsers', function ($query) use ($user) {
+            // Get task counts for this user by status dengan date filter
+            $taskCounts = DailyTask::whereHas('assignedUsers', function ($query) use ($user) {
                 $query->where('users.id', $user->id);
             })
             ->whereBetween('task_date', [
                 $this->fromDate->format('Y-m-d'),
                 $this->toDate->format('Y-m-d')
             ])
-            ->count();
+            ->select('status', DB::raw('COUNT(*) as count'))
+            ->groupBy('status')
+            ->pluck('count', 'status')
+            ->toArray();
 
             $userData[] = [
                 'name' => $user->name,
-                'count' => $totalTasks
+                'completed' => $taskCounts['completed'] ?? 0,
+                'in_progress' => $taskCounts['in_progress'] ?? 0,
+                'pending' => $taskCounts['pending'] ?? 0,
+                'cancelled' => $taskCounts['cancelled'] ?? 0,
+                'total' => array_sum($taskCounts)
             ];
         }
 
-        // Sort by task count (descending - highest first)
+        // Sort by total task count (descending - highest first)
         usort($userData, function($a, $b) {
-            return $b['count'] <=> $a['count'];
+            return $b['total'] <=> $a['total'];
         });
 
-        // Extract sorted names and counts
+        // Extract sorted data
         $userNames = array_column($userData, 'name');
-        $taskCounts = array_column($userData, 'count');
+        $completedData = array_column($userData, 'completed');
+        $inProgressData = array_column($userData, 'in_progress');
+        $pendingData = array_column($userData, 'pending');
+        $cancelledData = array_column($userData, 'cancelled');
 
         // If no users found, show empty state
         if (empty($userNames)) {
             return [
                 'userNames' => ['Tidak ada data'],
-                'taskCounts' => [0],
+                'completed' => [0],
+                'in_progress' => [0],
+                'pending' => [0],
+                'cancelled' => [0],
             ];
         }
 
         return [
             'userNames' => $userNames,
-            'taskCounts' => $taskCounts,
+            'completed' => $completedData,
+            'in_progress' => $inProgressData,
+            'pending' => $pendingData,
+            'cancelled' => $cancelledData,
         ];
     }
 
@@ -260,6 +301,7 @@ class DailyTaskTimeline extends ChartWidget
         
         return "Total {$totalTasks} tugas untuk {$totalUsers} users{$filterText}";
     }
+    
 
     // Method untuk mendapatkan total tasks
     protected function getTotalTasks(): int

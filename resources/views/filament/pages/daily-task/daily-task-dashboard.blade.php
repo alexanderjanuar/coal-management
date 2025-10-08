@@ -11,7 +11,7 @@
                 @livewire('daily-task.dashboard.daily-task-timeline')
             </div>
             <div>
-                Add your sidebar widgets here
+                @livewire('daily-task.dashboard.daily-task-status')
             </div>
         </div>
        
