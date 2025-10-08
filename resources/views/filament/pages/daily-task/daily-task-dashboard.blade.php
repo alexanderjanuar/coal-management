@@ -15,5 +15,6 @@
             </div>
         </div>
        
+        @livewire('daily-task.dashboard.daily-task-table')
     </div>
 </x-filament-panels::page>
