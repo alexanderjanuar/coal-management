@@ -11,16 +11,14 @@ use Illuminate\Support\Carbon;
 
 class DailyTaskTimeline extends ChartWidget
 {
-    protected static ?string $heading = 'Timeline Tugas Harian';
+    protected static ?string $heading = 'Jumlah Tugas Per User';
     protected static ?int $sort = 2;
-
     // Filter properties - menggunakan public agar bisa diakses dari luar
     public ?string $filter = 'today';
     public Carbon $fromDate;
     public Carbon $toDate;
     public ?string $department = null;
     public ?string $position = null;
-
 
     public function mount(): void
     {
@@ -34,7 +32,7 @@ class DailyTaskTimeline extends ChartWidget
     #[On('filtersUpdated')]
     public function updateFilters(array $filters): void
     {
-        // Update semua filter properties
+        // Update semua filter properties termasuk date filter
         $this->filter = $filters['date_range'] ?? 'today';
         $this->fromDate = Carbon::parse($filters['from'])->startOfDay();
         $this->toDate = Carbon::parse($filters['to'])->endOfDay();
@@ -48,7 +46,6 @@ class DailyTaskTimeline extends ChartWidget
         $this->skipRender = false;
     }
 
-    // Optional: Listen to specific date range updates
     #[On('updateDateRange')]
     public function updateDateRange(string $range, string $from, string $to): void
     {
@@ -56,7 +53,8 @@ class DailyTaskTimeline extends ChartWidget
         $this->fromDate = Carbon::parse($from)->startOfDay();
         $this->toDate = Carbon::parse($to)->endOfDay();
         
-        $this->updateChartData();
+        $this->cachedData = null;
+        $this->skipRender = false;
     }
 
     // Optional: Listen to department filter updates
@@ -64,7 +62,8 @@ class DailyTaskTimeline extends ChartWidget
     public function updateDepartment(?string $department): void
     {
         $this->department = $department;
-        $this->updateChartData();
+        $this->cachedData = null;
+        $this->skipRender = false;
     }
 
     // Optional: Listen to position filter updates
@@ -72,22 +71,8 @@ class DailyTaskTimeline extends ChartWidget
     public function updatePosition(?string $position): void
     {
         $this->position = $position;
-        $this->updateChartData();
-    }
-
-    // Method untuk mendapatkan filter options
-    protected function getFilters(): ?array
-    {
-        return [
-            'today' => 'Hari Ini',
-            'yesterday' => 'Kemarin',
-            'this_week' => 'Minggu Ini',
-            'last_week' => 'Minggu Lalu',
-            'this_month' => 'Bulan Ini',
-            'last_month' => 'Bulan Lalu',
-            'this_year' => 'Tahun Ini',
-            'custom' => 'Custom',
-        ];
+        $this->cachedData = null;
+        $this->skipRender = false;
     }
 
     protected function getData(): array
@@ -95,58 +80,64 @@ class DailyTaskTimeline extends ChartWidget
         // Clear any cached data
         $this->cachedData = null;
         
-        // Generate date range untuk timeline
-        $dates = $this->getDateRange();
+        // Get users based on department/position filter
+        $users = $this->getFilteredUsers();
         
-        // Get task data grouped by date and status
-        $taskData = $this->getTaskData($dates);
+        // Get task data per user
+        $taskData = $this->getTaskDataPerUser($users);
+        
+        // Generate teal color variations for each bar
+        $tealColors = $this->generateTealColors(count($taskData['userNames']));
         
         return [
             'datasets' => [
                 [
-                    'label' => 'Selesai',
-                    'data' => $taskData['completed'],
-                    'borderColor' => 'rgb(34, 197, 94)',
-                    'backgroundColor' => 'rgba(34, 197, 94, 0.1)',
-                    'tension' => 0.4,
-                    'fill' => true,
-                    'pointBackgroundColor' => 'rgb(34, 197, 94)',
-                    'pointBorderColor' => 'rgb(255, 255, 255)',
-                    'pointBorderWidth' => 2,
-                    'pointRadius' => 4,
-                ],
-                [
-                    'label' => 'Sedang Dikerjakan',
-                    'data' => $taskData['in_progress'],
-                    'borderColor' => 'rgb(59, 130, 246)',
-                    'backgroundColor' => 'rgba(59, 130, 246, 0.1)',
-                    'tension' => 0.4,
-                    'fill' => true,
-                    'pointBackgroundColor' => 'rgb(59, 130, 246)',
-                    'pointBorderColor' => 'rgb(255, 255, 255)',
-                    'pointBorderWidth' => 2,
-                    'pointRadius' => 4,
-                ],
-                [
-                    'label' => 'Tertunda',
-                    'data' => $taskData['pending'],
-                    'borderColor' => 'rgb(251, 146, 60)',
-                    'backgroundColor' => 'rgba(251, 146, 60, 0.1)',
-                    'tension' => 0.4,
-                    'fill' => true,
-                    'pointBackgroundColor' => 'rgb(251, 146, 60)',
-                    'pointBorderColor' => 'rgb(255, 255, 255)',
-                    'pointBorderWidth' => 2,
-                    'pointRadius' => 4,
+                    'label' => 'Jumlah Tugas',
+                    'data' => $taskData['taskCounts'],
+                    'backgroundColor' => $tealColors['background'],
+                    'borderColor' => $tealColors['border'],
+                    'borderWidth' => 1,
                 ],
             ],
-            'labels' => $dates['labels'],
+            'labels' => $taskData['userNames'],
+        ];
+    }
+
+    // Method untuk generate teal color variations
+    protected function generateTealColors(int $count): array
+    {
+        $backgroundColors = [];
+        $borderColors = [];
+        
+        // Base teal colors dengan variasi saturation dan lightness
+        $tealVariations = [
+            ['bg' => 'rgba(20, 184, 166, 0.8)', 'border' => 'rgb(20, 184, 166)'],   // teal-500
+            ['bg' => 'rgba(45, 212, 191, 0.8)', 'border' => 'rgb(45, 212, 191)'],   // teal-400
+            ['bg' => 'rgba(94, 234, 212, 0.8)', 'border' => 'rgb(94, 234, 212)'],   // teal-300
+            ['bg' => 'rgba(153, 246, 228, 0.8)', 'border' => 'rgb(153, 246, 228)'], // teal-200
+            ['bg' => 'rgba(13, 148, 136, 0.8)', 'border' => 'rgb(13, 148, 136)'],   // teal-600
+            ['bg' => 'rgba(15, 118, 110, 0.8)', 'border' => 'rgb(15, 118, 110)'],   // teal-700
+            ['bg' => 'rgba(17, 94, 89, 0.8)', 'border' => 'rgb(17, 94, 89)'],       // teal-800
+            ['bg' => 'rgba(19, 78, 74, 0.8)', 'border' => 'rgb(19, 78, 74)'],       // teal-900
+            ['bg' => 'rgba(134, 239, 172, 0.8)', 'border' => 'rgb(134, 239, 172)'], // teal-green mix
+            ['bg' => 'rgba(103, 232, 249, 0.8)', 'border' => 'rgb(103, 232, 249)'], // teal-cyan mix
+        ];
+        
+        for ($i = 0; $i < $count; $i++) {
+            $colorIndex = $i % count($tealVariations);
+            $backgroundColors[] = $tealVariations[$colorIndex]['bg'];
+            $borderColors[] = $tealVariations[$colorIndex]['border'];
+        }
+        
+        return [
+            'background' => $backgroundColors,
+            'border' => $borderColors,
         ];
     }
 
     protected function getType(): string
     {
-        return 'line';
+        return 'bar';
     }
 
     protected function getOptions(): array
@@ -174,109 +165,88 @@ class DailyTaskTimeline extends ChartWidget
                     ],
                 ],
             ],
+            'plugins' => [
+                'legend' => [
+                    'display' => false, // Hide legend karena hanya 1 dataset
+                ],
+            ],
         ];
     }
 
-    // Method untuk mendapatkan date range untuk timeline
-    protected function getDateRange(): array
+    // Method untuk mendapatkan users yang sudah difilter
+    protected function getFilteredUsers()
     {
-        $dates = [];
-        $labels = [];
-        
-        $startDate = $this->fromDate->copy();
-        $endDate = $this->toDate->copy();
-        
-        // Limit to maximum 31 days untuk performance
-        if ($startDate->diffInDays($endDate) > 31) {
-            $startDate = $endDate->copy()->subDays(30);
+        $query = User::query();
+
+        // Apply department filter
+        if ($this->department) {
+            $query->where('department', $this->department);
         }
-        
-        while ($startDate->lte($endDate)) {
-            $dates[] = $startDate->format('Y-m-d');
-            
-            // Format label berdasarkan date range
-            if ($startDate->diffInDays($endDate) <= 7) {
-                // Show day name untuk week view
-                $labels[] = $startDate->format('D, j M');
-            } elseif ($startDate->diffInDays($endDate) <= 31) {
-                // Show date untuk month view
-                $labels[] = $startDate->format('j M');
-            } else {
-                // Show month untuk year view
-                $labels[] = $startDate->format('M Y');
-            }
-            
-            $startDate->addDay();
+
+        // Apply position filter
+        if ($this->position) {
+            $query->where('position', $this->position);
         }
-        
-        return [
-            'dates' => $dates,
-            'labels' => $labels,
-        ];
+
+        // Only get users who have task assignments - gunakan relationship yang benar
+        $query->whereHas('dailyTaskAssignments', function ($taskQuery) {
+            // Pastikan task ada
+            $taskQuery->whereNotNull('id');
+        });
+
+        return $query->orderBy('name')->get();
     }
 
-    // Method untuk mendapatkan task data berdasarkan tanggal dan status
-    protected function getTaskData(array $dateRange): array
+    // Method untuk mendapatkan task data per user
+    protected function getTaskDataPerUser($users): array
     {
-        // Base query dengan date filter
-        $baseQuery = DailyTask::whereBetween('task_date', [
-            $this->fromDate->format('Y-m-d'),
-            $this->toDate->format('Y-m-d')
-        ]);
+        $userData = [];
 
-        // Apply department/position filters - perbaiki relationship
-        if ($this->department || $this->position) {
-            $baseQuery->whereHas('assignments', function ($assignmentQuery) {
-                $assignmentQuery->whereHas('user', function ($userQuery) {
-                    if ($this->department) {
-                        $userQuery->where('department', $this->department);
-                    }
-                    if ($this->position) {
-                        $userQuery->where('position', $this->position);
-                    }
-                });
-            });
-        }
-
-        // Get task counts grouped by date and status
-        $taskCounts = $baseQuery
-            ->select([
-                DB::raw('DATE(task_date) as date'),
-                'status',
-                DB::raw('COUNT(*) as count')
+        foreach ($users as $user) {
+            // Get total task count for this user dengan date filter
+            $totalTasks = DailyTask::whereHas('assignedUsers', function ($query) use ($user) {
+                $query->where('users.id', $user->id);
+            })
+            ->whereBetween('task_date', [
+                $this->fromDate->format('Y-m-d'),
+                $this->toDate->format('Y-m-d')
             ])
-            ->groupBy('date', 'status')
-            ->orderBy('date')
-            ->get()
-            ->groupBy('date');
+            ->count();
 
-        // Initialize data arrays
-        $completed = [];
-        $inProgress = [];
-        $pending = [];
+            $userData[] = [
+                'name' => $user->name,
+                'count' => $totalTasks
+            ];
+        }
 
-        // Fill data untuk setiap date
-        foreach ($dateRange['dates'] as $date) {
-            $dayTasks = $taskCounts->get($date, collect());
-            
-            $completed[] = $dayTasks->where('status', 'completed')->sum('count');
-            $inProgress[] = $dayTasks->where('status', 'in_progress')->sum('count');
-            $pending[] = $dayTasks->where('status', 'pending')->sum('count');
+        // Sort by task count (descending - highest first)
+        usort($userData, function($a, $b) {
+            return $b['count'] <=> $a['count'];
+        });
+
+        // Extract sorted names and counts
+        $userNames = array_column($userData, 'name');
+        $taskCounts = array_column($userData, 'count');
+
+        // If no users found, show empty state
+        if (empty($userNames)) {
+            return [
+                'userNames' => ['Tidak ada data'],
+                'taskCounts' => [0],
+            ];
         }
 
         return [
-            'completed' => $completed,
-            'in_progress' => $inProgress,
-            'pending' => $pending,
+            'userNames' => $userNames,
+            'taskCounts' => $taskCounts,
         ];
     }
-
 
     // Method untuk mendapatkan deskripsi berdasarkan filter aktif
     public function getDescription(): ?string
     {
         $totalTasks = $this->getTotalTasks();
-        $periodDesc = $this->getPeriodDescription();
+        $totalUsers = $this->getTotalUsers();
         
         $filterDesc = [];
         if ($this->department) {
@@ -288,7 +258,7 @@ class DailyTaskTimeline extends ChartWidget
         
         $filterText = !empty($filterDesc) ? ' (' . implode(', ', $filterDesc) . ')' : '';
         
-        return "Total {$totalTasks} tugas untuk {$periodDesc}{$filterText}";
+        return "Total {$totalTasks} tugas untuk {$totalUsers} users{$filterText}";
     }
 
     // Method untuk mendapatkan total tasks
@@ -299,46 +269,46 @@ class DailyTaskTimeline extends ChartWidget
             $this->toDate->format('Y-m-d')
         ]);
 
-        if ($this->department) {
+        if ($this->department || $this->position) {
             $query->whereHas('assignedUsers', function ($userQuery) {
-                $userQuery->where('department', $this->department);
-            });
-        }
-
-        if ($this->position) {
-            $query->whereHas('assignedUsers', function ($userQuery) {
-                $userQuery->where('position', $this->position);
+                if ($this->department) {
+                    $userQuery->where('department', $this->department);
+                }
+                if ($this->position) {
+                    $userQuery->where('position', $this->position);
+                }
             });
         }
 
         return $query->count();
     }
 
-    // Helper method untuk mendapatkan deskripsi periode
-    protected function getPeriodDescription(): string
+    // Method untuk mendapatkan total users
+    protected function getTotalUsers(): int
     {
-        return match($this->filter) {
-            'today' => 'hari ini',
-            'yesterday' => 'kemarin', 
-            'this_week' => 'minggu ini',
-            'last_week' => 'minggu lalu',
-            'this_month' => 'bulan ini',
-            'last_month' => 'bulan lalu',
-            'this_year' => 'tahun ini',
-            'custom' => $this->fromDate->format('d M') . ' - ' . $this->toDate->format('d M Y'),
-            default => 'periode yang dipilih'
-        };
+        $query = User::query();
+
+        if ($this->department) {
+            $query->where('department', $this->department);
+        }
+        if ($this->position) {
+            $query->where('position', $this->position);
+        }
+
+        // Gunakan relationship yang benar
+        $query->whereHas('dailyTaskAssignments');
+
+        return $query->count();
     }
 
     // Method untuk debugging - bisa dihapus di production
     public function getCurrentFilters(): array
     {
         return [
-            'filter' => $this->filter,
-            'from' => $this->fromDate->format('Y-m-d'),
-            'to' => $this->toDate->format('Y-m-d'),
             'department' => $this->department,
             'position' => $this->position,
+            'total_users' => $this->getTotalUsers(),
+            'total_tasks' => $this->getTotalTasks(),
         ];
     }
 }

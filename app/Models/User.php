@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Spatie\Activitylog\Traits\CausesActivity;
 use Spatie\Activitylog\LogOptions;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -83,6 +84,11 @@ class User extends Authenticatable implements FilamentUser, HasAvatar
     public function userProjects()
     {
         return $this->hasMany(UserProject::class);
+    }
+    
+    public function dailyTaskAssignments(): HasMany
+    {
+        return $this->hasMany(DailyTaskAssignment::class);
     }
 
     public function activities()
