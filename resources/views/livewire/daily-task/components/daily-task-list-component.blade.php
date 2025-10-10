@@ -1,6 +1,7 @@
 {{-- Enhanced Task List Component dengan Dark Mode Support --}}
 <div class="space-y-4 lg:space-y-6" x-data="taskManager()">
 
+
     {{-- Filter Component - Separate component --}}
     <livewire:daily-task.form.daily-task-filter-component :initial-filters="$this->currentFilters"
         :total-tasks="$totalTasks" />
@@ -22,7 +23,8 @@
                     <div class="min-w-[1200px]">
 
                         {{-- Table Header --}}
-                        <div class="bg-gray-100 dark:bg-gray-900/60 border-b border-gray-200 dark:border-gray-600">
+                        <div
+                            class="sticky top-0 z-10 bg-gray-100 dark:bg-gray-900/60 border-b border-gray-200 dark:border-gray-600">
                             <div class="px-6 py-4">
                                 <div class="grid grid-cols-12 gap-4 text-xs font-semibold text-gray-700 dark:text-gray-200 
                                         uppercase tracking-wider">
@@ -201,7 +203,7 @@
             </div>
             @else
             {{-- Grouped View --}}
-            <div class="space-y-6">
+            <div class="space-y-2">
                 @forelse($groupedTasks as $groupName => $tasks)
                 @php
                 $groupKey = $this->getGroupKey($groupBy, $groupName);
@@ -209,10 +211,11 @@
                 @endphp
 
                 <div class="overflow-hidden" x-data="{ collapsed: false }">
-
                     {{-- Group Header --}}
-                    <div class="px-6 py-4  
-                                border-b border-gray-200 dark:border-gray-600">
+                    <div class="px-6 py-4
+                    border-b border-gray-200 dark:border-gray-600
+                    backdrop-blur-sm bg-opacity-95 dark:bg-opacity-95
+                    shadow-sm">
                         <div class="flex items-center justify-between">
                             <div class="flex items-center gap-4">
                                 {{-- Group Badge --}}
@@ -247,16 +250,16 @@
                                 @endif
 
                                 {{-- Task Count Badge --}}
-                                <div
-                                    class="px-2.5 py-1 rounded-lg font-semibold text-base shadow-sm border
-                                            bg-gray-50 text-gray-700 border-gray-200 dark:bg-gray-700 dark:text-gray-300 dark:border-gray-600">
+                                <div class="px-2.5 py-1 rounded-lg font-semibold text-base shadow-sm border
+                                bg-gray-50 text-gray-700 border-gray-200 
+                                dark:bg-gray-700 dark:text-gray-300 dark:border-gray-600">
                                     {{ $tasks->count() }}
                                 </div>
 
                                 {{-- Collapse Button --}}
                                 <button @click="collapsed = !collapsed" class="p-2 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600 
-                                               rounded-lg transition-all duration-200 border border-gray-200 dark:border-gray-600 
-                                               hover:shadow-md">
+                                   rounded-lg transition-all duration-200 border border-gray-200 dark:border-gray-600 
+                                   hover:shadow-md">
                                     <x-heroicon-o-chevron-down
                                         class="w-4 h-4 text-gray-600 dark:text-gray-400 transition-all duration-200"
                                         x-bind:class="{ 'rotate-180': collapsed }" />
@@ -275,7 +278,7 @@
                             <div class="min-w-[1200px]">
                                 {{-- Group Table Header --}}
                                 <div
-                                    class="bg-gray-50 dark:bg-gray-900/40 border-b border-gray-200 dark:border-gray-600">
+                                    class="border-b border-gray-200 dark:border-gray-600">
                                     <div class="px-6 py-3">
                                         <div class="grid grid-cols-12 gap-4 text-xs font-semibold text-gray-700 dark:text-gray-200 
                                                     uppercase tracking-wider">
@@ -347,76 +350,83 @@
 
                         {{-- Load More Button --}}
                         @if($this->hasMoreInGroup($groupName))
-                        <div class="px-6 py-4 border-t border-gray-200 dark:border-gray-700 bg-gradient-to-r 
-                                        from-gray-50 to-white dark:from-gray-800/50 dark:to-gray-700/50">
+                        <div class="px-6 py-3 border-t border-gray-200 dark:border-gray-700">
                             <button wire:click="loadMoreInGroup('{{ $groupName }}')" wire:loading.attr="disabled"
-                                wire:target="loadMoreInGroup('{{ $groupName }}')" class="w-full flex items-center justify-center gap-3 px-6 py-3 text-sm font-medium 
-                                               text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 border-2 
-                                               border-gray-300 dark:border-gray-600 rounded-xl hover:bg-gradient-to-r 
-                                               hover:from-primary-50 hover:to-primary-25 dark:hover:from-primary-900/20 
-                                               hover:border-primary-300 dark:hover:border-primary-600 hover:text-primary-600 
-                                               dark:hover:text-primary-400 transition-all duration-300 group hover:shadow-md
-                                               disabled:opacity-50 disabled:cursor-not-allowed">
+                                wire:target="loadMoreInGroup('{{ $groupName }}')" class="w-full flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-medium 
+                                    text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 
+                                    border border-gray-300 dark:border-gray-600 rounded-lg
+                                    hover:bg-gray-50 dark:hover:bg-gray-700 hover:border-gray-400 dark:hover:border-gray-500
+                                    transition-all duration-200 group
+                                    disabled:opacity-50 disabled:cursor-not-allowed">
 
-                                {{-- Icon --}}
-                                <div class="w-6 h-6 bg-gray-200 dark:bg-gray-600 group-hover:bg-primary-200 
-                                                dark:group-hover:bg-primary-800 rounded-full flex items-center justify-center 
-                                                transition-all duration-300 group-hover:scale-110">
-                                    <x-heroicon-o-chevron-down class="w-4 h-4" wire:loading.remove
-                                        wire:target="loadMoreInGroup('{{ $groupName }}')" />
-                                    <svg wire:loading wire:target="loadMoreInGroup('{{ $groupName }}')"
-                                        class="w-4 h-4 animate-spin" xmlns="http://www.w3.org/2000/svg" fill="none"
-                                        viewBox="0 0 24 24">
-                                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor"
-                                            stroke-width="4"></circle>
-                                        <path class="opacity-75" fill="currentColor"
-                                            d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z">
-                                        </path>
-                                    </svg>
-                                </div>
+                                {{-- Icon dengan loading state --}}
+                                <svg wire:loading.remove wire:target="loadMoreInGroup('{{ $groupName }}')"
+                                    class="w-4 h-4 transition-transform group-hover:translate-y-0.5" fill="none"
+                                    stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M19 9l-7 7-7-7" />
+                                </svg>
+
+                                <svg wire:loading wire:target="loadMoreInGroup('{{ $groupName }}')"
+                                    class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor"
+                                        stroke-width="4"></circle>
+                                    <path class="opacity-75" fill="currentColor"
+                                        d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z">
+                                    </path>
+                                </svg>
 
                                 {{-- Text --}}
-                                <span class="font-semibold flex items-center gap-2">
-                                    <span wire:loading.remove wire:target="loadMoreInGroup('{{ $groupName }}')">
-                                        Tampilkan {{ min($this->groupLoadIncrement,
-                                        $this->getRemainingCount($groupName)) }} Task Lainnya
-                                    </span>
-                                    <span wire:loading wire:target="loadMoreInGroup('{{ $groupName }}')">
-                                        Memuat...
-                                    </span>
-                                    <span class="px-2 py-0.5 bg-gray-200 dark:bg-gray-600 rounded-full text-xs">
-                                        {{ $this->getRemainingCount($groupName) }} tersisa
-                                    </span>
+                                <span wire:loading.remove wire:target="loadMoreInGroup('{{ $groupName }}')">
+                                    Muat {{ min($this->groupLoadIncrement, $this->getRemainingCount($groupName)) }} Task
+                                    Lainnya
+                                </span>
+                                <span wire:loading wire:target="loadMoreInGroup('{{ $groupName }}')">
+                                    Memuat...
                                 </span>
 
-                                {{-- Arrow --}}
-                                <div class="ml-auto opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-                                    <x-heroicon-o-arrow-down class="w-4 h-4" />
-                                </div>
+                                {{-- Badge count --}}
+                                <span wire:loading.remove wire:target="loadMoreInGroup('{{ $groupName }}')" class="ml-1 px-2 py-0.5 bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400 
+                                    rounded-full text-xs font-semibold">
+                                    {{ $this->getRemainingCount($groupName) }}
+                                </span>
                             </button>
                         </div>
                         @endif
 
                         {{-- Add New Task Section --}}
                         @if(!$this->isCreatingTask($groupBy, $groupName))
-                        <div class="px-6 py-4 border-t border-gray-200 dark:border-gray-600 bg-gradient-to-r 
-                                        from-gray-25 to-gray-50 dark:from-gray-700/30 dark:to-gray-600/30">
-                            <button wire:click="startCreatingTask('{{ $groupBy }}', '{{ $groupName }}')"
-                                class="w-full flex items-center justify-center gap-3 px-6 py-3 text-sm font-medium 
-                                               text-gray-600 dark:text-gray-300 bg-white dark:bg-gray-800 border-2 border-dashed 
-                                               border-gray-300 dark:border-gray-600 rounded-xl hover:bg-gradient-to-r 
-                                               hover:from-blue-50 hover:to-blue-25 dark:hover:from-blue-900/20 
-                                               hover:border-blue-300 dark:hover:border-blue-600 hover:text-blue-600 
-                                               dark:hover:text-blue-400 transition-all duration-300 group hover:shadow-md">
-                                <div class="w-6 h-6 bg-gray-200 dark:bg-gray-600 group-hover:bg-blue-200 
-                                                dark:group-hover:bg-blue-800 rounded-full flex items-center justify-center 
-                                                transition-all duration-300 group-hover:scale-110">
-                                    <x-heroicon-o-plus class="w-4 h-4" />
+                        <div
+                            class="px-6 py-3 border-t border-gray-200 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-800/30">
+                            <button wire:click="startCreatingTask('{{ $groupBy }}', '{{ $groupName }}')" class="w-full flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-medium 
+                                    text-gray-600 dark:text-gray-400 bg-white dark:bg-gray-800 
+                                    border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg
+                                    hover:bg-blue-50 dark:hover:bg-blue-900/20 
+                                    hover:border-blue-400 dark:hover:border-blue-500 
+                                    hover:text-blue-600 dark:hover:text-blue-400
+                                    transition-all duration-200 group">
+
+                                {{-- Icon --}}
+                                <div class="w-5 h-5 flex items-center justify-center rounded-full 
+                                    bg-gray-200 dark:bg-gray-700 
+                                    group-hover:bg-blue-200 dark:group-hover:bg-blue-800
+                                    transition-all duration-200">
+                                    <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                            d="M12 4v16m8-8H4" />
+                                    </svg>
                                 </div>
-                                <span class="font-semibold">Tambah Task Baru untuk {{ $groupName }}</span>
-                                <div class="ml-auto opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-                                    <x-heroicon-o-arrow-right class="w-4 h-4" />
-                                </div>
+
+                                {{-- Text --}}
+                                <span class="font-medium">
+                                    Tambah Task Baru
+                                </span>
+
+                                {{-- Group name badge (optional) --}}
+                                <span class="hidden sm:inline-flex px-2 py-0.5 bg-gray-100 dark:bg-gray-700 
+                                    text-gray-600 dark:text-gray-400 rounded text-xs">
+                                    {{ $groupName }}
+                                </span>
                             </button>
                         </div>
                         @endif
