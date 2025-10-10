@@ -13,6 +13,9 @@ class DailyTaskStatus extends ChartWidget
 {
     protected static ?string $heading = 'Distribusi Status Tugas';
     protected static ?int $sort = 3;
+    
+    // Tambahkan properti untuk mengatur ukuran chart
+    protected static ?string $maxHeight = '450px';
 
     // Filter properties
     public ?string $filter = 'today';
@@ -47,7 +50,6 @@ class DailyTaskStatus extends ChartWidget
         $this->skipRender = false;
     }
 
-    // Optional: Listen to specific date range updates
     #[On('updateDateRange')]
     public function updateDateRange(string $range, string $from, string $to): void
     {
@@ -59,7 +61,6 @@ class DailyTaskStatus extends ChartWidget
         $this->skipRender = false;
     }
 
-    // Optional: Listen to department filter updates
     #[On('updateDepartment')]
     public function updateDepartment(?string $department): void
     {
@@ -68,7 +69,6 @@ class DailyTaskStatus extends ChartWidget
         $this->skipRender = false;
     }
 
-    // Optional: Listen to position filter updates
     #[On('updatePosition')]
     public function updatePosition(?string $position): void
     {
@@ -90,20 +90,20 @@ class DailyTaskStatus extends ChartWidget
                 [
                     'data' => $statusData['counts'],
                     'backgroundColor' => [
-                        'rgba(13, 148, 136, 0.9)',   // Selesai - teal-600
-                        'rgba(20, 184, 166, 0.8)',   // Sedang Dikerjakan - teal-500
-                        'rgba(45, 212, 191, 0.7)',   // Tertunda - teal-400
-                        'rgba(153, 246, 228, 0.6)',  // Dibatalkan - teal-200
+                        'rgba(34, 197, 94, 0.85)',   // Selesai - green-500
+                        'rgba(59, 130, 246, 0.85)',  // Sedang Dikerjakan - blue-500
+                        'rgba(251, 146, 60, 0.85)',  // Tertunda - orange-400
+                        'rgba(148, 163, 184, 0.75)', // Dibatalkan - slate-400
                     ],
                     'borderColor' => [
-                        'rgb(13, 148, 136)',
-                        'rgb(20, 184, 166)',
-                        'rgb(45, 212, 191)',
-                        'rgb(153, 246, 228)',
+                        'rgb(34, 197, 94)',
+                        'rgb(59, 130, 246)',
+                        'rgb(251, 146, 60)',
+                        'rgb(148, 163, 184)',
                     ],
                     'borderWidth' => 2,
                     'hoverBorderWidth' => 3,
-                    'hoverOffset' => 10,
+                    'hoverOffset' => 15,
                 ],
             ],
             'labels' => $statusData['labels'],
@@ -112,34 +112,74 @@ class DailyTaskStatus extends ChartWidget
 
     protected function getType(): string
     {
-        return 'pie';
+        return 'doughnut';
     }
 
     protected function getOptions(): array
     {
         return [
+            'responsive' => true,
+            'cutout' => '65%',
             'scales' => [
                 'y' => [
-                    'beginAtZero' => true,
-                    'stacked' => true,
-                    'display' => false, // Hide Y-axis completely
+                    'display' => false, // Sembunyikan Y-axis sepenuhnya
+                    'ticks' => [
+                        'display' => false,
+                    ],
                     'grid' => [
-                        'display' => false, // Hide Y-axis grid
+                        'display' => false,
+                        'drawBorder' => false,
                     ],
                 ],
                 'x' => [
-                    'stacked' => true,
-                    'display' => false, // Hide X-axis completely
+                    'display' => false, // Sembunyikan X-axis sepenuhnya
+                    'ticks' => [
+                        'display' => false,
+                    ],
                     'grid' => [
-                        'display' => false, // Hide X-axis grid
+                        'display' => false,
+                        'drawBorder' => false,
                     ],
                 ],
             ],
-            'cutout' => 0, // 0 untuk pie chart penuh, bisa diubah ke 50 untuk donut
+            'plugins' => [
+                'legend' => [
+                    'display' => true,
+                    'position' => 'right',
+                    'labels' => [
+                        'boxWidth' => 12,
+                        'padding' => 12,
+                        'font' => [
+                            'size' => 11,
+                        ],
+                        'usePointStyle' => true,
+                        'pointStyle' => 'circle',
+                    ],
+                ],
+                'tooltip' => [
+                    'enabled' => true,
+                    'backgroundColor' => 'rgba(0, 0, 0, 0.8)',
+                    'padding' => 10,
+                    'titleFont' => [
+                        'size' => 12,
+                    ],
+                    'bodyFont' => [
+                        'size' => 11,
+                    ],
+                ],
+            ],
             'animation' => [
-                'duration' => 1500,
+                'duration' => 800,
                 'animateRotate' => true,
                 'animateScale' => true,
+            ],
+            'layout' => [
+                'padding' => [
+                    'top' => 10,
+                    'bottom' => 10,
+                    'left' => 10,
+                    'right' => 10,
+                ],
             ],
         ];
     }
@@ -196,7 +236,7 @@ class DailyTaskStatus extends ChartWidget
         if (empty($labels)) {
             return [
                 'labels' => ['Tidak ada data'],
-                'counts' => [1], // Dummy data untuk empty state
+                'counts' => [1],
             ];
         }
 
