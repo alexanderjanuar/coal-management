@@ -418,7 +418,6 @@ class TaxReportResource extends Resource
             ])
             ->deferLoading()
             ->filters([
-
                 Tables\Filters\SelectFilter::make('ppn_report_status')
                     ->label('Status Laporan PPN')
                     ->options([
@@ -440,12 +439,24 @@ class TaxReportResource extends Resource
                         'Sudah Lapor' => 'Sudah Lapor',
                     ]),
                 // Client filter
-                Tables\Filters\SelectFilter::make('client_id')
-                    ->label('Client')
-                    ->relationship('client', 'name')
-                    ->searchable()
-                    ->preload()
-                    ->multiple(),
+                Tables\Filters\SelectFilter::make('client_status')
+                    ->label('Client Status')
+                    ->query(function (Builder $query, array $data): Builder {
+                        if (empty($data['values'])) {
+                            return $query;
+                        }
+                        
+                        return $query->whereHas('client', function (Builder $query) use ($data) {
+                            $query->whereIn('status', $data['values']);
+                        });
+                    })
+                    ->options([
+                        'Active' => 'Active',
+                        'Inactive' => 'Inactive',
+                    ])
+                    ->multiple()
+                    ->default(['Active']) // Default hanya tampilkan client dengan status Active
+                    ->preload(),
 
                 // Invoice Tax Status Filter
                 Tables\Filters\SelectFilter::make('invoice_tax_status')
