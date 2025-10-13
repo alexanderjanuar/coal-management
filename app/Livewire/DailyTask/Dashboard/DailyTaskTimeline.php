@@ -120,6 +120,7 @@ class DailyTaskTimeline extends ChartWidget
     protected function getOptions(): array
     {
         return [
+            'responsive'=> true,
             'scales' => [
                 'y' => [
                     'beginAtZero' => true,

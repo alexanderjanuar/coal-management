@@ -8,6 +8,7 @@ use App\Models\User;
 use Illuminate\Support\Facades\DB;
 use Livewire\Attributes\On;
 use Illuminate\Support\Carbon;
+use Filament\Support\RawJs;
 
 class DailyTaskStatus extends ChartWidget
 {
@@ -77,6 +78,12 @@ class DailyTaskStatus extends ChartWidget
         $this->skipRender = false;
     }
 
+    public function getTitle(): ?string
+    {
+        dd('123');
+        return 'Status Tugas';
+    }
+
     protected function getData(): array
     {
         // Clear any cached data
@@ -115,73 +122,67 @@ class DailyTaskStatus extends ChartWidget
         return 'doughnut';
     }
 
-    protected function getOptions(): array
+    protected function getOptions(): RawJs
     {
-        return [
-            'responsive' => true,
-            'cutout' => '65%',
-            'scales' => [
-                'y' => [
-                    'display' => false, // Sembunyikan Y-axis sepenuhnya
-                    'ticks' => [
-                        'display' => false,
-                    ],
-                    'grid' => [
-                        'display' => false,
-                        'drawBorder' => false,
-                    ],
-                ],
-                'x' => [
-                    'display' => false, // Sembunyikan X-axis sepenuhnya
-                    'ticks' => [
-                        'display' => false,
-                    ],
-                    'grid' => [
-                        'display' => false,
-                        'drawBorder' => false,
-                    ],
-                ],
-            ],
-            'plugins' => [
-                'legend' => [
-                    'display' => true,
-                    'position' => 'right',
-                    'labels' => [
-                        'boxWidth' => 12,
-                        'padding' => 12,
-                        'font' => [
-                            'size' => 11,
-                        ],
-                        'usePointStyle' => true,
-                        'pointStyle' => 'circle',
-                    ],
-                ],
-                'tooltip' => [
-                    'enabled' => true,
-                    'backgroundColor' => 'rgba(0, 0, 0, 0.8)',
-                    'padding' => 10,
-                    'titleFont' => [
-                        'size' => 12,
-                    ],
-                    'bodyFont' => [
-                        'size' => 11,
-                    ],
-                ],
-            ],
-            'animation' => [
-                'duration' => 800,
-                'animateRotate' => true,
-                'animateScale' => true,
-            ],
-            'layout' => [
-                'padding' => [
-                    'top' => 10,
-                    'bottom' => 10,
-                    'left' => 10,
-                    'right' => 10,
-                ],
-            ],
-        ];
+        return RawJs::make(<<<JS
+            {
+                responsive: true,
+                cutout: '65%',
+                scales: {
+                    y: {
+                        display: false,
+                        ticks: {
+                            display: false,
+                        },
+                        grid: {
+                            display: false,
+                            drawBorder: false,
+                        },
+                    },
+                    x: {
+                        display: false,
+                        ticks: {
+                            display: false,
+                        },
+                        grid: {
+                            display: false,
+                            drawBorder: false,
+                        },
+                    },
+                },
+                plugins: {
+                    legend: {
+                        display: true,
+                        position: 'right',
+                        labels: {
+                            boxWidth: 12,
+                            padding: 12,
+                            font: {
+                                size: 11,
+                            },
+                            usePointStyle: true,
+                            pointStyle: 'circle',
+                        },
+                    },
+                },
+                animation: {
+                    duration: 800,
+                    animateRotate: true,
+                    animateScale: true,
+                },
+                onClick: function(event,elements) {
+                    console.log(elements, event);
+                },
+                layout: {
+                    padding: {
+                        top: 10,
+                        bottom: 10,
+                        left: 10,
+                        right: 10,
+                    },
+                },
+            }
+        JS);
     }
 
     // Method untuk mendapatkan data status dengan filter
