@@ -90,7 +90,6 @@ trait InvoiceFormTrait
                                         ? $this->generateFileName($get, $file->getClientOriginalName())
                                         : $file->getClientOriginalName()
                                 )
-                                ->acceptedFileTypes(['application/pdf', 'image/jpeg', 'image/png', 'image/webp'])
                                 ->maxSize(10240) // 10MB
                                 ->helperText('Upload berkas faktur (PDF/gambar) - akan otomatis diproses AI')
                                 ->live()
@@ -227,7 +226,6 @@ trait InvoiceFormTrait
                                         ? $this->generateFileName($get, $file->getClientOriginalName())
                                         : $file->getClientOriginalName()
                                 )
-                                ->acceptedFileTypes(['application/pdf', 'image/jpeg', 'image/png', 'image/webp'])
                                 ->maxSize(10240)
                                 ->helperText('Upload berkas faktur revisi (PDF/gambar) - akan otomatis diproses AI')
                                 ->live()
@@ -519,7 +517,6 @@ trait InvoiceFormTrait
                                 
                                 return FileManagementService::generateBuktiSetorFileName($invoiceType, $invoiceNumber, $file->getClientOriginalName());
                             })
-                            ->acceptedFileTypes(['application/pdf', 'image/jpeg', 'image/png', 'image/webp'])
                             ->helperText(function (Forms\Get $get) {
                                 if (method_exists($this, 'generateDirectoryPath')) {
                                     $path = $this->generateDirectoryPath($get);
