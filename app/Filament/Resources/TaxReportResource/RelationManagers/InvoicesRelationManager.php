@@ -553,7 +553,7 @@ class InvoicesRelationManager extends RelationManager
     /**
      * Process invoice with AI using the AI Service
      */
-    private function processInvoiceWithAI($file, Forms\Get $get, Forms\Set $set)
+    private function processInvoiceWithAI($filePath, Forms\Get $get, Forms\Set $set)
     {
         try {
             $set('ai_processing_status', 'processing');
@@ -570,8 +570,28 @@ class InvoicesRelationManager extends RelationManager
                 $monthName = FileManagementService::convertToIndonesianMonth($taxReport->month);
             }
             
+            // Handle both temporary uploads and stored files
+            if (is_object($filePath)) {
+                // TemporaryUploadedFile object
+                $fullPath = $filePath->getRealPath();
+            } else {
+                // String path to stored file
+                $fullPath = storage_path('app/public/' . $filePath);
+            }
+            
+            if (!file_exists($fullPath)) {
+                throw new \Exception('File tidak ditemukan: ' . $filePath);
+            }
+            
             $aiService = new \App\Services\InvoiceAIService();
-            $result = $aiService->processInvoice($file, $clientName, $monthName);
+            
+            // Check if the service has the method for file path processing
+            if (method_exists($aiService, 'processInvoiceFromPath')) {
+                $result = $aiService->processInvoiceFromPath($fullPath, $clientName, $monthName);
+            } else {
+                // Fallback to the original method if the new one doesn't exist
+                $result = $aiService->processInvoice($filePath, $clientName, $monthName);
+            }
             
             $output = $aiService->formatOutput($result);
             $set('ai_output', $output);
@@ -582,8 +602,9 @@ class InvoicesRelationManager extends RelationManager
                 
                 Notification::make()
                     ->title('AI Processing Selesai')
-                    ->body('Data faktur berhasil diekstrak. Silakan tinjau hasil dan terapkan ke form.')
+                    ->body('Data faktur berhasil diekstrak. Klik "Terapkan Data AI ke Form" untuk mengisi form secara otomatis.')
                     ->success()
+                    ->duration(5000)
                     ->send();
             } elseif ($result['debug']) {
                 $set('ai_processing_status', 'completed');
