@@ -292,17 +292,36 @@ class TaxReportInvoicesExport implements FromArray, WithStyles, WithColumnWidths
             $groupSize = $companyInvoices->count();
             
             if ($groupSize > 1) {
-                // Merge cells for this company
-                $endRow = $currentRow + $groupSize - 1;
-                $sheet->mergeCells("{$column}{$currentRow}:{$column}{$endRow}");
+                // Check if all invoices in this group have the same styling properties
+                $firstInvoice = $companyInvoices->first();
+                $firstDisplayValues = $this->getDisplayValues($firstInvoice);
+                $firstIsBusinessRelated = $firstInvoice->is_business_related;
                 
-                // Center the merged cell content vertically
-                $sheet->getStyle("{$column}{$currentRow}:{$column}{$endRow}")->applyFromArray([
-                    'alignment' => [
-                        'horizontal' => Alignment::HORIZONTAL_LEFT,
-                        'vertical' => Alignment::VERTICAL_CENTER
-                    ]
-                ]);
+                $canMerge = true;
+                foreach ($companyInvoices as $invoice) {
+                    $displayValues = $this->getDisplayValues($invoice);
+                    
+                    // Don't merge if styling differs
+                    if ($displayValues['is_revised'] !== $firstDisplayValues['is_revised'] || 
+                        $invoice->is_business_related !== $firstIsBusinessRelated) {
+                        $canMerge = false;
+                        break;
+                    }
+                }
+                
+                // Only merge if all invoices have the same styling
+                if ($canMerge) {
+                    $endRow = $currentRow + $groupSize - 1;
+                    $sheet->mergeCells("{$column}{$currentRow}:{$column}{$endRow}");
+                    
+                    // Center the merged cell content vertically
+                    $sheet->getStyle("{$column}{$currentRow}:{$column}{$endRow}")->applyFromArray([
+                        'alignment' => [
+                            'horizontal' => Alignment::HORIZONTAL_LEFT,
+                            'vertical' => Alignment::VERTICAL_CENTER
+                        ]
+                    ]);
+                }
             }
             
             $currentRow += $groupSize;
@@ -332,7 +351,7 @@ class TaxReportInvoicesExport implements FromArray, WithStyles, WithColumnWidths
         $dataEndRow = $dataStartRow + $keluaranDataRowCount - 1;
         $jumlahRow = $dataEndRow + 1;
 
-        // Title styling - merge across columns B-I (tambah 1 kolom)
+        // Title styling - merge across columns B-I
         $sheet->mergeCells('B3:I3');
         $sheet->getStyle('B3')->applyFromArray([
             'font' => ['bold' => true, 'size' => 14],
@@ -377,7 +396,11 @@ class TaxReportInvoicesExport implements FromArray, WithStyles, WithColumnWidths
                 ]
             ]);
 
-            // Apply special styling for revised invoices and non-business related
+            // APPLY COMPANY NAME MERGING FIRST - SEBELUM STYLING INDIVIDUAL
+            $this->applyCompanyNameMerging($sheet, $dataStartRow, $fakturKeluaran, 'C');
+
+            // THEN Apply special styling for revised invoices and non-business related
+            // Styling ini akan diterapkan SETELAH merge, jadi tidak akan shift
             for ($row = $dataStartRow; $row <= $dataEndRow; $row++) {
                 $invoiceIndex = $row - $dataStartRow;
                 if (isset($fakturKeluaran[$invoiceIndex])) {
@@ -405,17 +428,33 @@ class TaxReportInvoicesExport implements FromArray, WithStyles, WithColumnWidths
                                 'color' => ['rgb' => '999999']
                             ]
                         ]);
+                    }
+                    
+                    // PENTING: Preserve company name cell styling setelah merged
+                    // Jangan override background color untuk merged company name
+                    $companyName = $invoice->company_name;
+                    $invoicesWithSameName = $fakturKeluaran->filter(function($inv) use ($companyName) {
+                        return $inv->company_name === $companyName;
+                    });
+                    
+                    // Jika ini adalah row pertama dari grup yang di-merge, keep white background untuk company name
+                    if ($invoicesWithSameName->count() > 1) {
+                        $firstInvoiceIndex = $fakturKeluaran->search(function($inv) use ($companyName) {
+                            return $inv->company_name === $companyName;
+                        });
                         
-                        // Keep company name (column C) with normal background and text
-                        $sheet->getStyle("C{$row}")->applyFromArray([
-                            'fill' => [
-                                'fillType' => Fill::FILL_SOLID,
-                                'color' => ['rgb' => 'FFFFFF']
-                            ],
-                            'font' => [
-                                'color' => ['rgb' => '000000']
-                            ]
-                        ]);
+                        if ($invoiceIndex === $firstInvoiceIndex) {
+                            // Keep company name column (C) with normal background
+                            $sheet->getStyle("C{$row}")->applyFromArray([
+                                'fill' => [
+                                    'fillType' => Fill::FILL_SOLID,
+                                    'color' => ['rgb' => 'FFFFFF']
+                                ],
+                                'font' => [
+                                    'color' => ['rgb' => '000000']
+                                ]
+                            ]);
+                        }
                     }
                 }
             }
@@ -502,7 +541,10 @@ class TaxReportInvoicesExport implements FromArray, WithStyles, WithColumnWidths
                 ]
             ]);
 
-            // Apply special styling for revised invoices and non-business related
+            // APPLY COMPANY NAME MERGING FIRST - SEBELUM STYLING INDIVIDUAL
+            $this->applyCompanyNameMerging($sheet, $masukanDataStartRow, $fakturMasukan, 'C');
+
+            // THEN Apply special styling for revised invoices and non-business related
             for ($row = $masukanDataStartRow; $row <= $masukanDataEndRow; $row++) {
                 $invoiceIndex = $row - $masukanDataStartRow;
                 if (isset($fakturMasukan[$invoiceIndex])) {
@@ -530,17 +572,32 @@ class TaxReportInvoicesExport implements FromArray, WithStyles, WithColumnWidths
                                 'color' => ['rgb' => '999999']
                             ]
                         ]);
+                    }
+                    
+                    // PENTING: Preserve company name cell styling setelah merged
+                    $companyName = $invoice->company_name;
+                    $invoicesWithSameName = $fakturMasukan->filter(function($inv) use ($companyName) {
+                        return $inv->company_name === $companyName;
+                    });
+                    
+                    // Jika ini adalah row pertama dari grup yang di-merge, keep white background untuk company name
+                    if ($invoicesWithSameName->count() > 1) {
+                        $firstInvoiceIndex = $fakturMasukan->search(function($inv) use ($companyName) {
+                            return $inv->company_name === $companyName;
+                        });
                         
-                        // Keep company name (column C) with normal background and text
-                        $sheet->getStyle("C{$row}")->applyFromArray([
-                            'fill' => [
-                                'fillType' => Fill::FILL_SOLID,
-                                'color' => ['rgb' => 'FFFFFF']
-                            ],
-                            'font' => [
-                                'color' => ['rgb' => '000000']
-                            ]
-                        ]);
+                        if ($invoiceIndex === $firstInvoiceIndex) {
+                            // Keep company name column (C) with normal background
+                            $sheet->getStyle("C{$row}")->applyFromArray([
+                                'fill' => [
+                                    'fillType' => Fill::FILL_SOLID,
+                                    'color' => ['rgb' => 'FFFFFF']
+                                ],
+                                'font' => [
+                                    'color' => ['rgb' => '000000']
+                                ]
+                            ]);
+                        }
                     }
                 }
             }
@@ -603,7 +660,7 @@ class TaxReportInvoicesExport implements FromArray, WithStyles, WithColumnWidths
             ]
         ]);
 
-        // REKAP data rows styling with merged cells B to H (kolom I untuk space)
+        // REKAP data rows styling - B to I
         $sheet->getStyle("B{$rekapDataStartRow}:I{$rekapDataEndRow}")->applyFromArray([
             'borders' => [
                 'allBorders' => ['borderStyle' => Border::BORDER_THIN, 'color' => ['rgb' => '000000']]
@@ -613,18 +670,21 @@ class TaxReportInvoicesExport implements FromArray, WithStyles, WithColumnWidths
             ]
         ]);
 
-        // Merge and align REKAP description texts (B to G) and align right
+        // Merge B to H for label, I for value
         for ($row = $rekapDataStartRow; $row <= $rekapDataEndRow; $row++) {
+            // Merge B to H for the label text (align left)
             $sheet->mergeCells("B{$row}:H{$row}");
             $sheet->getStyle("B{$row}:H{$row}")->applyFromArray([
-                'alignment' => ['horizontal' => Alignment::HORIZONTAL_RIGHT, 'vertical' => Alignment::VERTICAL_CENTER]
+                'alignment' => ['horizontal' => Alignment::HORIZONTAL_LEFT, 'vertical' => Alignment::VERTICAL_CENTER],
+                'font' => ['bold' => true]
+            ]);
+            
+            // Column I untuk nilai/amount (align right)
+            $sheet->getStyle("I{$row}")->applyFromArray([
+                'alignment' => ['horizontal' => Alignment::HORIZONTAL_RIGHT, 'vertical' => Alignment::VERTICAL_CENTER],
+                'font' => ['bold' => true]
             ]);
         }
-
-        // Align amounts to the right - column H only
-        $sheet->getStyle("I{$rekapDataStartRow}:H{$rekapDataEndRow}")->applyFromArray([
-            'alignment' => ['horizontal' => Alignment::HORIZONTAL_RIGHT]
-        ]);
 
         // Status row styling - B to I
         $sheet->mergeCells("B{$statusRow}:I{$statusRow}");
@@ -679,20 +739,16 @@ class TaxReportInvoicesExport implements FromArray, WithStyles, WithColumnWidths
 
         // Set row heights for better appearance
         $sheet->getRowDimension($sectionHeaderRow)->setRowHeight(25);
+        $sheet->getRowDimension($headerRow)->setRowHeight(20);
+        $sheet->getRowDimension($jumlahRow)->setRowHeight(18);
+        $sheet->getRowDimension($masukanSectionHeaderRow)->setRowHeight(25);
         $sheet->getRowDimension($masukanHeaderRow)->setRowHeight(20);
         $sheet->getRowDimension($masukanJumlahRow)->setRowHeight(18);
         $sheet->getRowDimension($rekapSectionHeaderRow)->setRowHeight(25);
         $sheet->getRowDimension($statusRow)->setRowHeight(30);
 
-        // Apply company name merging for Faktur Keluaran
-        if (isset($this->fakturKeluaranData)) {
-            $this->applyCompanyNameMerging($sheet, $dataStartRow, $this->fakturKeluaranData, 'C');
-        }
-
-        // Apply company name merging for Faktur Masukan
-        if (isset($this->fakturMasukanData)) {
-            $this->applyCompanyNameMerging($sheet, $masukanDataStartRow, $this->fakturMasukanData, 'C');
-        }
+        // CATATAN: Company name merging sudah dipanggil di atas sebelum styling individual
+        // Jadi TIDAK perlu dipanggil lagi di sini
 
         return [];
     }
