@@ -85,10 +85,10 @@ class TaxReportInvoicesExport implements FromArray, WithStyles, WithColumnWidths
         
         // Add selection indicator to title if in selection mode
         $titlePrefix = $this->isSelectionMode ? 'REKAP FAKTUR TERPILIH ' : 'REKAP FAKTUR ';
-        $data[] = ['', '', '', '', '', '', '', '']; // Empty row 1
-        $data[] = ['', '', '', '', '', '', '', '']; // Empty row 2
-        $data[] = ['', $titlePrefix . $clientName . ' - ' . $monthYear, '', '', '', '', '', ''];
-        $data[] = ['', '', '', '', '', '', '', '']; // Empty row
+        $data[] = ['', '', '', '', '', '', '', '', '']; // Empty row 1 - tambah 1 kolom
+        $data[] = ['', '', '', '', '', '', '', '', '']; // Empty row 2 - tambah 1 kolom
+        $data[] = ['', $titlePrefix . $clientName . ' - ' . $monthYear, '', '', '', '', '', '', ''];
+        $data[] = ['', '', '', '', '', '', '', '', '']; // Empty row - tambah 1 kolom
 
         // Get base query
         $baseQuery = $this->taxReport->invoices();
@@ -99,43 +99,51 @@ class TaxReportInvoicesExport implements FromArray, WithStyles, WithColumnWidths
         }
 
         // FAKTUR KELUARAN section - start at column B
-        $data[] = ['', 'FAKTUR KELUARAN', '', '', '', '', '', ''];
+        $data[] = ['', 'FAKTUR KELUARAN', '', '', '', '', '', '', ''];
 
-        // Headers - start at column B (added Nomor Seri Faktur column)
-        $data[] = ['', 'No', 'Nama Penjual', 'Nomor Seri Faktur', 'Tanggal', 'DPP Nilai Lainnya', 'DPP', 'PPN'];
+        // Headers - start at column B (added Keterangan column)
+        $data[] = ['', 'No', 'Nama Penjual', 'Nomor Seri Faktur', 'Tanggal', 'DPP Nilai Lainnya', 'DPP', 'PPN', 'Keterangan'];
 
-        // Get Faktur Keluaran data - use latest versions only for calculations
+        // Get Faktur Keluaran data
         $fakturKeluaranQuery = (clone $baseQuery)->where('type', 'Faktur Keluaran');
-        $fakturKeluaranLatest = $this->getLatestVersionInvoices($fakturKeluaranQuery);
-        
-        // But for display, we get ALL invoices (including revised originals) for proper listing
         $fakturKeluaranAll = $fakturKeluaranQuery->orderBy('invoice_date')->get();
 
         $totalDppNilaiLainnyaKeluaran = 0;
         $totalDppKeluaran = 0;
         $totalPpnKeluaran = 0;
 
-        // Data rows - start at column B - display ALL but calculate only latest versions
+        // Data rows - start at column B
         foreach ($fakturKeluaranAll as $index => $invoice) {
             $displayValues = $this->getDisplayValues($invoice);
+            
+            // Tentukan keterangan
+            $keterangan = [];
+            if ($displayValues['is_revised']) {
+                $keterangan[] = 'Direvisi';
+            }
+            if (!$invoice->is_business_related) {
+                $keterangan[] = 'Tidak Terkait Bisnis';
+            }
+            $keteranganText = !empty($keterangan) ? implode(' | ', $keterangan) : ' ';
             
             $data[] = [
                 '',
                 $index + 1,
                 $invoice->company_name,
-                $invoice->invoice_number, // Keep original invoice number without any modifications
+                $invoice->invoice_number,
                 date('d/m/Y', strtotime($invoice->invoice_date)),
                 $displayValues['dpp_nilai_lainnya'] > 0 ? 'Rp ' . number_format($displayValues['dpp_nilai_lainnya'], 0, ',', ',') : 'Rp 0',
                 $displayValues['dpp'] > 0 ? 'Rp ' . number_format($displayValues['dpp'], 0, ',', ',') : 'Rp 0',
                 $displayValues['ppn'] > 0 ? 'Rp ' . number_format($displayValues['ppn'], 0, ',', ',') : 'Rp 0',
+                $keteranganText
             ];
-        }
-
-        // Calculate totals from latest versions only
-        foreach ($fakturKeluaranLatest as $invoice) {
-            $totalDppNilaiLainnyaKeluaran += $invoice->dpp_nilai_lainnya ?? 0;
-            $totalDppKeluaran += $invoice->dpp;
-            $totalPpnKeluaran += $invoice->ppn;
+            
+            // Hitung total hanya jika bukan revision dan terkait bisnis
+            if (!$displayValues['is_revised'] && $invoice->is_business_related) {
+                $totalDppNilaiLainnyaKeluaran += $displayValues['dpp_nilai_lainnya'];
+                $totalDppKeluaran += $displayValues['dpp'];
+                $totalPpnKeluaran += $displayValues['ppn'];
+            }
         }
 
         // JUMLAH row for Faktur Keluaran - start at column B
@@ -147,51 +155,60 @@ class TaxReportInvoicesExport implements FromArray, WithStyles, WithColumnWidths
             '', 
             'Rp ' . number_format($totalDppNilaiLainnyaKeluaran, 0, ',', ','),
             'Rp ' . number_format($totalDppKeluaran, 0, ',', ','), 
-            'Rp ' . number_format($totalPpnKeluaran, 0, ',', ',')
+            'Rp ' . number_format($totalPpnKeluaran, 0, ',', ','),
+            ''
         ];
 
         // Add 2 empty rows for spacing
-        $data[] = ['', '', '', '', '', '', '', ''];
-        $data[] = ['', '', '', '', '', '', '', ''];
+        $data[] = ['', '', '', '', '', '', '', '', ''];
+        $data[] = ['', '', '', '', '', '', '', '', ''];
 
         // FAKTUR MASUKAN section - start at column B
-        $data[] = ['', 'FAKTUR MASUKAN', '', '', '', '', '', ''];
+        $data[] = ['', 'FAKTUR MASUKAN', '', '', '', '', '', '', ''];
 
         // Headers - start at column B
-        $data[] = ['', 'No', 'Nama Penjual', 'Nomor Seri Faktur', 'Tanggal', 'DPP Nilai Lainnya', 'DPP', 'PPN'];
+        $data[] = ['', 'No', 'Nama Penjual', 'Nomor Seri Faktur', 'Tanggal', 'DPP Nilai Lainnya', 'DPP', 'PPN', 'Keterangan'];
 
-        // Get Faktur Masukan data - use latest versions only for calculations
+        // Get Faktur Masukan data - TAMPILKAN SEMUA, tidak filter business_related
         $fakturMasukanQuery = (clone $baseQuery)->where('type', 'Faktur Masuk');
-        $fakturMasukanLatest = $this->getLatestVersionInvoices($fakturMasukanQuery);
-        
-        // But for display, we get ALL invoices (including revised originals) for proper listing
         $fakturMasukanAll = $fakturMasukanQuery->orderBy('invoice_date')->get();
 
         $totalDppNilaiLainnyaMasukan = 0;
         $totalDppMasukan = 0;
         $totalPpnMasukan = 0;
 
-        // Data rows - start at column B - display ALL but calculate only latest versions
+        // Data rows - start at column B
         foreach ($fakturMasukanAll as $index => $invoice) {
             $displayValues = $this->getDisplayValues($invoice);
+            
+            // Tentukan keterangan
+            $keterangan = [];
+            if ($displayValues['is_revised']) {
+                $keterangan[] = 'Direvisi';
+            }
+            if (!$invoice->is_business_related) {
+                $keterangan[] = 'Tidak Terkait Bisnis';
+            }
+            $keteranganText = !empty($keterangan) ? implode(' | ', $keterangan) : ' ';
             
             $data[] = [
                 '',
                 $index + 1,
                 $invoice->company_name,
-                $invoice->invoice_number, // Keep original invoice number without any modifications
+                $invoice->invoice_number,
                 date('d/m/Y', strtotime($invoice->invoice_date)),
                 $displayValues['dpp_nilai_lainnya'] > 0 ? 'Rp ' . number_format($displayValues['dpp_nilai_lainnya'], 0, ',', ',') : 'Rp 0',
                 $displayValues['dpp'] > 0 ? 'Rp ' . number_format($displayValues['dpp'], 0, ',', ',') : 'Rp 0',
                 $displayValues['ppn'] > 0 ? 'Rp ' . number_format($displayValues['ppn'], 0, ',', ',') : 'Rp 0',
+                $keteranganText
             ];
-        }
-
-        // Calculate totals from latest versions only
-        foreach ($fakturMasukanLatest as $invoice) {
-            $totalDppNilaiLainnyaMasukan += $invoice->dpp_nilai_lainnya ?? 0;
-            $totalDppMasukan += $invoice->dpp;
-            $totalPpnMasukan += $invoice->ppn;
+            
+            // Hitung total hanya jika bukan revision dan terkait bisnis
+            if (!$displayValues['is_revised'] && $invoice->is_business_related) {
+                $totalDppNilaiLainnyaMasukan += $displayValues['dpp_nilai_lainnya'];
+                $totalDppMasukan += $displayValues['dpp'];
+                $totalPpnMasukan += $displayValues['ppn'];
+            }
         }
 
         // JUMLAH row for Faktur Masukan - start at column B
@@ -203,32 +220,34 @@ class TaxReportInvoicesExport implements FromArray, WithStyles, WithColumnWidths
             '', 
             'Rp ' . number_format($totalDppNilaiLainnyaMasukan, 0, ',', ','),
             'Rp ' . number_format($totalDppMasukan, 0, ',', ','), 
-            'Rp ' . number_format($totalPpnMasukan, 0, ',', ',')
+            'Rp ' . number_format($totalPpnMasukan, 0, ',', ','),
+            ''
         ];
 
         // Add 2 empty rows for spacing
-        $data[] = ['', '', '', '', '', '', '', ''];
-        $data[] = ['', '', '', '', '', '', '', ''];
+        $data[] = ['', '', '', '', '', '', '', '', ''];
+        $data[] = ['', '', '', '', '', '', '', '', ''];
 
         // REKAP KURANG ATAU LEBIH BAYAR PAJAK section
-        $data[] = ['', 'REKAP KURANG ATAU LEBIH BAYAR PAJAK', '', '', '', '', '', ''];
+        $data[] = ['', 'REKAP KURANG ATAU LEBIH BAYAR PAJAK', '', '', '', '', '', '', ''];
 
-        // Summary calculations - use calculated totals from latest versions
+        // Summary calculations - use calculated totals
         $kurangLebihBayar = $totalPpnKeluaran - $totalPpnMasukan;
-        
+
         // For selection mode, don't include compensation (only for full reports)
         $ppnDikompensasi = $this->isSelectionMode ? 0 : ($this->taxReport->ppn_dikompensasi_dari_masa_sebelumnya ?? 0);
         $finalAmount = $kurangLebihBayar - $ppnDikompensasi;
 
-        $data[] = ['', 'TOTAL PPN FAKTUR KELUARAN', '', '', '', '', '', 'Rp ' . number_format($totalPpnKeluaran, 0, ',', ',')];
-        $data[] = ['', 'TOTAL PPN FAKTUR MASUKAN', '', '', '', '', '', 'Rp ' . number_format($totalPpnMasukan, 0, ',', ',')];
-        
+        // Merge B-H for label (align left), I for value
+        $data[] = ['', 'TOTAL PPN FAKTUR KELUARAN', '', '', '', '', '', '', 'Rp ' . number_format($totalPpnKeluaran, 0, ',', ',')];
+        $data[] = ['', 'TOTAL PPN FAKTUR MASUKAN', '', '', '', '', '', '', 'Rp ' . number_format($totalPpnMasukan, 0, ',', ',')];
+
         // Only show compensation for full reports
         if (!$this->isSelectionMode) {
-            $data[] = ['', 'PPN DIKOMPENSASIKAN DARI MASA SEBELUMNYA', '', '', '', '', '', 'Rp ' . number_format($ppnDikompensasi, 0, ',', ',')];
+            $data[] = ['', 'PPN DIKOMPENSASIKAN DARI MASA SEBELUMNYA', '', '', '', '', '', '', 'Rp ' . number_format($ppnDikompensasi, 0, ',', ',')];
         }
-        
-        $data[] = ['', 'TOTAL KURANG/ LEBIH BAYAR PAJAK', '', '', '', '', '', 'Rp ' . number_format($finalAmount, 0, ',', ',')];
+
+        $data[] = ['', 'TOTAL KURANG/ LEBIH BAYAR PAJAK', '', '', '', '', '', '', 'Rp ' . number_format($finalAmount, 0, ',', ',')];
 
         // Determine status and add status row
         if ($finalAmount > 0) {
@@ -240,17 +259,17 @@ class TaxReportInvoicesExport implements FromArray, WithStyles, WithColumnWidths
         }
 
         // Add status row
-        $data[] = ['', $status, '', '', '', '', '', ''];
+        $data[] = ['', $status, '', '', '', '', '', '', ''];
 
         // Add selection info if in selection mode
         if ($this->isSelectionMode) {
-            $data[] = ['', '', '', '', '', '', '', ''];
+            $data[] = ['', '', '', '', '', '', '', '', ''];
             $totalSelected = count($this->selectedInvoiceIds);
             $totalAvailable = $this->taxReport->invoices()->count();
-            $data[] = ['', "DIPILIH: {$totalSelected} dari {$totalAvailable} faktur", '', '', '', '', '', ''];
+            $data[] = ['', "DIPILIH: {$totalSelected} dari {$totalAvailable} faktur", '', '', '', '', '', '', ''];
         }
 
-        // Store data for merging later (use ALL invoices for proper display)
+        // Store data for merging later
         $this->fakturKeluaranData = $fakturKeluaranAll;
         $this->fakturMasukanData = $fakturMasukanAll;
 
@@ -313,16 +332,16 @@ class TaxReportInvoicesExport implements FromArray, WithStyles, WithColumnWidths
         $dataEndRow = $dataStartRow + $keluaranDataRowCount - 1;
         $jumlahRow = $dataEndRow + 1;
 
-        // Title styling - merge across columns B-H
-        $sheet->mergeCells('B3:H3');
+        // Title styling - merge across columns B-I (tambah 1 kolom)
+        $sheet->mergeCells('B3:I3');
         $sheet->getStyle('B3')->applyFromArray([
             'font' => ['bold' => true, 'size' => 14],
             'alignment' => ['horizontal' => Alignment::HORIZONTAL_CENTER, 'vertical' => Alignment::VERTICAL_CENTER],
         ]);
 
-        // FAKTUR KELUARAN section header - MERGE B3:H3
-        $sheet->mergeCells("B{$sectionHeaderRow}:H{$sectionHeaderRow}");
-        $sheet->getStyle("B{$sectionHeaderRow}:H{$sectionHeaderRow}")->applyFromArray([
+        // FAKTUR KELUARAN section header - MERGE B to I
+        $sheet->mergeCells("B{$sectionHeaderRow}:I{$sectionHeaderRow}");
+        $sheet->getStyle("B{$sectionHeaderRow}:I{$sectionHeaderRow}")->applyFromArray([
             'font' => ['bold' => true, 'size' => 12, 'color' => ['rgb' => 'FFFFFF']],
             'alignment' => ['horizontal' => Alignment::HORIZONTAL_CENTER, 'vertical' => Alignment::VERTICAL_CENTER],
             'fill' => [
@@ -334,8 +353,8 @@ class TaxReportInvoicesExport implements FromArray, WithStyles, WithColumnWidths
             ]
         ]);
 
-        // Headers row styling
-        $sheet->getStyle("B{$headerRow}:H{$headerRow}")->applyFromArray([
+        // Headers row styling - B to I
+        $sheet->getStyle("B{$headerRow}:I{$headerRow}")->applyFromArray([
             'font' => ['bold' => true, 'size' => 11],
             'alignment' => ['horizontal' => Alignment::HORIZONTAL_CENTER, 'vertical' => Alignment::VERTICAL_CENTER],
             'fill' => [
@@ -347,9 +366,9 @@ class TaxReportInvoicesExport implements FromArray, WithStyles, WithColumnWidths
             ]
         ]);
 
-        // Data rows styling (only actual data rows)
+        // Data rows styling (only actual data rows) - B to I
         if ($keluaranDataRowCount > 0) {
-            $sheet->getStyle("B{$dataStartRow}:H{$dataEndRow}")->applyFromArray([
+            $sheet->getStyle("B{$dataStartRow}:I{$dataEndRow}")->applyFromArray([
                 'borders' => [
                     'allBorders' => ['borderStyle' => Border::BORDER_THIN, 'color' => ['rgb' => '000000']]
                 ],
@@ -358,16 +377,26 @@ class TaxReportInvoicesExport implements FromArray, WithStyles, WithColumnWidths
                 ]
             ]);
 
-            // Apply special styling for revised invoices (gray out)
+            // Apply special styling for revised invoices and non-business related
             for ($row = $dataStartRow; $row <= $dataEndRow; $row++) {
                 $invoiceIndex = $row - $dataStartRow;
                 if (isset($fakturKeluaran[$invoiceIndex])) {
                     $invoice = $fakturKeluaran[$invoiceIndex];
                     $displayValues = $this->getDisplayValues($invoice);
                     
+                    // Light yellow background for non-business related invoices
+                    if (!$invoice->is_business_related) {
+                        $sheet->getStyle("B{$row}:I{$row}")->applyFromArray([
+                            'fill' => [
+                                'fillType' => Fill::FILL_SOLID,
+                                'color' => ['rgb' => 'FFF9E6'] // Light yellow
+                            ]
+                        ]);
+                    }
+                    
+                    // Light gray background for revised original invoices (override if needed)
                     if ($displayValues['is_revised']) {
-                        // Light gray background for revised original invoices
-                        $sheet->getStyle("B{$row}:H{$row}")->applyFromArray([
+                        $sheet->getStyle("B{$row}:I{$row}")->applyFromArray([
                             'fill' => [
                                 'fillType' => Fill::FILL_SOLID,
                                 'color' => ['rgb' => 'F5F5F5']
@@ -391,8 +420,11 @@ class TaxReportInvoicesExport implements FromArray, WithStyles, WithColumnWidths
                 }
             }
 
-            // Align text columns to left (Nama Penjual, Nomor Seri Faktur, and Tanggal)
+            // Align text columns to left (Nama Penjual, Nomor Seri Faktur, Tanggal, Keterangan)
             $sheet->getStyle("C{$dataStartRow}:E{$dataEndRow}")->applyFromArray([
+                'alignment' => ['horizontal' => Alignment::HORIZONTAL_LEFT]
+            ]);
+            $sheet->getStyle("I{$dataStartRow}:I{$dataEndRow}")->applyFromArray([
                 'alignment' => ['horizontal' => Alignment::HORIZONTAL_LEFT]
             ]);
 
@@ -407,8 +439,8 @@ class TaxReportInvoicesExport implements FromArray, WithStyles, WithColumnWidths
             ]);
         }
 
-        // JUMLAH row styling for FAKTUR KELUARAN
-        $sheet->getStyle("B{$jumlahRow}:H{$jumlahRow}")->applyFromArray([
+        // JUMLAH row styling for FAKTUR KELUARAN - B to I
+        $sheet->getStyle("B{$jumlahRow}:I{$jumlahRow}")->applyFromArray([
             'font' => ['bold' => true, 'size' => 11, 'color' => ['rgb' => 'FFFFFF']],
             'alignment' => ['horizontal' => Alignment::HORIZONTAL_CENTER, 'vertical' => Alignment::VERTICAL_CENTER],
             'fill' => [
@@ -432,9 +464,9 @@ class TaxReportInvoicesExport implements FromArray, WithStyles, WithColumnWidths
         $masukanDataEndRow = $masukanDataStartRow + $masukanDataRowCount - 1;
         $masukanJumlahRow = $masukanDataEndRow + 1;
 
-        // FAKTUR MASUKAN section header
-        $sheet->mergeCells("B{$masukanSectionHeaderRow}:H{$masukanSectionHeaderRow}");
-        $sheet->getStyle("B{$masukanSectionHeaderRow}:H{$masukanSectionHeaderRow}")->applyFromArray([
+        // FAKTUR MASUKAN section header - B to I
+        $sheet->mergeCells("B{$masukanSectionHeaderRow}:I{$masukanSectionHeaderRow}");
+        $sheet->getStyle("B{$masukanSectionHeaderRow}:I{$masukanSectionHeaderRow}")->applyFromArray([
             'font' => ['bold' => true, 'size' => 12, 'color' => ['rgb' => 'FFFFFF']],
             'alignment' => ['horizontal' => Alignment::HORIZONTAL_CENTER, 'vertical' => Alignment::VERTICAL_CENTER],
             'fill' => [
@@ -446,8 +478,8 @@ class TaxReportInvoicesExport implements FromArray, WithStyles, WithColumnWidths
             ]
         ]);
 
-        // FAKTUR MASUKAN headers row styling
-        $sheet->getStyle("B{$masukanHeaderRow}:H{$masukanHeaderRow}")->applyFromArray([
+        // FAKTUR MASUKAN headers row styling - B to I
+        $sheet->getStyle("B{$masukanHeaderRow}:I{$masukanHeaderRow}")->applyFromArray([
             'font' => ['bold' => true, 'size' => 11],
             'alignment' => ['horizontal' => Alignment::HORIZONTAL_CENTER, 'vertical' => Alignment::VERTICAL_CENTER],
             'fill' => [
@@ -459,9 +491,9 @@ class TaxReportInvoicesExport implements FromArray, WithStyles, WithColumnWidths
             ]
         ]);
 
-        // FAKTUR MASUKAN data rows styling
+        // FAKTUR MASUKAN data rows styling - B to I
         if ($masukanDataRowCount > 0) {
-            $sheet->getStyle("B{$masukanDataStartRow}:H{$masukanDataEndRow}")->applyFromArray([
+            $sheet->getStyle("B{$masukanDataStartRow}:I{$masukanDataEndRow}")->applyFromArray([
                 'borders' => [
                     'allBorders' => ['borderStyle' => Border::BORDER_THIN, 'color' => ['rgb' => '000000']]
                 ],
@@ -470,16 +502,26 @@ class TaxReportInvoicesExport implements FromArray, WithStyles, WithColumnWidths
                 ]
             ]);
 
-            // Apply special styling for revised invoices (gray out)
+            // Apply special styling for revised invoices and non-business related
             for ($row = $masukanDataStartRow; $row <= $masukanDataEndRow; $row++) {
                 $invoiceIndex = $row - $masukanDataStartRow;
                 if (isset($fakturMasukan[$invoiceIndex])) {
                     $invoice = $fakturMasukan[$invoiceIndex];
                     $displayValues = $this->getDisplayValues($invoice);
                     
+                    // Light yellow background for non-business related invoices
+                    if (!$invoice->is_business_related) {
+                        $sheet->getStyle("B{$row}:I{$row}")->applyFromArray([
+                            'fill' => [
+                                'fillType' => Fill::FILL_SOLID,
+                                'color' => ['rgb' => 'FFF9E6'] // Light yellow
+                            ]
+                        ]);
+                    }
+                    
+                    // Light gray background for revised original invoices (override if needed)
                     if ($displayValues['is_revised']) {
-                        // Light gray background for revised original invoices
-                        $sheet->getStyle("B{$row}:H{$row}")->applyFromArray([
+                        $sheet->getStyle("B{$row}:I{$row}")->applyFromArray([
                             'fill' => [
                                 'fillType' => Fill::FILL_SOLID,
                                 'color' => ['rgb' => 'F5F5F5']
@@ -507,6 +549,9 @@ class TaxReportInvoicesExport implements FromArray, WithStyles, WithColumnWidths
             $sheet->getStyle("C{$masukanDataStartRow}:E{$masukanDataEndRow}")->applyFromArray([
                 'alignment' => ['horizontal' => Alignment::HORIZONTAL_LEFT]
             ]);
+            $sheet->getStyle("I{$masukanDataStartRow}:I{$masukanDataEndRow}")->applyFromArray([
+                'alignment' => ['horizontal' => Alignment::HORIZONTAL_LEFT]
+            ]);
 
             // Align numbers to the right
             $sheet->getStyle("F{$masukanDataStartRow}:H{$masukanDataEndRow}")->applyFromArray([
@@ -519,8 +564,8 @@ class TaxReportInvoicesExport implements FromArray, WithStyles, WithColumnWidths
             ]);
         }
 
-        // FAKTUR MASUKAN JUMLAH row styling
-        $sheet->getStyle("B{$masukanJumlahRow}:H{$masukanJumlahRow}")->applyFromArray([
+        // FAKTUR MASUKAN JUMLAH row styling - B to I
+        $sheet->getStyle("B{$masukanJumlahRow}:I{$masukanJumlahRow}")->applyFromArray([
             'font' => ['bold' => true, 'size' => 11, 'color' => ['rgb' => 'FFFFFF']],
             'alignment' => ['horizontal' => Alignment::HORIZONTAL_CENTER, 'vertical' => Alignment::VERTICAL_CENTER],
             'fill' => [
@@ -540,13 +585,13 @@ class TaxReportInvoicesExport implements FromArray, WithStyles, WithColumnWidths
         // Calculate REKAP section positions
         $rekapSectionHeaderRow = $masukanJumlahRow + 3;
         $rekapDataStartRow = $rekapSectionHeaderRow + 1;
-        $rekapDataRowCount = $this->isSelectionMode ? 3 : 4; // 3 rows for selection (no compensation), 4 for full report
+        $rekapDataRowCount = $this->isSelectionMode ? 3 : 4;
         $rekapDataEndRow = $rekapDataStartRow + $rekapDataRowCount - 1;
         $statusRow = $rekapDataEndRow + 1;
 
-        // REKAP KURANG ATAU LEBIH BAYAR PAJAK section header
-        $sheet->mergeCells("B{$rekapSectionHeaderRow}:H{$rekapSectionHeaderRow}");
-        $sheet->getStyle("B{$rekapSectionHeaderRow}:H{$rekapSectionHeaderRow}")->applyFromArray([
+        // REKAP KURANG ATAU LEBIH BAYAR PAJAK section header - B to I
+        $sheet->mergeCells("B{$rekapSectionHeaderRow}:I{$rekapSectionHeaderRow}");
+        $sheet->getStyle("B{$rekapSectionHeaderRow}:I{$rekapSectionHeaderRow}")->applyFromArray([
             'font' => ['bold' => true, 'size' => 12, 'color' => ['rgb' => 'FFFFFF']],
             'alignment' => ['horizontal' => Alignment::HORIZONTAL_CENTER, 'vertical' => Alignment::VERTICAL_CENTER],
             'fill' => [
@@ -558,8 +603,8 @@ class TaxReportInvoicesExport implements FromArray, WithStyles, WithColumnWidths
             ]
         ]);
 
-        // REKAP data rows styling with merged cells B to G
-        $sheet->getStyle("B{$rekapDataStartRow}:H{$rekapDataEndRow}")->applyFromArray([
+        // REKAP data rows styling with merged cells B to H (kolom I untuk space)
+        $sheet->getStyle("B{$rekapDataStartRow}:I{$rekapDataEndRow}")->applyFromArray([
             'borders' => [
                 'allBorders' => ['borderStyle' => Border::BORDER_THIN, 'color' => ['rgb' => '000000']]
             ],
@@ -570,26 +615,38 @@ class TaxReportInvoicesExport implements FromArray, WithStyles, WithColumnWidths
 
         // Merge and align REKAP description texts (B to G) and align right
         for ($row = $rekapDataStartRow; $row <= $rekapDataEndRow; $row++) {
-            $sheet->mergeCells("B{$row}:G{$row}");
-            $sheet->getStyle("B{$row}:G{$row}")->applyFromArray([
+            $sheet->mergeCells("B{$row}:H{$row}");
+            $sheet->getStyle("B{$row}:H{$row}")->applyFromArray([
                 'alignment' => ['horizontal' => Alignment::HORIZONTAL_RIGHT, 'vertical' => Alignment::VERTICAL_CENTER]
             ]);
         }
 
         // Align amounts to the right - column H only
-        $sheet->getStyle("H{$rekapDataStartRow}:H{$rekapDataEndRow}")->applyFromArray([
+        $sheet->getStyle("I{$rekapDataStartRow}:H{$rekapDataEndRow}")->applyFromArray([
             'alignment' => ['horizontal' => Alignment::HORIZONTAL_RIGHT]
         ]);
 
-        // Status row styling
-        $sheet->mergeCells("B{$statusRow}:H{$statusRow}");
+        // Status row styling - B to I
+        $sheet->mergeCells("B{$statusRow}:I{$statusRow}");
 
-        // Calculate final amount for status determination (using latest versions)
-        $fakturKeluaranLatest = $this->getLatestVersionInvoices((clone $baseQuery)->where('type', 'Faktur Keluaran'));
-        $fakturMasukanLatest = $this->getLatestVersionInvoices((clone $baseQuery)->where('type', 'Faktur Masuk'));
+        // Calculate final amount for status determination
+        $totalPpnKeluaran = 0;
+        $totalPpnMasukan = 0;
         
-        $totalPpnKeluaran = $fakturKeluaranLatest->sum('ppn');
-        $totalPpnMasukan = $fakturMasukanLatest->sum('ppn');
+        foreach ($fakturKeluaran as $invoice) {
+            $displayValues = $this->getDisplayValues($invoice);
+            if (!$displayValues['is_revised'] && $invoice->is_business_related) {
+                $totalPpnKeluaran += $displayValues['ppn'];
+            }
+        }
+        
+        foreach ($fakturMasukan as $invoice) {
+            $displayValues = $this->getDisplayValues($invoice);
+            if (!$displayValues['is_revised'] && $invoice->is_business_related) {
+                $totalPpnMasukan += $displayValues['ppn'];
+            }
+        }
+        
         $ppnDikompensasi = $this->isSelectionMode ? 0 : ($this->taxReport->ppn_dikompensasi_dari_masa_sebelumnya ?? 0);
         $finalAmount = ($totalPpnKeluaran - $totalPpnMasukan) - $ppnDikompensasi;
 
@@ -602,7 +659,7 @@ class TaxReportInvoicesExport implements FromArray, WithStyles, WithColumnWidths
             $textColor = 'FF8C00'; // Orange for NIHIL
         }
 
-        $sheet->getStyle("B{$statusRow}:H{$statusRow}")->applyFromArray([
+        $sheet->getStyle("B{$statusRow}:I{$statusRow}")->applyFromArray([
             'font' => ['bold' => true, 'size' => 14, 'color' => ['rgb' => $textColor]],
             'alignment' => ['horizontal' => Alignment::HORIZONTAL_CENTER, 'vertical' => Alignment::VERTICAL_CENTER],
             'borders' => [
@@ -613,8 +670,8 @@ class TaxReportInvoicesExport implements FromArray, WithStyles, WithColumnWidths
         // Selection info styling (if in selection mode)
         if ($this->isSelectionMode) {
             $selectionInfoRow = $statusRow + 2;
-            $sheet->mergeCells("B{$selectionInfoRow}:H{$selectionInfoRow}");
-            $sheet->getStyle("B{$selectionInfoRow}:H{$selectionInfoRow}")->applyFromArray([
+            $sheet->mergeCells("B{$selectionInfoRow}:I{$selectionInfoRow}");
+            $sheet->getStyle("B{$selectionInfoRow}:I{$selectionInfoRow}")->applyFromArray([
                 'font' => ['bold' => true, 'size' => 10, 'color' => ['rgb' => '666666']],
                 'alignment' => ['horizontal' => Alignment::HORIZONTAL_CENTER, 'vertical' => Alignment::VERTICAL_CENTER],
             ]);
@@ -622,9 +679,6 @@ class TaxReportInvoicesExport implements FromArray, WithStyles, WithColumnWidths
 
         // Set row heights for better appearance
         $sheet->getRowDimension($sectionHeaderRow)->setRowHeight(25);
-        $sheet->getRowDimension($headerRow)->setRowHeight(20);
-        $sheet->getRowDimension($jumlahRow)->setRowHeight(18);
-        $sheet->getRowDimension($masukanSectionHeaderRow)->setRowHeight(25);
         $sheet->getRowDimension($masukanHeaderRow)->setRowHeight(20);
         $sheet->getRowDimension($masukanJumlahRow)->setRowHeight(18);
         $sheet->getRowDimension($rekapSectionHeaderRow)->setRowHeight(25);
@@ -649,11 +703,12 @@ class TaxReportInvoicesExport implements FromArray, WithStyles, WithColumnWidths
             'A' => 3,   // Empty column
             'B' => 8,   // No
             'C' => 35,  // Nama Penjual (wider)
-            'D' => 25,  // Nomor Seri Faktur (back to original width)
+            'D' => 25,  // Nomor Seri Faktur
             'E' => 15,  // Tanggal (wider)
             'F' => 20,  // DPP Nilai Lainnya (wider)
             'G' => 20,  // DPP (wider)
             'H' => 20,  // PPN (wider)
+            'I' => 30,  // Keterangan (new column)
         ];
     }
 
@@ -672,6 +727,8 @@ class TaxReportInvoicesExport implements FromArray, WithStyles, WithColumnWidths
         
         return 'Rekap_Faktur_' . $prefix . $cleanClientName . '_' . $monthYear;
     }
+
+    
 
     private function getIndonesianMonth($month): string
     {

@@ -360,7 +360,7 @@ trait InvoiceFormTrait
                             ->disabled()
                             ->helperText('Otomatis terdeteksi berdasarkan tipe client')
                             ->columnSpan(4),
-                            
+                    
                         Forms\Components\Select::make('type')
                             ->label('Jenis Faktur')
                             ->native(false)
@@ -397,6 +397,32 @@ trait InvoiceFormTrait
                             ->helperText('Format: 00.000.000.0-000.000')
                             ->maxLength(255)
                             ->columnSpan(6),
+                                                                               
+                        Forms\Components\Select::make('is_business_related')
+                            ->label('Keterkaitan Bisnis')
+                            ->options([
+                                true => 'Terkait Aktivitas Bisnis Utama',
+                                false => 'Tidak Terkait Bisnis Utama (Personal/Non-Operasional)',
+                            ])
+                            ->required()
+                            ->default(true)
+                            ->native(false)
+                            ->live()
+                            ->helperText(function (Forms\Get $get) {
+                                $isBusinessRelated = $get('is_business_related');
+                                if ($isBusinessRelated === true) {
+                                    return '✅ Faktur ini terkait dengan kegiatan operasional bisnis utama client';
+                                } elseif ($isBusinessRelated === false) {
+                                    return '⚠️ Faktur ini untuk keperluan personal atau non-operasional (misal: pembelian pribadi, investasi non-operasional)';
+                                }
+                                return 'Pilih apakah faktur ini terkait dengan aktivitas bisnis utama atau tidak';
+                            })
+                            ->afterStateUpdated(function (Forms\Get $get, Forms\Set $set, ?bool $state) {
+                                // Optional: Auto-adjust tax treatment based on business relation
+                                if ($state === false) {
+                                }
+                            })
+                            ->columnSpan(12),
                     ]),
             ]);
     }

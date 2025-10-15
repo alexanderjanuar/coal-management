@@ -103,29 +103,30 @@ class InvoicesRelationManager extends RelationManager
                         return null;
                     }),
                     
-                Tables\Columns\BadgeColumn::make('revision_status')
-                    ->label('Status')
-                    ->getStateUsing(function ($record) {
-                        if (!$record) return 'Asli';
+                // Tables\Columns\BadgeColumn::make('revision_status')
+                //     ->label('Status')
+                //     ->getStateUsing(function ($record) {
+                //         if (!$record) return 'Asli';
                         
-                        if ($record->is_revision) {
-                            return 'Revisi';
-                        }
-                        if ($record->hasRevisions()) {
-                            return 'Direvisi';
-                        }
-                        return 'Asli';
-                    })
-                    ->colors([
-                        'warning' => 'Revisi',
-                        'info' => 'Direvisi',
-                        'success' => 'Asli',
-                    ])
-                    ->icons([
-                        'heroicon-o-arrow-path' => 'Revisi',
-                        'heroicon-o-document-duplicate' => 'Direvisi',
-                        'heroicon-o-document' => 'Asli',
-                    ]),
+                //         if ($record->is_revision) {
+                //             return 'Revisi';
+                //         }
+                //         if ($record->hasRevisions()) {
+                //             return 'Direvisi';
+                //         }
+                //         return 'Asli';
+                //     })
+                //     ->colors([
+                //         'warning' => 'Revisi',
+                //         'info' => 'Direvisi',
+                //         'success' => 'Asli',
+                //     ])
+                //     ->icons([
+                //         'heroicon-o-arrow-path' => 'Revisi',
+                //         'heroicon-o-document-duplicate' => 'Direvisi',
+                //         'heroicon-o-document' => 'Asli',
+                //     ]),
+
                     
                 Tables\Columns\TextColumn::make('company_name')
                     ->label('Nama Perusahaan')
@@ -139,7 +140,24 @@ class InvoicesRelationManager extends RelationManager
                     ->colors([
                         'success' => 'Faktur Keluaran',
                         'warning' => 'Faktur Masuk',
-                    ]),
+                    ])
+                    ->description(function ($record) {
+                        if (!$record || $record->type !== 'Faktur Masuk') {
+                            return null;
+                        }
+                        
+                        $businessStatus = $record->is_business_related ? 'Bisnis Berkaitan' : 'Bisnis Tidak Berkaitan';
+                        return $businessStatus;
+                    })
+                    ->tooltip(function ($record) {
+                        if (!$record || $record->type !== 'Faktur Masuk') {
+                            return null;
+                        }
+                        
+                        return $record->is_business_related 
+                            ? 'Faktur Masukan untuk aktivitas bisnis utama'
+                            : 'Faktur Masukan untuk keperluan non-bisnis';
+                    }),
                     
                 Tables\Columns\TextColumn::make('ppn_percentage')
                     ->label('Tarif PPN')
