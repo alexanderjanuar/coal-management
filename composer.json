@@ -35,6 +35,7 @@
         "malzariey/filament-daterangepicker-filter": "^3.2",
         "mokhosh/filament-kanban": "^2.11",
         "nben/filament-record-nav": "^1.0",
+        "neuron-core/neuron-ai": "^2.5",
         "njxqlus/filament-progressbar": "^1.0",
         "pusher/pusher-php-server": "^7.2",
         "solution-forest/filament-access-management": "^2.2",
