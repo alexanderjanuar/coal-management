@@ -1,9 +1,9 @@
 <x-filament-panels::page>
     {{-- Use relative positioning instead of fixed to respect Filament's layout --}}
-    <div class="flex flex-col h-[calc(100vh-12rem)]">
+    <div class="flex flex-col h-[calc(100vh-12rem)] relative">
 
         {{-- Chat Header --}}
-        <div class="px-6 py-4 border-b border-gray-200 flex-shrink-0">
+        <div class="px-6 py-4 flex-shrink-0">
             <div class="flex items-center justify-between">
                 <div class="flex items-center space-x-3">
                     <div class="w-10 h-10 bg-teal-500 rounded-full flex items-center justify-center">
@@ -21,9 +21,9 @@
             </div>
         </div>
 
-        {{-- Chat Messages Area --}}
-        <div class="flex-1 overflow-y-auto p-6 space-y-4 bg-gray-50 dark:bg-gray-950 w-full" id="chat-messages">
-            <div class=" w-full">
+        {{-- Chat Messages Area with extra padding bottom for floating input --}}
+        <div class="flex-1 overflow-y-auto px-6 py-6 pb-40 space-y-4 bg-gray-50 dark:bg-gray-950" id="chat-messages">
+            <div class="w-full">
                 @forelse($chatHistory as $message)
                 <div class="flex {{ $message['role'] === 'user' ? 'justify-end' : 'justify-start' }} mb-4">
                     <div
@@ -47,7 +47,7 @@
                         <div>
                             <div
                                 class="rounded-2xl px-4 py-2.5 {{ $message['role'] === 'user' 
-                                    ? 'bg-teal-500 text-white' 
+                                    ? 'text-white bg-teal-500 ' 
                                     : 'bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 shadow-sm border border-gray-200 dark:border-gray-700' }}">
                                 <div
                                     class="prose prose-sm max-w-none {{ $message['role'] === 'user' ? 'prose-invert' : 'dark:prose-invert' }}">
@@ -71,11 +71,27 @@
                 @endforelse
 
                 {{-- Loading Indicator --}}
-
+                <div wire:loading wire:target="sendMessage" class="flex justify-start mb-4">
+                    <div class="flex items-start space-x-2 max-w-[75%]">
+                        <div class="w-8 h-8 bg-teal-500 rounded-full flex items-center justify-center flex-shrink-0">
+                            <x-heroicon-o-sparkles class="w-4 h-4 text-white" />
+                        </div>
+                        <div
+                            class="bg-white dark:bg-gray-800 rounded-2xl px-4 py-3 shadow-sm border border-gray-200 dark:border-gray-700">
+                            <div class="flex space-x-1">
+                                <div class="w-2 h-2 bg-teal-500 rounded-full animate-bounce"></div>
+                                <div class="w-2 h-2 bg-teal-500 rounded-full animate-bounce"
+                                    style="animation-delay: 0.15s"></div>
+                                <div class="w-2 h-2 bg-teal-500 rounded-full animate-bounce"
+                                    style="animation-delay: 0.3s"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
 
-        {{-- Bottom Section - Fixed --}}
+        {{-- Floating Input Section - Absolute positioned at bottom --}}
         <div class="absolute bottom-0 left-0 right-0 px-6 pb-6 pointer-events-none">
             <div class="max-w-5xl mx-auto pointer-events-auto">
                 {{-- Quick Actions Pills --}}
@@ -105,6 +121,9 @@
                             <x-filament::input type="text" wire:model.live="message" placeholder="Ketik pesan Anda..."
                                 class="!border-0 !rounded-full !bg-transparent !shadow-none !ring-0 focus:!ring-0 !pl-5 !pr-16 !py-3"
                                 wire:keydown.enter="sendMessage" />
+                            <span class="absolute right-4 top-1/2 -translate-y-1/2 text-xs text-gray-400">
+                                {{ is_string($message) ? strlen($message) : 0 }}/1000
+                            </span>
                         </div>
 
                         <x-filament::button type="submit" color="primary" :disabled="$this->isMessageEmpty"

@@ -13,6 +13,8 @@ use NeuronAI\SystemPrompt;
 use NeuronAI\Tools\Toolkits\MySQL\MySQLSchemaTool;
 use NeuronAI\Tools\Toolkits\MySQL\MySQLToolkit;
 use NeuronAI\Tools\Toolkits\MySQL\MySQLWriteTool;
+use NeuronAI\Chat\History\InMemoryChatHistory;
+use NeuronAI\Chat\History\ChatHistoryInterface;
 
 class TaxBotAgent extends Agent
 {
@@ -97,5 +99,12 @@ class TaxBotAgent extends Agent
                 MySQLWriteTool::class // Exclude write operations untuk keamanan
             ]),
         ];
+    }
+
+    protected function chatHistory(): InMemoryChatHistory
+    {
+        return new InMemoryChatHistory(
+            contextWindow: 50000
+        );
     }
 }
