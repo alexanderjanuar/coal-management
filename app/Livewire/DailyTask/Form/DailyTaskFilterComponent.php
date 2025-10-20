@@ -19,7 +19,6 @@ class DailyTaskFilterComponent extends Component implements HasForms
     public ?array $filterData = [];
     
     // Component state
-    public bool $filtersCollapsed = true;
     public int $totalTasks = 0;
 
     // Events this component listens to
@@ -43,6 +42,7 @@ class DailyTaskFilterComponent extends Component implements HasForms
             'date' => null,
             'date_start' => null,
             'date_end' => null,
+            'date_preset' => '', // New: for quick date filters
             'status' => [],
             'priority' => [],
             'project' => [],
@@ -59,117 +59,164 @@ class DailyTaskFilterComponent extends Component implements HasForms
     }
 
     /**
-     * Filter Form Definition
+     * Filter Form Definition - Simplified and compact
      */
     public function filterForm(Form $form): Form
     {
         return $form
             ->schema([
-                Forms\Components\Grid::make()
+                Forms\Components\Grid::make(3)
                     ->schema([
-                        // Main Filters Row
-                        Forms\Components\Grid::make(4)
-                            ->schema([
-                                Forms\Components\TextInput::make('search')
-                                    ->placeholder('Search tasks or descriptions...')
-                                    ->prefixIcon('heroicon-o-magnifying-glass')
-                                    ->live(debounce: 750)
-                                    ->columnSpan(2),
-                                    
-                                Forms\Components\DatePicker::make('date')
-                                    ->label('Single Date')
-                                    ->native(false)
-                                    ->live()
-                                    ->helperText('Filter by specific date')
-                                    ->columnSpan(2),
-                            ]),
+                        // Date Range
+                        Forms\Components\DatePicker::make('date_start')
+                            ->label('Dari Tanggal')
+                            ->native(false)
+                            ->live()
+                            ->columnSpan(1),
                             
-                        // Date Range Filters
-                        Forms\Components\Grid::make(2)
-                            ->schema([
-                                Forms\Components\DatePicker::make('date_start')
-                                    ->label('Start Date From')
-                                    ->placeholder('Select start date...')
-                                    ->native(false)
-                                    ->live()
-                                    ->helperText('Filter tasks starting from this date')
-                                    ->columnSpan(1),
-                                    
-                                Forms\Components\DatePicker::make('date_end')
-                                    ->label('End Date To')
-                                    ->placeholder('Select end date...')
-                                    ->native(false)
-                                    ->live()
-                                    ->helperText('Filter tasks up to this date')
-                                    ->columnSpan(1),
-                            ]),                                                  
-                        // Secondary Filters Row
-                        Forms\Components\Section::make('Advanced Filters')
-                            ->schema([
-                                Forms\Components\Grid::make(4)
-                                    ->schema([
-                                        Forms\Components\Select::make('status')
-                                            ->label('Status')
-                                            ->options($this->getStatusOptions())
-                                            ->multiple()
-                                            ->prefixIcon('heroicon-o-flag')
-                                            ->native(false)
-                                            ->live(),
-                                            
-                                        Forms\Components\Select::make('priority')
-                                            ->label('Priority')
-                                            ->options($this->getPriorityOptions())
-                                            ->multiple()
-                                            ->prefixIcon('heroicon-o-exclamation-triangle')
-                                            ->native(false)
-                                            ->live(),
-                                            
-                                        Forms\Components\Select::make('project')
-                                            ->label('Project')
-                                            ->options($this->getProjectOptions())
-                                            ->multiple()
-                                            ->prefixIcon('heroicon-o-folder')
-                                            ->native(false)
-                                            ->live()
-                                            ->searchable(),
-                                            
-                                        Forms\Components\Select::make('assignee')
-                                            ->label('Assignee')
-                                            ->options($this->getUserOptions())
-                                            ->multiple()
-                                            ->prefixIcon('heroicon-o-user')
-                                            ->native(false)
-                                            ->live()
-                                            ->searchable(),
-                                        
-                                        Forms\Components\Select::make('department')
-                                            ->label('Department')
-                                            ->options($this->getDepartmentOptions())
-                                            ->multiple()
-                                            ->prefixIcon('heroicon-o-building-office')
-                                            ->native(false)
-                                            ->live()
-                                            ->searchable()
-                                            ->helperText('Filter berdasarkan departemen user')
-                                            ->columnSpan(2),
-                                        
-                                        Forms\Components\Select::make('position')
-                                            ->label('Position')
-                                            ->options($this->getPositionOptions())
-                                            ->multiple()
-                                            ->prefixIcon('heroicon-o-briefcase')
-                                            ->native(false)
-                                            ->live()
-                                            ->searchable()
-                                            ->helperText('Filter berdasarkan jabatan user')
-                                            ->columnSpan(2),
-                                    ]),
+                        Forms\Components\DatePicker::make('date_end')
+                            ->label('Sampai Tanggal')
+                            ->native(false)
+                            ->live()
+                            ->columnSpan(1),
+
+                        Forms\Components\Select::make('date_preset')
+                            ->label('Preset Tanggal')
+                            ->options([
+                                '' => 'Pilih preset...',
+                                'this_week' => 'Minggu Ini',
+                                'next_week' => 'Minggu Depan',
+                                'this_month' => 'Bulan Ini',
+                                'overdue' => 'Terlambat',
                             ])
-                            ->collapsible()
-                            ->collapsed(),
+                            ->live()
+                            ->columnSpan(1),
+                    ]),
+
+                Forms\Components\Grid::make(3)
+                    ->schema([
+                        Forms\Components\Select::make('project')
+                            ->label('Proyek')
+                            ->options($this->getProjectOptions())
+                            ->multiple()
+                            ->searchable()
+                            ->live()
+                            ->columnSpan(1),
+                            
+                        Forms\Components\Select::make('assignee')
+                            ->label('Penanggung Jawab')
+                            ->options($this->getUserOptions())
+                            ->multiple()
+                            ->searchable()
+                            ->live()
+                            ->columnSpan(1),
+
+                        Forms\Components\Select::make('department')
+                            ->label('Departemen')
+                            ->options($this->getDepartmentOptions())
+                            ->multiple()
+                            ->searchable()
+                            ->live()
+                            ->columnSpan(1),
+                    ]),
+
+                Forms\Components\Grid::make(2)
+                    ->schema([
+                        Forms\Components\Select::make('sort_by')
+                            ->label('Urutkan')
+                            ->options([
+                                'task_date' => 'Tanggal Task',
+                                'created_at' => 'Tanggal Dibuat',
+                                'title' => 'Nama Task',
+                                'priority' => 'Prioritas',
+                            ])
+                            ->live()
+                            ->columnSpan(1),
+                            
+                        Forms\Components\Select::make('sort_direction')
+                            ->label('Arah')
+                            ->options([
+                                'asc' => 'Naik',
+                                'desc' => 'Turun',
+                            ])
+                            ->live()
+                            ->columnSpan(1),
                     ]),
             ])
             ->statePath('filterData');
+    }
+
+    /**
+     * NEW: Quick date filter preset handler
+     */
+    public function setDateFilter(string $preset): void
+    {
+        $this->filterData['date_preset'] = $preset;
+        
+        // Clear other date filters when using preset
+        $this->filterData['date'] = null;
+        $this->filterData['date_start'] = null;
+        $this->filterData['date_end'] = null;
+        
+        // Set appropriate date range based on preset
+        switch ($preset) {
+            case 'today':
+                $this->filterData['date'] = now()->format('Y-m-d');
+                break;
+                
+            case 'tomorrow':
+                $this->filterData['date'] = now()->addDay()->format('Y-m-d');
+                break;
+                
+            case 'this_week':
+                $this->filterData['date_start'] = now()->startOfWeek()->format('Y-m-d');
+                $this->filterData['date_end'] = now()->endOfWeek()->format('Y-m-d');
+                break;
+                
+            case 'next_week':
+                $this->filterData['date_start'] = now()->addWeek()->startOfWeek()->format('Y-m-d');
+                $this->filterData['date_end'] = now()->addWeek()->endOfWeek()->format('Y-m-d');
+                break;
+                
+            case 'this_month':
+                $this->filterData['date_start'] = now()->startOfMonth()->format('Y-m-d');
+                $this->filterData['date_end'] = now()->endOfMonth()->format('Y-m-d');
+                break;
+                
+            case 'overdue':
+                $this->filterData['date_end'] = now()->subDay()->format('Y-m-d');
+                break;
+        }
+        
+        $this->filterForm->fill($this->filterData);
+        $this->emitFiltersChanged();
+    }
+
+    /**
+     * NEW: Quick filter toggle handler
+     */
+    public function toggleQuickFilter(string $filterType, string $value): void
+    {
+        if (!isset($this->filterData[$filterType])) {
+            $this->filterData[$filterType] = [];
+        }
+        
+        if (!is_array($this->filterData[$filterType])) {
+            $this->filterData[$filterType] = [];
+        }
+        
+        $currentValues = $this->filterData[$filterType];
+        
+        if (in_array($value, $currentValues)) {
+            // Remove if already exists
+            $this->filterData[$filterType] = array_values(array_filter($currentValues, fn($v) => $v !== $value));
+        } else {
+            // Add if doesn't exist
+            $this->filterData[$filterType][] = $value;
+        }
+        
+        $this->filterForm->fill($this->filterData);
+        $this->emitFiltersChanged();
     }
 
     /**
@@ -182,17 +229,30 @@ class DailyTaskFilterComponent extends Component implements HasForms
     
     public function updatedFilterDataDate(): void
     {
+        // Clear preset when manual date is set
+        $this->filterData['date_preset'] = '';
         $this->emitFiltersChanged();
     }
     
     public function updatedFilterDataDateStart(): void
     {
+        // Clear preset when manual date range is set
+        $this->filterData['date_preset'] = '';
         $this->emitFiltersChanged();
     }
     
     public function updatedFilterDataDateEnd(): void
     {
+        // Clear preset when manual date range is set
+        $this->filterData['date_preset'] = '';
         $this->emitFiltersChanged();
+    }
+    
+    public function updatedFilterDataDatePreset(): void
+    {
+        if (!empty($this->filterData['date_preset'])) {
+            $this->setDateFilter($this->filterData['date_preset']);
+        }
     }
     
     public function updatedFilterDataStatus(): void
@@ -235,6 +295,16 @@ class DailyTaskFilterComponent extends Component implements HasForms
         $this->emitFiltersChanged();
     }
 
+    public function updatedFilterDataSortBy(): void
+    {
+        $this->emitFiltersChanged();
+    }
+
+    public function updatedFilterDataSortDirection(): void
+    {
+        $this->emitFiltersChanged();
+    }
+
     /**
      * Emit filter changes to parent component
      */
@@ -253,6 +323,7 @@ class DailyTaskFilterComponent extends Component implements HasForms
             'date' => null,
             'date_start' => null,
             'date_end' => null,
+            'date_preset' => '',
             'status' => [],
             'priority' => [],
             'project' => [],
@@ -281,6 +352,7 @@ class DailyTaskFilterComponent extends Component implements HasForms
             'date' => $data['date'] ?? null,
             'date_start' => $data['date_start'] ?? null,
             'date_end' => $data['date_end'] ?? null,
+            'date_preset' => $data['date_preset'] ?? '',
             'status' => is_array($data['status'] ?? null) ? array_values(array_filter($data['status'])) : [],
             'priority' => is_array($data['priority'] ?? null) ? array_values(array_filter($data['priority'])) : [],
             'project' => is_array($data['project'] ?? null) ? array_values(array_filter($data['project'])) : [],
@@ -306,29 +378,49 @@ class DailyTaskFilterComponent extends Component implements HasForms
         if (!empty($filters['search'])) {
             $activeFilters[] = [
                 'type' => 'search',
-                'label' => 'Search',
+                'label' => 'Pencarian',
                 'value' => $filters['search'],
                 'color' => 'primary',
                 'icon' => 'heroicon-o-magnifying-glass',
             ];
         }
 
-        // Date filter
-        if (!empty($filters['date'])) {
+        // Date preset filter
+        if (!empty($filters['date_preset'])) {
+            $presetLabels = [
+                'today' => 'Hari Ini',
+                'tomorrow' => 'Besok',
+                'this_week' => 'Minggu Ini',
+                'next_week' => 'Minggu Depan',
+                'this_month' => 'Bulan Ini',
+                'overdue' => 'Terlambat',
+            ];
+            
+            $activeFilters[] = [
+                'type' => 'date_preset',
+                'label' => 'Tanggal',
+                'value' => $presetLabels[$filters['date_preset']] ?? $filters['date_preset'],
+                'color' => $filters['date_preset'] === 'overdue' ? 'danger' : 'info',
+                'icon' => 'heroicon-o-calendar-days',
+            ];
+        }
+
+        // Single date filter
+        if (!empty($filters['date']) && empty($filters['date_preset'])) {
             $date = $filters['date'];
             $dateValue = '';
             if ($date instanceof \Carbon\Carbon) {
-                $dateValue = $date->format('M d, Y');
+                $dateValue = $date->format('d M Y');
             } elseif (is_string($date)) {
                 try {
-                    $dateValue = Carbon::parse($date)->format('M d, Y');
+                    $dateValue = Carbon::parse($date)->format('d M Y');
                 } catch (\Exception $e) {
                     $dateValue = $date;
                 }
             }
             $activeFilters[] = [
                 'type' => 'date',
-                'label' => 'Date',
+                'label' => 'Tanggal',
                 'value' => $dateValue,
                 'color' => 'info',
                 'icon' => 'heroicon-o-calendar-days',
@@ -336,29 +428,29 @@ class DailyTaskFilterComponent extends Component implements HasForms
         }
 
         // Date range filters
-        if (!empty($filters['date_start']) || !empty($filters['date_end'])) {
+        if ((!empty($filters['date_start']) || !empty($filters['date_end'])) && empty($filters['date_preset'])) {
             $rangeValue = '';
             if (!empty($filters['date_start']) && !empty($filters['date_end'])) {
                 $startDate = $filters['date_start'] instanceof \Carbon\Carbon 
-                    ? $filters['date_start']->format('M d') 
-                    : Carbon::parse($filters['date_start'])->format('M d');
+                    ? $filters['date_start']->format('d M') 
+                    : Carbon::parse($filters['date_start'])->format('d M');
                 $endDate = $filters['date_end'] instanceof \Carbon\Carbon 
-                    ? $filters['date_end']->format('M d, Y') 
-                    : Carbon::parse($filters['date_end'])->format('M d, Y');
+                    ? $filters['date_end']->format('d M Y') 
+                    : Carbon::parse($filters['date_end'])->format('d M Y');
                 $rangeValue = $startDate . ' - ' . $endDate;
             } elseif (!empty($filters['date_start'])) {
-                $rangeValue = 'From ' . ($filters['date_start'] instanceof \Carbon\Carbon 
-                    ? $filters['date_start']->format('M d, Y') 
-                    : Carbon::parse($filters['date_start'])->format('M d, Y'));
+                $rangeValue = 'Dari ' . ($filters['date_start'] instanceof \Carbon\Carbon 
+                    ? $filters['date_start']->format('d M Y') 
+                    : Carbon::parse($filters['date_start'])->format('d M Y'));
             } elseif (!empty($filters['date_end'])) {
-                $rangeValue = 'Until ' . ($filters['date_end'] instanceof \Carbon\Carbon 
-                    ? $filters['date_end']->format('M d, Y') 
-                    : Carbon::parse($filters['date_end'])->format('M d, Y'));
+                $rangeValue = 'Sampai ' . ($filters['date_end'] instanceof \Carbon\Carbon 
+                    ? $filters['date_end']->format('d M Y') 
+                    : Carbon::parse($filters['date_end'])->format('d M Y'));
             }
             
             $activeFilters[] = [
                 'type' => 'date_range',
-                'label' => 'Date Range',
+                'label' => 'Rentang Tanggal',
                 'value' => $rangeValue,
                 'color' => 'info',
                 'icon' => 'heroicon-o-calendar',
@@ -371,7 +463,7 @@ class DailyTaskFilterComponent extends Component implements HasForms
             $activeFilters[] = [
                 'type' => 'status',
                 'label' => 'Status',
-                'value' => implode(', ', $statusLabels),
+                'value' => count($statusLabels) > 2 ? count($statusLabels) . ' status' : implode(', ', $statusLabels),
                 'color' => 'success',
                 'icon' => 'heroicon-o-flag',
                 'count' => count($filters['status']),
@@ -383,8 +475,8 @@ class DailyTaskFilterComponent extends Component implements HasForms
             $priorityLabels = array_map(fn($priority) => $this->getPriorityOptions()[$priority] ?? $priority, $filters['priority']);
             $activeFilters[] = [
                 'type' => 'priority',
-                'label' => 'Priority',
-                'value' => implode(', ', $priorityLabels),
+                'label' => 'Prioritas',
+                'value' => count($priorityLabels) > 2 ? count($priorityLabels) . ' prioritas' : implode(', ', $priorityLabels),
                 'color' => 'warning',
                 'icon' => 'heroicon-o-exclamation-triangle',
                 'count' => count($filters['priority']),
@@ -393,11 +485,11 @@ class DailyTaskFilterComponent extends Component implements HasForms
 
         // Project filter
         if (!empty($filters['project'])) {
-            $projectLabels = array_map(fn($projectId) => $this->getProjectOptions()[$projectId] ?? 'Unknown Project', $filters['project']);
+            $projectLabels = array_map(fn($projectId) => $this->getProjectOptions()[$projectId] ?? 'Proyek Tidak Diketahui', $filters['project']);
             $activeFilters[] = [
                 'type' => 'project',
-                'label' => 'Project',
-                'value' => implode(', ', $projectLabels),
+                'label' => 'Proyek',
+                'value' => count($projectLabels) > 2 ? count($projectLabels) . ' proyek' : implode(', ', $projectLabels),
                 'color' => 'info',
                 'icon' => 'heroicon-o-folder',
                 'count' => count($filters['project']),
@@ -406,11 +498,11 @@ class DailyTaskFilterComponent extends Component implements HasForms
 
         // Assignee filter
         if (!empty($filters['assignee'])) {
-            $assigneeLabels = array_map(fn($userId) => $this->getUserOptions()[$userId] ?? 'Unknown User', $filters['assignee']);
+            $assigneeLabels = array_map(fn($userId) => $this->getUserOptions()[$userId] ?? 'User Tidak Diketahui', $filters['assignee']);
             $activeFilters[] = [
                 'type' => 'assignee',
-                'label' => 'Assignee',
-                'value' => implode(', ', $assigneeLabels),
+                'label' => 'Penanggung Jawab',
+                'value' => count($assigneeLabels) > 2 ? count($assigneeLabels) . ' orang' : implode(', ', $assigneeLabels),
                 'color' => 'gray',
                 'icon' => 'heroicon-o-user',
                 'count' => count($filters['assignee']),
@@ -422,8 +514,8 @@ class DailyTaskFilterComponent extends Component implements HasForms
             $deptLabels = array_map(fn($dept) => $this->getDepartmentOptions()[$dept] ?? $dept, $filters['department']);
             $activeFilters[] = [
                 'type' => 'department',
-                'label' => 'Department',
-                'value' => implode(', ', $deptLabels),
+                'label' => 'Departemen',
+                'value' => count($deptLabels) > 2 ? count($deptLabels) . ' departemen' : implode(', ', $deptLabels),
                 'color' => 'info',
                 'icon' => 'heroicon-o-building-office',
                 'count' => count($filters['department']),
@@ -435,8 +527,8 @@ class DailyTaskFilterComponent extends Component implements HasForms
             $posLabels = array_map(fn($pos) => $this->getPositionOptions()[$pos] ?? $pos, $filters['position']);
             $activeFilters[] = [
                 'type' => 'position',
-                'label' => 'Position',
-                'value' => implode(', ', $posLabels),
+                'label' => 'Jabatan',
+                'value' => count($posLabels) > 2 ? count($posLabels) . ' jabatan' : implode(', ', $posLabels),
                 'color' => 'warning',
                 'icon' => 'heroicon-o-briefcase',
                 'count' => count($filters['position']),
@@ -458,6 +550,12 @@ class DailyTaskFilterComponent extends Component implements HasForms
             case 'date':
                 $this->filterData['date'] = null;
                 break;
+            case 'date_preset':
+                $this->filterData['date_preset'] = '';
+                $this->filterData['date'] = null;
+                $this->filterData['date_start'] = null;
+                $this->filterData['date_end'] = null;
+                break;
             case 'date_range':
                 $this->filterData['date_start'] = null;
                 $this->filterData['date_end'] = null;
@@ -476,9 +574,6 @@ class DailyTaskFilterComponent extends Component implements HasForms
                 break;
             case 'department':
                 $this->filterData['department'] = [];
-                break;
-            case 'position':
-                $this->filterData['position'] = [];
                 break;
         }
         
@@ -500,10 +595,10 @@ class DailyTaskFilterComponent extends Component implements HasForms
     protected function getStatusOptions(): array
     {
         return [
-            'pending' => 'Pending',
-            'in_progress' => 'In Progress',
-            'completed' => 'Completed',
-            'cancelled' => 'Cancelled',
+            'pending' => 'Menunggu',
+            'in_progress' => 'Sedang Dikerjakan',
+            'completed' => 'Selesai',
+            'cancelled' => 'Dibatalkan',
         ];
     }
 
@@ -513,25 +608,10 @@ class DailyTaskFilterComponent extends Component implements HasForms
     protected function getPriorityOptions(): array
     {
         return [
-            'low' => 'Low',
+            'low' => 'Rendah',
             'normal' => 'Normal',
-            'high' => 'High',
-            'urgent' => 'Urgent',
-        ];
-    }
-
-    /**
-     * Get group by options
-     */
-    protected function getGroupByOptions(): array
-    {
-        return [
-            'none' => 'No Grouping',
-            'status' => 'Status',
-            'priority' => 'Priority',
-            'project' => 'Project',
-            'assignee' => 'Assignee',
-            'date' => 'Date',
+            'high' => 'Tinggi',
+            'urgent' => 'Mendesak',
         ];
     }
 

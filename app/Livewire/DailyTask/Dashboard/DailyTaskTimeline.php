@@ -87,21 +87,21 @@ class DailyTaskTimeline extends ChartWidget
                     'borderWidth' => 2,
                 ],
                 [
-                    'label' => 'Sedang Dikerjakan',
+                    'label' => 'On Progress',
                     'data' => $taskData['in_progress'],
                     'backgroundColor' => 'rgba(59, 130, 246, 0.85)', // blue-500 - active
                     'borderColor' => 'rgb(59, 130, 246)',
                     'borderWidth' => 2,
                 ],
                 [
-                    'label' => 'Tertunda',
+                    'label' => 'Pending',
                     'data' => $taskData['pending'],
                     'backgroundColor' => 'rgba(251, 146, 60, 0.85)', // orange-400 - pending
                     'borderColor' => 'rgb(251, 146, 60)',
                     'borderWidth' => 2,
                 ],
                 [
-                    'label' => 'Dibatalkan',
+                    'label' => 'On Hold',
                     'data' => $taskData['cancelled'],
                     'backgroundColor' => 'rgba(148, 163, 184, 0.75)', // slate-400 - cancelled
                     'borderColor' => 'rgb(148, 163, 184)',
@@ -129,7 +129,7 @@ class DailyTaskTimeline extends ChartWidget
                         'stepSize' => 1,
                         'precision' => 0,
                         'font' => [
-                            'size' => 11, // Font lebih kecil
+                            'size' => 11,
                         ],
                     ],
                     'grid' => [
@@ -146,15 +146,27 @@ class DailyTaskTimeline extends ChartWidget
                         'maxRotation' => 45,
                         'minRotation' => 0,
                         'font' => [
-                            'size' => 10, // Font lebih kecil
+                            'size' => 10,
                         ],
                     ],
                 ],
             ],
             'animation' => [
-                'duration' => 800, // Animasi lebih cepat
+                'duration' => 800,
                 'animateRotate' => true,
                 'animateScale' => true,
+            ],
+            'plugins' => [
+                'legend' => [
+                    'display' => true,
+                    'position' => 'top',
+                    'labels' => [
+                        'font' => [
+                            'size' => 11,
+                        ],
+                        'padding' => 15,
+                    ],
+                ],
             ],
         ];
     }
@@ -171,8 +183,14 @@ class DailyTaskTimeline extends ChartWidget
             $query->where('position', $this->position);
         }
 
+        // Hanya ambil user yang memiliki task dalam rentang tanggal
         $query->whereHas('dailyTaskAssignments', function ($taskQuery) {
-            $taskQuery->whereNotNull('id');
+            $taskQuery->whereHas('dailyTask', function ($dailyTaskQuery) {
+                $dailyTaskQuery->whereBetween('task_date', [
+                    $this->fromDate->format('Y-m-d'),
+                    $this->toDate->format('Y-m-d')
+                ]);
+            });
         });
 
         return $query->orderBy('name')->get();
@@ -195,35 +213,42 @@ class DailyTaskTimeline extends ChartWidget
             ->pluck('count', 'status')
             ->toArray();
 
-            $userData[] = [
-                'name' => $user->name,
-                'completed' => $taskCounts['completed'] ?? 0,
-                'in_progress' => $taskCounts['in_progress'] ?? 0,
-                'pending' => $taskCounts['pending'] ?? 0,
-                'cancelled' => $taskCounts['cancelled'] ?? 0,
-                'total' => array_sum($taskCounts)
-            ];
+            $totalTasks = array_sum($taskCounts);
+            
+            // Hanya tambahkan user yang memiliki task
+            if ($totalTasks > 0) {
+                $userData[] = [
+                    'name' => $user->name,
+                    'completed' => $taskCounts['completed'] ?? 0,
+                    'in_progress' => $taskCounts['in_progress'] ?? 0,
+                    'pending' => $taskCounts['pending'] ?? 0,
+                    'cancelled' => $taskCounts['cancelled'] ?? 0,
+                    'total' => $totalTasks
+                ];
+            }
         }
 
+        // Sort berdasarkan total task terbanyak
         usort($userData, function($a, $b) {
             return $b['total'] <=> $a['total'];
         });
 
-        $userNames = array_column($userData, 'name');
-        $completedData = array_column($userData, 'completed');
-        $inProgressData = array_column($userData, 'in_progress');
-        $pendingData = array_column($userData, 'pending');
-        $cancelledData = array_column($userData, 'cancelled');
-
-        if (empty($userNames)) {
+        // Jika tidak ada data, tampilkan pesan no data
+        if (empty($userData)) {
             return [
-                'userNames' => ['Tidak ada data'],
+                'userNames' => ['Tidak ada tugas'],
                 'completed' => [0],
                 'in_progress' => [0],
                 'pending' => [0],
                 'cancelled' => [0],
             ];
         }
+
+        $userNames = array_column($userData, 'name');
+        $completedData = array_column($userData, 'completed');
+        $inProgressData = array_column($userData, 'in_progress');
+        $pendingData = array_column($userData, 'pending');
+        $cancelledData = array_column($userData, 'cancelled');
 
         return [
             'userNames' => $userNames,
@@ -237,7 +262,7 @@ class DailyTaskTimeline extends ChartWidget
     public function getDescription(): ?string
     {
         $totalTasks = $this->getTotalTasks();
-        $totalUsers = $this->getTotalUsers();
+        $totalUsers = $this->getTotalActiveUsers(); // Gunakan method baru
         
         $filterDesc = [];
         if ($this->department) {
@@ -273,7 +298,8 @@ class DailyTaskTimeline extends ChartWidget
         return $query->count();
     }
 
-    protected function getTotalUsers(): int
+    // Method baru untuk menghitung user yang aktif memiliki task
+    protected function getTotalActiveUsers(): int
     {
         $query = User::query();
 
@@ -284,9 +310,23 @@ class DailyTaskTimeline extends ChartWidget
             $query->where('position', $this->position);
         }
 
-        $query->whereHas('dailyTaskAssignments');
+        // Hanya hitung user yang memiliki task dalam rentang tanggal
+        $query->whereHas('dailyTaskAssignments', function ($taskQuery) {
+            $taskQuery->whereHas('dailyTask', function ($dailyTaskQuery) {
+                $dailyTaskQuery->whereBetween('task_date', [
+                    $this->fromDate->format('Y-m-d'),
+                    $this->toDate->format('Y-m-d')
+                ]);
+            });
+        });
 
         return $query->count();
+    }
+
+    // Tetap pertahankan method getTotalUsers untuk backward compatibility
+    protected function getTotalUsers(): int
+    {
+        return $this->getTotalActiveUsers();
     }
 
     public function getCurrentFilters(): array
@@ -294,7 +334,7 @@ class DailyTaskTimeline extends ChartWidget
         return [
             'department' => $this->department,
             'position' => $this->position,
-            'total_users' => $this->getTotalUsers(),
+            'total_users' => $this->getTotalActiveUsers(),
             'total_tasks' => $this->getTotalTasks(),
         ];
     }

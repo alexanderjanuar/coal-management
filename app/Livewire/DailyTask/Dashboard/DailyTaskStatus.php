@@ -216,8 +216,8 @@ class DailyTaskStatus extends ChartWidget
         // Define status labels and colors order
         $statusMapping = [
             'completed' => 'Selesai',
-            'in_progress' => 'Sedang Dikerjakan',
-            'pending' => 'Tertunda',
+            'in_progress' => 'In Progress',
+            'pending' => 'Pending',
             'cancelled' => 'Dibatalkan',
         ];
 
