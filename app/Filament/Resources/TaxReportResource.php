@@ -50,7 +50,7 @@ class TaxReportResource extends Resource
 
     protected static ?string $cluster = LaporanPajak::class;
 
-    public static function shouldRegisterNavigation(): bool
+     public static function shouldRegisterNavigation(): bool
     {
         return !auth()->user()->hasRole('client');
     }
