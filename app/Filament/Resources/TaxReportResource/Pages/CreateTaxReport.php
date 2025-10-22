@@ -36,7 +36,6 @@ class CreateTaxReport extends CreateRecord
                             ->required()
                             ->relationship('client', 'name')
                             ->searchable()
-                            ->preload()
                             ->reactive()
                             ->afterStateUpdated(function (Set $set, $state) {
                                 // Reset months when client changes
@@ -66,37 +65,7 @@ class CreateTaxReport extends CreateRecord
                                         'Inactive' => 'Tidak Aktif',
                                     ])
                                     ->default('Active'),
-                            ])
-                            ->relationship('client', 'name')
-                            ->searchable()
-                            ->preload()
-                            ->reactive()
-                            ->afterStateUpdated(function (Set $set, $state) {
-                                // Reset months when client changes
-                                $set('months', []);
-                                $set('month', null);
-                            })
-                            ->createOptionForm([
-                                TextInput::make('name')
-                                    ->required()
-                                    ->maxLength(255),
-                                TextInput::make('NPWP')
-                                    ->label('NPWP')
-                                    ->maxLength(255),
-                                TextInput::make('KPP')
-                                    ->label('KPP')
-                                    ->maxLength(255),
-                                TextInput::make('email')
-                                    ->email()
-                                    ->unique(ignorable: fn($record) => $record)
-                                    ->maxLength(255),
-                                Select::make('status')
-                                    ->options([
-                                        'Active' => 'Active',
-                                        'Inactive' => 'Inactive',
-                                    ])
-                                    ->default('Active'),
-                            ]),
+                                ]),
 
                         Toggle::make('create_multiple')
                             ->label('Buat Multiple Bulan')

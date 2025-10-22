@@ -13,12 +13,35 @@ class ViewClient extends ViewRecord
 {
     protected static string $resource = ClientResource::class;
 
+    protected static string $view = 'filament.resources.client-resource.pages.view-clients';
+
+    public string $activeTab = 'identitas';
+
     protected function getHeaderActions(): array
     {
         return [
             Actions\EditAction::make(),
             PreviousRecordAction::make(),
             NextRecordAction::make(),
+        ];
+    }
+
+    protected function getAllRelationManagers(): array
+    {
+        return [];
+    }
+
+    public function getTabs(): array
+    {
+        return [
+            'identitas' => 'Identitas',
+            'perpajakan' => 'Perpajakan',
+            'kontrak' => 'Kontrak',
+            'dokumen' => 'Dokumen',
+            'komunikasi' => 'Komunikasi',
+            'compliance' => 'Compliance',
+            'layanan' => 'Layanan',
+            'tim' => 'Tim',
         ];
     }
 }
