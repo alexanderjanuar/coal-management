@@ -60,8 +60,11 @@ class Client extends Model
         return $this->hasMany(UserClient::class);
     }
 
+    public function contacts(): HasMany
+    {
+        return $this->hasMany(ClientContact::class);
+    }
     
-
     /**
      * Relationship ke credential utama
      */
@@ -78,6 +81,22 @@ class Client extends Model
     public function employees(): HasMany
     {
         return $this->hasMany(Employee::class);
+    }
+
+    /**
+     * Get all affiliates of this client
+     */
+    public function affiliates(): HasMany
+    {
+        return $this->hasMany(ClientAffiliate::class);
+    }
+
+    /**
+     * Get active affiliates only
+     */
+    public function activeAffiliates(): HasMany
+    {
+        return $this->hasMany(ClientAffiliate::class)->where('status', 'active');
     }
 
 

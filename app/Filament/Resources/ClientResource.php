@@ -53,13 +53,6 @@ class ClientResource extends Resource
     {
         return $form
             ->schema([
-                // Hero Section for View Mode
-                Forms\Components\Placeholder::make('client_hero')
-                    ->label('')
-                    ->content(fn (?Client $record) => $record ? view('filament.components.client-hero', ['record' => $record]) : '')
-                    ->hiddenOn('create')
-                    ->columnSpanFull(), 
-
                 Section::make('Client Profile')
                     ->description('Detail dari Client')
                     ->icon('heroicon-o-building-office-2')
@@ -72,9 +65,8 @@ class ClientResource extends Resource
                             ])
                             ->default('Pribadi')
                             ->required()
-                            ->live() // Penting untuk reactive behavior
+                            ->live()
                             ->afterStateUpdated(function (Forms\Get $get, Forms\Set $set, ?string $state) {
-                                // Auto-clear PIC jika diubah ke Pribadi
                                 if ($state === 'Pribadi') {
                                     $set('pic_id', null);
                                 }
@@ -100,40 +92,40 @@ class ClientResource extends Resource
                         Forms\Components\TextInput::make('adress')
                             ->label('Address'),
                         Select::make('pic_id')
-                                ->label('Person In Charge (PIC)')
-                                ->relationship('pic', 'name')
-                                ->searchable()
-                                ->preload()
-                                ->visible(fn (Forms\Get $get) => $get('client_type') === 'Badan') // HANYA TAMPIL JIKA BADAN
-                                ->disabled(fn (Forms\Get $get) => $get('client_type') !== 'Badan')
-                                ->createOptionForm([
-                                    Forms\Components\TextInput::make('name')
-                                        ->required()
-                                        ->maxLength(255),
-                                    Forms\Components\TextInput::make('nik')
-                                        ->label('NIK')
-                                        ->required()
-                                        ->unique()
-                                        ->length(16)
-                                        ->numeric(),
-                                    Forms\Components\TextInput::make('password')
-                                        ->password()
-                                        ->required()
-                                        ->minLength(8),
-                                    Forms\Components\Select::make('status')
-                                        ->options([
-                                            'active' => 'Active',
-                                            'inactive' => 'Inactive',
-                                        ])
-                                        ->default('active')
-                                        ->required(),
-                                ])
-                                ->helperText(function (Forms\Get $get) {
-                                    if ($get('client_type') === 'Badan') {
-                                        return 'Pilih atau buat PIC baru untuk klien Badan';
-                                    }
-                                    return 'PIC tidak diperlukan untuk klien Pribadi';
-                                }),
+                            ->label('Person In Charge (PIC)')
+                            ->relationship('pic', 'name')
+                            ->searchable()
+                            ->preload()
+                            ->visible(fn (Forms\Get $get) => $get('client_type') === 'Badan')
+                            ->disabled(fn (Forms\Get $get) => $get('client_type') !== 'Badan')
+                            ->createOptionForm([
+                                Forms\Components\TextInput::make('name')
+                                    ->required()
+                                    ->maxLength(255),
+                                Forms\Components\TextInput::make('nik')
+                                    ->label('NIK')
+                                    ->required()
+                                    ->unique()
+                                    ->length(16)
+                                    ->numeric(),
+                                Forms\Components\TextInput::make('password')
+                                    ->password()
+                                    ->required()
+                                    ->minLength(8),
+                                Forms\Components\Select::make('status')
+                                    ->options([
+                                        'active' => 'Active',
+                                        'inactive' => 'Inactive',
+                                    ])
+                                    ->default('active')
+                                    ->required(),
+                            ])
+                            ->helperText(function (Forms\Get $get) {
+                                if ($get('client_type') === 'Badan') {
+                                    return 'Pilih atau buat PIC baru untuk klien Badan';
+                                }
+                                return 'PIC tidak diperlukan untuk klien Pribadi';
+                            }),
                         
                         Select::make('ar_id')
                             ->label('Account Representative (AR)')
@@ -197,19 +189,99 @@ class ClientResource extends Resource
                             ->imageCropAspectRatio('1:1')
                             ->imageResizeTargetWidth('300')
                             ->imageResizeTargetHeight('300')
-                            ->maxSize(5120) // 5MB max
+                            ->maxSize(5120)
                             ->downloadable()
                             ->columnSpanFull()
                     ])
                     ->columns(2),
 
-                // PIC Information Display for View Mode
-                Forms\Components\Placeholder::make('pic_info')
-                    ->label('')
-                    ->content(fn (?Client $record) => $record && $record->pic ? view('filament.components.client-pic-info', ['record' => $record]) : '')
-                    ->hiddenOn(['create', 'edit'])
-                    ->columnSpanFull(),
-                
+                // SECTION BARU: CONTACT PERSON
+                Section::make('Contact Person')
+                    ->description('Kontak person yang dapat dihubungi untuk klien ini')
+                    ->icon('heroicon-o-users')
+                    ->schema([
+                        Forms\Components\Repeater::make('contacts')
+                            ->relationship('contacts')
+                            ->schema([
+                                Forms\Components\Grid::make(2)
+                                    ->schema([
+                                        Forms\Components\TextInput::make('name')
+                                            ->label('Nama Kontak')
+                                            ->required()
+                                            ->maxLength(255)
+                                            ->placeholder('Contoh: Budi Santoso')
+                                            ->columnSpan(1),
+                                        
+                                        Forms\Components\TextInput::make('position')
+                                            ->label('Jabatan')
+                                            ->maxLength(255)
+                                            ->placeholder('Contoh: Direktur Utama')
+                                            ->columnSpan(1),
+                                        
+                                        Forms\Components\TextInput::make('email')
+                                            ->label('Email')
+                                            ->email()
+                                            ->maxLength(255)
+                                            ->placeholder('contoh@email.com')
+                                            ->columnSpan(1),
+                                        
+                                        Forms\Components\TextInput::make('phone')
+                                            ->label('Telepon')
+                                            ->tel()
+                                            ->maxLength(20)
+                                            ->placeholder('081234567890')
+                                            ->columnSpan(1),
+                                        
+                                        Forms\Components\TextInput::make('mobile')
+                                            ->label('HP/WhatsApp')
+                                            ->tel()
+                                            ->maxLength(20)
+                                            ->placeholder('081234567890')
+                                            ->helperText('Nomor yang bisa dihubungi via WhatsApp')
+                                            ->columnSpan(1),
+                                        
+                                        Forms\Components\Select::make('type')
+                                            ->label('Tipe Kontak')
+                                            ->options([
+                                                'primary' => 'Utama',
+                                                'secondary' => 'Sekunder',
+                                                'billing' => 'Billing/Keuangan',
+                                                'technical' => 'Teknis',
+                                            ])
+                                            ->default('primary')
+                                            ->required()
+                                            ->native(false)
+                                            ->helperText('Tentukan peran kontak person ini')
+                                            ->columnSpan(1),
+                                        
+                                        Forms\Components\Toggle::make('is_active')
+                                            ->label('Status Aktif')
+                                            ->default(true)
+                                            ->inline(false)
+                                            ->helperText('Nonaktifkan jika kontak sudah tidak digunakan')
+                                            ->columnSpan(2),
+                                        
+                                        Forms\Components\Textarea::make('notes')
+                                            ->label('Catatan')
+                                            ->rows(2)
+                                            ->placeholder('Catatan tambahan tentang kontak ini...')
+                                            ->columnSpan(2),
+                                    ])
+                            ])
+                            ->defaultItems(1)
+                            ->addActionLabel('Tambah Kontak Person')
+                            ->reorderableWithButtons()
+                            ->collapsible()
+                            ->itemLabel(fn (array $state): ?string => $state['name'] ?? 'Kontak Baru')
+                            ->collapsed(false)
+                            ->cloneable()
+                            ->columnSpanFull()
+                            ->minItems(1)
+                            ->maxItems(10)
+                    ])
+                    ->collapsible()
+                    ->collapsed(false),
+        
                 Section::make('Client Tax Information')
                     ->description('Tax registration and compliance details')
                     ->icon('heroicon-o-document-text')
@@ -220,7 +292,6 @@ class ClientResource extends Resource
                         Forms\Components\TextInput::make('EFIN')
                             ->label('EFIN')
                             ->placeholder('Electronic Filing Identification Number'),                       
-                        // PKP STATUS FIELD
                         Select::make('pkp_status')
                             ->label('Status PKP')
                             ->options([
@@ -230,7 +301,6 @@ class ClientResource extends Resource
                             ->default('Non-PKP')
                             ->live()
                             ->afterStateUpdated(function (Forms\Get $get, Forms\Set $set, ?string $state) {
-                                // Auto-disable PPN contract if Non-PKP is selected
                                 if ($state === 'Non-PKP') {
                                     $set('ppn_contract', false);
                                 }
@@ -247,13 +317,6 @@ class ClientResource extends Resource
                     ])
                     ->columns(2),
 
-                // Tax Information Display for View Mode
-                Forms\Components\Placeholder::make('tax_info_display')
-                    ->label('')
-                    ->content(fn (?Client $record) => $record ? view('filament.components.client-tax-info', ['record' => $record]) : '')
-                    ->hiddenOn(['create', 'edit'])
-                    ->columnSpanFull(),
-                
                 Section::make('Contract Management')
                     ->description('Tax service contracts and agreements')
                     ->icon('heroicon-o-document-check')
@@ -297,22 +360,8 @@ class ClientResource extends Resource
                                     ->helperText('Upload signed contract document (PDF or image)')
                                     ->columnSpan(3),
                             ]),
-
-                        // Contract Status Display for View Mode
-                        Forms\Components\Placeholder::make('contracts_display')
-                            ->label('')
-                            ->content(fn (?Client $record) => $record ? view('filament.components.client-contracts-status', ['record' => $record]) : '')
-                            ->hiddenOn(['create', 'edit'])
-                            ->columnSpanFull(),
                     ])
                     ->collapsible(),
-
-                // System Information Display for View Mode
-                Forms\Components\Placeholder::make('system_info')
-                    ->label('')
-                    ->content(fn (?Client $record) => $record ? view('filament.components.client-system-info', ['record' => $record]) : '')
-                    ->hiddenOn(['create', 'edit'])
-                    ->columnSpanFull(),
             ]);
     }
 
@@ -645,10 +694,11 @@ class ClientResource extends Resource
                 ->color('primary'),
 
 
-            Tables\Actions\Action::make('manage_legal_documents')
+            RelationManagerAction::make('document-relation-manager')
                 ->label('')
                 ->icon('heroicon-o-folder')
                 ->color('warning')
+                ->relationManager(ClientDocumentsRelationManager::make())
                 ->tooltip('Kelola Legal Documents')
                 ->modalWidth('7xl')
                 ->modalHeading(fn ($record) => 'Legal Documents - ' . $record->name)

@@ -13,7 +13,7 @@ class ViewClient extends ViewRecord
 {
     protected static string $resource = ClientResource::class;
 
-    // protected static string $view = 'filament.resources.client-resource.pages.view-clients';
+    protected static string $view = 'filament.resources.client-resource.pages.view-clients';
 
     public string $activeTab = 'identitas';
 

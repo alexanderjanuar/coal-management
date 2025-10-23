@@ -5,7 +5,7 @@
             <nav class="grid grid-cols-8 gap-1" aria-label="Tabs">
                 @foreach($this->getTabs() as $tabKey => $tabLabel)
                 <button wire:click="$set('activeTab', '{{ $tabKey }}')"
-                    @class([ 'relative rounded-lg px-3 py-2.5 text-sm font-medium transition-all duration-200 ease-in-out'
+                    @class([ 'relative rounded-3xl px-3 py-2.5 text-sm font-medium'
                     , 'bg-white text-gray-900 shadow-sm dark:bg-gray-900 dark:text-white'=> $activeTab === $tabKey,
                     'text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white' => $activeTab !==
                     $tabKey,
@@ -23,10 +23,8 @@
             @switch($activeTab)
             @case('identitas')
             <div x-data x-init="$el.style.opacity = 0; setTimeout(() => $el.style.opacity = 1, 10)"
-                class="rounded-3xl bg-white p-6 shadow transition-opacity duration-300 dark:bg-gray-800">
-                <h3 class="text-lg font-medium text-gray-900 dark:text-white mb-4">Identitas Client</h3>
-                <p class="text-gray-600 dark:text-gray-400">Konten untuk tab Identitas akan ditampilkan di sini.</p>
-                {{-- @livewire('client.identitas-tab', ['client' => $record]) --}}
+                class="">
+                @livewire('client.components.identitas-tab', ['client' => $record])
             </div>
             @break
 
