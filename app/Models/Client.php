@@ -91,6 +91,11 @@ class Client extends Model
         return $this->hasMany(ClientAffiliate::class);
     }
 
+    public function communications()
+    {
+        return $this->hasMany(ClientCommunication::class);
+    }
+
     /**
      * Get active affiliates only
      */
@@ -99,6 +104,13 @@ class Client extends Model
         return $this->hasMany(ClientAffiliate::class)->where('status', 'active');
     }
 
+    public function getProjectsWithTeam()
+    {
+        return $this->projects()
+                    ->with(['userProjects.user'])
+                    ->orderBy('created_at', 'desc')
+                    ->get();
+    }
 
     /**
      * Get client folder path

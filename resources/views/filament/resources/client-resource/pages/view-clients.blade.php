@@ -22,22 +22,19 @@
         <div class="relative">
             @switch($activeTab)
             @case('identitas')
-            <div x-data x-init="$el.style.opacity = 0; setTimeout(() => $el.style.opacity = 1, 10)"
-                class="">
+            <div x-data x-init="$el.style.opacity = 0; setTimeout(() => $el.style.opacity = 1, 10)" class="">
                 @livewire('client.components.identitas-tab', ['client' => $record])
             </div>
             @break
 
             @case('perpajakan')
-            <div x-data x-init="$el.style.opacity = 0; setTimeout(() => $el.style.opacity = 1, 10)"
-                class="">
-                @livewire('client.components.perpajakan-tab', ['client' => $record])               
+            <div x-data x-init="$el.style.opacity = 0; setTimeout(() => $el.style.opacity = 1, 10)" class="">
+                @livewire('client.components.perpajakan-tab', ['client' => $record])
             </div>
             @break
 
             @case('kontrak')
-            <div x-data
-                class="rounded-3xl bg-white p-6 shadow transition-opacity duration-300 dark:bg-gray-800">
+            <div x-data class="rounded-3xl bg-white p-6 shadow transition-opacity duration-300 dark:bg-gray-800">
                 <h3 class="text-lg font-medium text-gray-900 dark:text-white mb-4">Kontrak</h3>
                 <p class="text-gray-600 dark:text-gray-400">Konten untuk tab Kontrak akan ditampilkan di sini.</p>
                 {{-- @livewire('client.kontrak-tab', ['client' => $record]) --}}
@@ -46,16 +43,13 @@
 
             @case('dokumen')
             <div x-data x-init="$el.style.opacity = 0; setTimeout(() => $el.style.opacity = 1, 10)"
-                @livewire('client.components.dokumen-tab', ['client' => $record])      
+                @livewire('client.components.dokumen-tab', ['client'=> $record])
             </div>
             @break
 
             @case('komunikasi')
-            <div x-data x-init="$el.style.opacity = 0; setTimeout(() => $el.style.opacity = 1, 10)"
-                class="rounded-3xl bg-white p-6 shadow transition-opacity duration-300 dark:bg-gray-800">
-                <h3 class="text-lg font-medium text-gray-900 dark:text-white mb-4">Komunikasi</h3>
-                <p class="text-gray-600 dark:text-gray-400">Konten untuk tab Komunikasi akan ditampilkan di sini.</p>
-                {{-- @livewire('client.komunikasi-tab', ['client' => $record]) --}}
+            <div x-data x-init="$el.style.opacity = 0; setTimeout(() => $el.style.opacity = 1, 10)" class="">
+                @livewire('client.components.komunikasi-tab', ['client' => $record])
             </div>
             @break
 
@@ -78,11 +72,8 @@
             @break
 
             @case('tim')
-            <div x-data x-init="$el.style.opacity = 0; setTimeout(() => $el.style.opacity = 1, 10)"
-                class="rounded-3xl bg-white p-6 shadow transition-opacity duration-300 dark:bg-gray-800">
-                <h3 class="text-lg font-medium text-gray-900 dark:text-white mb-4">Tim</h3>
-                <p class="text-gray-600 dark:text-gray-400">Konten untuk tab Tim akan ditampilkan di sini.</p>
-                {{-- @livewire('client.tim-tab', ['client' => $record]) --}}
+            <div x-data x-init="$el.style.opacity = 0; setTimeout(() => $el.style.opacity = 1, 10)" class="">
+                @livewire('client.components.tim-tab', ['client' => $record], key('tim-tab-'.$record->id))
             </div>
             @break
             @endswitch

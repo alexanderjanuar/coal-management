@@ -63,7 +63,8 @@
     </style>
 
     <!-- Dokumen Legal Wajib Section -->
-    <div class="bg-white dark:bg-gray-800 rounded-lg shadow-sm overflow-hidden border border-gray-200 dark:border-gray-700">
+    <div
+        class="bg-white dark:bg-gray-800 rounded-lg shadow-sm overflow-hidden border border-gray-200 dark:border-gray-700">
         <!-- Header -->
         <div class="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
             <div class="flex items-center justify-between">
@@ -178,8 +179,7 @@
 
                                 <!-- Delete Button -->
                                 <x-filament::icon-button icon="heroicon-o-trash" color="danger" size="xs" label="Hapus"
-                                    tooltip="Hapus" wire:click="deleteDocument({{ $item['uploaded_document']->id }})"
-                                    wire:confirm="Apakah Anda yakin ingin menghapus dokumen ini?" />
+                                    tooltip="Hapus" wire:click="deleteDocumentConfirm({{ $item['uploaded_document']->id}})"/>
 
                                 <!-- Divider -->
                                 <div class="w-px h-6 bg-gray-300 dark:bg-gray-600 mx-1"></div>
@@ -212,7 +212,8 @@
     </div>
 
     <!-- Dokumen Tambahan Section -->
-    <div class="bg-white dark:bg-gray-800 rounded-lg shadow-sm overflow-hidden border border-gray-200 dark:border-gray-700">
+    <div
+        class="bg-white dark:bg-gray-800 rounded-lg shadow-sm overflow-hidden border border-gray-200 dark:border-gray-700">
         <!-- Header -->
         <div class="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
             <div class="flex items-center justify-between">
@@ -295,13 +296,12 @@
                                     tooltip="Preview" wire:click="previewDocuments({{ $doc->id }})" />
 
                                 <!-- Download Button -->
-                                <x-filament::icon-button icon="heroicon-o-arrow-down-tray" color="info" label="Download" size="xs"
-                                    tooltip="Download" wire:click="downloadDocument({{ $doc->id }})" />
+                                <x-filament::icon-button icon="heroicon-o-arrow-down-tray" color="info" label="Download"
+                                    size="xs" tooltip="Download" wire:click="downloadDocument({{ $doc->id }})" />
 
                                 <!-- Delete Button -->
                                 <x-filament::icon-button icon="heroicon-o-trash" color="danger" label="Hapus" size="xs"
-                                    tooltip="Hapus" wire:click="deleteDocument({{ $doc->id }})"
-                                    wire:confirm="Apakah Anda yakin ingin menghapus dokumen ini?" />
+                                    tooltip="Hapus" wire:click="deleteDocumentConfirm({{ $doc->id }})" />
                             </div>
                         </td>
                     </tr>
@@ -437,5 +437,28 @@
             @endif
             @endif
         </div>
+    </x-filament::modal>
+
+    {{-- Delete Confirmation Modal --}}
+    <x-filament::modal id="confirm-delete-modal" width="md">
+        <x-slot name="heading">
+            Konfirmasi Hapus
+        </x-slot>
+
+        <x-slot name="description">
+            Apakah Anda yakin ingin menghapus dokumen ini? Tindakan ini tidak dapat dibatalkan.
+        </x-slot>
+
+        <x-slot name="footer">
+            <div class="flex gap-3 justify-end">
+                <x-filament::button color="gray" wire:click="closeDeleteModal">
+                    Batal
+                </x-filament::button>
+
+                <x-filament::button color="danger" wire:click="deleteDocument">
+                    Hapus
+                </x-filament::button>
+            </div>
+        </x-slot>
     </x-filament::modal>
 </div>

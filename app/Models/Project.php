@@ -115,4 +115,16 @@ class Project extends Model
         return $this->belongsTo(User::class, 'pic_id');
     }
 
+    public function userProjects()
+    {
+        return $this->hasMany(UserProject::class);
+    }
+
+    public function teamMembers()
+    {
+        return $this->belongsToMany(User::class, 'user_projects')
+                    ->withPivot('role', 'specializations', 'assigned_date')
+                    ->withTimestamps();
+    }
+
 }

@@ -18,6 +18,8 @@ use Filament\Forms\Components\Grid;
 use Livewire\Component;
 use Livewire\Attributes\On;
 use Livewire\WithFileUploads;
+use Filament\Actions\DeleteAction;
+use Filament\Actions\Action;
 
 class DokumenTab extends Component implements HasForms
 {
@@ -36,6 +38,7 @@ class DokumenTab extends Component implements HasForms
     public $documentName = '';
     public $expiredAt = '';
     public $isAdditionalDocument = false;
+    public $documentToDelete = null;
     
     // Preview state
     public $previewDocument = null;
@@ -248,10 +251,14 @@ class DokumenTab extends Component implements HasForms
             ->send();
     }
 
-    public function deleteDocument($documentId)
+    public function deleteDocument()
     {
         try {
-            $document = ClientDocument::find($documentId);
+            if (!$this->documentToDelete) {
+                return;
+            }
+            
+            $document = ClientDocument::find($this->documentToDelete);
             if ($document) {
                 if (\Storage::disk('public')->exists($document->file_path)) {
                     \Storage::disk('public')->delete($document->file_path);
@@ -267,6 +274,8 @@ class DokumenTab extends Component implements HasForms
                     ->duration(3000)
                     ->send();
             }
+            
+            $this->closeDeleteModal();
         } catch (\Exception $e) {
             Notification::make()
                 ->title('Error!')
@@ -275,6 +284,19 @@ class DokumenTab extends Component implements HasForms
                 ->duration(5000)
                 ->send();
         }
+    }
+
+    public function deleteDocumentConfirm($documentId)
+    {
+        $this->documentToDelete = $documentId;
+        
+        $this->dispatch('open-modal', id: 'confirm-delete-modal');
+    }
+
+    public function closeDeleteModal()
+    {
+        $this->documentToDelete = null;
+        $this->dispatch('close-modal', id : 'confirm-delete-modal');
     }
 
     public function previewDocuments($documentId)
