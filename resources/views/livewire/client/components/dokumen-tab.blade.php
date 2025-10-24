@@ -176,7 +176,7 @@
                                 @if($item['is_uploaded'] && $item['uploaded_document'])
                                 <x-filament::icon-button icon="heroicon-o-eye" color="purple" label="Preview" size="xs"
                                     tooltip="Preview"
-                                    wire:click="previewDocument({{ $item['uploaded_document']->id }})" />
+                                    wire:click="previewDocuments({{ $item['uploaded_document']->id }})" />
 
                                 <x-filament::icon-button icon="heroicon-o-arrow-down-tray" color="info" label="Download"
                                     size="xs" tooltip="Download"
