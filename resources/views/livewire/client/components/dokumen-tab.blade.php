@@ -172,7 +172,7 @@
                             @endif
                         </td>
                         <td class="px-6 py-4 whitespace-nowrap text-right text-sm">
-                            <div class="flex items-center justify-end gap-1">
+                            <div class="flex items-center justify-end gap-2">
                                 @if($item['is_uploaded'] && $item['uploaded_document'])
                                 <x-filament::icon-button icon="heroicon-o-eye" color="purple" label="Preview" size="xs"
                                     tooltip="Preview"
