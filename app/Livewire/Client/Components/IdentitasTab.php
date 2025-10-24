@@ -10,8 +10,7 @@ class IdentitasTab extends Component
 {
     public Client $client;
     
-    // Properties untuk form affiliate
-    public bool $showAffiliateModal = false;
+    // Properties untuk form affiliate - hapus showAffiliateModal karena menggunakan Filament modal
     public ?int $editingAffiliateId = null;
     public string $affiliateCompanyName = '';
     public string $affiliateRelationshipType = 'Afiliasi';
@@ -39,13 +38,13 @@ class IdentitasTab extends Component
     public function openAffiliateModal()
     {
         $this->resetAffiliateForm();
-        $this->showAffiliateModal = true;
+        $this->dispatch('open-modal', id: 'affiliate-modal');
     }
 
     public function closeAffiliateModal()
     {
-        $this->showAffiliateModal = false;
         $this->resetAffiliateForm();
+        $this->dispatch('close-modal', id: 'affiliate-modal');
     }
 
     public function saveAffiliate()
@@ -76,7 +75,10 @@ class IdentitasTab extends Component
                 'notes' => $this->affiliateNotes,
             ]);
 
-            session()->flash('message', 'Perusahaan afiliasi berhasil diperbarui');
+            $this->dispatch('notify', 
+                type: 'success',
+                message: 'Perusahaan afiliasi berhasil diperbarui'
+            );
         } else {
             // Create new affiliate
             ClientAffiliate::create([
@@ -90,7 +92,10 @@ class IdentitasTab extends Component
                 'status' => 'active',
             ]);
 
-            session()->flash('message', 'Perusahaan afiliasi berhasil ditambahkan');
+            $this->dispatch('notify', 
+                type: 'success',
+                message: 'Perusahaan afiliasi berhasil ditambahkan'
+            );
         }
 
         $this->closeAffiliateModal();
@@ -115,7 +120,7 @@ class IdentitasTab extends Component
         $this->affiliateAffiliatedClientId = $affiliate->affiliated_client_id;
         $this->affiliateNotes = $affiliate->notes ?? '';
         
-        $this->showAffiliateModal = true;
+        $this->dispatch('open-modal', id: 'affiliate-modal');
     }
 
     public function deleteAffiliate($affiliateId)
@@ -123,7 +128,10 @@ class IdentitasTab extends Component
         $affiliate = ClientAffiliate::findOrFail($affiliateId);
         $affiliate->delete();
 
-        session()->flash('message', 'Perusahaan afiliasi berhasil dihapus');
+        $this->dispatch('notify', 
+            type: 'success',
+            message: 'Perusahaan afiliasi berhasil dihapus'
+        );
         
         // Reload affiliates
         $this->client->load(['affiliates' => function($query) {
@@ -142,6 +150,21 @@ class IdentitasTab extends Component
         $this->affiliateNpwp = '';
         $this->affiliateAffiliatedClientId = null;
         $this->affiliateNotes = '';
+    }
+
+    // Helper method untuk mendapatkan opsi client lain untuk dropdown
+    public function getAvailableClientsProperty()
+    {
+        return Client::where('id', '!=', $this->client->id)
+                    ->orderBy('name')
+                    ->pluck('name', 'id')
+                    ->toArray();
+    }
+
+    // Helper method untuk mendapatkan opsi relationship types
+    public function getRelationshipTypesProperty()
+    {
+        return ClientAffiliate::getRelationshipTypes();
     }
 
     public function render()

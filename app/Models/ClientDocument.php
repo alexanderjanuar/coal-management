@@ -5,17 +5,26 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Carbon\Carbon;
 
 class ClientDocument extends Model
 {
     use HasFactory;
 
-    // Existing fillable fields (sesuai dengan struktur table yang ada)
     protected $fillable = [
         'client_id',
         'user_id', 
+        'sop_legal_document_id',
         'file_path',
         'original_filename',
+        'document_number',
+        'expired_at',
+        'document_category',
+        'status',
+    ];
+
+    protected $casts = [
+        'expired_at' => 'date',
     ];
 
     // Relationships
@@ -29,46 +38,104 @@ class ClientDocument extends Model
         return $this->belongsTo(User::class);
     }
     
-    /**
-     * Relationship to SOP template
-     */
     public function sopLegalDocument(): BelongsTo
     {
         return $this->belongsTo(SopLegalDocument::class);
     }
 
-    // Activity logging hanya untuk upload (created event)
-    protected static function booted()
+    // Scopes
+    public function scopeLegalDocuments($query)
     {
-        static::created(function ($clientDocument) {
-            $filename = $clientDocument->original_filename ?? basename($clientDocument->file_path);
-            $clientName = $clientDocument->client->name;
-            
-            // Determine if this is a legal document
-            $isLegalDocument = $clientDocument->isLegalDocument();
-            
-            if ($isLegalDocument) {
-                UserActivity::logLegalDocumentUpload(
-                    $clientDocument->client, 
-                    $filename, 
-                    $clientDocument
-                );
-            } else {
-                UserActivity::logClientDocumentUpload(
-                    $clientDocument->client, 
-                    $filename
-                );
-            }
+        return $query->where(function($q) {
+            $q->whereNotNull('sop_legal_document_id')
+              ->orWhere('file_path', 'like', '%/legal/%')
+              ->orWhere('original_filename', 'like', '%legal%')
+              ->orWhere('original_filename', 'like', '%kontrak%')
+              ->orWhere('original_filename', 'like', '%akta%')
+              ->orWhere('original_filename', 'like', '%perjanjian%')
+              ->orWhere('original_filename', 'like', '%contract%')
+              ->orWhere('original_filename', 'like', '%agreement%');
         });
     }
 
-    // Essential helper: Check if legal document
+    public function scopeValid($query)
+    {
+        return $query->where('status', 'valid');
+    }
+
+    public function scopeExpired($query)
+    {
+        return $query->where('status', 'expired')
+                    ->orWhere(function($q) {
+                        $q->whereNotNull('expired_at')
+                          ->where('expired_at', '<', now());
+                    });
+    }
+
+    // Accessors & Mutators
+    public function getFileNameAttribute(): string
+    {
+        return $this->original_filename ?? basename($this->file_path ?? 'Unknown');
+    }
+
+    public function getFileUrlAttribute(): ?string
+    {
+        if ($this->file_path && \Storage::disk('public')->exists($this->file_path)) {
+            return \Storage::disk('public')->url($this->file_path);
+        }
+        return null;
+    }
+
+    public function getIsExpiredAttribute(): bool
+    {
+        if (!$this->expired_at) {
+            return false;
+        }
+        
+        return $this->expired_at->isPast();
+    }
+
+    public function getStatusBadgeAttribute(): array
+    {
+        if ($this->is_expired) {
+            return [
+                'class' => 'bg-red-100 text-red-800',
+                'text' => 'Expired'
+            ];
+        }
+
+        return match($this->status) {
+            'valid' => [
+                'class' => 'bg-green-100 text-green-800',
+                'text' => 'Valid'
+            ],
+            'pending' => [
+                'class' => 'bg-yellow-100 text-yellow-800',
+                'text' => 'Pending'
+            ],
+            'rejected' => [
+                'class' => 'bg-red-100 text-red-800',
+                'text' => 'Ditolak'
+            ],
+            default => [
+                'class' => 'bg-gray-100 text-gray-800',
+                'text' => 'Unknown'
+            ]
+        };
+    }
+
+    // Helper Methods
     public function isLegalDocument(): bool
     {
+        // Check if linked to SOP
+        if ($this->sop_legal_document_id) {
+            return true;
+        }
+
         $filename = strtolower($this->original_filename ?? '');
         $filepath = strtolower($this->file_path ?? '');
         
-        // Check by file path (if stored in legal folder)
+        // Check by file path
         if (str_contains($filepath, '/legal/')) {
             return true;
         }
@@ -85,23 +152,15 @@ class ClientDocument extends Model
         return false;
     }
 
-    // Essential accessor: Get filename
-    public function getFileNameAttribute(): string
+    public function updateExpiryStatus(): void
     {
-        return $this->original_filename ?? basename($this->file_path ?? 'Unknown');
-    }
-
-    // Essential accessor: Get file URL
-    public function getFileUrlAttribute(): ?string
-    {
-        if ($this->file_path && \Storage::disk('public')->exists($this->file_path)) {
-            return \Storage::disk('public')->url($this->file_path);
+        if ($this->expired_at && $this->expired_at->isPast() && $this->status === 'valid') {
+            $this->update(['status' => 'expired']);
         }
-        return null;
     }
 
-    // Essential static method: Upload helper
-    public static function uploadForClient(Client $client, $file): self
+    // Static Methods
+    public static function uploadForClient(Client $client, $file, array $data = []): self
     {
         // Generate filename
         $originalName = $file->getClientOriginalName();
@@ -109,7 +168,7 @@ class ClientDocument extends Model
         
         // Determine storage path
         $tempDocument = new self(['original_filename' => $originalName]);
-        $isLegal = $tempDocument->isLegalDocument();
+        $isLegal = $tempDocument->isLegalDocument() || isset($data['sop_legal_document_id']);
         
         $storagePath = $isLegal 
             ? $client->getLegalFolderPath() 
@@ -119,25 +178,38 @@ class ClientDocument extends Model
         $filePath = $file->storeAs($storagePath, $filename, 'public');
         
         // Create document record
-        return self::create([
+        return self::create(array_merge([
             'client_id' => $client->id,
             'user_id' => auth()->id(),
             'file_path' => $filePath,
             'original_filename' => $originalName,
-        ]);
+            'status' => 'valid',
+        ], $data));
     }
 
-    // Essential scope: Legal documents
-    public function scopeLegalDocuments($query)
+    // Event Handlers
+    protected static function booted()
     {
-        return $query->where(function($q) {
-            $q->where('file_path', 'like', '%/legal/%')
-              ->orWhere('original_filename', 'like', '%legal%')
-              ->orWhere('original_filename', 'like', '%kontrak%')
-              ->orWhere('original_filename', 'like', '%akta%')
-              ->orWhere('original_filename', 'like', '%perjanjian%')
-              ->orWhere('original_filename', 'like', '%contract%')
-              ->orWhere('original_filename', 'like', '%agreement%');
+        static::created(function ($clientDocument) {
+            $filename = $clientDocument->original_filename ?? basename($clientDocument->file_path);
+            
+            if ($clientDocument->isLegalDocument()) {
+                UserActivity::logLegalDocumentUpload(
+                    $clientDocument->client, 
+                    $filename, 
+                    $clientDocument
+                );
+            } else {
+                UserActivity::logClientDocumentUpload(
+                    $clientDocument->client, 
+                    $filename
+                );
+            }
+        });
+
+        static::updating(function ($clientDocument) {
+            // Auto-update status if expired
+            $clientDocument->updateExpiryStatus();
         });
     }
 }

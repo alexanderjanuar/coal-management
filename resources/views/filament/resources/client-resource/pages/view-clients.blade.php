@@ -30,15 +30,13 @@
 
             @case('perpajakan')
             <div x-data x-init="$el.style.opacity = 0; setTimeout(() => $el.style.opacity = 1, 10)"
-                class="rounded-3xl bg-white p-6 shadow transition-opacity duration-300 dark:bg-gray-800">
-                <h3 class="text-lg font-medium text-gray-900 dark:text-white mb-4">Perpajakan</h3>
-                <p class="text-gray-600 dark:text-gray-400">Konten untuk tab Perpajakan akan ditampilkan di sini.</p>
-                {{-- @livewire('client.perpajakan-tab', ['client' => $record]) --}}
+                class="">
+                @livewire('client.components.perpajakan-tab', ['client' => $record])               
             </div>
             @break
 
             @case('kontrak')
-            <div x-data x-init="$el.style.opacity = 0; setTimeout(() => $el.style.opacity = 1, 10)"
+            <div x-data
                 class="rounded-3xl bg-white p-6 shadow transition-opacity duration-300 dark:bg-gray-800">
                 <h3 class="text-lg font-medium text-gray-900 dark:text-white mb-4">Kontrak</h3>
                 <p class="text-gray-600 dark:text-gray-400">Konten untuk tab Kontrak akan ditampilkan di sini.</p>
@@ -48,10 +46,7 @@
 
             @case('dokumen')
             <div x-data x-init="$el.style.opacity = 0; setTimeout(() => $el.style.opacity = 1, 10)"
-                class="rounded-3xl bg-white p-6 shadow transition-opacity duration-300 dark:bg-gray-800">
-                <h3 class="text-lg font-medium text-gray-900 dark:text-white mb-4">Dokumen</h3>
-                <p class="text-gray-600 dark:text-gray-400">Konten untuk tab Dokumen akan ditampilkan di sini.</p>
-                {{-- @livewire('client.dokumen-tab', ['client' => $record]) --}}
+                @livewire('client.components.dokumen-tab', ['client' => $record])      
             </div>
             @break
 

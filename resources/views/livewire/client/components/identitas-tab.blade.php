@@ -154,119 +154,6 @@
         </div>
     </div>
 
-    {{-- Perusahaan Terkait / Afiliasi --}}
-    <div class="rounded-2xl border border-gray-200 bg-white p-6 dark:border-gray-700 dark:bg-gray-800">
-        <h3 class="mb-6 text-base font-semibold text-gray-900 dark:text-white">Perusahaan Terkait / Afiliasi</h3>
-
-        @if($client->affiliates->count() > 0)
-        <div class="overflow-hidden rounded-lg border border-gray-200 dark:border-gray-700">
-            <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
-                <thead class="bg-gray-50 dark:bg-gray-900">
-                    <tr>
-                        <th scope="col"
-                            class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">
-                            Nama Perusahaan
-                        </th>
-                        <th scope="col"
-                            class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">
-                            Hubungan
-                        </th>
-                        <th scope="col"
-                            class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">
-                            Kepemilikan
-                        </th>
-                        <th scope="col"
-                            class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">
-                            NPWP
-                        </th>
-                        <th scope="col"
-                            class="px-6 py-3 text-center text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">
-                            Aksi
-                        </th>
-                    </tr>
-                </thead>
-                <tbody class="divide-y divide-gray-200 bg-white dark:divide-gray-700 dark:bg-gray-800">
-                    @foreach($client->affiliates as $affiliate)
-                    <tr class="hover:bg-gray-50 dark:hover:bg-gray-900 transition-colors">
-                        <td class="whitespace-nowrap px-6 py-4">
-                            <div class="text-sm font-medium text-gray-900 dark:text-white">
-                                {{ $affiliate->company_name }}
-                            </div>
-                            @if($affiliate->notes)
-                            <div class="mt-1 text-xs text-gray-500 dark:text-gray-400">
-                                {{ Str::limit($affiliate->notes, 50) }}
-                            </div>
-                            @endif
-                        </td>
-                        <td class="whitespace-nowrap px-6 py-4">
-                            <span class="text-sm text-gray-900 dark:text-white">
-                                {{ $affiliate->relationship_type }}
-                            </span>
-                        </td>
-                        <td class="whitespace-nowrap px-6 py-4">
-                            <span class="text-sm text-gray-900 dark:text-white">
-                                {{ $affiliate->formatted_ownership }}
-                            </span>
-                        </td>
-                        <td class="whitespace-nowrap px-6 py-4">
-                            <span class="text-sm text-gray-500 dark:text-gray-400">
-                                {{ $affiliate->formatted_npwp }}
-                            </span>
-                        </td>
-                        <td class="whitespace-nowrap px-6 py-4 text-center">
-                            @if($affiliate->affiliated_client_id)
-                            <a href="{{ route('filament.admin.resources.clients.view', $affiliate->affiliated_client_id) }}"
-                                class="text-sm font-medium text-primary-600 hover:text-primary-500 dark:text-primary-400 dark:hover:text-primary-300">
-                                Lihat
-                            </a>
-                            @else
-                            <span class="text-sm text-gray-400 dark:text-gray-500">-</span>
-                            @endif
-                        </td>
-                    </tr>
-                    @endforeach
-                </tbody>
-            </table>
-        </div>
-
-        {{-- Tombol Tambah Perusahaan Terkait --}}
-        <div class="mt-4">
-            <button type="button" wire:click="openAffiliateModal"
-                class="inline-flex items-center text-sm font-medium text-gray-700 hover:text-gray-900 dark:text-gray-300 dark:hover:text-white transition-colors">
-                <svg class="mr-1.5 h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
-                </svg>
-                Tambah Perusahaan Terkait
-            </button>
-        </div>
-        @else
-        <div
-            class="rounded-lg border border-dashed border-gray-300 bg-gray-50 px-6 py-12 text-center dark:border-gray-700 dark:bg-gray-900">
-            <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                    d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
-            </svg>
-            <p class="mt-4 text-sm text-gray-500 dark:text-gray-400">
-                Belum ada perusahaan terkait
-            </p>
-            <p class="mt-1 text-xs text-gray-400 dark:text-gray-500">
-                Tambahkan informasi anak perusahaan, afiliasi, atau perusahaan induk
-            </p>
-
-            {{-- Tombol Tambah Perusahaan Terkait --}}
-            <div class="mt-6">
-                <button type="button" wire:click="openAffiliateModal"
-                    class="inline-flex items-center text-sm font-medium text-gray-700 hover:text-gray-900 dark:text-gray-300 dark:hover:text-white transition-colors">
-                    <svg class="mr-1.5 h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
-                    </svg>
-                    Tambah Perusahaan Terkait
-                </button>
-            </div>
-        </div>
-        @endif
-    </div>
-
     {{-- Kontak Person --}}
     <div class="rounded-2xl border border-gray-200 bg-white p-6 dark:border-gray-700 dark:bg-gray-800">
         <div class="mb-6 flex items-center justify-between">
@@ -370,128 +257,237 @@
         @endif
     </div>
 
-    {{-- Modal Form Perusahaan Terkait / Afiliasi --}}
-    @if($showAffiliateModal)
-    <div class="fixed inset-0 z-50 overflow-y-auto" x-data x-init="document.body.style.overflow = 'hidden'"
-        x-destroy="document.body.style.overflow = 'auto'">
-        <div class="flex min-h-screen items-center justify-center px-4 pt-4 pb-20 text-center sm:block sm:p-0">
-            {{-- Background overlay --}}
-            <div class="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity" wire:click="closeAffiliateModal">
+
+    {{-- Perusahaan Terkait / Afiliasi --}}
+    <div class="rounded-2xl border border-gray-200 bg-white p-6 dark:border-gray-700 dark:bg-gray-800">
+        <div class="mb-6 flex items-center justify-between">
+            <h3 class="text-base font-semibold text-gray-900 dark:text-white">Perusahaan Terkait / Afiliasi</h3>
+        </div>
+
+        @if($client->affiliates && $client->affiliates->count() > 0)
+        {{-- Table Header --}}
+        <div class="overflow-hidden rounded-lg">
+            <div class="py-3 border-b-2 border-gray-200">
+                <div
+                    class="grid grid-cols-12 gap-4 text-left text-xs font-medium uppercase tracking-wider text-gray-800 dark:text-gray-400">
+                    <div class="col-span-3">Nama Perusahaan</div>
+                    <div class="col-span-2">Hubungan</div>
+                    <div class="col-span-2">Kepemilikan</div>
+                    <div class="col-span-3">NPWP</div>
+                    <div class="col-span-2">Aksi</div>
+                </div>
             </div>
 
-            {{-- Modal panel --}}
-            <div
-                class="inline-block transform overflow-hidden rounded-lg bg-white text-left align-bottom shadow-xl transition-all dark:bg-gray-800 sm:my-8 sm:w-full sm:max-w-2xl sm:align-middle">
-                <form wire:submit.prevent="saveAffiliate">
-                    {{-- Header --}}
-                    <div class="bg-white px-6 py-4 dark:bg-gray-800">
-                        <div class="flex items-center justify-between">
-                            <h3 class="text-lg font-semibold text-gray-900 dark:text-white">
-                                {{ $editingAffiliateId ? 'Edit Perusahaan Terkait' : 'Tambah Perusahaan Terkait' }}
-                            </h3>
-                            <button type="button" wire:click="closeAffiliateModal"
-                                class="text-gray-400 hover:text-gray-500">
-                                <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            {{-- Table Body --}}
+            <div class="divide-y divide-gray-200 bg-white dark:divide-gray-600 dark:bg-gray-800">
+                @foreach($client->affiliates as $affiliate)
+                <div class="grid grid-cols-12 gap-4 py-4 place-content-center">
+                    {{-- Nama Perusahaan --}}
+                    <div class="col-span-3">
+                        <div class="text-sm font-medium text-gray-900 dark:text-white">
+                            {{ $affiliate->company_name }}
+                        </div>
+                        @if($affiliate->notes)
+                        <div class="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                            {{ Str::limit($affiliate->notes, 50) }}
+                        </div>
+                        @endif
+                    </div>
+
+                    {{-- Hubungan --}}
+                    <div class="col-span-2">
+                        <span class="inline-flex items-center rounded-md px-2 py-1 text-xs font-medium 
+                            {{ $affiliate->getRelationshipBadgeColor() === 'success' ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200' : 
+                               ($affiliate->getRelationshipBadgeColor() === 'primary' ? 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200' : 
+                               ($affiliate->getRelationshipBadgeColor() === 'warning' ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200' : 
+                               'bg-gray-100 text-gray-800 dark:bg-gray-600 dark:text-gray-200')) }}">
+                            {{ $affiliate->relationship_type }}
+                        </span>
+                    </div>
+
+                    {{-- Kepemilikan --}}
+                    <div class="col-span-2">
+                        <div class="text-sm text-gray-900 dark:text-white">
+                            {{ $affiliate->ownership_percentage ? number_format($affiliate->ownership_percentage, 0) .
+                            '%' : '-' }}
+                        </div>
+                    </div>
+
+                    {{-- NPWP --}}
+                    <div class="col-span-3">
+                        <div class="text-sm text-gray-900 dark:text-white font-mono">
+                            {{ $affiliate->npwp ? $affiliate->formatted_npwp : '-' }}
+                        </div>
+                    </div>
+
+                    {{-- Aksi --}}
+                    <div class="col-span-2">
+                        <div class="flex items-center gap-2">
+                            <button wire:click="editAffiliate({{ $affiliate->id }})"
+                                class="inline-flex items-center rounded-md bg-white px-2.5 py-1.5 text-xs font-semibold text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 hover:bg-gray-50 dark:bg-gray-700 dark:text-white dark:ring-gray-600 dark:hover:bg-gray-600">
+                                <svg class="h-3 w-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                        d="M6 18L18 6M6 6l12 12" />
+                                        d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z">
+                                    </path>
                                 </svg>
+                                Lihat
                             </button>
                         </div>
                     </div>
-
-                    {{-- Body --}}
-                    <div class="space-y-6 px-6 py-4">
-                        {{-- Nama Perusahaan --}}
-                        <div>
-                            <label class="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300">
-                                Nama Perusahaan <span class="text-red-500">*</span>
-                            </label>
-                            <input type="text" wire:model="affiliateCompanyName"
-                                class="w-full rounded-lg border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white"
-                                placeholder="Masukkan nama perusahaan">
-                            @error('affiliateCompanyName')
-                            <p class="mt-1 text-sm text-red-600 dark:text-red-400">{{ $message }}</p>
-                            @enderror
-                        </div>
-
-                        <div class="grid grid-cols-1 gap-6 md:grid-cols-2">
-                            {{-- Hubungan --}}
-                            <div>
-                                <label class="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300">
-                                    Hubungan <span class="text-red-500">*</span>
-                                </label>
-                                <select wire:model="affiliateRelationshipType"
-                                    class="w-full rounded-lg border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white">
-                                    <option value="Anak Perusahaan">Anak Perusahaan</option>
-                                    <option value="Afiliasi">Afiliasi</option>
-                                    <option value="Perusahaan Induk">Perusahaan Induk</option>
-                                    <option value="Sister Company">Sister Company</option>
-                                    <option value="Joint Venture">Joint Venture</option>
-                                    <option value="Lainnya">Lainnya</option>
-                                </select>
-                                @error('affiliateRelationshipType')
-                                <p class="mt-1 text-sm text-red-600 dark:text-red-400">{{ $message }}</p>
-                                @enderror
-                            </div>
-
-                            {{-- Kepemilikan --}}
-                            <div>
-                                <label class="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300">
-                                    Kepemilikan (%)
-                                </label>
-                                <input type="number" wire:model="affiliateOwnershipPercentage" min="0" max="100"
-                                    step="0.01"
-                                    class="w-full rounded-lg border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white"
-                                    placeholder="0-100">
-                                @error('affiliateOwnershipPercentage')
-                                <p class="mt-1 text-sm text-red-600 dark:text-red-400">{{ $message }}</p>
-                                @enderror
-                            </div>
-                        </div>
-
-                        {{-- NPWP --}}
-                        <div>
-                            <label class="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300">
-                                NPWP
-                            </label>
-                            <input type="text" wire:model="affiliateNpwp" maxlength="20"
-                                class="w-full rounded-lg border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white"
-                                placeholder="XX.XXX.XXX.X-XXX.XXX">
-                            @error('affiliateNpwp')
-                            <p class="mt-1 text-sm text-red-600 dark:text-red-400">{{ $message }}</p>
-                            @enderror
-                        </div>
-
-                        {{-- Catatan --}}
-                        <div>
-                            <label class="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300">
-                                Catatan
-                            </label>
-                            <textarea wire:model="affiliateNotes" rows="3"
-                                class="w-full rounded-lg border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white"
-                                placeholder="Catatan tambahan (opsional)"></textarea>
-                            @error('affiliateNotes')
-                            <p class="mt-1 text-sm text-red-600 dark:text-red-400">{{ $message }}</p>
-                            @enderror
-                        </div>
-                    </div>
-
-                    {{-- Footer --}}
-                    <div class="bg-gray-50 px-6 py-4 dark:bg-gray-900">
-                        <div class="flex justify-end space-x-3">
-                            <button type="button" wire:click="closeAffiliateModal"
-                                class="rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600">
-                                Batal
-                            </button>
-                            <button type="submit"
-                                class="rounded-lg bg-primary-600 px-4 py-2 text-sm font-medium text-white hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2">
-                                {{ $editingAffiliateId ? 'Perbarui' : 'Simpan' }}
-                            </button>
-                        </div>
-                    </div>
-                </form>
+                </div>
+                @endforeach
             </div>
         </div>
+
+        {{-- Add Button --}}
+        <div class="mt-4 flex justify-start">
+            <button wire:click="openAffiliateModal"
+                class="inline-flex items-center rounded-md bg-gray-50 px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600">
+                <svg class="h-4 w-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
+                </svg>
+                Tambah Perusahaan Terkait
+            </button>
+        </div>
+        @else
+        {{-- Empty State --}}
+        <div class="rounded-lg bg-gray-50 p-8 text-center dark:bg-gray-900">
+            <div class="mx-auto mb-4 h-12 w-12 text-gray-400">
+                <svg class="h-12 w-12" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1"
+                        d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4">
+                    </path>
+                </svg>
+            </div>
+            <h3 class="mb-2 text-sm font-medium text-gray-900 dark:text-white">Belum ada perusahaan afiliasi</h3>
+            <p class="mb-4 text-sm text-gray-500 dark:text-gray-400">Mulai dengan menambahkan perusahaan afiliasi
+                pertama Anda.</p>
+            <button wire:click="openAffiliateModal"
+                class="inline-flex items-center rounded-md bg-gray-50 px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600">
+                <svg class="h-4 w-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
+                </svg>
+                Tambah Perusahaan Terkait
+            </button>
+        </div>
+        @endif
     </div>
-    @endif
+
+    {{-- Filament Modal --}}
+    <x-filament::modal id="affiliate-modal" width="2xl">
+        <x-slot name="heading">
+            {{ $editingAffiliateId ? 'Edit Perusahaan Afiliasi' : 'Tambah Perusahaan Afiliasi' }}
+        </x-slot>
+
+        <div class="space-y-6">
+            {{-- Company Name --}}
+            <div class="space-y-2">
+                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                    Nama Perusahaan <span class="text-red-500">*</span>
+                </label>
+                <input wire:model="affiliateCompanyName" type="text" placeholder="Masukkan nama perusahaan"
+                    class="block w-full rounded-lg border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm focus:border-primary-500 focus:ring-primary-500 sm:text-sm" />
+                @error('affiliateCompanyName')
+                <p class="text-sm text-red-600 dark:text-red-400">{{ $message }}</p>
+                @enderror
+            </div>
+
+            {{-- Relationship Type --}}
+            <div class="space-y-2">
+                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                    Tipe Hubungan <span class="text-red-500">*</span>
+                </label>
+                <select wire:model="affiliateRelationshipType"
+                    class="block w-full rounded-lg border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm focus:border-primary-500 focus:ring-primary-500 sm:text-sm">
+                    @foreach($this->relationshipTypes as $value => $label)
+                    <option value="{{ $value }}">{{ $label }}</option>
+                    @endforeach
+                </select>
+                @error('affiliateRelationshipType')
+                <p class="text-sm text-red-600 dark:text-red-400">{{ $message }}</p>
+                @enderror
+            </div>
+
+            {{-- Ownership Percentage --}}
+            <div class="space-y-2">
+                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                    Persentase Kepemilikan (%)
+                </label>
+                <input wire:model="affiliateOwnershipPercentage" type="number" step="0.01" min="0" max="100"
+                    placeholder="0.00"
+                    class="block w-full rounded-lg border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm focus:border-primary-500 focus:ring-primary-500 sm:text-sm" />
+                <p class="text-xs text-gray-500 dark:text-gray-400">
+                    Opsional. Masukkan persentase kepemilikan (0-100)
+                </p>
+                @error('affiliateOwnershipPercentage')
+                <p class="text-sm text-red-600 dark:text-red-400">{{ $message }}</p>
+                @enderror
+            </div>
+
+            {{-- NPWP --}}
+            <div class="space-y-2">
+                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                    NPWP Perusahaan Afiliasi
+                </label>
+                <input wire:model="affiliateNpwp" type="text" placeholder="Masukkan NPWP (opsional)" maxlength="20"
+                    class="block w-full rounded-lg border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm focus:border-primary-500 focus:ring-primary-500 sm:text-sm" />
+                <p class="text-xs text-gray-500 dark:text-gray-400">
+                    Opsional. Format: 15 digit tanpa tanda baca
+                </p>
+                @error('affiliateNpwp')
+                <p class="text-sm text-red-600 dark:text-red-400">{{ $message }}</p>
+                @enderror
+            </div>
+
+            {{-- Affiliated Client --}}
+            <div class="space-y-2">
+                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                    Client Terkait
+                </label>
+                <select wire:model="affiliateAffiliatedClientId"
+                    class="block w-full rounded-lg border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm focus:border-primary-500 focus:ring-primary-500 sm:text-sm">
+                    <option value="">Pilih client (opsional)</option>
+                    @foreach($this->availableClients as $clientId => $clientName)
+                    <option value="{{ $clientId }}">{{ $clientName }}</option>
+                    @endforeach
+                </select>
+                <p class="text-xs text-gray-500 dark:text-gray-400">
+                    Opsional. Pilih jika perusahaan afiliasi juga terdaftar sebagai client
+                </p>
+                @error('affiliateAffiliatedClientId')
+                <p class="text-sm text-red-600 dark:text-red-400">{{ $message }}</p>
+                @enderror
+            </div>
+
+            {{-- Notes --}}
+            <div class="space-y-2">
+                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                    Catatan
+                </label>
+                <textarea wire:model="affiliateNotes" rows="3" placeholder="Catatan tambahan tentang afiliasi ini..."
+                    class="block w-full rounded-lg border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm focus:border-primary-500 focus:ring-primary-500 sm:text-sm resize-none"></textarea>
+                <p class="text-xs text-gray-500 dark:text-gray-400">
+                    Opsional. Tambahkan catatan atau informasi tambahan
+                </p>
+                @error('affiliateNotes')
+                <p class="text-sm text-red-600 dark:text-red-400">{{ $message }}</p>
+                @enderror
+            </div>
+        </div>
+
+        <x-slot name="footerActions">
+            <x-filament::button wire:click="closeAffiliateModal" color="gray">
+                Batal
+            </x-filament::button>
+
+            <x-filament::button wire:click="saveAffiliate" wire:loading.attr="disabled" wire:target="saveAffiliate">
+                <span wire:loading.remove wire:target="saveAffiliate">
+                    {{ $editingAffiliateId ? 'Perbarui' : 'Simpan' }}
+                </span>
+                <span wire:loading wire:target="saveAffiliate">
+                    Menyimpan...
+                </span>
+            </x-filament::button>
+        </x-slot>
+    </x-filament::modal>
 </div>
