@@ -11,7 +11,7 @@ class DailyTaskSubTask extends Model
 {
     use HasFactory;
 
-        use HasFactory;
+    protected $table = 'daily_task_subtasks';
 
     protected $fillable = [
         'daily_task_id',
