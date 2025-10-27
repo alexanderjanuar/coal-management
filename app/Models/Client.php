@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasManyThrough;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
@@ -110,6 +111,14 @@ class Client extends Model
                     ->with(['userProjects.user'])
                     ->orderBy('created_at', 'desc')
                     ->get();
+    }
+
+    /**
+     * Relasi untuk Invoices
+     */
+    public function invoices(): HasManyThrough
+    {
+        return $this->hasManyThrough(Invoice::class, TaxReport::class);
     }
 
     /**

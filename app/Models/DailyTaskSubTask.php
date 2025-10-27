@@ -6,11 +6,12 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
+
 class DailyTaskSubtask extends Model
 {
     use HasFactory;
 
-    use HasFactory;
+        use HasFactory;
 
     protected $fillable = [
         'daily_task_id',

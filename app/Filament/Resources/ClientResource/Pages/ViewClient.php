@@ -40,7 +40,7 @@ class ViewClient extends ViewRecord
             'dokumen' => 'Dokumen',
             'komunikasi' => 'Komunikasi',
             'compliance' => 'Compliance',
-            'layanan' => 'Layanan',
+            'karyawan' => 'Karyawan',
             'tim' => 'Tim',
         ];
     }

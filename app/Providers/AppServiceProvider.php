@@ -42,7 +42,7 @@ class AppServiceProvider extends ServiceProvider
         Invoice::observe(InvoiceObserver::class);
         TaxReport::observe(TaxReportObserver::class);
         DailyTask::observe(DailyTaskObserver::class);
-        DailyTaskSubtask::observe(DailyTaskSubtaskObserver::class);
+        // DailyTaskSubtask::observe(DailyTaskSubtaskObserver::class);
 
         DatabaseNotifications::trigger('filament.notifications.database-notifications-trigger');
 
