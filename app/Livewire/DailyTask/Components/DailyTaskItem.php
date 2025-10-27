@@ -3,7 +3,7 @@
 namespace App\Livewire\DailyTask\Components;
 
 use App\Models\DailyTask;
-use App\Models\DailyTaskSubtask;
+use App\Models\DailyTaskSubTask;
 use App\Models\Project;
 use App\Models\User;
 use Livewire\Component;
@@ -156,7 +156,7 @@ class DailyTaskItem extends Component implements HasForms
 
     public function toggleSubtask(int $subtaskId): void
     {
-        $subtask = DailyTaskSubtask::find($subtaskId);
+        $subtask = DailyTaskSubTask::find($subtaskId);
         if ($subtask) {
             $newStatus = $subtask->status === 'completed' ? 'pending' : 'completed';
             $subtask->update(['status' => $newStatus]);
@@ -184,7 +184,7 @@ class DailyTaskItem extends Component implements HasForms
 
     public function deleteSubtask(int $subtaskId): void
     {
-        DailyTaskSubtask::find($subtaskId)?->delete();
+        DailyTaskSubTask::find($subtaskId)?->delete();
         $this->task->refresh();
         
         Notification::make()

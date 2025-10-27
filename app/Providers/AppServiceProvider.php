@@ -4,10 +4,10 @@ namespace App\Providers;
 
 
 use App\Models\DailyTask;
-use App\Models\DailyTaskSubtask;
+use App\Models\DailyTaskSubTask;
 use App\Models\TaxReport;
 use App\Observers\DailyTaskObserver;
-use App\Observers\DailyTaskSubtaskObserver;
+use App\Observers\DailyTaskSubTaskObserver;
 use App\Observers\TaxReportObserver;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Database\Eloquent\Model;
@@ -42,7 +42,7 @@ class AppServiceProvider extends ServiceProvider
         Invoice::observe(InvoiceObserver::class);
         TaxReport::observe(TaxReportObserver::class);
         DailyTask::observe(DailyTaskObserver::class);
-        // DailyTaskSubtask::observe(DailyTaskSubtaskObserver::class);
+        // DailyTaskSubTask::observe(DailyTaskSubTaskObserver::class);
 
         DatabaseNotifications::trigger('filament.notifications.database-notifications-trigger');
 

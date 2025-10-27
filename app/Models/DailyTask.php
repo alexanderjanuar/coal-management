@@ -56,7 +56,7 @@ class DailyTask extends Model
     // Subtask relationships
     public function subtasks(): HasMany
     {
-        return $this->hasMany(DailyTaskSubtask::class);
+        return $this->hasMany(DailyTaskSubTask::class);
     }
 
     // Relationship to comments
@@ -245,7 +245,7 @@ class DailyTask extends Model
 
 
 
-    public function addSubtask(string $title): DailyTaskSubtask
+    public function addSubtask(string $title): DailyTaskSubTask
     {
         return $this->subtasks()->create([
             'title' => $title,

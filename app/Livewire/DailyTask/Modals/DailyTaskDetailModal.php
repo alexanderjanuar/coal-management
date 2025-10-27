@@ -3,7 +3,7 @@
 namespace App\Livewire\DailyTask\Modals;
 
 use App\Models\DailyTask;
-use App\Models\DailyTaskSubtask;
+use App\Models\DailyTaskSubTask;
 use App\Models\User;
 use Livewire\Component;
 use Filament\Forms;
@@ -390,7 +390,7 @@ class DailyTaskDetailModal extends Component implements HasForms, HasActions
 
     public function toggleSubtask(int $subtaskId): void
     {
-        $subtask = DailyTaskSubtask::find($subtaskId);
+        $subtask = DailyTaskSubTask::find($subtaskId);
         if ($subtask) {
             $newStatus = $subtask->status === 'completed' ? 'pending' : 'completed';
             $subtask->update(['status' => $newStatus]);

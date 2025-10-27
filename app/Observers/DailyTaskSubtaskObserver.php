@@ -2,15 +2,15 @@
 
 namespace App\Observers;
 
-use App\Models\DailyTaskSubtask;
+use App\Models\DailyTaskSubTask;
 use App\Models\Comment;
 
-class DailyTaskSubtaskObserver
+class DailyTaskSubTaskObserver
 {
     /**
-     * Handle the DailyTaskSubtask "created" event.
+     * Handle the DailyTaskSubTask "created" event.
      */
-    public function created(DailyTaskSubtask $subtask): void
+    public function created(DailyTaskSubTask $subtask): void
     {
         if (!auth()->check()) {
             return;
@@ -24,9 +24,9 @@ class DailyTaskSubtaskObserver
     }
 
     /**
-     * Handle the DailyTaskSubtask "updated" event.
+     * Handle the DailyTaskSubTask "updated" event.
      */
-    public function updated(DailyTaskSubtask $subtask): void
+    public function updated(DailyTaskSubTask $subtask): void
     {
         if (!auth()->check()) {
             return;
@@ -48,9 +48,9 @@ class DailyTaskSubtaskObserver
     }
 
     /**
-     * Handle the DailyTaskSubtask "deleting" event.
+     * Handle the DailyTaskSubTask "deleting" event.
      */
-    public function deleting(DailyTaskSubtask $subtask): void
+    public function deleting(DailyTaskSubTask $subtask): void
     {
         if (!auth()->check()) {
             return;
@@ -64,9 +64,9 @@ class DailyTaskSubtaskObserver
     }
 
     /**
-     * Handle the DailyTaskSubtask "deleted" event.
+     * Handle the DailyTaskSubTask "deleted" event.
      */
-    public function deleted(DailyTaskSubtask $subtask): void
+    public function deleted(DailyTaskSubTask $subtask): void
     {
         // Log untuk tracking
         \Log::info("Subtask '{$subtask->title}' dari task '{$subtask->dailyTask->title}' telah dihapus oleh " . (auth()->user()->name ?? 'System'));
@@ -75,7 +75,7 @@ class DailyTaskSubtaskObserver
     /**
      * Create activity comment for subtask changes
      */
-    private function createSubtaskActivityComment(DailyTaskSubtask $subtask, string $field, $oldValue, $newValue): void
+    private function createSubtaskActivityComment(DailyTaskSubTask $subtask, string $field, $oldValue, $newValue): void
     {
         $message = $this->generateSubtaskChangeMessage($subtask, $field, $oldValue, $newValue);
         
@@ -91,7 +91,7 @@ class DailyTaskSubtaskObserver
     /**
      * Generate appropriate message for subtask field changes
      */
-    private function generateSubtaskChangeMessage(DailyTaskSubtask $subtask, string $field, $oldValue, $newValue): ?string
+    private function generateSubtaskChangeMessage(DailyTaskSubTask $subtask, string $field, $oldValue, $newValue): ?string
     {
         return match($field) {
             'status' => $this->getSubtaskStatusChangeMessage($subtask->title, $oldValue, $newValue),
