@@ -61,7 +61,7 @@
 
             @case('karyawan')
             <div x-data x-init="$el.style.opacity = 0; setTimeout(() => $el.style.opacity = 1, 10)"
-                class="rounded-3xl bg-white p-6 shadow transition-opacity duration-300 dark:bg-gray-800">
+                class="">
                 @livewire('client.components.karyawan-tab', ['client' => $record], key('karyawan-tab-'.$record->id))
             </div>
             @break
