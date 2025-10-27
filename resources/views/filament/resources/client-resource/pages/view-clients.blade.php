@@ -62,9 +62,7 @@
             @case('karyawan')
             <div x-data x-init="$el.style.opacity = 0; setTimeout(() => $el.style.opacity = 1, 10)"
                 class="rounded-3xl bg-white p-6 shadow transition-opacity duration-300 dark:bg-gray-800">
-                <h3 class="text-lg font-medium text-gray-900 dark:text-white mb-4">Karyawan</h3>
-                <p class="text-gray-600 dark:text-gray-400">Konten untuk tab Layanan akan ditampilkan di sini.</p>
-                {{-- @livewire('client.layanan-tab', ['client' => $record]) --}}
+                @livewire('client.components.karyawan-tab', ['client' => $record], key('karyawan-tab-'.$record->id))
             </div>
             @break
 
