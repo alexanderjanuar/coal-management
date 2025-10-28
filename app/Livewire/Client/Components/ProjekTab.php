@@ -5,7 +5,6 @@ namespace App\Livewire\Client\Components;
 use App\Models\Client;
 use App\Models\Project;
 use App\Models\User;
-use App\Models\Sop;
 use Filament\Notifications\Notification;
 use Filament\Forms\Concerns\InteractsWithForms;
 use Filament\Forms\Contracts\HasForms;
@@ -115,12 +114,6 @@ class ProjekTab extends Component implements HasForms
                                     ->default('draft')
                                     ->columnSpan(1),
                                 
-                                Select::make('sop_id')
-                                    ->label('SOP (Opsional)')
-                                    ->options(Sop::pluck('name', 'id'))
-                                    ->searchable()
-                                    ->native(false)
-                                    ->columnSpan(1),
                                 
                                 Select::make('pic_id')
                                     ->label('PIC (Person In Charge)')
