@@ -10,7 +10,8 @@ use Filament\Forms\Form;
 use Filament\Forms\Components\Section;
 use Filament\Forms\Components\Grid;
 use Filament\Forms\Components\TextInput;
-use Filament\Forms\Components\Textarea;
+use Filament\Forms\Components\RichEditor;
+use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\TimePicker;
@@ -32,10 +33,14 @@ class KomunikasiTab extends Component implements HasForms
     public $communication_date = '';
     public $communication_time = '';
     public $notes = '';
+    public $attachments = [];
     public $editingId = null;
     
     // Delete confirmation
     public $communicationToDelete = null;
+    
+    // Detail modal
+    public $viewingCommunication = null;
 
     public function mount(Client $client)
     {
@@ -83,16 +88,58 @@ class KomunikasiTab extends Component implements HasForms
                                     ->seconds(false)
                                     ->columnSpan(1),
                                 
-                                Textarea::make('description')
+                                RichEditor::make('description')
                                     ->label('Deskripsi')
-                                    ->rows(3)
-                                    ->placeholder('Deskripsi singkat tentang komunikasi ini')
+                                    ->placeholder('Deskripsi lengkap tentang komunikasi ini')
+                                    ->toolbarButtons([
+                                        'bold',
+                                        'italic',
+                                        'underline',
+                                        'strike',
+                                        'link',
+                                        'bulletList',
+                                        'orderedList',
+                                        'h2',
+                                        'h3',
+                                        'blockquote',
+                                        'codeBlock',
+                                    ])
                                     ->columnSpan(2),
                                 
-                                Textarea::make('notes')
+                                FileUpload::make('attachments')
+                                    ->label('File Lampiran')
+                                    ->multiple()
+                                    ->downloadable()
+                                    ->openable()
+                                    ->previewable()
+                                    ->maxSize(10240) // 10MB
+                                    ->acceptedFileTypes([
+                                        'application/pdf',
+                                        'application/msword',
+                                        'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+                                        'application/vnd.ms-excel',
+                                        'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+                                        'image/*',
+                                    ])
+                                    ->disk('public')
+                                    ->directory(function () {
+                                        $clientSlug = \Str::slug($this->client->name);
+                                        return "clients/{$clientSlug}/client-communications";
+                                    })
+                                    ->visibility('public')
+                                    ->columnSpan(2),
+                                
+                                RichEditor::make('notes')
                                     ->label('Catatan Tambahan')
-                                    ->rows(3)
                                     ->placeholder('Catatan atau hasil dari komunikasi')
+                                    ->toolbarButtons([
+                                        'bold',
+                                        'italic',
+                                        'underline',
+                                        'bulletList',
+                                        'orderedList',
+                                        'link',
+                                    ])
                                     ->columnSpan(2),
                             ]),
                     ])
@@ -127,8 +174,19 @@ class KomunikasiTab extends Component implements HasForms
             $this->communication_date = $communication->communication_date->format('Y-m-d');
             $this->communication_time = $communication->communication_time;
             $this->notes = $communication->notes;
+            $this->attachments = $communication->attachments ?? [];
             
             $this->dispatch('open-modal', id: 'communication-modal');
+        }
+    }
+
+    public function openDetailModal($communicationId)
+    {
+        $this->viewingCommunication = ClientCommunication::with('user')
+            ->find($communicationId);
+        
+        if ($this->viewingCommunication) {
+            $this->dispatch('open-modal', id: 'detail-communication-modal');
         }
     }
 
@@ -146,6 +204,7 @@ class KomunikasiTab extends Component implements HasForms
                 'communication_date' => $data['communication_date'],
                 'communication_time' => $data['communication_time'] ?? null,
                 'notes' => $data['notes'] ?? null,
+                'attachments' => $data['attachments'] ?? [],
             ];
 
             if ($this->editingId) {
@@ -191,6 +250,15 @@ class KomunikasiTab extends Component implements HasForms
             
             $communication = ClientCommunication::find($this->communicationToDelete);
             if ($communication) {
+                // Delete associated files from public disk
+                if (!empty($communication->attachments) && is_array($communication->attachments)) {
+                    foreach ($communication->attachments as $file) {
+                        if (\Storage::disk('public')->exists($file)) {
+                            \Storage::disk('public')->delete($file);
+                        }
+                    }
+                }
+                
                 $communication->delete();
                 $this->loadCommunications();
                 
@@ -216,13 +284,19 @@ class KomunikasiTab extends Component implements HasForms
     public function closeModal()
     {
         $this->resetModalFields();
-        $this->dispatch('close-modal', id : 'communication-modal');
+        $this->dispatch('close-modal', id: 'communication-modal');
     }
 
     public function closeDeleteModal()
     {
         $this->communicationToDelete = null;
-        $this->dispatch('close-modal', id : 'delete-communication-modal');
+        $this->dispatch('close-modal', id: 'delete-communication-modal');
+    }
+
+    public function closeDetailModal()
+    {
+        $this->viewingCommunication = null;
+        $this->dispatch('close-modal', id: 'detail-communication-modal');
     }
 
     private function resetModalFields()
@@ -233,6 +307,7 @@ class KomunikasiTab extends Component implements HasForms
         $this->communication_date = '';
         $this->communication_time = '';
         $this->notes = '';
+        $this->attachments = [];
         $this->editingId = null;
     }
 

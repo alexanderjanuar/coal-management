@@ -2,7 +2,7 @@
     <div class="space-y-6">
         {{-- Tab Navigation - Pill Style --}}
         <div class="w-full rounded-3xl bg-gray-100 p-1 dark:bg-gray-800">
-            <nav class="grid grid-cols-8 gap-1" aria-label="Tabs">
+            <nav class="grid grid-cols-9 gap-1" aria-label="Tabs">
                 @foreach($this->getTabs() as $tabKey => $tabLabel)
                 <button wire:click="$set('activeTab', '{{ $tabKey }}')"
                     @class([ 'relative rounded-3xl px-3 py-2.5 text-sm font-medium'
@@ -69,6 +69,13 @@
             @case('tim')
             <div x-data x-init="$el.style.opacity = 0; setTimeout(() => $el.style.opacity = 1, 10)" class="">
                 @livewire('client.components.tim-tab', ['client' => $record], key('tim-tab-'.$record->id))
+            </div>
+            @break
+
+            @case('projek')
+            <div x-data x-init="$el.style.opacity = 0; setTimeout(() => $el.style.opacity = 1, 10)"
+                class="">
+                @livewire('client.components.projek-tab', ['client' => $record], key('projek-tab-'.$record->id))
             </div>
             @break
             @endswitch
