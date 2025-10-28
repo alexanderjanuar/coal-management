@@ -107,7 +107,7 @@ class Project extends Model
 
     public function sop(): BelongsTo
     {
-        return $this->belongsTo(SOP::class);
+        return $this->belongsTo(Sop::class);
     }
 
     public function pic(): BelongsTo
