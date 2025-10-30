@@ -212,7 +212,7 @@ class InvoiceAIService
             \"invoice_number\": \"nomor faktur pajak lengkap\",
             \"invoice_date\": \"tanggal faktur dalam format YYYY-MM-DD\",
             \"type\": \"Faktur Keluaran atau Faktur Masuk\",
-            \"company_name\": \"nama Pengusaha Kena Pajak jika faktur masukan/Penerima Jasa Kena Pajak lengkap jika faktur keluaran\",
+            \"company_name\": \"nama Pengusaha Kena Pajak jika faktur masukan atau Penerima Jasa Kena Pajak jika faktur keluaran\",
             \"npwp\": \"nomor NPWP lengkap\",
             \"dpp\": \"nilai DPP dalam angka saja (tanpa titik, koma, atau simbol)\",
             \"ppn_percentage\": \"11 atau 12\",
