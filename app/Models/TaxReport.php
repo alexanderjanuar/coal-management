@@ -486,4 +486,71 @@ class TaxReport extends Model
 
         return $totalCompensation;
     }
+
+    /**
+     * Relasi ke calculation summaries
+     */
+    public function calculationSummaries()
+    {
+        return $this->hasMany(TaxCalculationSummary::class);
+    }
+
+    public function ppnSummary()
+    {
+        return $this->hasOne(TaxCalculationSummary::class)->where('tax_type', 'ppn');
+    }
+
+    public function pphSummary()
+    {
+        return $this->hasOne(TaxCalculationSummary::class)->where('tax_type', 'pph');
+    }
+
+    public function bupotSummary()
+    {
+        return $this->hasOne(TaxCalculationSummary::class)->where('tax_type', 'bupot');
+    }
+
+    /**
+     * Recalculate all tax summaries
+     */
+    public function recalculateAllSummaries(): void
+    {
+        foreach (['ppn', 'pph', 'bupot'] as $taxType) {
+            $summary = $this->getOrCreateSummary($taxType);
+            $summary->recalculate();
+        }
+        
+        // Update invoice_tax_status untuk backward compatibility
+        $ppnSummary = $this->ppnSummary;
+        if ($ppnSummary) {
+            $this->update(['invoice_tax_status' => $ppnSummary->status_final]);
+        }
+    }
+
+    /**
+     * Get approved compensations given (lebih bayar yang sudah dikompensasi)
+     */
+    public function approvedCompensationsGiven()
+    {
+        return $this->hasMany(TaxCompensation::class, 'source_tax_report_id')
+                    ->where('status', 'approved');
+    }
+
+    /**
+     * Get approved compensations received (kompensasi yang diterima)
+     */
+    public function approvedCompensationsReceived()
+    {
+        return $this->hasMany(TaxCompensation::class, 'target_tax_report_id')
+                    ->where('status', 'approved');
+    }
+
+    /**
+     * Get pending compensations for this report
+     */
+    public function pendingCompensations()
+    {
+        return $this->hasMany(TaxCompensation::class, 'target_tax_report_id')
+                    ->where('status', 'pending');
+    }
 }

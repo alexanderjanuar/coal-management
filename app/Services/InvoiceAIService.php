@@ -201,6 +201,26 @@ class InvoiceAIService
         
         return $responseData;
     }
+
+    private function calculateActualPpnPercentage($dpp, $ppn)
+    {
+        if ($dpp == 0) {
+            return '11'; // Default
+        }
+        
+        // Calculate percentage
+        $percentage = ($ppn / $dpp) * 100;
+        
+        // Round to 2 decimal places for comparison
+        $percentage = round($percentage, 2);
+        
+        // Determine closest valid percentage (11% or 12%)
+        if ($percentage >= 11.5) {
+            return '12';
+        } else {
+            return '11';
+        }
+    }
     
     /**
      * Get the prompt for invoice extraction
@@ -215,7 +235,6 @@ class InvoiceAIService
             \"company_name\": \"nama Pengusaha Kena Pajak jika faktur masukan atau Penerima Jasa Kena Pajak jika faktur keluaran\",
             \"npwp\": \"nomor NPWP lengkap\",
             \"dpp\": \"nilai DPP dalam angka saja (tanpa titik, koma, atau simbol)\",
-            \"ppn_percentage\": \"11 atau 12\",
             \"ppn\": \"nilai PPN dalam angka saja (tanpa titik, koma, atau simbol)\"
         }
 
@@ -225,7 +244,8 @@ class InvoiceAIService
         - NPWP harus format Indonesia (contoh: 01.234.567.8-901.000)
         - DPP dan PPN hanya angka, tanpa pemisah ribuan
         - Type hanya \"Faktur Keluaran\" atau \"Faktur Masuk\"
-        - PPN percentage hanya \"11\" atau \"12\"
+        - JANGAN tentukan ppn_percentage, sistem akan menghitung otomatis dari DPP dan PPN
+        - Pastikan ekstrak nilai DPP dan PPN dengan akurat dari dokumen
         - Jika ada field yang tidak ditemukan, gunakan nilai default yang masuk akal
 
         Berikan hanya JSON, tanpa penjelasan tambahan.";
@@ -288,6 +308,16 @@ class InvoiceAIService
             // Log the processed data for debugging
             Log::info('Processed data for validation: ' . json_encode($data));
             
+            // Clean DPP and PPN values first
+            $dppCleaned = $this->cleanNumber($data['dpp'] ?? '0');
+            $ppnCleaned = $this->cleanNumber($data['ppn'] ?? '0');
+            
+            // Calculate actual PPN percentage from the values
+            $actualPpnPercentage = $this->calculateActualPpnPercentage(
+                (float)$dppCleaned, 
+                (float)$ppnCleaned
+            );
+            
             // Validate and clean the data
             $extractedData = [
                 'invoice_number' => $this->cleanString($data['invoice_number'] ?? ''),
@@ -295,14 +325,44 @@ class InvoiceAIService
                 'company_name' => $this->cleanString($data['company_name'] ?? ''),
                 'npwp' => $this->cleanString($data['npwp'] ?? ''),
                 'type' => $this->validateInvoiceType($data['type'] ?? 'Faktur Keluaran'),
-                'dpp' => $this->cleanNumber($data['dpp'] ?? '0'),
-                'ppn_percentage' => $this->validatePpnPercentage($data['ppn_percentage'] ?? '11'),
-                'ppn' => $this->cleanNumber($data['ppn'] ?? '0')
+                'dpp' => $dppCleaned,
+                'ppn_percentage' => $actualPpnPercentage, // Use calculated percentage instead of AI suggestion
+                'ppn' => $ppnCleaned
             ];
+
+            // Log the PPN calculation for audit trail
+            Log::info('PPN Percentage Calculation', [
+                'dpp' => $dppCleaned,
+                'ppn' => $ppnCleaned,
+                'calculated_percentage' => $actualPpnPercentage,
+                'calculation' => sprintf('%.2f%%', ((float)$ppnCleaned / (float)$dppCleaned) * 100),
+                'ai_suggested_percentage' => $data['ppn_percentage'] ?? 'not provided',
+                'invoice_number' => $extractedData['invoice_number']
+            ]);
 
             // Basic validation
             if (empty($extractedData['invoice_number']) || empty($extractedData['company_name'])) {
                 throw new \Exception("Missing required fields: invoice_number ('{$extractedData['invoice_number']}') or company_name ('{$extractedData['company_name']}')");
+            }
+            
+            // Additional validation for DPP and PPN
+            if ($dppCleaned == 0 || $ppnCleaned == 0) {
+                Log::warning('DPP or PPN is zero', [
+                    'dpp' => $dppCleaned,
+                    'ppn' => $ppnCleaned,
+                    'invoice_number' => $extractedData['invoice_number']
+                ]);
+            }
+            
+            // Validate that PPN calculation is reasonable (within acceptable range)
+            $calculatedPercentage = ((float)$ppnCleaned / (float)$dppCleaned) * 100;
+            if ($calculatedPercentage < 10 || $calculatedPercentage > 13) {
+                Log::warning('PPN percentage outside normal range', [
+                    'calculated_percentage' => $calculatedPercentage,
+                    'dpp' => $dppCleaned,
+                    'ppn' => $ppnCleaned,
+                    'invoice_number' => $extractedData['invoice_number']
+                ]);
             }
 
             return $extractedData;

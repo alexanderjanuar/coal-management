@@ -2,6 +2,7 @@
 
 namespace App\Traits;
 
+use Asmit\FilamentUpload\Enums\PdfViewFit;
 use Filament\Forms;
 use Filament\Forms\Components\Section;
 use Filament\Forms\Components\Grid;
@@ -11,6 +12,7 @@ use Livewire\Features\SupportFileUploads\TemporaryUploadedFile;
 use App\Services\ClientTypeService;
 use App\Services\TaxCalculationService;
 use App\Services\FileManagementService;
+use Asmit\FilamentUpload\Forms\Components\AdvancedFileUpload;
 
 trait InvoiceFormTrait
 {
@@ -77,13 +79,19 @@ trait InvoiceFormTrait
                     ->schema([
                         Grid::make(2)->schema([
                             // MAIN FILE UPLOAD (Dipindahkan dari step terakhir)
-                            FileUpload::make('file_path')
+                            AdvancedFileUpload::make('file_path')
                                 ->label('Upload Berkas Faktur')
                                 ->required()
                                 ->openable()
                                 ->downloadable()
                                 ->required()
                                 ->disk('public')
+                                ->pdfPreviewHeight(600) // Customize preview height
+                                ->pdfDisplayPage(1) // Set default page
+                                ->pdfToolbar(true) // Enable toolbar
+                                ->pdfZoomLevel(110) // Set zoom level
+                                ->pdfFitType(PdfViewFit::FIT) // Set fit type
+                                ->pdfNavPanes(true) // Enable navigation panes
                                 ->directory(fn (Forms\Get $get) => method_exists($this, 'generateDirectoryPath') ? $this->generateDirectoryPath($get) : 'invoices')
                                 ->getUploadedFileNameForStorageUsing(fn (TemporaryUploadedFile $file, Forms\Get $get): string => 
                                     method_exists($this, 'generateFileName') 
@@ -214,11 +222,16 @@ trait InvoiceFormTrait
                     ->schema([
                         Grid::make(2)->schema([
                             // File upload untuk revisi
-                            FileUpload::make('file_path')
+                            AdvancedFileUpload::make('file_path')
                                 ->label('Upload Berkas Faktur Revisi')
                                 ->required()
                                 ->openable()
                                 ->downloadable()
+                                ->pdfPreviewHeight(600) 
+                                ->pdfDisplayPage(1)
+                                ->pdfToolbar(true)
+                                ->pdfZoomLevel(100)
+                                ->pdfFitType(PdfViewFit::FIT)
                                 ->disk('public')
                                 ->directory(fn (Forms\Get $get) => method_exists($this, 'generateDirectoryPath') ? $this->generateDirectoryPath($get) : 'invoices')
                                 ->getUploadedFileNameForStorageUsing(fn (TemporaryUploadedFile $file, Forms\Get $get): string => 
