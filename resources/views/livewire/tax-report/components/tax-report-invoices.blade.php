@@ -90,19 +90,19 @@
             $taxReportId))
         </div>
 
-        {{-- Kalkulasi Tab - ELEGANT & MINIMALIST --}}
+        {{-- Kalkulasi Tab - SIDE BY SIDE LAYOUT --}}
         <div x-show="activeTab === 'kalkulasi'" x-transition:enter="transition ease-out duration-200"
             x-transition:enter-start="opacity-0 transform translate-y-2"
             x-transition:enter-end="opacity-100 transform translate-y-0" x-cloak>
 
             <div class="space-y-6">
 
-                {{-- Status Header Card --}}
+                {{-- Status Header Card - Full Width --}}
                 <div
                     class="overflow-hidden rounded-2xl bg-gradient-to-br from-blue-500 to-blue-600 p-8 shadow-lg dark:from-blue-600 dark:to-blue-700">
                     <div class="flex items-center justify-between">
                         <div class="flex-1">
-                            <p class="text-sm font-medium text-blue-100">Status Pajak</p>
+                            <p class="text-sm font-medium text-blue-100">Status Pajak Periode Ini</p>
                             <h2 class="mt-2 text-4xl font-bold text-white">
                                 {{ $statusFinal }}
                             </h2>
@@ -119,7 +119,7 @@
                             <span
                                 class="mt-2 inline-flex items-center gap-1 rounded-full bg-white/20 px-3 py-1 text-xs font-medium text-white">
                                 <x-filament::icon icon="heroicon-m-arrow-trending-up" class="h-3 w-3" />
-                                Harus dibayar
+                                Harus dibayar ke negara
                             </span>
                             @elseif($saldoFinal < 0) <span
                                 class="mt-2 inline-flex items-center gap-1 rounded-full bg-white/20 px-3 py-1 text-xs font-medium text-white">
@@ -130,200 +130,218 @@
                                 <span
                                     class="mt-2 inline-flex items-center gap-1 rounded-full bg-white/20 px-3 py-1 text-xs font-medium text-white">
                                     <x-filament::icon icon="heroicon-m-minus" class="h-3 w-3" />
-                                    Nihil
+                                    Tidak ada kewajiban
                                 </span>
                                 @endif
                         </div>
                     </div>
                 </div>
 
-                {{-- Main Grid --}}
+                {{-- PPN Comparison - SIDE BY SIDE --}}
                 <div class="grid gap-6 lg:grid-cols-2">
 
-                    {{-- Left Column --}}
-                    <div class="space-y-6">
-
-                        {{-- Peredaran Bruto Card --}}
-                        <div
-                            class="rounded-2xl bg-white p-6 shadow-sm ring-1 ring-gray-900/5 dark:bg-gray-900 dark:ring-white/10">
-                            <div class="mb-4 flex items-center justify-between">
-                                <h3 class="text-base font-semibold text-gray-900 dark:text-white">Peredaran Bruto</h3>
-                                <div class="rounded-lg bg-blue-50 p-2 dark:bg-blue-500/10">
-                                    <x-filament::icon icon="heroicon-o-banknotes"
-                                        class="h-4 w-4 text-blue-600 dark:text-blue-400" />
+                    {{-- PPN MASUK - Left Side --}}
+                    <div
+                        class="rounded-2xl bg-white shadow-sm ring-1 ring-gray-900/5 dark:bg-gray-900 dark:ring-white/10">
+                        <div class="border-b border-gray-100 p-6 dark:border-gray-800">
+                            <div class="flex items-center gap-3">
+                                <div class="rounded-xl bg-blue-50 p-2.5 dark:bg-blue-500/10">
+                                    <x-filament::icon icon="heroicon-o-arrow-down-circle"
+                                        class="h-5 w-5 text-blue-600 dark:text-blue-400" />
                                 </div>
-                            </div>
-
-                            {{-- Total DPP --}}
-                            <div class="mb-3 rounded-xl bg-gray-50 p-4 dark:bg-gray-800/50">
-                                <div class="flex items-baseline justify-between">
-                                    <span
-                                        class="text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">Total
-                                        DPP</span>
-                                    <span class="text-lg font-bold text-gray-900 dark:text-white">
-                                        Rp {{ number_format($totalDpp, 0, ',', '.') }}
-                                    </span>
-                                </div>
-                            </div>
-
-                            {{-- Total DPP Nilai Lainnya --}}
-                            <div class="mb-4 rounded-xl bg-gray-50 p-4 dark:bg-gray-800/50">
-                                <div class="flex items-baseline justify-between">
-                                    <span
-                                        class="text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">DPP
-                                        Nilai Lainnya</span>
-                                    <span class="text-lg font-bold text-gray-900 dark:text-white">
-                                        Rp {{ number_format($totalDppNilaiLainnya, 0, ',', '.') }}
-                                    </span>
-                                </div>
-                            </div>
-
-                            {{-- Grand Total --}}
-                            <div class="border-t border-gray-200 pt-4 dark:border-gray-700">
-                                <div class="flex items-baseline justify-between">
-                                    <span class="text-sm font-semibold text-gray-900 dark:text-white">Total
-                                        Peredaran</span>
-                                    <span class="text-2xl font-bold text-blue-600 dark:text-blue-400">
-                                        Rp {{ number_format($peredaranBruto, 0, ',', '.') }}
-                                    </span>
+                                <div class="flex-1">
+                                    <h3 class="text-base font-semibold text-gray-900 dark:text-white">PPN Masuk</h3>
+                                    <p class="text-xs text-gray-500 dark:text-gray-400">Kredit Pajak Masukan</p>
                                 </div>
                             </div>
                         </div>
 
-                        {{-- PPN Masuk Card --}}
-                        <div
-                            class="rounded-2xl bg-white p-6 shadow-sm ring-1 ring-gray-900/5 dark:bg-gray-900 dark:ring-white/10">
-                            <div class="mb-4 flex items-center justify-between">
-                                <div class="flex items-center gap-3">
-                                    <div class="rounded-lg bg-blue-50 p-2 dark:bg-blue-500/10">
-                                        <x-filament::icon icon="heroicon-o-arrow-down-circle"
-                                            class="h-4 w-4 text-blue-600 dark:text-blue-400" />
-                                    </div>
-                                    <div>
-                                        <h3 class="text-base font-semibold text-gray-900 dark:text-white">PPN Masuk</h3>
-                                        <p class="text-xs text-gray-500 dark:text-gray-400">Kredit Pajak</p>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <div class="space-y-3">
-                                <div class="flex items-baseline justify-between">
-                                    <span class="text-sm text-gray-600 dark:text-gray-400">Jumlah Faktur</span>
-                                    <span class="text-base font-semibold text-gray-900 dark:text-white">
-                                        {{ $fakturMasukCount }} faktur
+                        <div class="p-6">
+                            <div class="space-y-4">
+                                {{-- Jumlah Faktur --}}
+                                <div
+                                    class="flex items-baseline justify-between rounded-xl bg-gray-50 p-4 dark:bg-gray-800/50">
+                                    <span class="text-sm font-medium text-gray-600 dark:text-gray-400">Jumlah
+                                        Faktur</span>
+                                    <span class="text-lg font-bold text-gray-900 dark:text-white">
+                                        {{ $fakturMasukCount }}
                                     </span>
                                 </div>
 
                                 @if($fakturMasukExcludedCount > 0)
-                                <div class="flex items-baseline justify-between">
-                                    <span class="text-xs text-gray-500 dark:text-gray-400">Dikecualikan</span>
-                                    <span class="text-sm font-medium text-gray-400 dark:text-gray-500">
-                                        {{ $fakturMasukExcludedCount }} faktur
+                                <div
+                                    class="flex items-baseline justify-between rounded-xl bg-orange-50 p-4 dark:bg-orange-500/10">
+                                    <span
+                                        class="text-sm font-medium text-orange-700 dark:text-orange-400">Dikecualikan</span>
+                                    <span class="text-lg font-bold text-orange-700 dark:text-orange-400">
+                                        {{ $fakturMasukExcludedCount }}
                                     </span>
                                 </div>
                                 @endif
 
-                                <div class="border-t border-gray-200 pt-3 dark:border-gray-700">
-                                    <div class="flex items-baseline justify-between">
-                                        <span class="text-sm font-semibold text-gray-900 dark:text-white">Total
-                                            PPN</span>
-                                        <span class="text-2xl font-bold text-gray-900 dark:text-white">
-                                            Rp {{ number_format($ppnMasuk, 0, ',', '.') }}
-                                        </span>
-                                    </div>
+                                {{-- Total PPN Masuk --}}
+                                <div class="mt-6 rounded-xl bg-blue-50 p-5 dark:bg-blue-500/10">
+                                    <p
+                                        class="text-xs font-medium uppercase tracking-wide text-blue-700 dark:text-blue-400">
+                                        Total PPN Masuk</p>
+                                    <p class="mt-2 text-3xl font-bold text-blue-900 dark:text-blue-300">
+                                        Rp {{ number_format($ppnMasuk, 0, ',', '.') }}
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    {{-- PPN KELUAR - Right Side --}}
+                    <div
+                        class="rounded-2xl bg-white shadow-sm ring-1 ring-gray-900/5 dark:bg-gray-900 dark:ring-white/10">
+                        <div class="border-b border-gray-100 p-6 dark:border-gray-800">
+                            <div class="flex items-center gap-3">
+                                <div class="rounded-xl bg-blue-50 p-2.5 dark:bg-blue-500/10">
+                                    <x-filament::icon icon="heroicon-o-arrow-up-circle"
+                                        class="h-5 w-5 text-blue-600 dark:text-blue-400" />
+                                </div>
+                                <div class="flex-1">
+                                    <h3 class="text-base font-semibold text-gray-900 dark:text-white">PPN Keluar</h3>
+                                    <p class="text-xs text-gray-500 dark:text-gray-400">Pajak Keluaran</p>
                                 </div>
                             </div>
                         </div>
 
-                    </div>
-
-                    {{-- Right Column --}}
-                    <div class="space-y-6">
-
-                        {{-- PPN Keluar Card --}}
-                        <div
-                            class="rounded-2xl bg-white p-6 shadow-sm ring-1 ring-gray-900/5 dark:bg-gray-900 dark:ring-white/10">
-                            <div class="mb-4 flex items-center justify-between">
-                                <div class="flex items-center gap-3">
-                                    <div class="rounded-lg bg-blue-50 p-2 dark:bg-blue-500/10">
-                                        <x-filament::icon icon="heroicon-o-arrow-up-circle"
-                                            class="h-4 w-4 text-blue-600 dark:text-blue-400" />
-                                    </div>
-                                    <div>
-                                        <h3 class="text-base font-semibold text-gray-900 dark:text-white">PPN Keluar
-                                        </h3>
-                                        <p class="text-xs text-gray-500 dark:text-gray-400">Pajak Keluaran</p>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <div class="space-y-3">
-                                <div class="flex items-baseline justify-between">
-                                    <span class="text-sm text-gray-600 dark:text-gray-400">Jumlah Faktur</span>
-                                    <span class="text-base font-semibold text-gray-900 dark:text-white">
-                                        {{ $fakturKeluarCount }} faktur
+                        <div class="p-6">
+                            <div class="space-y-4">
+                                {{-- Jumlah Faktur --}}
+                                <div
+                                    class="flex items-baseline justify-between rounded-xl bg-gray-50 p-4 dark:bg-gray-800/50">
+                                    <span class="text-sm font-medium text-gray-600 dark:text-gray-400">Jumlah
+                                        Faktur</span>
+                                    <span class="text-lg font-bold text-gray-900 dark:text-white">
+                                        {{ $fakturKeluarCount }}
                                     </span>
                                 </div>
 
                                 @if($fakturKeluarExcludedCount > 0)
-                                <div class="flex items-baseline justify-between">
-                                    <span class="text-xs text-gray-500 dark:text-gray-400">Dikecualikan</span>
-                                    <span class="text-sm font-medium text-gray-400 dark:text-gray-500">
-                                        {{ $fakturKeluarExcludedCount }} faktur
+                                <div
+                                    class="flex items-baseline justify-between rounded-xl bg-orange-50 p-4 dark:bg-orange-500/10">
+                                    <span
+                                        class="text-sm font-medium text-orange-700 dark:text-orange-400">Dikecualikan</span>
+                                    <span class="text-lg font-bold text-orange-700 dark:text-orange-400">
+                                        {{ $fakturKeluarExcludedCount }}
                                     </span>
                                 </div>
                                 @endif
 
-                                <div class="border-t border-gray-200 pt-3 dark:border-gray-700">
-                                    <div class="flex items-baseline justify-between">
-                                        <span class="text-sm font-semibold text-gray-900 dark:text-white">Total
-                                            PPN</span>
-                                        <span class="text-2xl font-bold text-gray-900 dark:text-white">
-                                            Rp {{ number_format($ppnKeluar, 0, ',', '.') }}
-                                        </span>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
-                        {{-- Selisih Card --}}
-                        <div
-                            class="rounded-2xl bg-white p-6 shadow-sm ring-1 ring-gray-900/5 dark:bg-gray-900 dark:ring-white/10">
-                            <div class="mb-4">
-                                <h3 class="text-base font-semibold text-gray-900 dark:text-white">Selisih PPN</h3>
-                                <p class="text-xs text-gray-500 dark:text-gray-400">Sebelum kompensasi</p>
-                            </div>
-
-                            <div class="space-y-3">
-                                <div class="flex items-baseline justify-between text-sm">
-                                    <span class="text-gray-600 dark:text-gray-400">PPN Keluar</span>
-                                    <span class="font-medium text-gray-900 dark:text-white">
+                                {{-- Total PPN Keluar --}}
+                                <div class="mt-6 rounded-xl bg-blue-50 p-5 dark:bg-blue-500/10">
+                                    <p
+                                        class="text-xs font-medium uppercase tracking-wide text-blue-700 dark:text-blue-400">
+                                        Total PPN Keluar</p>
+                                    <p class="mt-2 text-3xl font-bold text-blue-900 dark:text-blue-300">
                                         Rp {{ number_format($ppnKeluar, 0, ',', '.') }}
-                                    </span>
-                                </div>
-
-                                <div class="flex items-baseline justify-between text-sm">
-                                    <span class="text-gray-600 dark:text-gray-400">PPN Masuk</span>
-                                    <span class="font-medium text-gray-900 dark:text-white">
-                                        Rp {{ number_format($ppnMasuk, 0, ',', '.') }}
-                                    </span>
-                                </div>
-
-                                <div class="border-t-2 border-gray-200 pt-3 dark:border-gray-700">
-                                    <div class="flex items-baseline justify-between">
-                                        <span class="text-sm font-semibold text-gray-900 dark:text-white">Selisih</span>
-                                        <span class="text-2xl font-bold text-blue-600 dark:text-blue-400">
-                                            Rp {{ number_format(abs($ppnKeluar - $ppnMasuk), 0, ',', '.') }}
-                                        </span>
-                                    </div>
-                                    <p class="mt-1 text-right text-xs text-gray-500 dark:text-gray-400">
-                                        @if($ppnKeluar > $ppnMasuk)
-                                        Kurang Bayar
-                                        @elseif($ppnKeluar < $ppnMasuk) Lebih Bayar @else Nihil @endif </p>
+                                    </p>
                                 </div>
                             </div>
                         </div>
+                    </div>
 
+                </div>
+
+                {{-- Selisih & Peredaran Bruto - Side by Side --}}
+                <div class="grid gap-6 lg:grid-cols-2">
+
+                    {{-- Selisih PPN --}}
+                    <div
+                        class="rounded-2xl bg-white p-6 shadow-sm ring-1 ring-gray-900/5 dark:bg-gray-900 dark:ring-white/10">
+                        <div class="mb-4">
+                            <h3 class="text-base font-semibold text-gray-900 dark:text-white">Selisih PPN</h3>
+                            <p class="text-xs text-gray-500 dark:text-gray-400">Sebelum kompensasi</p>
+                        </div>
+
+                        <div class="space-y-3">
+                            <div class="flex items-center justify-between text-sm">
+                                <span class="text-gray-600 dark:text-gray-400">PPN Keluar</span>
+                                <span class="font-semibold text-gray-900 dark:text-white">
+                                    Rp {{ number_format($ppnKeluar, 0, ',', '.') }}
+                                </span>
+                            </div>
+
+                            <div class="flex items-center justify-center py-1">
+                                <x-filament::icon icon="heroicon-m-minus" class="h-4 w-4 text-gray-400" />
+                            </div>
+
+                            <div class="flex items-center justify-between text-sm">
+                                <span class="text-gray-600 dark:text-gray-400">PPN Masuk</span>
+                                <span class="font-semibold text-gray-900 dark:text-white">
+                                    Rp {{ number_format($ppnMasuk, 0, ',', '.') }}
+                                </span>
+                            </div>
+
+                            <div class="border-t-2 border-gray-200 pt-4 dark:border-gray-700">
+                                <div class="flex items-baseline justify-between">
+                                    <span class="text-sm font-semibold text-gray-900 dark:text-white">Selisih</span>
+                                    <div class="text-right">
+                                        <p class="text-2xl font-bold text-blue-600 dark:text-blue-400">
+                                            Rp {{ number_format(abs($ppnKeluar - $ppnMasuk), 0, ',', '.') }}
+                                        </p>
+                                        <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                                            @if($ppnKeluar > $ppnMasuk)
+                                            Kurang Bayar
+                                            @elseif($ppnKeluar < $ppnMasuk) Lebih Bayar @else Nihil @endif </p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    {{-- Peredaran Bruto --}}
+                    <div
+                        class="rounded-2xl bg-white p-6 shadow-sm ring-1 ring-gray-900/5 dark:bg-gray-900 dark:ring-white/10">
+                        <div class="mb-4 flex items-center justify-between">
+                            <div>
+                                <h3 class="text-base font-semibold text-gray-900 dark:text-white">Peredaran Bruto</h3>
+                                <p class="text-xs text-gray-500 dark:text-gray-400">Total DPP + DPP Nilai Lainnya</p>
+                            </div>
+                            <div class="rounded-lg bg-blue-50 p-2 dark:bg-blue-500/10">
+                                <x-filament::icon icon="heroicon-o-banknotes"
+                                    class="h-4 w-4 text-blue-600 dark:text-blue-400" />
+                            </div>
+                        </div>
+
+                        <div class="space-y-3">
+                            <div
+                                class="flex items-baseline justify-between rounded-xl bg-gray-50 p-3 dark:bg-gray-800/50">
+                                <span
+                                    class="text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">Total
+                                    DPP</span>
+                                <span class="text-base font-bold text-gray-900 dark:text-white">
+                                    Rp {{ number_format($totalDpp, 0, ',', '.') }}
+                                </span>
+                            </div>
+
+                            <div class="flex items-center justify-center py-1">
+                                <x-filament::icon icon="heroicon-m-plus" class="h-4 w-4 text-gray-400" />
+                            </div>
+
+                            <div
+                                class="flex items-baseline justify-between rounded-xl bg-gray-50 p-3 dark:bg-gray-800/50">
+                                <span
+                                    class="text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">DPP
+                                    Nilai Lainnya</span>
+                                <span class="text-base font-bold text-gray-900 dark:text-white">
+                                    Rp {{ number_format($totalDppNilaiLainnya, 0, ',', '.') }}
+                                </span>
+                            </div>
+
+                            <div class="border-t-2 border-gray-200 pt-4 dark:border-gray-700">
+                                <div class="flex items-baseline justify-between">
+                                    <span class="text-sm font-semibold text-gray-900 dark:text-white">Total
+                                        Peredaran</span>
+                                    <p class="text-2xl font-bold text-blue-600 dark:text-blue-400">
+                                        Rp {{ number_format($peredaranBruto, 0, ',', '.') }}
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
                     </div>
 
                 </div>
@@ -332,51 +350,54 @@
                 @if($kompensasiDiterima > 0 || $kompensasiTersedia > 0 || $kompensasiTerpakai > 0)
                 <div
                     class="rounded-2xl bg-white p-6 shadow-sm ring-1 ring-gray-900/5 dark:bg-gray-900 dark:ring-white/10">
-                    <div class="mb-4">
+                    <div class="mb-5">
                         <h3 class="text-base font-semibold text-gray-900 dark:text-white">Detail Kompensasi</h3>
-                        <p class="text-xs text-gray-500 dark:text-gray-400">Informasi kompensasi pajak</p>
+                        <p class="text-xs text-gray-500 dark:text-gray-400">Informasi kompensasi pajak periode ini</p>
                     </div>
 
                     <div class="grid gap-4 md:grid-cols-3">
                         @if($kompensasiDiterima > 0)
-                        <div class="rounded-xl bg-blue-50 p-4 dark:bg-blue-500/10">
+                        <div class="rounded-xl bg-blue-50 p-5 dark:bg-blue-500/10">
                             <div class="mb-2 flex items-center gap-2">
-                                <x-filament::icon icon="heroicon-o-arrow-left-circle"
+                                <x-filament::icon icon="heroicon-o-arrow-down-tray"
                                     class="h-4 w-4 text-blue-600 dark:text-blue-400" />
                                 <span
                                     class="text-xs font-medium uppercase tracking-wide text-blue-900 dark:text-blue-300">Diterima</span>
                             </div>
-                            <p class="text-xl font-bold text-blue-900 dark:text-blue-200">
+                            <p class="text-2xl font-bold text-blue-900 dark:text-blue-200">
                                 Rp {{ number_format($kompensasiDiterima, 0, ',', '.') }}
                             </p>
+                            <p class="mt-1 text-xs text-blue-700 dark:text-blue-400">Dari periode sebelumnya</p>
                         </div>
                         @endif
 
                         @if($kompensasiTersedia > 0)
-                        <div class="rounded-xl bg-blue-50 p-4 dark:bg-blue-500/10">
+                        <div class="rounded-xl bg-blue-50 p-5 dark:bg-blue-500/10">
                             <div class="mb-2 flex items-center gap-2">
                                 <x-filament::icon icon="heroicon-o-archive-box"
                                     class="h-4 w-4 text-blue-600 dark:text-blue-400" />
                                 <span
                                     class="text-xs font-medium uppercase tracking-wide text-blue-900 dark:text-blue-300">Tersedia</span>
                             </div>
-                            <p class="text-xl font-bold text-blue-900 dark:text-blue-200">
+                            <p class="text-2xl font-bold text-blue-900 dark:text-blue-200">
                                 Rp {{ number_format($kompensasiTersedia, 0, ',', '.') }}
                             </p>
+                            <p class="mt-1 text-xs text-blue-700 dark:text-blue-400">Untuk periode berikutnya</p>
                         </div>
                         @endif
 
                         @if($kompensasiTerpakai > 0)
-                        <div class="rounded-xl bg-gray-50 p-4 dark:bg-gray-800/50">
+                        <div class="rounded-xl bg-gray-50 p-5 dark:bg-gray-800/50">
                             <div class="mb-2 flex items-center gap-2">
                                 <x-filament::icon icon="heroicon-o-check-circle"
                                     class="h-4 w-4 text-gray-600 dark:text-gray-400" />
                                 <span
                                     class="text-xs font-medium uppercase tracking-wide text-gray-600 dark:text-gray-400">Terpakai</span>
                             </div>
-                            <p class="text-xl font-bold text-gray-900 dark:text-white">
+                            <p class="text-2xl font-bold text-gray-900 dark:text-white">
                                 Rp {{ number_format($kompensasiTerpakai, 0, ',', '.') }}
                             </p>
+                            <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">Sudah dikompensasi</p>
                         </div>
                         @endif
                     </div>
@@ -394,10 +415,10 @@
                         </div>
                         <div class="flex-1">
                             <h4 class="text-sm font-semibold text-blue-900 dark:text-blue-200">Aturan Kalkulasi</h4>
-                            <ul class="mt-2 space-y-1 text-xs text-blue-800 dark:text-blue-300">
+                            <ul class="mt-2 grid gap-1 text-xs text-blue-800 dark:text-blue-300 sm:grid-cols-2">
                                 <li class="flex items-start gap-2">
                                     <span class="mt-0.5 text-blue-600 dark:text-blue-400">•</span>
-                                    <span>Faktur Keluar dikecualikan: Nomor awalan 02, 03, 07, 08</span>
+                                    <span>Faktur Keluar nomor 02, 03, 07, 08 dikecualikan</span>
                                 </li>
                                 <li class="flex items-start gap-2">
                                     <span class="mt-0.5 text-blue-600 dark:text-blue-400">•</span>
@@ -405,7 +426,7 @@
                                 </li>
                                 <li class="flex items-start gap-2">
                                     <span class="mt-0.5 text-blue-600 dark:text-blue-400">•</span>
-                                    <span>Faktur Masuk hanya yang terkait bisnis utama</span>
+                                    <span>Faktur Masuk hanya yang terkait bisnis</span>
                                 </li>
                                 <li class="flex items-start gap-2">
                                     <span class="mt-0.5 text-blue-600 dark:text-blue-400">•</span>
@@ -557,5 +578,7 @@
                 </div>
             </div>
         </div>
+
     </div>
+
 </div>
