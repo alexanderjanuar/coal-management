@@ -10,7 +10,7 @@ use Spatie\Activitylog\LogOptions;
 
 class IncomeTax extends Model
 {
-    use HasFactory, LogsActivity,Trackable;
+    use HasFactory, LogsActivity, Trackable;
 
     protected $fillable = [
         'tax_report_id',
@@ -48,6 +48,9 @@ class IncomeTax extends Model
                 "PPh 21 untuk {$employeeName} telah dibuat (TER: Rp " . number_format($incomeTax->ter_amount, 0, ',', '.') . 
                 ", PPh 21: Rp " . number_format($incomeTax->pph_21_amount, 0, ',', '.') . ")"
             );
+
+            // AUTO-RECALCULATE: Update PPh summary when income tax created
+            $incomeTax->recalculateTaxSummary();
         });
 
         static::updated(function ($incomeTax) {
@@ -58,6 +61,9 @@ class IncomeTax extends Model
                     'income_tax_amount_updated',
                     "Jumlah PPh 21 untuk {$employeeName} telah diperbarui"
                 );
+
+                // AUTO-RECALCULATE: Update PPh summary when amount changed
+                $incomeTax->recalculateTaxSummary();
             }
 
             if ($incomeTax->wasChanged('bukti_setor')) {
@@ -74,7 +80,44 @@ class IncomeTax extends Model
                 'income_tax_deleted',
                 "PPh 21 untuk {$employeeName} telah dihapus"
             );
+
+            // AUTO-RECALCULATE: Update PPh summary when income tax deleted
+            $incomeTax->recalculateTaxSummary();
         });
+    }
+
+    /**
+     * Recalculate PPh tax summary for this income tax's tax report
+     */
+    protected function recalculateTaxSummary()
+    {
+        try {
+            if ($this->taxReport) {
+                // Get or create PPh summary
+                $pphSummary = $this->taxReport->taxCalculationSummaries()
+                    ->firstOrCreate(
+                        ['tax_type' => 'pph'],
+                        [
+                            'pajak_masuk' => 0,
+                            'pajak_keluar' => 0,
+                            'selisih' => 0,
+                            'status' => 'Nihil',
+                            'kompensasi_diterima' => 0,
+                            'kompensasi_tersedia' => 0,
+                            'kompensasi_terpakai' => 0,
+                            'saldo_final' => 0,
+                            'status_final' => 'Nihil',
+                            'report_status' => 'Belum Lapor',
+                        ]
+                    );
+
+                // Recalculate using TaxCalculationSummary's recalculate method
+                $pphSummary->recalculate();
+            }
+        } catch (\Exception $e) {
+            // Log error but don't break the income tax operation
+            \Log::error('Failed to recalculate PPh summary for income tax ' . $this->id . ': ' . $e->getMessage());
+        }
     }
 
     // Spatie ActivityLog (tetap ada untuk detailed audit)
@@ -97,7 +140,7 @@ class IncomeTax extends Model
                 
                 return match($eventName) {
                     'created' => "[{$clientName}] 💰 PPh BARU: {$employeeName} - {$taxPeriod} | Dibuat oleh: {$userName}",
-                    'updated' => "[{$clientName}] 📄 DIPERBARUI: PPh {$employeeName} - {$taxPeriod} | Diperbarui oleh: {$userName}",
+                    'updated' => "[{$clientName}] 🔄 DIPERBARUI: PPh {$employeeName} - {$taxPeriod} | Diperbarui oleh: {$userName}",
                     'deleted' => "[{$clientName}] 🗑️ DIHAPUS: PPh {$employeeName} - {$taxPeriod} | Dihapus oleh: {$userName}",
                     default => "[{$clientName}] PPh {$employeeName} - {$taxPeriod} telah {$eventName} oleh {$userName}"
                 };

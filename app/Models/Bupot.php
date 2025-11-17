@@ -10,7 +10,7 @@ use Spatie\Activitylog\LogOptions;
 
 class Bupot extends Model
 {
-    use HasFactory, LogsActivity,Trackable;
+    use HasFactory, LogsActivity, Trackable;
 
     protected $fillable = [
         'tax_report_id',
@@ -34,7 +34,8 @@ class Bupot extends Model
         return $this->belongsTo(TaxReport::class);
     }
 
-    public function invoice(){
+    public function invoice()
+    {
         return $this->belongsTo(Invoice::class);
     }
 
@@ -43,13 +44,16 @@ class Bupot extends Model
         return $this->belongsTo(User::class, 'created_by');
     }
 
-protected static function booted()
+    protected static function booted()
     {
         static::created(function ($bupot) {
             $bupot->logActivity(
                 'bupot_created',
                 "Bupot {$bupot->bupot_type} {$bupot->pph_type} untuk {$bupot->company_name} telah dibuat (Periode: {$bupot->tax_period})"
             );
+
+            // AUTO-RECALCULATE: Update Bupot summary when bupot created
+            $bupot->recalculateTaxSummary();
         });
 
         static::updated(function ($bupot) {
@@ -58,6 +62,9 @@ protected static function booted()
                     'bupot_amount_updated',
                     "Jumlah bupot {$bupot->company_name} diubah menjadi Rp " . number_format($bupot->bupot_amount, 0, ',', '.')
                 );
+
+                // AUTO-RECALCULATE: Update Bupot summary when amount changed
+                $bupot->recalculateTaxSummary();
             }
 
             if ($bupot->wasChanged('bukti_setor')) {
@@ -73,7 +80,44 @@ protected static function booted()
                 'bupot_deleted',
                 "Bupot {$bupot->bupot_type} {$bupot->pph_type} untuk {$bupot->company_name} telah dihapus"
             );
+
+            // AUTO-RECALCULATE: Update Bupot summary when bupot deleted
+            $bupot->recalculateTaxSummary();
         });
+    }
+
+    /**
+     * Recalculate Bupot tax summary for this bupot's tax report
+     */
+    protected function recalculateTaxSummary()
+    {
+        try {
+            if ($this->taxReport) {
+                // Get or create Bupot summary
+                $bupotSummary = $this->taxReport->taxCalculationSummaries()
+                    ->firstOrCreate(
+                        ['tax_type' => 'bupot'],
+                        [
+                            'pajak_masuk' => 0,
+                            'pajak_keluar' => 0,
+                            'selisih' => 0,
+                            'status' => 'Nihil',
+                            'kompensasi_diterima' => 0,
+                            'kompensasi_tersedia' => 0,
+                            'kompensasi_terpakai' => 0,
+                            'saldo_final' => 0,
+                            'status_final' => 'Nihil',
+                            'report_status' => 'Belum Lapor',
+                        ]
+                    );
+
+                // Recalculate using TaxCalculationSummary's recalculate method
+                $bupotSummary->recalculate();
+            }
+        } catch (\Exception $e) {
+            // Log error but don't break the bupot operation
+            \Log::error('Failed to recalculate Bupot summary for bupot ' . $this->id . ': ' . $e->getMessage());
+        }
     }
 
     // Spatie ActivityLog (tetap ada untuk detailed audit)
@@ -101,7 +145,7 @@ protected static function booted()
                 
                 return match($eventName) {
                     'created' => "[{$clientName}] 📋 BUPOT BARU: {$typeDisplay} - {$companyName} ({$taxPeriod}) | Dibuat oleh: {$userName}",
-                    'updated' => "[{$clientName}] 📄 DIPERBARUI: {$typeDisplay} - {$companyName} ({$taxPeriod}) | Diperbarui oleh: {$userName}",
+                    'updated' => "[{$clientName}] 🔄 DIPERBARUI: {$typeDisplay} - {$companyName} ({$taxPeriod}) | Diperbarui oleh: {$userName}",
                     'deleted' => "[{$clientName}] 🗑️ DIHAPUS: {$typeDisplay} - {$companyName} ({$taxPeriod}) | Dihapus oleh: {$userName}",
                     default => "[{$clientName}] {$typeDisplay} - {$companyName} ({$taxPeriod}) telah {$eventName} oleh {$userName}"
                 };

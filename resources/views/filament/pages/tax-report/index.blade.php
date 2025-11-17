@@ -58,6 +58,25 @@
             animation: progress 800ms ease-in-out;
             box-shadow: 0 0 10px rgba(59, 130, 246, 0.5);
         }
+
+        /* Status pulse animation */
+        @keyframes statusPulse {
+
+            0%,
+            100% {
+                opacity: 1;
+                transform: scale(1);
+            }
+
+            50% {
+                opacity: 0.8;
+                transform: scale(1.05);
+            }
+        }
+
+        .status-pulse {
+            animation: statusPulse 2s ease-in-out infinite;
+        }
     </style>
 
     {{-- Progress Bar (shown during navigation) --}}
@@ -152,37 +171,75 @@
 
                         {{-- Reporting Status Indicator --}}
                         @php
-                        // Check if ALL tax types are reported
-                        $allReported = ($record->ppn_report_status === 'Sudah Lapor') &&
-                        ($record->pph_report_status === 'Sudah Lapor') &&
-                        ($record->bupot_report_status === 'Sudah Lapor');
+                        // Efficient: Use eager-loaded summaries
+                        $summaries = $record->relationLoaded('taxCalculationSummaries')
+                        ? $record->taxCalculationSummaries
+                        : $record->taxCalculationSummaries()->select('id', 'tax_report_id', 'tax_type',
+                        'report_status')->get();
 
-                        // Check if ANY tax type is reported
-                        $anyReported = ($record->ppn_report_status === 'Sudah Lapor') ||
-                        ($record->pph_report_status === 'Sudah Lapor') ||
-                        ($record->bupot_report_status === 'Sudah Lapor');
+                        // Get status for each tax type from summaries
+                        $ppnSummary = $summaries->firstWhere('tax_type', 'ppn');
+                        $pphSummary = $summaries->firstWhere('tax_type', 'pph');
+                        $bupotSummary = $summaries->firstWhere('tax_type', 'bupot');
 
-                        // Use allReported for strict checking
-                        $isReported = $allReported;
-                        $statusText = $isReported ? 'Sudah Lapor' : 'Belum Lapor';
-                        $statusColor = $isReported ? 'green' : 'orange';
+                        $ppnReported = $ppnSummary && $ppnSummary->report_status === 'Sudah Lapor';
+                        $pphReported = $pphSummary && $pphSummary->report_status === 'Sudah Lapor';
+                        $bupotReported = $bupotSummary && $bupotSummary->report_status === 'Sudah Lapor';
+
+                        // Count reported
+                        $reportedCount = ($ppnReported ? 1 : 0) + ($pphReported ? 1 : 0) + ($bupotReported ? 1 : 0);
+                        $totalCount = 3;
+
+                        // All reported check
+                        $allReported = $reportedCount === $totalCount;
+
+                        // Build not reported list
+                        $notReportedList = [];
+                        if (!$ppnReported && $ppnSummary) $notReportedList[] = 'PPN';
+                        if (!$pphReported && $pphSummary) $notReportedList[] = 'PPh';
+                        if (!$bupotReported && $bupotSummary) $notReportedList[] = 'Bupot';
+
+                        // Status text with details
+                        if ($allReported) {
+                        $statusText = 'Semua Sudah Lapor';
+                        $statusDetail = null;
+                        } elseif ($reportedCount > 0) {
+                        $statusText = "{$reportedCount}/{$totalCount} Sudah Lapor";
+                        $statusDetail = 'Belum: ' . implode(', ', $notReportedList);
+                        } else {
+                        $statusText = 'Belum Lapor';
+                        $statusDetail = count($notReportedList) > 0 ? 'Belum: ' . implode(', ', $notReportedList) :
+                        'Semua belum dilaporkan';
+                        }
                         @endphp
 
                         <div
-                            class="inline-flex items-center gap-2 rounded-full {{ $isReported ? 'bg-green-50 dark:bg-green-900/20' : 'bg-orange-50 dark:bg-orange-900/20' }} px-3 py-1.5">
+                            class="inline-flex items-center gap-2 rounded-full {{ $allReported ? 'bg-green-50 dark:bg-green-900/20' : ($reportedCount > 0 ? 'bg-yellow-50 dark:bg-yellow-900/20' : 'bg-orange-50 dark:bg-orange-900/20') }} px-3 py-1.5">
                             <span class="relative flex h-2 w-2">
-                                @if($isReported)
+                                @if($allReported)
                                 <span class="relative inline-flex h-2 w-2 rounded-full bg-green-500"></span>
+                                @elseif($reportedCount > 0)
+                                <span
+                                    class="absolute inline-flex h-full w-full animate-ping rounded-full bg-yellow-400 opacity-75"></span>
+                                <span class="relative inline-flex h-2 w-2 rounded-full bg-yellow-500"></span>
                                 @else
                                 <span
                                     class="absolute inline-flex h-full w-full animate-ping rounded-full bg-orange-400 opacity-75"></span>
                                 <span class="relative inline-flex h-2 w-2 rounded-full bg-orange-500"></span>
                                 @endif
                             </span>
-                            <span
-                                class="text-xs font-semibold {{ $isReported ? 'text-green-700 dark:text-green-400' : 'text-orange-700 dark:text-orange-400' }}">
-                                {{ $statusText }}
-                            </span>
+                            <div class="flex flex-col gap-0.5">
+                                <span
+                                    class="text-xs font-semibold leading-none {{ $allReported ? 'text-green-700 dark:text-green-400' : ($reportedCount > 0 ? 'text-yellow-700 dark:text-yellow-400' : 'text-orange-700 dark:text-orange-400') }}">
+                                    {{ $statusText }}
+                                </span>
+                                @if($statusDetail)
+                                <span
+                                    class="text-[10px] leading-none {{ $reportedCount > 0 ? 'text-yellow-600 dark:text-yellow-500' : 'text-orange-600 dark:text-orange-500' }}">
+                                    {{ $statusDetail }}
+                                </span>
+                                @endif
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -199,9 +256,14 @@
                     'October', 'November', 'December'];
                     $currentYear = $record->created_at->format('Y');
 
-                    // Get all tax reports for this client in the current year
+                    // EFFICIENT: Single query with eager loading and minimal columns
                     $yearReports = \App\Models\TaxReport::where('client_id', $record->client_id)
                     ->whereYear('created_at', $currentYear)
+                    ->with(['taxCalculationSummaries' => function($query) {
+                    $query->select('id', 'tax_report_id', 'tax_type', 'report_status');
+                    }])
+                    ->withCount(['invoices', 'incomeTaxs', 'bupots'])
+                    ->select('id', 'client_id', 'month', 'created_at')
                     ->get()
                     ->keyBy('month');
                     @endphp
@@ -212,16 +274,28 @@
                         $monthReport = $yearReports->get($monthName);
                         $hasReport = !is_null($monthReport);
                         $isCurrent = $monthName === $record->month;
-                        $hasActivity = $hasReport && ($monthReport->invoices->count() > 0 ||
-                        $monthReport->incomeTaxs->count() > 0 || $monthReport->bupots->count() > 0);
+
+                        // Use counts from withCount (already loaded, no extra query)
+                        $hasActivity = $hasReport && (
+                        ($monthReport->invoices_count ?? 0) > 0 ||
+                        ($monthReport->income_taxs_count ?? 0) > 0 ||
+                        ($monthReport->bupots_count ?? 0) > 0
+                        );
                         @endphp
 
                         @if($hasReport)
                         @php
-                        // Check if ALL tax types are reported for this month
-                        $monthIsReported = ($monthReport->ppn_report_status === 'Sudah Lapor') &&
-                        ($monthReport->pph_report_status === 'Sudah Lapor') &&
-                        ($monthReport->bupot_report_status === 'Sudah Lapor');
+                        // Check if ALL tax types are reported using summaries
+                        $monthSummaries = $monthReport->taxCalculationSummaries ?? collect();
+                        $ppnSum = $monthSummaries->firstWhere('tax_type', 'ppn');
+                        $pphSum = $monthSummaries->firstWhere('tax_type', 'pph');
+                        $bupotSum = $monthSummaries->firstWhere('tax_type', 'bupot');
+
+                        $ppnRep = $ppnSum && $ppnSum->report_status === 'Sudah Lapor';
+                        $pphRep = $pphSum && $pphSum->report_status === 'Sudah Lapor';
+                        $bupotRep = $bupotSum && $bupotSum->report_status === 'Sudah Lapor';
+
+                        $monthIsReported = $ppnRep && $pphRep && $bupotRep;
                         @endphp
                         <a href="{{ route('filament.admin.laporan-pajak.resources.tax-reports.view', $monthReport) }}"
                             wire:navigate
@@ -275,15 +349,15 @@
                                 <div class="space-y-0.5">
                                     <div class="flex items-center justify-between gap-3">
                                         <span class="text-gray-400">PPN:</span>
-                                        <span class="font-semibold">{{ $monthReport->invoices->count() }}</span>
+                                        <span class="font-semibold">{{ $monthReport->invoices_count ?? 0 }}</span>
                                     </div>
                                     <div class="flex items-center justify-between gap-3">
                                         <span class="text-gray-400">PPh:</span>
-                                        <span class="font-semibold">{{ $monthReport->incomeTaxs->count() }}</span>
+                                        <span class="font-semibold">{{ $monthReport->income_taxs_count ?? 0 }}</span>
                                     </div>
                                     <div class="flex items-center justify-between gap-3">
                                         <span class="text-gray-400">Bupot:</span>
-                                        <span class="font-semibold">{{ $monthReport->bupots->count() }}</span>
+                                        <span class="font-semibold">{{ $monthReport->bupots_count ?? 0 }}</span>
                                     </div>
                                 </div>
                                 <div
@@ -329,7 +403,7 @@
             </div>
         </div>
 
-        {{-- Tax Type Navigation Tabs - Redesigned --}}
+        {{-- Tax Type Navigation Tabs - Redesigned with Status Indicators --}}
         <div class="mb-4">
             <div
                 class="overflow-hidden rounded-xl bg-white shadow-sm ring-1 ring-gray-900/5 dark:bg-gray-900 dark:ring-white/10">
@@ -341,6 +415,21 @@
                                     ? 'border-blue-500 bg-gradient-to-br from-blue-50 to-blue-100 shadow-lg shadow-blue-500/20 dark:border-blue-400 dark:from-blue-900/30 dark:to-blue-900/10' 
                                     : 'border-gray-200 bg-white hover:border-blue-300 hover:bg-blue-50/50 dark:border-gray-700 dark:bg-gray-800/50 dark:hover:border-blue-600'"
                             class="group relative flex flex-col items-center gap-3 rounded-xl border-2 px-4 py-4 transition-all duration-200">
+
+                            {{-- Reporting Status Badge --}}
+                            <div class="absolute -right-2 -top-2 z-10">
+                                @if($ppnReported)
+                                <div class="flex h-8 w-8 items-center justify-center rounded-full bg-green-500 shadow-lg ring-2 ring-white dark:ring-gray-900"
+                                    title="Sudah Lapor">
+                                    <x-filament::icon icon="heroicon-m-check-circle" class="h-5 w-5 text-white" />
+                                </div>
+                                @else
+                                <div class="status-pulse flex h-8 w-8 items-center justify-center rounded-full bg-orange-500 shadow-lg ring-2 ring-white dark:ring-gray-900"
+                                    title="Belum Lapor">
+                                    <x-filament::icon icon="heroicon-m-exclamation-circle" class="h-5 w-5 text-white" />
+                                </div>
+                                @endif
+                            </div>
 
                             {{-- Icon --}}
                             <div :class="activeTab === 'invoices' ? 'bg-blue-600 shadow-lg shadow-blue-500/50' : 'bg-gray-100 group-hover:bg-blue-100 dark:bg-gray-700'"
@@ -360,14 +449,16 @@
                                     class="mt-0.5 text-xs font-medium">
                                     {{ $record->invoices->count() }} Faktur
                                 </p>
+                                {{-- Status Text --}}
+                                <p
+                                    class="mt-1 text-[10px] font-semibold {{ $ppnReported ? 'text-green-600 dark:text-green-400' : 'text-orange-600 dark:text-orange-400' }}">
+                                    {{ $ppnReported ? '✓ Sudah Lapor' : '⚠ Belum Lapor' }}
+                                </p>
                             </div>
 
                             {{-- Active Indicator --}}
-                            <div x-show="activeTab === 'invoices'" class="absolute -top-1 -right-1">
-                                <div
-                                    class="flex h-6 w-6 items-center justify-center rounded-full bg-blue-600 shadow-lg">
-                                    <x-filament::icon icon="heroicon-m-check" class="h-4 w-4 text-white" />
-                                </div>
+                            <div x-show="activeTab === 'invoices'" class="absolute -bottom-1 left-1/2 -translate-x-1/2">
+                                <div class="h-1 w-16 rounded-full bg-blue-600 shadow-lg"></div>
                             </div>
                         </button>
 
@@ -377,6 +468,21 @@
                                     ? 'border-purple-500 bg-gradient-to-br from-purple-50 to-purple-100 shadow-lg shadow-purple-500/20 dark:border-purple-400 dark:from-purple-900/30 dark:to-purple-900/10' 
                                     : 'border-gray-200 bg-white hover:border-purple-300 hover:bg-purple-50/50 dark:border-gray-700 dark:bg-gray-800/50 dark:hover:border-purple-600'"
                             class="group relative flex flex-col items-center gap-3 rounded-xl border-2 px-4 py-4 transition-all duration-200">
+
+                            {{-- Reporting Status Badge --}}
+                            <div class="absolute -right-2 -top-2 z-10">
+                                @if($pphReported)
+                                <div class="flex h-8 w-8 items-center justify-center rounded-full bg-green-500 shadow-lg ring-2 ring-white dark:ring-gray-900"
+                                    title="Sudah Lapor">
+                                    <x-filament::icon icon="heroicon-m-check-circle" class="h-5 w-5 text-white" />
+                                </div>
+                                @else
+                                <div class="status-pulse flex h-8 w-8 items-center justify-center rounded-full bg-orange-500 shadow-lg ring-2 ring-white dark:ring-gray-900"
+                                    title="Belum Lapor">
+                                    <x-filament::icon icon="heroicon-m-exclamation-circle" class="h-5 w-5 text-white" />
+                                </div>
+                                @endif
+                            </div>
 
                             {{-- Icon --}}
                             <div :class="activeTab === 'pph' ? 'bg-purple-600 shadow-lg shadow-purple-500/50' : 'bg-gray-100 group-hover:bg-purple-100 dark:bg-gray-700'"
@@ -396,14 +502,16 @@
                                     class="mt-0.5 text-xs font-medium">
                                     {{ $record->incomeTaxs->count() }} Transaksi
                                 </p>
+                                {{-- Status Text --}}
+                                <p
+                                    class="mt-1 text-[10px] font-semibold {{ $pphReported ? 'text-green-600 dark:text-green-400' : 'text-orange-600 dark:text-orange-400' }}">
+                                    {{ $pphReported ? '✓ Sudah Lapor' : '⚠ Belum Lapor' }}
+                                </p>
                             </div>
 
                             {{-- Active Indicator --}}
-                            <div x-show="activeTab === 'pph'" class="absolute -top-1 -right-1">
-                                <div
-                                    class="flex h-6 w-6 items-center justify-center rounded-full bg-purple-600 shadow-lg">
-                                    <x-filament::icon icon="heroicon-m-check" class="h-4 w-4 text-white" />
-                                </div>
+                            <div x-show="activeTab === 'pph'" class="absolute -bottom-1 left-1/2 -translate-x-1/2">
+                                <div class="h-1 w-16 rounded-full bg-purple-600 shadow-lg"></div>
                             </div>
                         </button>
 
@@ -413,6 +521,21 @@
                                     ? 'border-orange-500 bg-gradient-to-br from-orange-50 to-orange-100 shadow-lg shadow-orange-500/20 dark:border-orange-400 dark:from-orange-900/30 dark:to-orange-900/10' 
                                     : 'border-gray-200 bg-white hover:border-orange-300 hover:bg-orange-50/50 dark:border-gray-700 dark:bg-gray-800/50 dark:hover:border-orange-600'"
                             class="group relative flex flex-col items-center gap-3 rounded-xl border-2 px-4 py-4 transition-all duration-200">
+
+                            {{-- Reporting Status Badge --}}
+                            <div class="absolute -right-2 -top-2 z-10">
+                                @if($bupotReported)
+                                <div class="flex h-8 w-8 items-center justify-center rounded-full bg-green-500 shadow-lg ring-2 ring-white dark:ring-gray-900"
+                                    title="Sudah Lapor">
+                                    <x-filament::icon icon="heroicon-m-check-circle" class="h-5 w-5 text-white" />
+                                </div>
+                                @else
+                                <div class="status-pulse flex h-8 w-8 items-center justify-center rounded-full bg-orange-500 shadow-lg ring-2 ring-white dark:ring-gray-900"
+                                    title="Belum Lapor">
+                                    <x-filament::icon icon="heroicon-m-exclamation-circle" class="h-5 w-5 text-white" />
+                                </div>
+                                @endif
+                            </div>
 
                             {{-- Icon --}}
                             <div :class="activeTab === 'bupot' ? 'bg-orange-600 shadow-lg shadow-orange-500/50' : 'bg-gray-100 group-hover:bg-orange-100 dark:bg-gray-700'"
@@ -432,14 +555,16 @@
                                     class="mt-0.5 text-xs font-medium">
                                     {{ $record->bupots->count() }} Bupot
                                 </p>
+                                {{-- Status Text --}}
+                                <p
+                                    class="mt-1 text-[10px] font-semibold {{ $bupotReported ? 'text-green-600 dark:text-green-400' : 'text-orange-600 dark:text-orange-400' }}">
+                                    {{ $bupotReported ? '✓ Sudah Lapor' : '⚠ Belum Lapor' }}
+                                </p>
                             </div>
 
                             {{-- Active Indicator --}}
-                            <div x-show="activeTab === 'bupot'" class="absolute -top-1 -right-1">
-                                <div
-                                    class="flex h-6 w-6 items-center justify-center rounded-full bg-orange-600 shadow-lg">
-                                    <x-filament::icon icon="heroicon-m-check" class="h-4 w-4 text-white" />
-                                </div>
+                            <div x-show="activeTab === 'bupot'" class="absolute -bottom-1 left-1/2 -translate-x-1/2">
+                                <div class="h-1 w-16 rounded-full bg-orange-600 shadow-lg"></div>
                             </div>
                         </button>
                     </div>

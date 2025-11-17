@@ -7,9 +7,10 @@ use Illuminate\Database\Eloquent\Model;
 use Spatie\Activitylog\Traits\LogsActivity;
 use Spatie\Activitylog\LogOptions;
 use App\Traits\Trackable; 
+
 class Invoice extends Model
 {
-    use HasFactory, LogsActivity, Trackable; // Pastikan Trackable ada di sini
+    use HasFactory, LogsActivity, Trackable;
 
     protected $fillable = [
         'tax_report_id',
@@ -120,6 +121,9 @@ class Invoice extends Model
                 'invoice_created',
                 "Faktur {$invoice->invoice_number} ({$invoice->type}) telah dibuat untuk {$invoice->taxReport->client->name}"
             );
+
+            // AUTO-RECALCULATE: Update PPN summary when invoice created
+            $invoice->recalculateTaxSummary();
         });
 
         static::updated(function ($invoice) {
@@ -129,6 +133,9 @@ class Invoice extends Model
                     $invoice->getOriginal(),
                     $invoice->getChanges()
                 );
+
+                // AUTO-RECALCULATE: Update PPN summary when invoice amount changed
+                $invoice->recalculateTaxSummary();
             }
         });
 
@@ -137,7 +144,44 @@ class Invoice extends Model
                 'invoice_deleted',
                 "Faktur {$invoice->invoice_number} telah dihapus"
             );
+
+            // AUTO-RECALCULATE: Update PPN summary when invoice deleted
+            $invoice->recalculateTaxSummary();
         });
+    }
+
+    /**
+     * Recalculate PPN tax summary for this invoice's tax report
+     */
+    protected function recalculateTaxSummary()
+    {
+        try {
+            if ($this->taxReport) {
+                // Get or create PPN summary
+                $ppnSummary = $this->taxReport->taxCalculationSummaries()
+                    ->firstOrCreate(
+                        ['tax_type' => 'ppn'],
+                        [
+                            'pajak_masuk' => 0,
+                            'pajak_keluar' => 0,
+                            'selisih' => 0,
+                            'status' => 'Nihil',
+                            'kompensasi_diterima' => 0,
+                            'kompensasi_tersedia' => 0,
+                            'kompensasi_terpakai' => 0,
+                            'saldo_final' => 0,
+                            'status_final' => 'Nihil',
+                            'report_status' => 'Belum Lapor',
+                        ]
+                    );
+
+                // Recalculate using TaxCalculationSummary's recalculate method
+                $ppnSummary->recalculate();
+            }
+        } catch (\Exception $e) {
+            // Log error but don't break the invoice operation
+            \Log::error('Failed to recalculate PPN summary for invoice ' . $this->id . ': ' . $e->getMessage());
+        }
     }
 
     // Spatie ActivityLog tetap ada untuk detailed tracking
@@ -173,9 +217,9 @@ class Invoice extends Model
                 
                 return match($eventName) {
                     'created' => $this->is_revision 
-                        ? "[{$clientName}] 📝 REVISI BARU: {$invoiceType} {$invoiceNumber}{$revisionInfo} | Dibuat oleh: {$userName}"
+                        ? "[{$clientName}] 🔄 REVISI BARU: {$invoiceType} {$invoiceNumber}{$revisionInfo} | Dibuat oleh: {$userName}"
                         : "[{$clientName}] 📄 {$invoiceType} BARU: {$invoiceNumber} | Dibuat oleh: {$userName}",
-                    'updated' => "[{$clientName}] 📄 DIPERBARUI: {$invoiceType} {$invoiceNumber}{$revisionInfo} | Diperbarui oleh: {$userName}",
+                    'updated' => "[{$clientName}] 🔄 DIPERBARUI: {$invoiceType} {$invoiceNumber}{$revisionInfo} | Diperbarui oleh: {$userName}",
                     'deleted' => "[{$clientName}] 🗑️ DIHAPUS: {$invoiceType} {$invoiceNumber}{$revisionInfo} | Dihapus oleh: {$userName}",
                     default => "[{$clientName}] {$invoiceType} {$invoiceNumber}{$revisionInfo} telah {$eventName} oleh {$userName}"
                 };

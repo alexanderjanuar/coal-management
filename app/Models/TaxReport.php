@@ -44,6 +44,11 @@ class TaxReport extends Model
         return $this->hasMany(TaxCompensation::class, 'target_tax_report_id');
     }
 
+    public function taxCalculationSummaries()   
+    {
+        return $this->hasMany(TaxCalculationSummary::class);
+    }
+
     public function createdBy()
     {
         return $this->belongsTo(User::class, 'created_by');
