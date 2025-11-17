@@ -37,7 +37,7 @@ class InvoiceAIService
             $prompt = $this->getInvoiceExtractionPrompt();
 
             // Use Laravel Gemini package with debugging
-            $result = Gemini::generativeModel(model: 'gemini-2.0-flash-exp')
+            $result = Gemini::generativeModel(model: 'gemini-2.0-flash')
                 ->withGenerationConfig(
                     generationConfig: new GenerationConfig(
                         responseMimeType: ResponseMimeType::APPLICATION_JSON,

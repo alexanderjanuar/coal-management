@@ -152,8 +152,18 @@
 
                         {{-- Reporting Status Indicator --}}
                         @php
-                        // Determine reporting status
-                        $isReported = !empty($record->payment_status) || $record->report_status === 'reported';
+                        // Check if ALL tax types are reported
+                        $allReported = ($record->ppn_report_status === 'Sudah Lapor') &&
+                        ($record->pph_report_status === 'Sudah Lapor') &&
+                        ($record->bupot_report_status === 'Sudah Lapor');
+
+                        // Check if ANY tax type is reported
+                        $anyReported = ($record->ppn_report_status === 'Sudah Lapor') ||
+                        ($record->pph_report_status === 'Sudah Lapor') ||
+                        ($record->bupot_report_status === 'Sudah Lapor');
+
+                        // Use allReported for strict checking
+                        $isReported = $allReported;
                         $statusText = $isReported ? 'Sudah Lapor' : 'Belum Lapor';
                         $statusColor = $isReported ? 'green' : 'orange';
                         @endphp
@@ -174,21 +184,6 @@
                                 {{ $statusText }}
                             </span>
                         </div>
-
-                        {{-- Payment Status (if exists) --}}
-                        @if($record->payment_status)
-                        <div
-                            class="inline-flex items-center gap-2 rounded-full bg-green-50 px-3 py-1.5 dark:bg-green-900/20">
-                            <span class="relative flex h-1.5 w-1.5">
-                                <span
-                                    class="absolute inline-flex h-full w-full animate-ping rounded-full bg-green-400 opacity-75"></span>
-                                <span class="relative inline-flex h-1.5 w-1.5 rounded-full bg-green-500"></span>
-                            </span>
-                            <span class="text-xs font-semibold text-green-700 dark:text-green-400">
-                                {{ $record->payment_status }}
-                            </span>
-                        </div>
-                        @endif
                     </div>
                 </div>
             </div>
@@ -200,8 +195,8 @@
                 class="overflow-hidden rounded-xl bg-white shadow-sm ring-1 ring-gray-900/5 dark:bg-gray-900 dark:ring-white/10">
                 <div class="p-3">
                     @php
-                    $months = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September',
-                    'Oktober', 'November', 'Desember'];
+                    $months = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September',
+                    'October', 'November', 'December'];
                     $currentYear = $record->created_at->format('Y');
 
                     // Get all tax reports for this client in the current year
@@ -223,8 +218,10 @@
 
                         @if($hasReport)
                         @php
-                        $monthIsReported = !empty($monthReport->payment_status) || $monthReport->report_status ===
-                        'reported';
+                        // Check if ALL tax types are reported for this month
+                        $monthIsReported = ($monthReport->ppn_report_status === 'Sudah Lapor') &&
+                        ($monthReport->pph_report_status === 'Sudah Lapor') &&
+                        ($monthReport->bupot_report_status === 'Sudah Lapor');
                         @endphp
                         <a href="{{ route('filament.admin.laporan-pajak.resources.tax-reports.view', $monthReport) }}"
                             wire:navigate
