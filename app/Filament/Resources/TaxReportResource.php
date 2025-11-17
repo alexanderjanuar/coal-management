@@ -1151,6 +1151,9 @@ class TaxReportResource extends Resource
                     ->modalHeading('Ekspor Laporan Pajak Klien Tertentu')
                     ->modalDescription('Pilih klien dan periode tertentu untuk diekspor.'),
             ])
+            ->recordUrl(fn (TaxReport $record): string => 
+                static::getUrl('view', ['record' => $record])
+            )
             ->emptyStateHeading('Belum Ada Laporan Pajak')
             ->emptyStateDescription('Laporan pajak akan muncul di sini setelah Anda membuatnya. Laporan pajak adalah ringkasan dari aktivitas perpajakan bulanan per klien.')
             ->emptyStateIcon('heroicon-o-document-text')
