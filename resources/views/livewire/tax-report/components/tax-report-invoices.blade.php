@@ -1,4 +1,4 @@
-<div class="min-h-screen bg-gray-50 dark:bg-gray-950" x-data="{ activeTab: 'daftar-pajak' }">
+<div class="" x-data="{ activeTab: 'daftar-pajak' }">
     <div class="px-2 py-4 sm:px-4 lg:px-6">
 
         {{-- Header Section --}}
