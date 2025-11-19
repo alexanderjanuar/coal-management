@@ -48,7 +48,9 @@ class TaxReportResource extends Resource
 
     protected static ?string $modelLabel = 'Semua Laporan';
 
-    protected static ?string $cluster = LaporanPajak::class;
+    // protected static ?string $cluster = LaporanPajak::class;
+    protected static ?string $navigationGroup = 'Tax';
+
 
     public static function shouldRegisterNavigation(): bool
     {
@@ -163,6 +165,8 @@ class TaxReportResource extends Resource
                         }
                     ]);
             })
+            // Use custom content view for card layout
+            ->content(view('filament.pages.tax-report.components.tax-report-cards'))
             ->columns([
                 TextColumn::make('client.name')
                     ->label('Client')
@@ -270,34 +274,6 @@ class TaxReportResource extends Resource
                     ->alignCenter()
                     ->sortable(false),
 
-                // Reported dates
-                TextColumn::make('ppn_reported_at')
-                    ->label('Tgl Lapor PPN')
-                    ->getStateUsing(function (TaxReport $record): ?string {
-                        $ppnSummary = $record->taxCalculationSummaries->firstWhere('tax_type', 'ppn');
-                        return $ppnSummary?->reported_at?->format('d M Y');
-                    })
-                    ->placeholder('Belum dilaporkan')
-                    ->toggleable(isToggledHiddenByDefault: true),
-
-                TextColumn::make('pph_reported_at')
-                    ->label('Tgl Lapor PPh')
-                    ->getStateUsing(function (TaxReport $record): ?string {
-                        $pphSummary = $record->taxCalculationSummaries->firstWhere('tax_type', 'pph');
-                        return $pphSummary?->reported_at?->format('d M Y');
-                    })
-                    ->placeholder('Belum dilaporkan')
-                    ->toggleable(isToggledHiddenByDefault: true),
-
-                TextColumn::make('bupot_reported_at')
-                    ->label('Tgl Lapor Bupot')
-                    ->getStateUsing(function (TaxReport $record): ?string {
-                        $bupotSummary = $record->taxCalculationSummaries->firstWhere('tax_type', 'bupot');
-                        return $bupotSummary?->reported_at?->format('d M Y');
-                    })
-                    ->placeholder('Belum dilaporkan')
-                    ->toggleable(isToggledHiddenByDefault: true),
-
                 // Payment Status from PPN summary
                 TextColumn::make('payment_status')
                     ->label('Status Bayar')
@@ -313,71 +289,6 @@ class TaxReportResource extends Resource
                         default => 'gray',
                     })
                     ->toggleable(isToggledHiddenByDefault: false),
-
-                TextColumn::make('income_taxes_sum')
-                    ->label('PPh 21')
-                    ->state(function (TaxReport $record): string {
-                        $totalAmount = $record->income_taxs_sum_pph_21_amount ?? 0;
-                        return "Rp " . number_format($totalAmount, 0, ',', '.');
-                    })
-                    ->tooltip(function (TaxReport $record): string {
-                        $taxesCount = $record->income_taxes_count ?? 0;
-                        $withBuktiSetor = $record->income_taxes_with_bukti_count ?? 0;
-                        return "Total {$taxesCount} PPh 21\nDengan Bukti Setor: {$withBuktiSetor}";
-                    })
-                    ->sortable(query: function (Builder $query, string $direction): Builder {
-                        return $query->orderBy('income_taxs_sum_pph_21_amount', $direction);
-                    })
-                    ->toggleable(isToggledHiddenByDefault: true),
-
-                TextColumn::make('bupots_sum')
-                    ->label('Bukti Potong')
-                    ->state(function (TaxReport $record): string {
-                        $totalAmount = $record->bupots_sum_bupot_amount ?? 0;
-                        return "Rp " . number_format($totalAmount, 0, ',', '.');
-                    })
-                    ->tooltip(function (TaxReport $record): string {
-                        $bupotsCount = $record->bupots_count ?? 0;
-                        $withBuktiSetor = $record->bupots_with_bukti_count ?? 0;
-                        return "Total {$bupotsCount} bukti potong\nDengan Bukti Setor: {$withBuktiSetor}";
-                    })
-                    ->sortable(query: function (Builder $query, string $direction): Builder {
-                        return $query->orderBy('bupots_sum_bupot_amount', $direction);
-                    })
-                    ->toggleable(isToggledHiddenByDefault: true),
-
-                TextColumn::make('total_tax')
-                    ->label('Total Pajak')
-                    ->state(function (TaxReport $record): string {
-                        $totalPPH21 = $record->income_taxs_sum_pph_21_amount ?? 0;
-                        $totalPPN = $record->invoices_sum_ppn ?? 0;
-                        $totalBupot = $record->bupots_sum_bupot_amount ?? 0;
-                        $total = $totalPPH21 + $totalPPN + $totalBupot;
-                        return "Rp " . number_format($total, 0, ',', '.');
-                    })
-                    ->color('success')
-                    ->weight('bold')
-                    ->tooltip('Jumlah total dari PPN + PPh 21 + Bukti Potong')
-                    ->sortable(query: function (Builder $query, string $direction): Builder {
-                        return $query->orderByRaw("(COALESCE(income_taxs_sum_pph_21_amount, 0) + COALESCE(invoices_sum_ppn, 0) + COALESCE(bupots_sum_bupot_amount, 0)) {$direction}");
-                    })
-                    ->toggleable(isToggledHiddenByDefault: true),
-
-                TextColumn::make('created_at')
-                    ->label('Created At')
-                    ->dateTime('d M Y')
-                    ->sortable()
-                    ->toggleable(isToggledHiddenByDefault: true),
-
-                TextColumn::make('created_by')
-                    ->label('Dibuat Oleh')
-                    ->state(function (TaxReport $record): string {
-                        if ($record->createdBy) {
-                            return $record->createdBy->name;
-                        }
-                        return $record->created_by ? 'User #' . $record->created_by : 'System';
-                    })
-                    ->toggleable(isToggledHiddenByDefault: true),
             ])
             ->groups([
                 Group::make('client.name')
@@ -865,7 +776,7 @@ class TaxReportResource extends Resource
     public static function getPages(): array
     {
         return [
-            'dashboard' => Pages\TaxReportDashboard::route('/dashboard'),
+            // 'dashboard' => Pages\TaxReportDashboard::route('/dashboard'),
             'index' => Pages\ListTaxReports::route('/'),
             'create' => Pages\CreateTaxReport::route('/create'),
             'view' => Pages\ViewTaxReport::route('/{record}'),

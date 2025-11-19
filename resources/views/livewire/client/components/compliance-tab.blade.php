@@ -11,8 +11,7 @@
             </p>
         </div>
 
-        <a href="{{ route('filament.admin.laporan-pajak.resources.tax-reports.edit', ['record' => $client->id]) }}"
-            wire:navigate>
+        <a href="{{ route('filament.admin.resources.tax-reports.view', ['record' => $client->id]) }}" wire:navigate>
             <x-filament::button icon="heroicon-o-plus" size="lg">
                 Tambah Kewajiban
             </x-filament::button>
@@ -307,8 +306,7 @@
                 Tambahkan laporan pajak untuk mulai melacak kewajiban compliance.
             </p>
             <div class="mt-8">
-                <a href="{{ route('filament.admin.resources.laporan-pajak.tax-reports.edit', ['record' => $client->id]) }}"
-                    wire:navigate>
+                <a href="{{ route('filament.admin.resources.tax-reports.create') }}" wire:navigate>
                     <x-filament::button icon="heroicon-o-plus" size="lg">
                         Tambah Kewajiban Pertama
                     </x-filament::button>

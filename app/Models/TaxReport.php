@@ -558,4 +558,32 @@ class TaxReport extends Model
         return $this->hasMany(TaxCompensation::class, 'target_tax_report_id')
                     ->where('status', 'pending');
     }
+
+    /**
+     * Get or create tax calculation summary for specific tax type
+     * 
+     * @param string $taxType 'ppn', 'pph', or 'bupot'
+     * @return TaxCalculationSummary
+     */
+    public function getOrCreateSummary(string $taxType): TaxCalculationSummary
+    {
+        return $this->taxCalculationSummaries()
+            ->firstOrCreate(
+                ['tax_type' => $taxType],
+                [
+                    'pajak_masuk' => 0,
+                    'pajak_keluar' => 0,
+                    'selisih' => 0,
+                    'status' => 'Nihil',
+                    'kompensasi_diterima' => 0,
+                    'kompensasi_tersedia' => 0,
+                    'kompensasi_terpakai' => 0,
+                    'saldo_final' => 0,
+                    'status_final' => 'Nihil',
+                    'report_status' => 'Belum Lapor',
+                    'calculated_at' => now(),
+                    'calculated_by' => auth()->id(),
+                ]
+            );
+    }
 }

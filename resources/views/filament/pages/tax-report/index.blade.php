@@ -297,7 +297,7 @@
 
                         $monthIsReported = $ppnRep && $pphRep && $bupotRep;
                         @endphp
-                        <a href="{{ route('filament.admin.laporan-pajak.resources.tax-reports.view', $monthReport) }}"
+                        <a href="{{ route('filament.admin.resources.tax-reports.view', $monthReport) }}"
                             wire:navigate
                             class="group relative flex flex-col items-center justify-center overflow-hidden rounded-lg border-2 px-2 py-3 transition-all duration-200 {{ $isCurrent ? 'border-blue-500 bg-blue-50 shadow-sm dark:border-blue-400 dark:bg-blue-900/20' : 'border-gray-200 bg-white hover:border-blue-300 hover:bg-blue-50/50 hover:shadow-sm dark:border-gray-700 dark:bg-gray-800/50 dark:hover:border-blue-600 dark:hover:bg-blue-900/10' }}">
 

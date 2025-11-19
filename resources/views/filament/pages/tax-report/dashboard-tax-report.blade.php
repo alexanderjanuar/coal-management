@@ -5,7 +5,7 @@
         @livewire(\App\Livewire\TaxReport\StatsOverview::class)
 
 
-        <!-- Monthly Tax Chart & Tax Distribution -->
+        {{-- <!-- Monthly Tax Chart & Tax Distribution -->
         <div class="grid grid-cols-1 gap-8 lg:grid-cols-3">
             <!-- Monthly Tax Chart - 2/3 width -->
             <div class="lg:col-span-2 overflow-hidden max-h-[800px]">
@@ -25,6 +25,6 @@
             <div class="lg:col-span-3">
                 @livewire('tax-report.tax-calendar')
             </div>
-        </div>
+        </div> --}}
     </div>
 </x-filament-panels::page>

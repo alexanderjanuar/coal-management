@@ -20,7 +20,7 @@ class DashboardTaxReport extends Page
 
     protected static ?string $navigationLabel = 'Dashboard';
 
-    protected static string $view = 'filament.pages.dashboard-tax-report';
+    protected static string $view = 'filament.pages.tax-report.dashboard-tax-report';
 
     public function getMonthlyInvoicesData()
     {

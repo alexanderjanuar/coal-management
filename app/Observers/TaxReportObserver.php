@@ -13,24 +13,58 @@ class TaxReportObserver
 
     private function updateTaxStatus(TaxReport $taxReport)
     {
-        $calculation = $taxReport->calculateFinalTaxStatus();
-        
-        // Prepare update data
-        $updateData = [
-            'invoice_tax_status' => $calculation['status'] // Will be 'Lebih Bayar', 'Kurang Bayar', or 'Nihil'
-        ];
+        // Get or create PPN summary
+        $ppnSummary = $taxReport->taxCalculationSummaries()->firstOrCreate(
+            ['tax_type' => 'ppn'],
+            [
+                'pajak_masuk' => 0,
+                'pajak_keluar' => 0,
+                'selisih' => 0,
+                'status' => 'Nihil',
+                'kompensasi_diterima' => 0,
+                'kompensasi_tersedia' => 0,
+                'kompensasi_terpakai' => 0,
+                'saldo_final' => 0,
+                'status_final' => 'Nihil',
+                'report_status' => 'Belum Lapor',
+            ]
+        );
 
-        
-        // If lebih bayar, set amount available for future compensation
-        if ($calculation['status'] === 'Lebih Bayar') {
-            $updateData['ppn_lebih_bayar_dibawa_ke_masa_depan'] = abs($calculation['final_amount']);
-        } else {
-            $updateData['ppn_lebih_bayar_dibawa_ke_masa_depan'] = 0;
-        }
-        
-        
-        // Update without triggering events to avoid infinite loop
-        $taxReport->updateQuietly($updateData);
+        // Recalculate the PPN summary
+        $ppnSummary->recalculate();
+
+        // Optional: Also ensure PPh and Bupot summaries exist
+        $taxReport->taxCalculationSummaries()->firstOrCreate(
+            ['tax_type' => 'pph'],
+            [
+                'pajak_masuk' => 0,
+                'pajak_keluar' => 0,
+                'selisih' => 0,
+                'status' => 'Nihil',
+                'kompensasi_diterima' => 0,
+                'kompensasi_tersedia' => 0,
+                'kompensasi_terpakai' => 0,
+                'saldo_final' => 0,
+                'status_final' => 'Nihil',
+                'report_status' => 'Belum Lapor',
+            ]
+        );
+
+        $taxReport->taxCalculationSummaries()->firstOrCreate(
+            ['tax_type' => 'bupot'],
+            [
+                'pajak_masuk' => 0,
+                'pajak_keluar' => 0,
+                'selisih' => 0,
+                'status' => 'Nihil',
+                'kompensasi_diterima' => 0,
+                'kompensasi_tersedia' => 0,
+                'kompensasi_terpakai' => 0,
+                'saldo_final' => 0,
+                'status_final' => 'Nihil',
+                'report_status' => 'Belum Lapor',
+            ]
+        );
     }
 
     /**
@@ -38,7 +72,8 @@ class TaxReportObserver
      */
     public function created(TaxReport $taxReport): void
     {
-        //
+        // Ensure all three tax calculation summaries are created
+        $this->updateTaxStatus($taxReport);
     }
 
     /**

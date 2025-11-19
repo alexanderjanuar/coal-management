@@ -497,7 +497,7 @@ class TaxCalendar extends Component
 
     public function getTaxReportUrl($taxReportId)
     {
-        return route('filament.admin.laporan-pajak.resources.tax-reports.edit', ['record' => $taxReportId]);
+        return route('filament.admin.resources.tax-reports.view', ['record' => $taxReportId]);
     }
 
     public function getClientUrl($clientId)

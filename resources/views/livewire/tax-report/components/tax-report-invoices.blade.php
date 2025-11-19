@@ -126,8 +126,7 @@
                 x-cloak>
 
                 {{-- Summary Cards Row --}}
-                <div class="grid gap-6 sm:grid-cols-2 xl:grid-cols-4">
-
+                <div class="grid gap-6 sm:grid-cols-2 xl:grid-cols-3">
                     {{-- Card: PPN Masuk --}}
                     <div class="xl:col-span-1">
                         <div
@@ -205,45 +204,6 @@
                                             $fakturKeluarExcludedCount }}</span>
                                     </div>
                                     @endif
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    {{-- Card: Peredaran Bruto --}}
-                    <div class="xl:col-span-1">
-                        <div
-                            class="overflow-hidden rounded-2xl bg-white shadow-sm ring-1 ring-gray-900/5 dark:bg-gray-900 dark:ring-white/10">
-                            <div class="p-6">
-                                <div class="mb-4 flex items-center justify-between">
-                                    <h3 class="text-sm font-semibold text-gray-900 dark:text-white">Peredaran Bruto</h3>
-                                    <div class="rounded-lg bg-purple-50 p-2 dark:bg-purple-500/10">
-                                        <x-filament::icon icon="heroicon-o-chart-bar"
-                                            class="h-5 w-5 text-purple-600 dark:text-purple-400" />
-                                    </div>
-                                </div>
-
-                                <div class="space-y-3">
-                                    <div>
-                                        <p class="text-sm text-gray-500 dark:text-gray-400">Total</p>
-                                        <p class="mt-1 text-2xl font-bold text-gray-900 dark:text-white">
-                                            Rp {{ number_format($peredaranBruto, 0, ',', '.') }}
-                                        </p>
-                                    </div>
-
-                                    <div
-                                        class="flex items-center justify-between rounded-lg bg-gray-50 px-3 py-2 dark:bg-gray-800/50">
-                                        <span class="text-xs text-gray-600 dark:text-gray-400">DPP</span>
-                                        <span class="text-sm font-semibold text-gray-900 dark:text-white">Rp {{
-                                            number_format($totalDpp, 0, ',', '.') }}</span>
-                                    </div>
-
-                                    <div
-                                        class="flex items-center justify-between rounded-lg bg-gray-50 px-3 py-2 dark:bg-gray-800/50">
-                                        <span class="text-xs text-gray-600 dark:text-gray-400">DPP NL</span>
-                                        <span class="text-sm font-semibold text-gray-900 dark:text-white">Rp {{
-                                            number_format($totalDppNilaiLainnya, 0, ',', '.') }}</span>
-                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -584,92 +544,7 @@
             <div x-show="activeTab === 'kompensasi'" x-transition:enter="transition ease-out duration-200"
                 x-transition:enter-start="opacity-0 translate-y-4" x-transition:enter-end="opacity-100 translate-y-0"
                 x-cloak>
-
-                <div>
-                    <div
-                        class="rounded-2xl bg-white p-6 shadow-sm ring-1 ring-gray-900/5 dark:bg-gray-900 dark:ring-white/10">
-                        <div class="mb-6">
-                            <h3 class="text-lg font-semibold text-gray-900 dark:text-white">Kompensasi Pajak</h3>
-                            <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">Pengelolaan kompensasi pajak
-                                periode ini</p>
-                        </div>
-
-                        <div class="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-                            <div
-                                class="rounded-xl bg-gradient-to-br from-blue-50 to-blue-100 p-6 dark:from-blue-500/10 dark:to-blue-500/5">
-                                <div class="mb-4 flex items-center justify-between">
-                                    <span class="text-sm font-medium text-blue-900 dark:text-blue-200">Kompensasi
-                                        Tersedia</span>
-                                    <div class="rounded-lg bg-blue-200 p-2 dark:bg-blue-500/20">
-                                        <x-filament::icon icon="heroicon-o-banknotes"
-                                            class="h-5 w-5 text-blue-700 dark:text-blue-400" />
-                                    </div>
-                                </div>
-                                <p class="text-3xl font-bold text-blue-900 dark:text-blue-100">
-                                    Rp {{ number_format($kompensasiTersedia, 0, ',', '.') }}
-                                </p>
-                                <p class="mt-2 text-xs text-blue-700 dark:text-blue-300">
-                                    Dapat digunakan untuk periode berikutnya
-                                </p>
-                            </div>
-
-                            @if($kompensasiDiterima > 0)
-                            <div
-                                class="rounded-xl bg-gradient-to-br from-gray-50 to-gray-100 p-6 dark:from-gray-800 dark:to-gray-800/50">
-                                <div class="mb-4 flex items-center justify-between">
-                                    <span class="text-sm font-medium text-gray-900 dark:text-white">Kompensasi
-                                        Diterima</span>
-                                    <div class="rounded-lg bg-gray-200 p-2 dark:bg-gray-700">
-                                        <x-filament::icon icon="heroicon-o-arrow-down-tray"
-                                            class="h-5 w-5 text-gray-700 dark:text-gray-400" />
-                                    </div>
-                                </div>
-                                <p class="text-3xl font-bold text-gray-900 dark:text-white">
-                                    Rp {{ number_format($kompensasiDiterima, 0, ',', '.') }}
-                                </p>
-                                <p class="mt-2 text-xs text-gray-600 dark:text-gray-400">
-                                    Dari periode sebelumnya
-                                </p>
-                            </div>
-                            @endif
-                        </div>
-
-                        <div class="mt-6 rounded-xl bg-blue-50 p-4 dark:bg-blue-500/5">
-                            <h4 class="mb-3 text-sm font-semibold text-gray-900 dark:text-white">Informasi Kompensasi
-                            </h4>
-                            <ul class="space-y-2 text-sm text-gray-600 dark:text-gray-400">
-                                <li class="flex items-start gap-2">
-                                    <svg class="mt-0.5 h-4 w-4 flex-shrink-0 text-blue-600" fill="currentColor"
-                                        viewBox="0 0 20 20">
-                                        <path fill-rule="evenodd"
-                                            d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
-                                            clip-rule="evenodd" />
-                                    </svg>
-                                    <span>Kompensasi tersedia dapat digunakan untuk mengurangi pajak terutang periode
-                                        berikutnya</span>
-                                </li>
-                                <li class="flex items-start gap-2">
-                                    <svg class="mt-0.5 h-4 w-4 flex-shrink-0 text-blue-600" fill="currentColor"
-                                        viewBox="0 0 20 20">
-                                        <path fill-rule="evenodd"
-                                            d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
-                                            clip-rule="evenodd" />
-                                    </svg>
-                                    <span>Status kompensasi akan diupdate setelah pelaporan pajak disetujui</span>
-                                </li>
-                                <li class="flex items-start gap-2">
-                                    <svg class="mt-0.5 h-4 w-4 flex-shrink-0 text-blue-600" fill="currentColor"
-                                        viewBox="0 0 20 20">
-                                        <path fill-rule="evenodd"
-                                            d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
-                                            clip-rule="evenodd" />
-                                    </svg>
-                                    <span>Kompensasi hanya berlaku untuk jenis pajak yang sama (PPN ke PPN)</span>
-                                </li>
-                            </ul>
-                        </div>
-                    </div>
-                </div>
+                @livewire('tax-report.components.tax-report-kompensasi', ['taxReportId' => $taxReportId])
             </div>
 
             {{-- Catatan Tab --}}
