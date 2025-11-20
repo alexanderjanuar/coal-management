@@ -128,6 +128,12 @@
                         class="inline-flex flex-shrink-0 items-center gap-2 border-b-2 px-1 py-4 text-sm font-medium transition-colors whitespace-nowrap">
                         <x-filament::icon icon="heroicon-o-pencil-square" class="h-5 w-5" />
                         <span>Catatan</span>
+                        @if(!empty($existingNotes))
+                        <span
+                            class="ml-2 rounded-full bg-green-100 px-2.5 py-0.5 text-xs font-medium text-green-600 dark:bg-green-500/20 dark:text-green-400">
+                            {{ count($existingNotes) }}
+                        </span>
+                        @endif
                     </button>
 
                     <button @click="activeTab = 'riwayat'"
@@ -588,7 +594,7 @@
             $taxReport->client_id])
         </div>
 
-        {{-- Catatan Tab --}}
+        {{-- Catatan Tab - Now Functional --}}
         <div x-show="activeTab === 'catatan'" x-transition:enter="transition ease-out duration-200"
             x-transition:enter-start="opacity-0 translate-y-4" x-transition:enter-end="opacity-100 translate-y-0"
             x-cloak>
@@ -596,35 +602,120 @@
                 <div
                     class="rounded-2xl bg-white p-4 shadow-sm ring-1 ring-gray-900/5 dark:bg-gray-900 dark:ring-white/10 sm:p-6">
                     <div class="mb-6">
-                        <h3 class="text-lg font-semibold text-gray-900 dark:text-white">Catatan</h3>
-                        <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">Catatan untuk periode ini</p>
+                        <h3 class="text-lg font-semibold text-gray-900 dark:text-white">Catatan PPN</h3>
+                        <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">Catatan untuk perhitungan PPN periode
+                            {{ $taxReport->month }}</p>
                     </div>
 
-                    <div class="space-y-6">
+                    <form wire:submit="saveNote" class="space-y-6">
                         <div>
                             <label class="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300">
-                                Tambah Catatan
+                                Tambah Catatan Baru
                             </label>
-                            <textarea rows="4"
-                                class="w-full rounded-xl border-gray-300 text-sm shadow-sm focus:border-blue-500 focus:ring-blue-500 dark:border-gray-700 dark:bg-gray-800 dark:text-white"
-                                placeholder="Tulis catatan untuk periode ini..."></textarea>
-                            <button
-                                class="mt-3 inline-flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-600">
-                                <x-filament::icon icon="heroicon-m-check" class="h-4 w-4" />
-                                Simpan Catatan
-                            </button>
+                            <div class="relative">
+                                <textarea wire:model="newNote" rows="4"
+                                    class="w-full rounded-xl border-gray-300 text-sm shadow-sm focus:border-blue-500 focus:ring-blue-500 dark:border-gray-700 dark:bg-gray-800 dark:text-white @error('newNote') border-red-500 focus:border-red-500 focus:ring-red-500 @enderror"
+                                    placeholder="Tulis catatan untuk periode ini... (minimal 3 karakter, maksimal 1000 karakter)"></textarea>
+
+                                {{-- Character counter --}}
+                                <div class="absolute bottom-2 right-3 text-xs text-gray-400">
+                                    <span x-text="$wire.newNote.length"></span>/1000
+                                </div>
+                            </div>
+
+                            @error('newNote')
+                            <p class="mt-1 text-sm text-red-600 dark:text-red-400">{{ $message }}</p>
+                            @enderror
                         </div>
 
-                        <div class="rounded-xl bg-gray-50 p-6 dark:bg-gray-800/50">
-                            <h4 class="mb-4 text-sm font-semibold text-gray-900 dark:text-white">Catatan Sebelumnya</h4>
-                            <div class="flex flex-col items-center justify-center py-8 text-center">
+                        <div class="flex items-center gap-3">
+                            <button type="submit" wire:loading.attr="disabled" wire:target="saveNote"
+                                class="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed dark:bg-blue-500 dark:hover:bg-blue-600">
+                                <x-filament::icon icon="heroicon-m-check" class="h-4 w-4" wire:loading.remove.delay
+                                    wire:target="saveNote" />
+                                <x-filament::icon icon="heroicon-m-arrow-path" class="h-4 w-4 animate-spin"
+                                    wire:loading.delay wire:target="saveNote" />
+                                <span wire:loading.remove.delay wire:target="saveNote">Simpan Catatan</span>
+                                <span wire:loading.delay wire:target="saveNote">Menyimpan...</span>
+                            </button>
+
+                            @if(!empty($newNote))
+                            <button type="button" wire:click="$set('newNote', '')"
+                                class="inline-flex items-center gap-2 rounded-lg bg-gray-200 px-4 py-2 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-300 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600">
+                                <x-filament::icon icon="heroicon-m-x-mark" class="h-4 w-4" />
+                                Batal
+                            </button>
+                            @endif
+                        </div>
+                    </form>
+
+                    {{-- Existing Notes Section --}}
+                    <div class="mt-8 space-y-4">
+                        <div class="flex items-center justify-between">
+                            <h4 class="text-sm font-semibold text-gray-900 dark:text-white">
+                                Catatan Sebelumnya
+                                @if(!empty($existingNotes))
+                                <span
+                                    class="ml-2 inline-flex items-center rounded-full bg-blue-100 px-2.5 py-0.5 text-xs font-medium text-blue-800 dark:bg-blue-900 dark:text-blue-200">
+                                    {{ count($existingNotes) }}
+                                </span>
+                                @endif
+                            </h4>
+                        </div>
+
+                        @if(!empty($existingNotes))
+                        <div class="space-y-4 max-h-96 overflow-y-auto">
+                            @foreach($existingNotes as $index => $note)
+                            <div
+                                class="rounded-xl bg-gray-50 p-4 dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700">
+                                <div class="flex items-start justify-between gap-4">
+                                    <div class="flex-1 min-w-0">
+                                        <div class="flex items-center gap-2 mb-2">
+                                            <div class="flex-shrink-0">
+                                                <div class="h-2 w-2 rounded-full bg-blue-500"></div>
+                                            </div>
+                                            <time class="text-xs font-medium text-gray-500 dark:text-gray-400">
+                                                {{ \Carbon\Carbon::parse($note['created_at'])->format('d M Y, H:i') }}
+                                            </time>
+                                            <span class="text-xs text-gray-400 dark:text-gray-500">
+                                                ({{ \Carbon\Carbon::parse($note['created_at'])->diffForHumans() }})
+                                            </span>
+                                        </div>
+                                        <div class="prose prose-sm max-w-none dark:prose-invert">
+                                            <p
+                                                class="text-sm text-gray-900 dark:text-gray-100 whitespace-pre-line break-words">
+                                                {{ $note['content'] }}</p>
+                                        </div>
+                                    </div>
+
+                                    {{-- Delete button --}}
+                                    <div class="flex-shrink-0">
+                                        <button wire:click="deleteNote({{ $index }})"
+                                            wire:confirm="Apakah Anda yakin ingin menghapus catatan ini?"
+                                            class="inline-flex items-center justify-center h-8 w-8 rounded-lg bg-red-100 text-red-600 transition-colors hover:bg-red-200 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 dark:bg-red-900/20 dark:text-red-400 dark:hover:bg-red-900/40"
+                                            title="Hapus catatan">
+                                            <x-filament::icon icon="heroicon-m-trash" class="h-4 w-4" />
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                            @endforeach
+                        </div>
+                        @else
+                        <div class="rounded-xl bg-gray-50 p-8 dark:bg-gray-800/50">
+                            <div class="flex flex-col items-center justify-center text-center">
                                 <div class="rounded-full bg-gray-100 p-3 dark:bg-gray-800">
                                     <x-filament::icon icon="heroicon-o-document-text" class="h-6 w-6 text-gray-400" />
                                 </div>
-                                <p class="mt-3 text-sm text-gray-500 dark:text-gray-400">Belum ada catatan untuk periode
-                                    ini</p>
+                                <p class="mt-3 text-sm text-gray-500 dark:text-gray-400">
+                                    Belum ada catatan untuk periode ini
+                                </p>
+                                <p class="mt-1 text-xs text-gray-400 dark:text-gray-500">
+                                    Tambahkan catatan untuk mencatat informasi penting tentang perhitungan PPN
+                                </p>
                             </div>
                         </div>
+                        @endif
                     </div>
                 </div>
             </div>

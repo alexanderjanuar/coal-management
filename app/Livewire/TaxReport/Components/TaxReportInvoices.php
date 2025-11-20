@@ -4,8 +4,10 @@ namespace App\Livewire\TaxReport\Components;
 
 use App\Models\TaxReport;
 use App\Models\Invoice;
+use App\Models\TaxCalculationSummary;
 use Livewire\Component;
 use Illuminate\Support\Facades\DB;
+use Filament\Notifications\Notification;
 
 class TaxReportInvoices extends Component
 {
@@ -36,6 +38,12 @@ class TaxReportInvoices extends Component
     // Excluded counts
     public $fakturKeluarExcludedCount = 0;
     public $fakturMasukExcludedCount = 0;
+    
+    // Notes properties
+    public $newNote = '';
+    public $existingNotes = [];
+    public $currentNotes = '';
+    public $ppnSummary = null;
 
     /**
      * Mount component with tax report ID
@@ -45,6 +53,7 @@ class TaxReportInvoices extends Component
         $this->taxReportId = $taxReportId;
         $this->loadTaxReport();
         $this->loadSummary();
+        $this->loadNotes();
     }
 
     /**
@@ -56,8 +65,216 @@ class TaxReportInvoices extends Component
             'invoices',
             'client',
             'approvedCompensationsReceived',
-            'approvedCompensationsGiven'
+            'approvedCompensationsGiven',
+            'taxCalculationSummaries'
         ])->findOrFail($this->taxReportId);
+    }
+
+    /**
+     * Load notes from PPN tax calculation summary
+     */
+    protected function loadNotes()
+    {
+        $this->ppnSummary = $this->taxReport->taxCalculationSummaries()
+            ->where('tax_type', 'ppn')
+            ->first();
+
+        if ($this->ppnSummary) {
+            $this->currentNotes = $this->ppnSummary->notes ?? '';
+            
+            // Parse existing notes if they contain multiple entries
+            if (!empty($this->currentNotes)) {
+                $this->existingNotes = $this->parseExistingNotes($this->currentNotes);
+            }
+        }
+    }
+
+    /**
+     * Parse existing notes into array format
+     */
+    protected function parseExistingNotes($notes)
+    {
+        $parsedNotes = [];
+        
+        // Check if notes contain timestamps (indicating multiple entries)
+        if (strpos($notes, '[') !== false && strpos($notes, ']') !== false) {
+            // Split by newlines and parse each entry
+            $lines = explode("\n", $notes);
+            $currentEntry = '';
+            
+            foreach ($lines as $line) {
+                $line = trim($line);
+                if (empty($line)) continue;
+                
+                // Check if line starts with timestamp pattern [YYYY-MM-DD HH:MM]
+                if (preg_match('/^\[(\d{4}-\d{2}-\d{2} \d{2}:\d{2})\](.*)/', $line, $matches)) {
+                    // Save previous entry if exists
+                    if (!empty($currentEntry)) {
+                        $parsedNotes[] = [
+                            'content' => trim($currentEntry),
+                            'created_at' => $previousTimestamp ?? now()->format('Y-m-d H:i')
+                        ];
+                    }
+                    
+                    // Start new entry
+                    $previousTimestamp = $matches[1];
+                    $currentEntry = trim($matches[2]);
+                } else {
+                    // Continuation of current entry
+                    $currentEntry .= "\n" . $line;
+                }
+            }
+            
+            // Add last entry
+            if (!empty($currentEntry)) {
+                $parsedNotes[] = [
+                    'content' => trim($currentEntry),
+                    'created_at' => $previousTimestamp ?? now()->format('Y-m-d H:i')
+                ];
+            }
+        } else {
+            // Single note entry
+            $parsedNotes[] = [
+                'content' => $notes,
+                'created_at' => $this->ppnSummary->updated_at->format('Y-m-d H:i')
+            ];
+        }
+        
+        // Sort by newest first
+        return array_reverse($parsedNotes);
+    }
+
+    /**
+     * Save new note to PPN tax calculation summary
+     */
+    public function saveNote()
+    {
+        // Validate input
+        $this->validate([
+            'newNote' => 'required|string|min:3|max:1000'
+        ], [
+            'newNote.required' => 'Catatan tidak boleh kosong.',
+            'newNote.min' => 'Catatan minimal 3 karakter.',
+            'newNote.max' => 'Catatan maksimal 1000 karakter.'
+        ]);
+
+        try {
+            // Get or create PPN summary
+            if (!$this->ppnSummary) {
+                $this->ppnSummary = $this->taxReport->taxCalculationSummaries()
+                    ->firstOrCreate(
+                        ['tax_type' => 'ppn'],
+                        [
+                            'pajak_masuk' => $this->ppnMasuk,
+                            'pajak_keluar' => $this->ppnKeluar,
+                            'selisih' => $this->ppnKeluar - $this->ppnMasuk,
+                            'status' => $this->statusFinal,
+                            'kompensasi_diterima' => $this->kompensasiDiterima,
+                            'kompensasi_tersedia' => $this->kompensasiTersedia,
+                            'kompensasi_terpakai' => $this->kompensasiTerpakai,
+                            'saldo_final' => $this->saldoFinal,
+                            'status_final' => $this->statusFinal,
+                            'report_status' => 'Belum Lapor',
+                            'calculated_at' => now(),
+                            'calculated_by' => auth()->id(),
+                        ]
+                    );
+            }
+
+            // Format new note with timestamp
+            $timestamp = now()->format('Y-m-d H:i');
+            $newFormattedNote = "[{$timestamp}] " . trim($this->newNote);
+
+            // Append to existing notes
+            $updatedNotes = empty($this->currentNotes) 
+                ? $newFormattedNote 
+                : $this->currentNotes . "\n\n" . $newFormattedNote;
+
+            // Update the summary
+            $this->ppnSummary->update([
+                'notes' => $updatedNotes,
+                'calculated_at' => now(),
+                'calculated_by' => auth()->id(),
+            ]);
+
+            // Reload notes
+            $this->currentNotes = $updatedNotes;
+            $this->existingNotes = $this->parseExistingNotes($updatedNotes);
+
+            // Clear form
+            $this->newNote = '';
+
+            // Show success notification
+            Notification::make()
+                ->title('Catatan Disimpan')
+                ->body('Catatan berhasil ditambahkan ke laporan PPN.')
+                ->success()
+                ->duration(3000)
+                ->send();
+
+        } catch (\Exception $e) {
+            // Show error notification
+            Notification::make()
+                ->title('Error')
+                ->body('Gagal menyimpan catatan: ' . $e->getMessage())
+                ->danger()
+                ->duration(5000)
+                ->send();
+
+            \Log::error('Failed to save tax report note', [
+                'tax_report_id' => $this->taxReportId,
+                'error' => $e->getMessage(),
+                'user_id' => auth()->id()
+            ]);
+        }
+    }
+
+    /**
+     * Delete a specific note entry
+     */
+    public function deleteNote($index)
+    {
+        try {
+            // Remove note from array
+            if (isset($this->existingNotes[$index])) {
+                unset($this->existingNotes[$index]);
+                $this->existingNotes = array_values($this->existingNotes); // Reindex
+            }
+
+            // Rebuild notes string
+            if (empty($this->existingNotes)) {
+                $updatedNotes = '';
+            } else {
+                $noteStrings = [];
+                foreach ($this->existingNotes as $note) {
+                    $noteStrings[] = "[{$note['created_at']}] {$note['content']}";
+                }
+                $updatedNotes = implode("\n\n", $noteStrings);
+            }
+
+            // Update summary
+            $this->ppnSummary->update([
+                'notes' => $updatedNotes,
+                'calculated_at' => now(),
+                'calculated_by' => auth()->id(),
+            ]);
+
+            $this->currentNotes = $updatedNotes;
+
+            Notification::make()
+                ->title('Catatan Dihapus')
+                ->body('Catatan berhasil dihapus.')
+                ->success()
+                ->duration(3000)
+                ->send();
+
+        } catch (\Exception $e) {
+            Notification::make()
+                ->title('Error')
+                ->body('Gagal menghapus catatan: ' . $e->getMessage())
+                ->danger()
+                ->send();
+        }
     }
 
     /**
@@ -249,6 +466,7 @@ class TaxReportInvoices extends Component
     {
         $this->loadTaxReport();
         $this->loadSummary();
+        $this->loadNotes();
     }
 
     /**
