@@ -137,6 +137,63 @@ class TaxCalculationSummary extends Model
         return 'Rp ' . number_format($this->sisa_kompensasi_tersedia, 0, ',', '.');
     }
 
+    public function getCompensationsReceivedCountAttribute(): int
+    {
+        return $this->taxReport
+            ->compensationsReceived()
+            ->where('tax_type', $this->tax_type)
+            ->where('status', 'approved')
+            ->count();
+    }
+
+    /**
+     * Get count of excluded Faktur Keluaran (with prefixes 02, 03, 07, 08)
+     */
+    public function getExcludedFakturKeluarCountAttribute(): int
+    {
+        if (!$this->taxReport) {
+            return 0;
+        }
+
+        return $this->taxReport->originalInvoices()
+            ->where('type', 'Faktur Keluaran')
+            ->where(function($query) {
+                // Include invoices that start with any of the excluded prefixes
+                foreach ($this->getExcludedInvoicePrefixes() as $prefix) {
+                    $query->orWhere('invoice_number', 'like', $prefix . '%');
+                }
+            })
+            ->count();
+    }
+
+    /**
+     * Get total PPN amount from excluded Faktur Keluaran
+     */
+    public function getExcludedPpnAmountAttribute(): float
+    {
+        if (!$this->taxReport) {
+            return 0;
+        }
+
+        return $this->taxReport->originalInvoices()
+            ->where('type', 'Faktur Keluaran')
+            ->where(function($query) {
+                // Include invoices that start with any of the excluded prefixes
+                foreach ($this->getExcludedInvoicePrefixes() as $prefix) {
+                    $query->orWhere('invoice_number', 'like', $prefix . '%');
+                }
+            })
+            ->sum('ppn');
+    }
+
+    /**
+     * Get formatted excluded PPN amount
+     */
+    public function getFormattedExcludedPpnAmountAttribute(): string
+    {
+        return 'Rp ' . number_format($this->excluded_ppn_amount, 0, ',', '.');
+    }
+
     /**
      * Check methods
      */
@@ -198,16 +255,43 @@ class TaxCalculationSummary extends Model
     }
 
     /**
+     * Get invoice number prefixes that should be excluded from PPN calculation
+     * These are special invoice types that don't count toward tax liability
+     * 
+     * @return array
+     */
+    protected function getExcludedInvoicePrefixes(): array
+    {
+        return ['02', '03', '07', '08'];
+    }
+
+    /**
      * Calculate PPN
+     * 
+     * Important: Faktur Keluaran with prefixes 02, 03, 07, 08 are excluded from calculation
+     * These represent special transaction types that are not subject to PPN:
+     * - 02: Exports (zero-rated transactions)
+     * - 03: Transactions to free trade zones (tax-exempt special economic zones)
+     * - 07: Transactions with certain exemptions (government-approved exemptions)
+     * - 08: Other non-taxable transactions (various exempt categories)
      */
     protected function calculatePpn($taxReport): array
     {
+        // Faktur Masuk: All incoming invoices count
         $pajakMasuk = $taxReport->originalInvoices()
             ->where('type', 'Faktur Masuk')
             ->sum('ppn');
         
+        // Faktur Keluaran: Exclude special prefixes (02, 03, 07, 08)
+        // Use where clauses to check if invoice_number does NOT start with excluded prefixes
         $pajakKeluar = $taxReport->originalInvoices()
             ->where('type', 'Faktur Keluaran')
+            ->where(function($query) {
+                // Exclude invoices that start with any of the excluded prefixes
+                foreach ($this->getExcludedInvoicePrefixes() as $prefix) {
+                    $query->where('invoice_number', 'not like', $prefix . '%');
+                }
+            })
             ->sum('ppn');
         
         $selisih = $pajakKeluar - $pajakMasuk;
