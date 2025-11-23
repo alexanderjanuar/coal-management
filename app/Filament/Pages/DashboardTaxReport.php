@@ -16,6 +16,8 @@ class DashboardTaxReport extends Page
 
     protected static ?string $modelLabel = 'Dashboard';
 
+    protected static ?string $title = '';
+    
     protected static ?string $navigationGroup = 'Tax';
 
     protected static ?string $navigationLabel = 'Dashboard';

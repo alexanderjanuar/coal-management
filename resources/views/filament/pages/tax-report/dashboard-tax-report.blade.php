@@ -1,23 +1,28 @@
 <x-filament-panels::page>
     <div class="space-y-8">
 
+        <!-- Filters Widget -->
+        @livewire(\App\Livewire\TaxReport\Dashboard\Filters::class)
+
         <!-- Top Stats Overview -->
-        @livewire(\App\Livewire\TaxReport\StatsOverview::class)
+        @livewire(\App\Livewire\TaxReport\Dashboard\StatsOverview::class)
 
-
-        {{-- <!-- Monthly Tax Chart & Tax Distribution -->
+        <!-- Monthly Tax Chart & Tax Distribution -->
         <div class="grid grid-cols-1 gap-8 lg:grid-cols-3">
-            <!-- Monthly Tax Chart - 2/3 width -->
-            <div class="lg:col-span-2 overflow-hidden max-h-[800px]">
-                @livewire(\App\Livewire\TaxReport\TaxReportCountChart::class)
+            <!-- Calendar - 2/3 width -->
+            <div class="lg:col-span-2">
+                @livewire('tax-report.dashboard.tax-calendar')
             </div>
 
             <!-- Top Unreported Clients - 1/3 width -->
-            <div class="overflow-hidden h-full">
-                @livewire(\App\Livewire\TaxReport\TopUnreportedClients::class)
+            <div class="lg:col-span-1">
+                @livewire(\App\Livewire\TaxReport\Dashboard\TopUnreportedClients::class)
             </div>
         </div>
 
+        {{-- @livewire(\App\Livewire\TaxReport\TaxReportCountChart::class) --}}
+
+        {{--
 
         <!-- Tax Calendar & Recent Reports -->
         <div class="grid grid-cols-1 gap-8 lg:grid-cols-3">

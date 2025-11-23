@@ -6,6 +6,8 @@ namespace App\Providers\Filament;
 use App\Filament\Pages\DailyTask\DailyTaskList;
 use App\Filament\Pages\DailyTask\DailyTaskDashboard;
 use App\Filament\Pages\TaxChat;
+use App\Filament\Pages\ClientCommunication\Index;
+
 // use App\Filament\Resources\TaxReportResource\Pages\TaxReportDashboard;
 use Filament\Http\Middleware\Authenticate;
 use Filament\Http\Middleware\AuthenticateSession;
@@ -62,6 +64,7 @@ class AdminPanelProvider extends PanelProvider
                 DailyTaskDashboard::class,
                 DailyTaskList::class,
                 TaxChat::class,
+                Index::class,
                 // Pages\Dashboard::class,
             ])
             ->discoverWidgets(in: app_path('Filament/Widgets'), for: 'App\\Filament\\Widgets')

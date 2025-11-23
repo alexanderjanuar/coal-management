@@ -1,16 +1,15 @@
 <?php
 
-namespace App\Livewire\TaxReport;
+namespace App\Livewire\TaxReport\Dashboard;
 
 use Livewire\Component;
 use Carbon\Carbon;
 use App\Models\TaxReport;
 use App\Models\Client;
-use App\Models\Invoice;
-use App\Models\IncomeTax;
-use App\Models\Bupot;
+use App\Models\TaxCalculationSummary;
 use App\Models\User;
 use Filament\Notifications\Notification;
+use Illuminate\Support\Facades\DB;
 
 class TaxCalendar extends Component
 {
@@ -24,7 +23,6 @@ class TaxCalendar extends Component
     
     public function mount()
     {
-        // Initialize with current date
         $this->currentDate = Carbon::now();
         $this->generateCalendarDays();
     }
@@ -36,68 +34,59 @@ class TaxCalendar extends Component
         $year = $this->currentDate->year;
         $month = $this->currentDate->month;
         
-        // First day of the month
         $firstDayOfMonth = Carbon::createFromDate($year, $month, 1);
-        
-        // Last day of the month
         $lastDayOfMonth = Carbon::createFromDate($year, $month, 1)->endOfMonth();
-        
-        // Day of the week for the first day (0 = Sunday, 6 = Saturday)
         $firstDayOfWeek = $firstDayOfMonth->dayOfWeek;
         
-        // Add days from previous month to fill the first week
+        // Previous month days
         $prevMonthDays = [];
         for ($i = 0; $i < $firstDayOfWeek; $i++) {
-            $date = Carbon::createFromDate($year, $month, 1)
-                ->subDays($firstDayOfWeek - $i);
-            
-            $prevMonthDays[] = [
-                'date' => $date->format('Y-m-d'),
-                'day' => $date->day,
-                'isCurrentMonth' => false,
-                'hasEvent' => $this->hasTaxEvent($date),
-                'isToday' => $date->isToday(),
-                'pendingClientsCount' => $this->getPendingClientsCount($date),
-                'isLastDay' => $this->isLastDayOfMonth($date), // Debug helper
-            ];
+            $date = Carbon::createFromDate($year, $month, 1)->subDays($firstDayOfWeek - $i);
+            $prevMonthDays[] = $this->buildDayData($date, false);
         }
         
-        // Add days of the current month
+        // Current month days
         $currentMonthDays = [];
         for ($i = 1; $i <= $lastDayOfMonth->day; $i++) {
             $date = Carbon::createFromDate($year, $month, $i);
-            
-            $currentMonthDays[] = [
-                'date' => $date->format('Y-m-d'),
-                'day' => $date->day,
-                'isCurrentMonth' => true,
-                'hasEvent' => $this->hasTaxEvent($date),
-                'isToday' => $date->isToday(),
-                'pendingClientsCount' => $this->getPendingClientsCount($date),
-            ];
+            $currentMonthDays[] = $this->buildDayData($date, true);
         }
         
-        // Add days from next month to complete the grid (6 rows of 7 days)
+        // Next month days
         $totalDays = count($prevMonthDays) + count($currentMonthDays);
-        $remainingDays = 42 - $totalDays; // 6 rows of 7 days
+        $remainingDays = 42 - $totalDays;
         
         $nextMonthDays = [];
         for ($i = 1; $i <= $remainingDays; $i++) {
-            $date = Carbon::createFromDate($year, $month, 1)
-                ->addMonth()
-                ->addDays($i - 1);
-            
-            $nextMonthDays[] = [
-                'date' => $date->format('Y-m-d'),
-                'day' => $date->day,
-                'isCurrentMonth' => false,
-                'hasEvent' => $this->hasTaxEvent($date),
-                'isToday' => $date->isToday(),
-                'pendingClientsCount' => $this->getPendingClientsCount($date),
-            ];
+            $date = Carbon::createFromDate($year, $month, 1)->addMonth()->addDays($i - 1);
+            $nextMonthDays[] = $this->buildDayData($date, false);
         }
         
         $this->calendarDays = array_merge($prevMonthDays, $currentMonthDays, $nextMonthDays);
+    }
+
+    protected function buildDayData(Carbon $date, bool $isCurrentMonth): array
+    {
+        return [
+            'date' => $date->format('Y-m-d'),
+            'day' => $date->day,
+            'isCurrentMonth' => $isCurrentMonth,
+            'hasEvent' => $this->hasTaxEvent($date),
+            'isToday' => $date->isToday(),
+            'pendingClientsCount' => $this->getPendingClientsCount($date),
+            'eventType' => $this->getEventType($date),
+        ];
+    }
+
+    protected function getEventType(Carbon $date): ?string
+    {
+        $day = $date->day;
+        
+        if ($day == 15) return 'payment';
+        if ($day == 20) return 'pph';
+        if ($this->isLastDayOfMonth($date)) return 'ppn';
+        
+        return null;
     }
 
     public function goToPreviousMonth()
@@ -117,7 +106,6 @@ class TaxCalendar extends Component
         $this->selectedDate = $dateString;
         $date = Carbon::parse($dateString);
         
-        // Check if this is a date with pending clients
         if ($this->getPendingClientsCount($date) > 0) {
             $this->pendingClients = $this->getPendingClients($date);
             $this->dispatch('open-modal', id: 'pending-clients-modal');
@@ -140,32 +128,26 @@ class TaxCalendar extends Component
         $this->isClientModalOpen = false;
     }
 
-    protected function hasTaxEvent(Carbon $date)
+    protected function hasTaxEvent(Carbon $date): bool
     {
-        $taxEvents = $this->getTaxEvents();
-        
-        $dateString = $date->format('Y-m-d');
-        return collect($taxEvents)->contains('date', $dateString);
+        $day = $date->day;
+        return $day == 15 || $day == 20 || $this->isLastDayOfMonth($date);
     }
 
     protected function getTaxEventsForDate(Carbon $date)
     {
         $taxEvents = $this->getTaxEvents();
-        
         $dateString = $date->format('Y-m-d');
         return collect($taxEvents)->where('date', $dateString)->values()->all();
     }
 
     public function getTaxSchedule()
     {
-        // Get current month's events
         $currentYear = $this->currentDate->year;
         $currentMonth = $this->currentDate->month;
         
-        // Get tax events
         $taxEvents = $this->getTaxEvents();
         
-        // Filter events for the current month
         return collect($taxEvents)
             ->filter(function ($event) use ($currentYear, $currentMonth) {
                 $eventDate = Carbon::parse($event['date']);
@@ -178,14 +160,11 @@ class TaxCalendar extends Component
 
     protected function getTaxEvents()
     {
-        // Get tax events for the current displayed month
         $currentYear = $this->currentDate->year;
         $currentMonth = $this->currentDate->month;
         
         $lastDay = Carbon::createFromDate($currentYear, $currentMonth, 1)->endOfMonth()->format('Y-m-d');
         
-        // For PPN reporting: The deadline is for the PREVIOUS month's tax report
-        // Example: May 31 is the deadline for April tax report
         $targetMonth = $this->currentDate->copy()->subMonth();
         $targetMonthName = $targetMonth->translatedFormat('F Y');
         
@@ -195,27 +174,30 @@ class TaxCalendar extends Component
                 'title' => 'Batas Akhir Lapor SPT Masa PPN',
                 'description' => "Batas akhir lapor SPT Masa PPN periode {$targetMonthName}",
                 'actionText' => 'Kelola PPN',
-                'actionLink' => '',
+                'actionLink' => route('filament.admin.resources.tax-reports.index'),
                 'type' => 'report',
-                'priority' => 'high'
+                'priority' => 'high',
+                'icon' => 'document-text'
             ],
             [
                 'date' => Carbon::createFromDate($currentYear, $currentMonth, 15)->format('Y-m-d'),
                 'title' => 'Batas Akhir Setor PPh dan PPN',
                 'description' => "Batas akhir setor PPh dan PPN periode {$targetMonthName}",
                 'actionText' => 'Kelola Pembayaran',
-                'actionLink' => '',
+                'actionLink' => route('filament.admin.resources.tax-reports.index'),
                 'type' => 'payment',
-                'priority' => 'high'
+                'priority' => 'high',
+                'icon' => 'banknotes'
             ],
             [
                 'date' => Carbon::createFromDate($currentYear, $currentMonth, 20)->format('Y-m-d'),
                 'title' => 'Batas Akhir Lapor SPT Masa PPh 21',
                 'description' => "Batas akhir lapor SPT Masa PPh 21 periode {$targetMonthName}",
                 'actionText' => 'Kelola PPh 21',
-                'actionLink' => '',
+                'actionLink' => route('filament.admin.resources.tax-reports.index'),
                 'type' => 'report',
-                'priority' => 'medium'
+                'priority' => 'medium',
+                'icon' => 'document-check'
             ],
         ];
     }
@@ -224,66 +206,76 @@ class TaxCalendar extends Component
     {
         $day = $date->day;
         
-        // Check important tax dates and count pending clients
         if ($day == 15) {
-            // PPh and PPN payment deadline - count clients with unpaid taxes for the previous month
             return $this->getUnpaidTaxClientsCount($date);
         } elseif ($day == 20) {
-            // PPh 21 reporting deadline - count clients with unreported PPh 21 for the previous month
             return $this->getUnreportedPPhClientsCount($date);
         } elseif ($this->isLastDayOfMonth($date)) {
-            // PPN reporting deadline - count clients with unreported PPN for the previous month
             return $this->getUnreportedPPNClientsCount($date);
         }
         
         return 0;
     }
     
-    /**
-     * Check if the given date is the last day of its month
-     */
     protected function isLastDayOfMonth(Carbon $date)
     {
         return $date->day === $date->copy()->endOfMonth()->day;
     }
     
+    /**
+     * FIXED: Get count of clients with unreported PPN using tax_calculation_summaries
+     */
     protected function getUnpaidTaxClientsCount(Carbon $date)
     {
-        // For the 15th: Get tax reports for the previous month that need payment
         $targetMonth = $date->copy()->startOfMonth()->subMonth();
-        $monthName = $targetMonth->format('F'); // Get month name like 'June', 'May'
+        $monthName = $targetMonth->format('F');
         
-        return TaxReport::where('month', $monthName)
-            ->where(function($query) {
-                $query->where('ppn_report_status', 'Belum Lapor')
-                      ->orWhere('pph_report_status', 'Belum Lapor');
-            })
-            ->count();
+        return DB::table('tax_calculation_summaries')
+            ->join('tax_reports', 'tax_calculation_summaries.tax_report_id', '=', 'tax_reports.id')
+            ->where('tax_reports.month', $monthName)
+            ->where('tax_calculation_summaries.tax_type', 'ppn')
+            ->where('tax_calculation_summaries.report_status', 'Belum Lapor')
+            ->distinct('tax_reports.id')
+            ->count('tax_reports.id');
     }
     
+    /**
+     * FIXED: Get count of clients with unreported PPh using tax_calculation_summaries
+     */
     protected function getUnreportedPPhClientsCount(Carbon $date)
     {
-        // For the 20th: Get tax reports for the previous month that need PPh 21 reporting
         $targetMonth = $date->copy()->startOfMonth()->subMonth();
-        $monthName = $targetMonth->format('F'); // Get month name like 'June', 'May'
+        $monthName = $targetMonth->format('F');
         
-        return TaxReport::where('month', $monthName)
-            ->where('pph_report_status', 'Belum Lapor')
-            ->count();
+        return DB::table('tax_calculation_summaries')
+            ->join('tax_reports', 'tax_calculation_summaries.tax_report_id', '=', 'tax_reports.id')
+            ->where('tax_reports.month', $monthName)
+            ->where('tax_calculation_summaries.tax_type', 'pph')
+            ->where('tax_calculation_summaries.report_status', 'Belum Lapor')
+            ->distinct('tax_reports.id')
+            ->count('tax_reports.id');
     }
     
+    /**
+     * FIXED: Get count of clients with unreported PPN using tax_calculation_summaries
+     */
     protected function getUnreportedPPNClientsCount(Carbon $date)
     {
-        // For the last day: Get tax reports for the PREVIOUS month that need PPN reporting
-        // Example: On July 31, we check June tax reports
         $targetMonth = $date->copy()->startOfMonth()->subMonth();
-        $monthName = $targetMonth->format('F'); // Get month name like 'June', 'May'
+        $monthName = $targetMonth->format('F');
         
-        return TaxReport::where('month', $monthName)
-            ->where('ppn_report_status', 'Belum Lapor')
-            ->count();
+        return DB::table('tax_calculation_summaries')
+            ->join('tax_reports', 'tax_calculation_summaries.tax_report_id', '=', 'tax_reports.id')
+            ->where('tax_reports.month', $monthName)
+            ->where('tax_calculation_summaries.tax_type', 'ppn')
+            ->where('tax_calculation_summaries.report_status', 'Belum Lapor')
+            ->distinct('tax_reports.id')
+            ->count('tax_reports.id');
     }
     
+    /**
+     * FIXED: Get pending clients with proper join to tax_calculation_summaries
+     */
     protected function getPendingClients(Carbon $date)
     {
         $day = $date->day;
@@ -296,66 +288,81 @@ class TaxCalendar extends Component
         $clients = [];
         
         if ($day == 15) {
-                $reportType = "Setor PPh dan PPN untuk periode {$monthName}";
-                $taxReports = TaxReport::with('client')
-                    ->where('month', $targetMonthFormatted)
-                    ->where('ppn_report_status', 'Belum Lapor') // Hanya yang belum lapor PPN
-                    ->get();
-                    
-                foreach ($taxReports as $report) {
-                    // Hitung peredaran bruto hanya dari Faktur Keluaran untuk PPN
-                    $peredaranBruto = $report->originalInvoices()
-                        ->where('type', 'Faktur Keluaran')
-                        ->sum('dpp');
-                    
-                    $clients[] = [
-                        'id' => $report->client->id,
-                        'tax_report_id' => $report->id,
-                        'name' => $report->client->name,
-                        'logo' => $report->client->logo,
-                        'status' => 'Belum bayar PPN', // Spesifik untuk PPN
-                        'dueAmount' => $peredaranBruto,
-                        'NPWP' => $report->client->NPWP ?? 'Tidak Ada'
-                    ];
-                }
-            }
-            elseif ($day == 20) {
-            $reportType = "Lapor SPT Masa PPh 21 untuk periode {$monthName}";
-            $taxReports = TaxReport::with('client')
-                ->where('month', $targetMonthFormatted)
-                ->where('pph_report_status', 'Belum Lapor')
-                ->get();
-                
-            foreach ($taxReports as $report) {
-                $employeeCount = $report->client->employees()->count();
-                
-                $clients[] = [
-                    'id' => $report->client->id,
-                        'tax_report_id' => $report->id,
-                    'name' => $report->client->name,
-                    'status' => 'Belum lapor PPh 21',
-                    'employees' => $employeeCount,
-                    'NPWP' => $report->client->NPWP ?? 'Tidak Ada'
-                ];
-            }
+            $reportType = "Setor PPh dan PPN untuk periode {$monthName}";
             
-        } elseif ($this->isLastDayOfMonth($date)) {
-            $reportType = "Lapor SPT Masa PPN untuk periode {$monthName}";
-            $taxReports = TaxReport::with('client')
+            // Get tax reports with unreported PPN
+            $taxReports = TaxReport::with(['client', 'ppnSummary'])
                 ->where('month', $targetMonthFormatted)
-                ->where('ppn_report_status', 'Belum Lapor')
+                ->whereHas('ppnSummary', function($q) {
+                    $q->where('report_status', 'Belum Lapor');
+                })
                 ->get();
                 
             foreach ($taxReports as $report) {
-                $transactionCount = $report->originalInvoices()->count();
+                $ppnSummary = $report->ppnSummary;
                 
                 $clients[] = [
                     'id' => $report->client->id,
                     'tax_report_id' => $report->id,
                     'name' => $report->client->name,
+                    'logo' => $report->client->logo,
+                    'status' => 'Belum bayar PPN',
+                    'dueAmount' => $ppnSummary ? $ppnSummary->pajak_keluar : 0,
+                    'NPWP' => $report->client->NPWP ?? 'Tidak Ada',
+                    'statusBadge' => $ppnSummary?->status_final ?? 'Nihil'
+                ];
+            }
+        }
+        elseif ($day == 20) {
+            $reportType = "Lapor SPT Masa PPh 21 untuk periode {$monthName}";
+            
+            $taxReports = TaxReport::with(['client', 'pphSummary'])
+                ->where('month', $targetMonthFormatted)
+                ->whereHas('pphSummary', function($q) {
+                    $q->where('report_status', 'Belum Lapor');
+                })
+                ->get();
+                
+            foreach ($taxReports as $report) {
+                $employeeCount = $report->client->employees()->count();
+                $pphSummary = $report->pphSummary;
+                
+                $clients[] = [
+                    'id' => $report->client->id,
+                    'tax_report_id' => $report->id,
+                    'name' => $report->client->name,
+                    'logo' => $report->client->logo,
+                    'status' => 'Belum lapor PPh 21',
+                    'employees' => $employeeCount,
+                    'NPWP' => $report->client->NPWP ?? 'Tidak Ada',
+                    'pphAmount' => $pphSummary ? $pphSummary->pajak_keluar : 0
+                ];
+            }
+            
+        } elseif ($this->isLastDayOfMonth($date)) {
+            $reportType = "Lapor SPT Masa PPN untuk periode {$monthName}";
+            
+            $taxReports = TaxReport::with(['client', 'ppnSummary'])
+                ->where('month', $targetMonthFormatted)
+                ->whereHas('ppnSummary', function($q) {
+                    $q->where('report_status', 'Belum Lapor');
+                })
+                ->get();
+                
+            foreach ($taxReports as $report) {
+                $transactionCount = $report->originalInvoices()->count();
+                $ppnSummary = $report->ppnSummary;
+                
+                $clients[] = [
+                    'id' => $report->client->id,
+                    'tax_report_id' => $report->id,
+                    'name' => $report->client->name,
+                    'logo' => $report->client->logo,
                     'status' => 'Belum lapor PPN',
                     'transaksiCount' => $transactionCount,
-                    'NPWP' => $report->client->NPWP ?? 'Tidak Ada'
+                    'NPWP' => $report->client->NPWP ?? 'Tidak Ada',
+                    'ppnAmount' => $ppnSummary ? $ppnSummary->pajak_keluar : 0,
+                    'statusBadge' => $ppnSummary?->status_final ?? 'Nihil'
                 ];
             }
         }
@@ -366,75 +373,10 @@ class TaxCalendar extends Component
             'clients' => $clients
         ];
     }
-    
-    protected function getPaymentStatus($taxReport)
-    {
-        $statuses = [];
-        
-        if ($taxReport->ppn_report_status === 'Belum Lapor') {
-            $statuses[] = 'Belum bayar PPN';
-        }
-        
-        return !empty($statuses) ? implode(', ', $statuses) : 'PPN sudah dibayar';
-    }
-
-    /**
-     * Get overdue PPN reports (past deadline)
-     */
-    public function getOverduePPNReports()
-    {
-        $today = Carbon::now();
-        $currentMonth = $today->format('Y-m');
-        
-        // Get all previous months that have passed their deadlines
-        $overdueReports = TaxReport::with('client')
-            ->where('month', '<', $currentMonth)
-            ->where('ppn_report_status', 'Belum Lapor')
-            ->get();
-            
-        return $overdueReports;
-    }
-    
-    /**
-     * Get upcoming PPN deadlines (within next 7 days)
-     */
-    public function getUpcomingPPNDeadlines()
-    {
-        $today = Carbon::now();
-        $nextWeek = $today->copy()->addDays(7);
-        
-        $upcomingDeadlines = [];
-        
-        // Check if any month-end falls within the next 7 days
-        for ($i = 0; $i <= 7; $i++) {
-            $checkDate = $today->copy()->addDays($i);
-            if ($checkDate->day == $checkDate->copy()->endOfMonth()->day) {
-                // This is a month-end date - check for unreported PPN
-                $targetMonth = $checkDate->copy()->subMonth()->format('Y-m');
-                
-                $unreportedCount = TaxReport::where('month', $targetMonth)
-                    ->where('ppn_report_status', 'Belum Lapor')
-                    ->count();
-                    
-                if ($unreportedCount > 0) {
-                    $upcomingDeadlines[] = [
-                        'date' => $checkDate->format('Y-m-d'),
-                        'deadline_date' => $checkDate->translatedFormat('d F Y'),
-                        'period_month' => $checkDate->copy()->subMonth()->translatedFormat('F Y'),
-                        'unreported_count' => $unreportedCount,
-                        'days_remaining' => $i
-                    ];
-                }
-            }
-        }
-        
-        return $upcomingDeadlines;
-    }
 
     public function sendMassReminder()
     {
         try {
-            // Get all users with project-manager role
             $projectManagers = User::whereHas('roles', function ($query) {
                 $query->where('name', 'project-manager');
             })->get();
@@ -452,7 +394,6 @@ class TaxCalendar extends Component
             $reportType = $this->pendingClients['reportType'] ?? '';
             $date = $this->pendingClients['date'] ?? '';
 
-            // Create notification for each project manager
             foreach ($projectManagers as $manager) {
                 Notification::make()
                     ->title('Pengingat: Klien Tertunggak')
@@ -463,7 +404,7 @@ class TaxCalendar extends Component
                     ->actions([
                         \Filament\Notifications\Actions\Action::make('view')
                             ->label('Lihat Detail')
-                            ->url('#') // You can add specific URL if needed
+                            ->url(route('filament.admin.resources.tax-reports.index'))
                             ->markAsRead(),
                         \Filament\Notifications\Actions\Action::make('dismiss')
                             ->label('Tutup')
@@ -473,10 +414,8 @@ class TaxCalendar extends Component
                     ->broadcast($manager);
             }
 
-            // Close the modal
             $this->dispatch('close-modal', ['id' => 'pending-clients-modal']);
 
-            // Show success notification to current user
             Notification::make()
                 ->title('Pengingat Terkirim')
                 ->body("Pengingat telah dikirim ke {$projectManagers->count()} project manager.")
@@ -490,10 +429,9 @@ class TaxCalendar extends Component
                 ->danger()
                 ->send();
 
-            report($e); // Log error untuk debugging
+            report($e);
         }
     }
-
 
     public function getTaxReportUrl($taxReportId)
     {
@@ -507,6 +445,6 @@ class TaxCalendar extends Component
 
     public function render()
     {
-        return view('livewire.tax-report.tax-calendar');
+        return view('livewire.tax-report.dashboard.tax-calendar');
     }
 }
