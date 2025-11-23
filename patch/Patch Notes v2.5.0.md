@@ -242,8 +242,8 @@ Internal team management:
 ## 📸 Screenshots
 
 ### Identitas Tab
-![Identitas Tab](Screenshot\Patchv2.5.0\IdentitasTab.png)
-![Identitas Tab](Screenshot\Patchv2.5.0\IdentitasTabDark.png)
+![Identitas Tab]([Screenshot\Patchv2.5.0\IdentitasTab.png](https://github.com/alexanderjanuar/coal-management/blob/main/patch/Screenshot/Patchv2.5.0/ComplienceTab.png))
+![Identitas Tab]((https://github.com/alexanderjanuar/coal-management/blob/main/patch/Screenshot/Patchv2.5.0/ComplienceTabDark.png))
 
 ### Perpajakan Tab
 ![Perpajakan Tab](Screenshot\Patchv2.5.0\PerpajakanTab.png)
