@@ -246,7 +246,7 @@ Internal team management:
 ![Identitas Tab]((https://github.com/alexanderjanuar/coal-management/blob/main/patch/Screenshot/Patchv2.5.0/ComplienceTabDark.png))
 
 ### Perpajakan Tab
-![Perpajakan Tab](Screenshot\Patchv2.5.0\PerpajakanTab.png)
+![Perpajakan Tab](patch\Screenshot\Patchv2.5.0\PerpajakanTab.png)
 ![Perpajakan Tab](Screenshot\Patchv2.5.0\PerpajakanTabDark.png)
 
 ### Dokumen Tab
