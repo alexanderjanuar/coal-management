@@ -35,10 +35,10 @@ Tab Perpajakan mengelola semua aspek perpajakan klien dengan interface yang user
 #### 3. **Projek (Projects)**
 Tab Projek menyediakan sistem manajemen proyek yang terintegrasi untuk melacak semua layanan yang diberikan kepada klien:
 - **Dashboard Statistik**
-**Manajemen Proyek**
-**Deadline Monitoring**
-**Status Management**
-**PIC Assignment**
+- **Manajemen Proyek**
+- **Deadline Monitoring**
+- **Status Management**
+- **PIC Assignment**
 
 #### 4. **Dokumen (Documents)**
 Tab Dokumen menyediakan sistem manajemen dokumen yang komprehensif dengan dua kategori utama:
