@@ -160,8 +160,8 @@ Tab Karyawan menyediakan sistem manajemen karyawan yang komprehensif untuk klien
 
 <details>
 
-<summary>Tips for collapsed sections</summary>
-#### **Tab Identitas (Identity)**
+<summary>Tab Identitas (Identity)</summary>
+
 **Cara Menggunakan:**
 1. **Melihat Informasi Dasar**
    - Informasi perusahaan ditampilkan dalam kotak terpisah untuk kemudahan membaca
@@ -184,10 +184,11 @@ Tab Karyawan menyediakan sistem manajemen karyawan yang komprehensif untuk klien
 - Pastikan informasi kontak selalu update untuk komunikasi yang efektif
 - Gunakan catatan di bagian afiliasi untuk informasi tambahan yang penting
 - Kontak utama sebaiknya adalah orang yang paling mudah dihubungi
-
 </details>
 
-#### **Tab Perpajakan (Taxation)**
+<details>
+<summary>Tab Perpajakan (Taxation)</summary>
+
 **Cara Menggunakan:**
 1. **Memantau Status NPWP**
    - NPWP ditampilkan dalam format yang mudah dibaca (XX.XXX.XXX.X-XXX.XXX)
@@ -237,8 +238,11 @@ Tab Karyawan menyediakan sistem manajemen karyawan yang komprehensif untuk klien
 - Selalu isi nomor dokumen dan tanggal expired untuk tracking yang optimal
 - Gunakan preview sebelum download untuk memastikan dokumen yang benar
 - Monitor tanggal expired secara berkala (ditampilkan dengan warna merah jika expired)
+</details>
 
-#### **Tab Komunikasi (Communications)**
+<details>
+<summary>Tab Komunikasi (Communications)</summary>
+    
 **Cara Menggunakan:**
 1. **Melihat Timeline Komunikasi**
    - Timeline menampilkan semua komunikasi dalam urutan kronologis terbaru
@@ -268,8 +272,11 @@ Tab Karyawan menyediakan sistem manajemen karyawan yang komprehensif untuk klien
 - Gunakan attachment untuk menyimpan dokumen penting terkait komunikasi
 - Manfaatkan rich text editor untuk deskripsi yang detail dan terformat
 - Review timeline secara berkala untuk memantau frekuensi komunikasi klien
+</details>
 
-#### **Tab Karyawan (Employees)**
+<details>
+<summary>Tab Karyawan (Employees)</summary>
+    
 **Cara Menggunakan:**
 1. **Melihat Dashboard Statistik**
    - Cards di atas tabel menampilkan ringkasan data karyawan
@@ -306,8 +313,11 @@ Tab Karyawan menyediakan sistem manajemen karyawan yang komprehensif untuk klien
 - Gunakan tipe "Karyawan Tetap" untuk pegawai permanen dengan gaji bulanan
 - Gunakan tipe "Harian" untuk pekerja lepas atau kontrak
 - Data gaji bersifat opsional namun penting untuk kalkulasi pajak
+</details>
 
-#### **Tab Projek (Projects)**
+<details>
+<summary>Tab Projek (Projects)</summary>
+
 **Cara Menggunakan:**
 1. **Melihat Overview Proyek**
    - Dashboard cards menampilkan statistik real-time
@@ -334,8 +344,11 @@ Tab Karyawan menyediakan sistem manajemen karyawan yang komprehensif untuk klien
 - Monitor proyek "Completed (Not Paid Yet)" untuk follow up pembayaran
 - Review proyek dengan status "In Progress" secara berkala
 - Gunakan PIC assignment untuk koordinasi tim yang efektif
+</details>
 
-#### **Tab Compliance**
+<details>
+<summary>Tab Compliance</summary>
+    
 **Cara Menggunakan:**
 1. **Monitoring Kewajiban Pajak**
    - Dashboard menampilkan total kewajiban dengan breakdown status
@@ -401,13 +414,16 @@ Tab Karyawan menyediakan sistem manajemen karyawan yang komprehensif untuk klien
 - Gunakan tipe "Karyawan Tetap" untuk pegawai permanen dengan gaji bulanan
 - Gunakan tipe "Harian" untuk pekerja lepas atau kontrak
 - Data gaji bersifat opsional namun penting untuk kalkulasi pajak
+</details>
 
-#### **Tab Tim (Team)**
+<details>
+<summary>Tab Tim</summary>
 Internal team assignments:
 - Assigned team members
 - Role and responsibility tracking
 - Specialization management
 - Workload distribution
+</details>
 
 ---
 ## 🐛 Known Issues
