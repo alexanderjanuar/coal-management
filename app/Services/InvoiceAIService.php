@@ -18,31 +18,25 @@ class InvoiceAIService
     public function processInvoice($file, $clientName = 'unknown-client', $monthName = 'unknown-month')
     {
         try {
-            // Handle different file input types
             $filePath = $this->resolveFilePath($file);
             
-            // Check if file exists
             if (!file_exists($filePath)) {
                 throw new \Exception('File tidak ditemukan: ' . $filePath);
             }
             
-            // Read file and encode to base64
             $fileContent = file_get_contents($filePath);
             $base64Content = base64_encode($fileContent);
-            
-            // Determine MIME type
             $mimeType = $this->getMimeType($filePath);
             
-            // Prepare the prompt for Indonesian tax invoice extraction
-            $prompt = $this->getInvoiceExtractionPrompt();
+            // Pass client name to prompt
+            $prompt = $this->getInvoiceExtractionPrompt($clientName);
 
-            // Use Laravel Gemini package with debugging
             $result = Gemini::generativeModel(model: 'gemini-2.0-flash')
                 ->withGenerationConfig(
                     generationConfig: new GenerationConfig(
                         responseMimeType: ResponseMimeType::APPLICATION_JSON,
                         temperature: 0.1,
-                        maxOutputTokens: 1000,
+                        maxOutputTokens: 1500, // Increase token limit
                     )
                 )
                 ->generateContent([
@@ -53,14 +47,8 @@ class InvoiceAIService
                     )
                 ]);
 
-            // Debug the response structure
-            $debugInfo = $this->debugResponse($result);
-            
-            // Try to get response data
             $responseData = $this->extractResponseData($result);
-            
-            // Parse and validate the response (remove debug mode check)
-            $extractedData = $this->parseAndValidateResponse($responseData);
+            $extractedData = $this->parseAndValidateResponse($responseData, $clientName);
             
             if (!$extractedData) {
                 throw new \Exception('Gagal mengekstrak data dari dokumen. Pastikan dokumen adalah faktur pajak yang valid.');
@@ -86,7 +74,7 @@ class InvoiceAIService
             ];
         }
     }
-    
+        
     /**
      * Resolve file path from different input types
      */
@@ -225,28 +213,32 @@ class InvoiceAIService
     /**
      * Get the prompt for invoice extraction
      */
-    private function getInvoiceExtractionPrompt()
+    private function getInvoiceExtractionPrompt($clientName = 'unknown-client')
     {
         return "Analisis dokumen faktur pajak Indonesia ini dan ekstrak informasi berikut dalam format JSON yang tepat:
         {
             \"invoice_number\": \"nomor faktur pajak lengkap\",
             \"invoice_date\": \"tanggal faktur dalam format YYYY-MM-DD\",
-            \"type\": \"Faktur Keluaran atau Faktur Masuk\",
-            \"company_name\": \"nama Pengusaha Kena Pajak jika faktur masukan atau Penerima Jasa Kena Pajak jika faktur keluaran\",
-            \"npwp\": \"nomor NPWP lengkap\",
-            \"dpp\": \"nilai DPP dalam angka saja (tanpa titik, koma, atau simbol)\",
-            \"ppn\": \"nilai PPN dalam angka saja (tanpa titik, koma, atau simbol)\"
+            \"pengusaha_kena_pajak\": {
+                \"nama\": \"nama dari section Pengusaha Kena Pajak\",
+                \"npwp\": \"NPWP dari section Pengusaha Kena Pajak\"
+            },
+            \"pembeli\": {
+                \"nama\": \"nama dari section Pembeli Barang Kena Pajak/Penerima Jasa Kena Pajak\",
+                \"npwp\": \"NPWP dari section Pembeli\"
+            },
+            \"dpp\": \"Dasar Pengenaan Pajak dalam angka saja (tanpa titik, koma, atau simbol)\",
+            \"ppn\": \"Jumlah PPN dalam angka saja (tanpa titik, koma, atau simbol)\"
         }
 
-        Instruksi penting:
-        - Nomor faktur harus dalam format Indonesia (contoh: 010.000-25.12345678)
-        - Tanggal harus format YYYY-MM-DD
-        - NPWP harus format Indonesia (contoh: 01.234.567.8-901.000)
-        - DPP dan PPN hanya angka, tanpa pemisah ribuan
-        - Type hanya \"Faktur Keluaran\" atau \"Faktur Masuk\"
-        - JANGAN tentukan ppn_percentage, sistem akan menghitung otomatis dari DPP dan PPN
-        - Pastikan ekstrak nilai DPP dan PPN dengan akurat dari dokumen
-        - Jika ada field yang tidak ditemukan, gunakan nilai default yang masuk akal
+        INSTRUKSI PENTING:
+        - Ekstrak SEMUA data: Pengusaha Kena Pajak dan Pembeli
+        - Nomor faktur harus lengkap dengan format Indonesia
+        - Tanggal format YYYY-MM-DD
+        - NPWP format lengkap dengan titik dan strip
+        - DPP dan PPN hanya angka murni tanpa pemisah
+        - JANGAN tentukan type faktur, sistem akan menentukan berdasarkan nama client
+        - Client name saat ini: {$clientName}
 
         Berikan hanya JSON, tanpa penjelasan tambahan.";
     }
@@ -254,11 +246,13 @@ class InvoiceAIService
     /**
      * Parse and validate AI response
      */
-    private function parseAndValidateResponse($responseData)
+
+    private function parseAndValidateResponse($responseData, $clientName = 'unknown-client')
     {
         try {
             $data = null;
             
+            // Handle different response data types
             if (is_array($responseData)) {
                 // If it's an array of objects, take the first one
                 if (isset($responseData[0])) {
@@ -278,7 +272,7 @@ class InvoiceAIService
                 }
             } elseif (is_object($responseData)) {
                 // Convert object to array
-                $data = (array) $responseData;
+                $data = json_decode(json_encode($responseData), true);
             } elseif (is_string($responseData)) {
                 // Try to decode JSON string
                 $data = json_decode($responseData, true);
@@ -308,7 +302,64 @@ class InvoiceAIService
             // Log the processed data for debugging
             Log::info('Processed data for validation: ' . json_encode($data));
             
-            // Clean DPP and PPN values first
+            // Extract pengusaha_kena_pajak and pembeli data
+            $pengusahaData = $data['pengusaha_kena_pajak'] ?? [];
+            $pembeliData = $data['pembeli'] ?? [];
+            
+            // Handle if pengusaha/pembeli is an object instead of array
+            if (is_object($pengusahaData)) {
+                $pengusahaData = (array) $pengusahaData;
+            }
+            if (is_object($pembeliData)) {
+                $pembeliData = (array) $pembeliData;
+            }
+            
+            // Normalize names for comparison (remove extra spaces, convert to lowercase)
+            $normalizedClientName = $this->normalizeName($clientName);
+            $normalizedPembeliName = $this->normalizeName($pembeliData['nama'] ?? '');
+            
+            // Determine invoice type by comparing client name with pembeli name
+            $isFakturMasukan = false;
+            $matchScore = 0;
+            
+            if (!empty($normalizedPembeliName) && !empty($normalizedClientName)) {
+                // Calculate similarity score
+                $matchScore = $this->calculateNameSimilarity($normalizedClientName, $normalizedPembeliName);
+                
+                // If similarity is high enough (> 70%), consider it a match
+                $isFakturMasukan = $matchScore > 0.70;
+            }
+            
+            // Determine company name and NPWP based on invoice type
+            if ($isFakturMasukan) {
+                // Faktur Masukan: Client adalah pembeli, maka catat supplier (Pengusaha Kena Pajak)
+                $companyName = $this->cleanString($pengusahaData['nama'] ?? '');
+                $npwp = $this->cleanString($pengusahaData['npwp'] ?? '');
+                $invoiceType = 'Faktur Masuk';
+                
+                Log::info('Detected as Faktur Masukan', [
+                    'client_name' => $clientName,
+                    'pembeli_name' => $pembeliData['nama'] ?? '',
+                    'supplier_name' => $companyName,
+                    'match_score' => $matchScore,
+                    'match_reason' => 'Client name matches Pembeli (similarity: ' . round($matchScore * 100, 2) . '%)'
+                ]);
+            } else {
+                // Faktur Keluaran: Client adalah penjual, maka catat customer (Pembeli)
+                $companyName = $this->cleanString($pembeliData['nama'] ?? '');
+                $npwp = $this->cleanString($pembeliData['npwp'] ?? '');
+                $invoiceType = 'Faktur Keluaran';
+                
+                Log::info('Detected as Faktur Keluaran', [
+                    'client_name' => $clientName,
+                    'pembeli_name' => $pembeliData['nama'] ?? '',
+                    'customer_name' => $companyName,
+                    'match_score' => $matchScore,
+                    'match_reason' => 'Client name does not match Pembeli (similarity: ' . round($matchScore * 100, 2) . '%)'
+                ]);
+            }
+            
+            // Clean DPP and PPN values
             $dppCleaned = $this->cleanNumber($data['dpp'] ?? '0');
             $ppnCleaned = $this->cleanNumber($data['ppn'] ?? '0');
             
@@ -318,15 +369,15 @@ class InvoiceAIService
                 (float)$ppnCleaned
             );
             
-            // Validate and clean the data
+            // Build extracted data
             $extractedData = [
                 'invoice_number' => $this->cleanString($data['invoice_number'] ?? ''),
                 'invoice_date' => $this->validateDate($data['invoice_date'] ?? ''),
-                'company_name' => $this->cleanString($data['company_name'] ?? ''),
-                'npwp' => $this->cleanString($data['npwp'] ?? ''),
-                'type' => $this->validateInvoiceType($data['type'] ?? 'Faktur Keluaran'),
+                'company_name' => $companyName,
+                'npwp' => $npwp,
+                'type' => $invoiceType,
                 'dpp' => $dppCleaned,
-                'ppn_percentage' => $actualPpnPercentage, // Use calculated percentage instead of AI suggestion
+                'ppn_percentage' => $actualPpnPercentage,
                 'ppn' => $ppnCleaned
             ];
 
@@ -336,13 +387,21 @@ class InvoiceAIService
                 'ppn' => $ppnCleaned,
                 'calculated_percentage' => $actualPpnPercentage,
                 'calculation' => sprintf('%.2f%%', ((float)$ppnCleaned / (float)$dppCleaned) * 100),
-                'ai_suggested_percentage' => $data['ppn_percentage'] ?? 'not provided',
-                'invoice_number' => $extractedData['invoice_number']
+                'invoice_type' => $invoiceType,
+                'invoice_number' => $extractedData['invoice_number'],
+                'is_faktur_masukan' => $isFakturMasukan,
+                'pengusaha_kena_pajak' => $pengusahaData['nama'] ?? 'N/A',
+                'pembeli' => $pembeliData['nama'] ?? 'N/A',
+                'client_name_used' => $clientName
             ]);
 
             // Basic validation
-            if (empty($extractedData['invoice_number']) || empty($extractedData['company_name'])) {
-                throw new \Exception("Missing required fields: invoice_number ('{$extractedData['invoice_number']}') or company_name ('{$extractedData['company_name']}')");
+            if (empty($extractedData['invoice_number'])) {
+                throw new \Exception("Missing required field: invoice_number");
+            }
+            
+            if (empty($extractedData['company_name'])) {
+                throw new \Exception("Missing required field: company_name. Please check if the document contains clear supplier/customer information.");
             }
             
             // Additional validation for DPP and PPN
@@ -350,19 +409,23 @@ class InvoiceAIService
                 Log::warning('DPP or PPN is zero', [
                     'dpp' => $dppCleaned,
                     'ppn' => $ppnCleaned,
-                    'invoice_number' => $extractedData['invoice_number']
+                    'invoice_number' => $extractedData['invoice_number'],
+                    'invoice_type' => $invoiceType
                 ]);
             }
             
             // Validate that PPN calculation is reasonable (within acceptable range)
-            $calculatedPercentage = ((float)$ppnCleaned / (float)$dppCleaned) * 100;
-            if ($calculatedPercentage < 10 || $calculatedPercentage > 13) {
-                Log::warning('PPN percentage outside normal range', [
-                    'calculated_percentage' => $calculatedPercentage,
-                    'dpp' => $dppCleaned,
-                    'ppn' => $ppnCleaned,
-                    'invoice_number' => $extractedData['invoice_number']
-                ]);
+            if ($dppCleaned > 0) {
+                $calculatedPercentage = ((float)$ppnCleaned / (float)$dppCleaned) * 100;
+                if ($calculatedPercentage < 10 || $calculatedPercentage > 13) {
+                    Log::warning('PPN percentage outside normal range', [
+                        'calculated_percentage' => $calculatedPercentage,
+                        'dpp' => $dppCleaned,
+                        'ppn' => $ppnCleaned,
+                        'invoice_number' => $extractedData['invoice_number'],
+                        'invoice_type' => $invoiceType
+                    ]);
+                }
             }
 
             return $extractedData;
@@ -370,11 +433,91 @@ class InvoiceAIService
         } catch (\Exception $e) {
             Log::error('Failed to parse AI response: ' . $e->getMessage(), [
                 'response_data_type' => gettype($responseData),
-                'response_data_debug' => is_object($responseData) ? get_class($responseData) : (is_array($responseData) ? 'array[' . count($responseData) . ']' : $responseData),
+                'response_data_debug' => is_object($responseData) ? get_class($responseData) : (is_array($responseData) ? 'array[' . count($responseData) . ']' : substr((string)$responseData, 0, 200)),
+                'client_name' => $clientName,
                 'error_trace' => $e->getTraceAsString()
             ]);
             return null;
         }
+    }
+
+    /**
+     * Normalize name for comparison
+     * Remove extra spaces, convert to lowercase, remove special characters
+     * 
+     * @param string $name
+     * @return string Normalized name
+     */
+    private function normalizeName(string $name): string
+    {
+        // Convert to lowercase
+        $normalized = strtolower(trim($name));
+        
+        // Remove multiple spaces
+        $normalized = preg_replace('/\s+/', ' ', $normalized);
+        
+        // Remove common company suffixes for better matching
+        $suffixes = [' pt', ' cv', ' ud', ' fa', ' pd', ' persero', ' tbk', ','];
+        foreach ($suffixes as $suffix) {
+            $normalized = str_replace($suffix, '', $normalized);
+        }
+        
+        // Remove dots and commas
+        $normalized = str_replace(['.', ','], '', $normalized);
+        
+        return trim($normalized);
+    }
+
+    /**
+     * Calculate name similarity between two names
+     * Uses multiple algorithms for better matching
+     * 
+     * @param string $name1 First name (normalized)
+     * @param string $name2 Second name (normalized)
+     * @return float Similarity score (0-1)
+     */
+    private function calculateNameSimilarity(string $name1, string $name2): float
+    {
+        if (empty($name1) || empty($name2)) {
+            return 0;
+        }
+        
+        // Method 1: Exact substring match
+        if (strpos($name1, $name2) !== false || strpos($name2, $name1) !== false) {
+            return 1.0;
+        }
+        
+        // Method 2: Similar text (Levenshtein distance based)
+        $similarPercent = 0;
+        similar_text($name1, $name2, $similarPercent);
+        $similarity1 = $similarPercent / 100;
+        
+        // Method 3: Levenshtein distance (normalized)
+        $maxLength = max(strlen($name1), strlen($name2));
+        $levenshtein = levenshtein($name1, $name2);
+        $similarity2 = 1 - ($levenshtein / $maxLength);
+        
+        // Method 4: Word-by-word matching
+        $words1 = explode(' ', $name1);
+        $words2 = explode(' ', $name2);
+        $matchingWords = count(array_intersect($words1, $words2));
+        $totalWords = max(count($words1), count($words2));
+        $similarity3 = $totalWords > 0 ? $matchingWords / $totalWords : 0;
+        
+        // Return weighted average of all methods
+        // Give more weight to exact substring match and word matching
+        $finalSimilarity = ($similarity1 * 0.3) + ($similarity2 * 0.3) + ($similarity3 * 0.4);
+        
+        Log::debug('Name similarity calculation', [
+            'name1' => $name1,
+            'name2' => $name2,
+            'similar_text' => $similarity1,
+            'levenshtein' => $similarity2,
+            'word_match' => $similarity3,
+            'final_score' => $finalSimilarity
+        ]);
+        
+        return $finalSimilarity;
     }
     
     /**

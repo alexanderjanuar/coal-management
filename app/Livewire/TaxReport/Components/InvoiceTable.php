@@ -284,9 +284,9 @@ class InvoiceTable extends Component implements HasForms, HasTable
                                 'client_type' => $record->client_type,
                                 'has_ppn' => $record->has_ppn,
                                 'ppn_percentage' => $record->ppn_percentage ?? '11',
-                                'dpp' => number_format($record->dpp, 2, '.', ''),
-                                'dpp_nilai_lainnya' => number_format($record->dpp_nilai_lainnya ?? 0, 2, '.', ''),
-                                'ppn' => number_format($record->ppn, 2, '.', ''),
+                                'dpp' => number_format($record->dpp, 2, ',', '.'),
+                                'dpp_nilai_lainnya' => number_format($record->dpp_nilai_lainnya ?? 0, 2, ',', '.'),
+                                'ppn' => number_format($record->ppn, 2, ',', '.'),
                                 'nihil' => $record->nihil,
                                 'notes' => $record->notes,
                                 'created_by' => auth()->id(),
@@ -461,11 +461,12 @@ class InvoiceTable extends Component implements HasForms, HasTable
             $set('ai_processing_status', 'processing');
             $set('ai_output', 'Sedang memproses dokumen dengan AI...');
             
+            // Get client name
             $clientName = 'unknown-client';
             $monthName = 'unknown-month';
             
             if ($this->taxReport && $this->taxReport->client) {
-                $clientName = Str::slug($this->taxReport->client->name);
+                $clientName = $this->taxReport->client->name; // Use actual client name, not slugged
                 $monthName = FileManagementService::convertToIndonesianMonth($this->taxReport->month);
             }
             
@@ -481,11 +482,8 @@ class InvoiceTable extends Component implements HasForms, HasTable
             
             $aiService = new \App\Services\InvoiceAIService();
             
-            if (method_exists($aiService, 'processInvoiceFromPath')) {
-                $result = $aiService->processInvoiceFromPath($fullPath, $clientName, $monthName);
-            } else {
-                $result = $aiService->processInvoice($filePath, $clientName, $monthName);
-            }
+            // Pass actual client name for type detection
+            $result = $aiService->processInvoice($filePath, $clientName, $monthName);
             
             $output = $aiService->formatOutput($result);
             $set('ai_output', $output);
@@ -529,6 +527,7 @@ class InvoiceTable extends Component implements HasForms, HasTable
                 ->send();
         }
     }
+
 
     /**
      * Apply AI extracted data to form fields
