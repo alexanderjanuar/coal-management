@@ -158,6 +158,9 @@ Tab Karyawan menyediakan sistem manajemen karyawan yang komprehensif untuk klien
 
 ### Tab Functions
 
+<details>
+
+<summary>Tips for collapsed sections</summary>
 #### **Tab Identitas (Identity)**
 **Cara Menggunakan:**
 1. **Melihat Informasi Dasar**
@@ -181,6 +184,8 @@ Tab Karyawan menyediakan sistem manajemen karyawan yang komprehensif untuk klien
 - Pastikan informasi kontak selalu update untuk komunikasi yang efektif
 - Gunakan catatan di bagian afiliasi untuk informasi tambahan yang penting
 - Kontak utama sebaiknya adalah orang yang paling mudah dihubungi
+
+</details>
 
 #### **Tab Perpajakan (Taxation)**
 **Cara Menggunakan:**
