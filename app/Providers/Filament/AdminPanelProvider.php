@@ -37,7 +37,7 @@ use Kenepa\Banner\BannerPlugin;
 use Njxqlus\FilamentProgressbar\FilamentProgressbarPlugin;
 use Leandrocfe\FilamentApexCharts\FilamentApexChartsPlugin;
 use EightCedars\FilamentInactivityGuard\FilamentInactivityGuardPlugin;
-
+use Edwink\FilamentUserActivity\FilamentUserActivityPlugin;
 
 class AdminPanelProvider extends PanelProvider
 {
@@ -83,6 +83,7 @@ class AdminPanelProvider extends PanelProvider
                 SubstituteBindings::class,
                 DisableBladeIconComponents::class,
                 DispatchServingFilamentEvent::class,
+                
             ])
             ->maxContentWidth(MaxWidth::Full)
             ->databaseNotifications(
@@ -94,6 +95,7 @@ class AdminPanelProvider extends PanelProvider
             ])
             ->plugins([
                 FilamentInactivityGuardPlugin::make(),
+                FilamentUserActivityPlugin::make(),
                 \TomatoPHP\FilamentPWA\FilamentPWAPlugin::make(),
                 FilamentApexChartsPlugin::make(),
                 EasyFooterPlugin::make()

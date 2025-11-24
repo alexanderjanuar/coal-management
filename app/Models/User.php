@@ -15,11 +15,13 @@ use Filament\Panel;
 use League\CommonMark\Node\Block\Document;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Filament\Models\Contracts\HasAvatar;
+use Edwink\FilamentUserActivity\Traits\UserActivityTrait;
 
 class User extends Authenticatable implements FilamentUser, HasAvatar
 {
     use HasApiTokens, HasFactory, Notifiable, CausesActivity;
     use FilamentUserHelpers;
+    use UserActivityTrait;
     /**
      * The attributes that are mass assignable.
      *
