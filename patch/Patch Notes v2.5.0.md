@@ -21,217 +21,54 @@ Peningkatan besar pada sistem Manajemen Klien! Pembaruan ini menghadirkan antarm
 
 #### 1. **Identitas (Identity)**
 Tab Identitas menyediakan informasi lengkap tentang klien dalam satu tampilan yang mudah dibaca:
-
-**Informasi Perusahaan:**
-  - Nama legal perusahaan dan nama brand/dagang
-  - Bentuk usaha dan bidang usaha
-  - Tanggal berdiri perusahaan
-  - Tipe klien (Badan atau Pribadi)
-
-**Informasi Kontak:**
-- Email perusahaan utama
-- Telepon kantor dan mobile
-- Website perusahaan
-- Alamat lengkap dengan kota, provinsi, dan kode pos
-
-**Kontak Person:**
-- Daftar lengkap kontak person dengan jabatan
-- Informasi email dan telepon masing-masing kontak
-- Penanda kontak utama
-- Support untuk multiple kontak person
-
-**Perusahaan Terkait/Afiliasi:**
-- Daftar perusahaan afiliasi dengan hubungan yang jelas
-- Persentase kepemilikan untuk setiap afiliasi
-- NPWP perusahaan terkait
-- Fitur untuk menambah/edit informasi afiliasi
+- **Informasi Perusahaan:**
+- **Informasi Kontak:**
+- **Kontak Person:**
+- **Perusahaan Terkait/Afiliasi:**
 
 #### 2. **Perpajakan (Taxation)**
 Tab Perpajakan mengelola semua aspek perpajakan klien dengan interface yang user-friendly:
-
-**Informasi NPWP:**
-- Nomor NPWP dengan format yang mudah dibaca
-- Tanggal terdaftar NPWP
-- Kantor Pelayanan Pajak (KPP) yang menaungi
-- Status EFIN dengan indikator visual (terdaftar/belum)
-
-**Status PKP:**
-- Status Pengusaha Kena Pajak dengan indikator visual yang jelas
-- Informasi lengkap tentang kewajiban PPN
-- Badge status PKP/Non-PKP yang mudah dipahami
-
-**Account Representative:**
-- Nama dan informasi kontak AR
-- Nomor telepon AR yang dapat diklik langsung
-- Email AR dengan link mailto
-- Kantor KPP tempat AR bertugas
+- **Informasi NPWP**
+- **Status PKP**
+- **Account Representative**
 
 #### 3. **Projek (Projects)**
 Tab Projek menyediakan sistem manajemen proyek yang terintegrasi untuk melacak semua layanan yang diberikan kepada klien:
-
-**Dashboard Statistik:**
-- Total proyek dengan breakdown status
-- Monitor proyek yang sedang berjalan (in progress)
-- Tracking proyek selesai vs ongoing
-- Indikator proyek urgent yang memerlukan perhatian khusus
-
-**Manajemen Proyek:**
-- Informasi lengkap proyek (nama, deskripsi)
-- Tipe proyek (Single, Monthly, Yearly)
-- Priority flag untuk proyek urgent
-- Deadline tracking dengan visual indicators
-- Status tracking dengan color-coded badges
-
-**Deadline Monitoring:**
-- Visual countdown untuk setiap deadline
-- Color coding: merah (terlambat), kuning (≤7 hari), abu-abu (normal)
-- Animated pulse untuk proyek yang sedang aktif
-- Warning indicators untuk proyek yang mendekati atau melewati deadline
-
-**Status Management:**
-- Draft, Analysis, In Progress, Review, Completed
-- Special status untuk "Completed (Not Paid Yet)"
-- Visual pulse animation untuk proyek aktif
-- Direct navigation ke detail proyek dengan click
-
-**PIC Assignment:**
-- Display Person in Charge untuk setiap proyek
-- Visual badge dengan icon user
-- Tracking accountability per proyek
+- **Dashboard Statistik**
+- **Manajemen Proyek**
+- **Deadline Monitoring**
+- **Status Management**
+- **PIC Assignment**
 
 #### 4. **Dokumen (Documents)**
 Tab Dokumen menyediakan sistem manajemen dokumen yang komprehensif dengan dua kategori utama:
-
-**Dokumen Legal Wajib:**
-- Checklist dokumen sesuai SOP berdasarkan tipe klien (Badan/Pribadi)
-- Progress bar completion dengan animasi shimmer
-- Status tracking untuk setiap dokumen (uploaded/pending)
-- Informasi nomor dokumen dan tanggal kadaluarsa
-- Tracking siapa yang upload dan kapan
-- Preview dokumen (gambar, PDF) langsung dalam modal
-- Download dan re-upload functionality
-
-**Dokumen Tambahan:**
-- Upload dokumen pendukung di luar SOP standar
-- Kategorisasi dokumen dengan nomor dan tanggal expired
-- Manajemen file dengan preview dan download
-- History upload dengan timestamp
-
-**Fitur Lengkap:**
-- Kelengkapan dokumen dalam persentase dengan visual yang menarik
-- Stats mini untuk dokumen valid dan expired
-- Modal upload dengan form lengkap (nomor dokumen, kategori, tanggal expired)
-- Preview modal yang mendukung berbagai format file
-- Konfirmasi hapus untuk keamanan data
+- **Dokumen Legal Wajib**
+- **Dokumen Tambahan**
 
 #### 5. **Komunikasi (Communications)**
 Tab Komunikasi berfungsi sebagai hub dokumentasi lengkap untuk semua interaksi klien:
-
-**Timeline Komunikasi:**
-- Tampilan timeline interaktif dengan visual yang menarik
-- Support untuk berbagai jenis komunikasi (meeting, email, telepon, video call)
-- Rich text description dengan formatting
-- File attachment management
-- Quick actions (edit/delete) yang muncul saat hover
-
-**Dashboard Statistik:**
-- Cards statistik untuk total komunikasi per jenis
-- Counter visual dengan ikon yang sesuai
-- Breakdown komunikasi berdasarkan tipe (meeting, email, telepon)
-
-**Detail Komunikasi:**
-- Modal detail lengkap dengan informasi waktu dan tempat
-- Manajemen attachment dengan preview dan download
-- Tracking user yang membuat record
-- Catatan tambahan untuk context yang lebih lengkap
-
-**Fitur Interaktif:**
-- Create/edit modal dengan form yang comprehensive
-- Responsive design dengan hover effects
-- Timeline visual dengan garis penghubung antar entry
-- Search dan filtering capabilities
+- **Timeline Komunikasi**
+- **Detail Komunikasi**
+- **Fitur Interaktif**
 
 #### 6. **Kontrak (Contracts)**
-Contract management system:
-- Service agreement tracking
-- Contract renewal alerts
-- Terms and conditions management
-- Document attachment support
+- Contract management system
 
 #### 7. **Compliance**
 Tab Compliance menyediakan dashboard monitoring kewajiban pajak dan deadline pelaporan yang komprehensif:
-
-**Dashboard Kewajiban Pajak:**
-- Overview total kewajiban pajak klien
-- Tracking status completion (Selesai vs Pending)
-- Priority flagging untuk kewajiban prioritas tinggi
-- Visual indicators untuk deadline monitoring
-
-**Deadline Management:**
-- Real-time countdown untuk setiap kewajiban
-- Color-coded deadline alerts:
-  - Merah + pulse animation: Terlambat (overdue)
-  - Orange + pulse: Hari ini!
-  - Kuning: ≤7 hari tersisa (urgent)
-  - Abu-abu: >7 hari (normal)
-- Visual warning dengan animated ping untuk deadline terlewat
-
-**Jenis Kewajiban:**
-- PPN (Pajak Pertambahan Nilai) tracking
-- PPh 21 (Pajak Penghasilan) monitoring
-- Automated periode tracking (bulanan/tahunan)
-- Icon-based visual identification
-
-**Priority System:**
-- Tinggi: Peredaran Bruto ≥ Rp 10 Miliar
-- Sedang: Peredaran Bruto ≥ Rp 1 Miliar  
-- Rendah: Peredaran Bruto < Rp 1 Miliar
-- Tooltips informatif untuk setiap level prioritas
-- Color-coded badges dengan ring indicators
-
-**Status Tracking:**
-- Selesai: Laporan telah disampaikan ke DJP
-- Pending: Menunggu pelaporan dengan pulse indicator
-- Tooltips dengan informasi detail status
-- Visual feedback dengan hover effects
-
-**Fitur Interaktif:**
-- Direct link ke tax reports untuk action cepat
-- Empty state informatif untuk first-time setup
-- Responsive table dengan hover states
-- Smart prioritization berdasarkan deadline dan nilai
+- **Dashboard Kewajiban Pajak**
+- **Deadline Management**
+- **Jenis Kewajiban**
+- **Priority System**
 
 #### 8. **Karyawan (Employees)**
 Tab Karyawan menyediakan sistem manajemen karyawan yang komprehensif untuk klien korporat dengan integrasi perhitungan PPh 21:
-
-**Dashboard Statistik:**
-- Cards statistik interaktif menampilkan total karyawan
-- Monitoring karyawan aktif vs tidak aktif
-- Breakdown berdasarkan tipe (Karyawan Tetap vs Harian)
-- Visual indicators dengan icon dan warna yang intuitif
-
-**Manajemen Data Karyawan:**
-- Informasi lengkap karyawan (nama, NPWP, jabatan)
-- Tipe karyawan dengan badge visual (Tetap/Harian)
-- Data gaji untuk kalkulasi PPh 21
-- Status aktivitas karyawan dengan indikator warna
-
-**Status PTKP (Penghasilan Tidak Kena Pajak):**
-- Tracking status pernikahan (TK/K)
-- Jumlah tanggungan (0-3)
-- Visual badge dengan tooltip informasi
-- Otomatis kalkulasi berdasarkan status
-
-**Fitur Lengkap:**
-- Modal create/edit dengan form validation
-- Avatar generator untuk setiap karyawan
-- Quick actions dengan hover effects
-- Delete confirmation dengan warning
-- Responsive table dengan hover states
-- Empty state yang informatif untuk first-time users
+- **Dashboard Statistik**
+- **Manajemen Data Karyawan**
+- **Status PTKP (Penghasilan Tidak Kena Pajak)**
 
 #### 9. **Tim (Team)**
-Internal team management:
+- Internal team management
 - Assigned team members
 - Role assignments
 - Specializations tracking
@@ -242,32 +79,61 @@ Internal team management:
 ## 📸 Screenshots
 
 ### Identitas Tab
-![Identitas Tab](Screenshot\Patchv2.5.0\IdentitasTab.png)
-![Identitas Tab](Screenshot\Patchv2.5.0\IdentitasTabDark.png)
+<table>
+  <tr>
+    <td><img src="https://raw.githubusercontent.com/alexanderjanuar/coal-management/main/patch/Screenshot/Patchv2.5.0/ComplienceTab.png" alt="Identitas Tab Light"></td>
+    <td><img src="https://raw.githubusercontent.com/alexanderjanuar/coal-management/main/patch/Screenshot/Patchv2.5.0/ComplienceTabDark.png" alt="Identitas Tab Dark"></td>
+  </tr>
+</table>
 
 ### Perpajakan Tab
-![Perpajakan Tab](Screenshot\Patchv2.5.0\PerpajakanTab.png)
-![Perpajakan Tab](Screenshot\Patchv2.5.0\PerpajakanTabDark.png)
+<table>
+  <tr>
+    <td><img src="https://raw.githubusercontent.com/alexanderjanuar/coal-management/main/patch/Screenshot/Patchv2.5.0/PerpajakanTab.png" alt="Perpajakan Tab Light"></td>
+    <td><img src="https://raw.githubusercontent.com/alexanderjanuar/coal-management/main/patch/Screenshot/Patchv2.5.0/PerpajakanTabDark.png" alt="Perpajakan Tab Dark"></td>
+  </tr>
+</table>
 
 ### Dokumen Tab
-![Perpajakan Tab](Screenshot\Patchv2.5.0\DokumenTab.png)
-![Perpajakan Tab](Screenshot\Patchv2.5.0\DokumenTab2.png)
+<table>
+  <tr>
+    <td><img src="https://raw.githubusercontent.com/alexanderjanuar/coal-management/main/patch/Screenshot/Patchv2.5.0/DokumenTab.png" alt="Dokumen Tab 1"></td>
+    <td><img src="https://raw.githubusercontent.com/alexanderjanuar/coal-management/main/patch/Screenshot/Patchv2.5.0/DokumenTab2.png" alt="Dokumen Tab 2"></td>
+  </tr>
+</table>
 
 ### Komunikasi Tab
-![Komunikasi Tab](Screenshot\Patchv2.5.0\KomunikasiTab.png)
-![Komunikasi Tab](Screenshot\Patchv2.5.0\KomunikasiTabDark.png)
+<table>
+  <tr>
+    <td><img src="https://raw.githubusercontent.com/alexanderjanuar/coal-management/main/patch/Screenshot/Patchv2.5.0/KomunikasiTab.png" alt="Komunikasi Tab Light"></td>
+    <td><img src="https://raw.githubusercontent.com/alexanderjanuar/coal-management/main/patch/Screenshot/Patchv2.5.0/KomunikasiTabDark.png" alt="Komunikasi Tab Dark"></td>
+  </tr>
+</table>
 
 ### Karyawan Tab
-![Karyawan Tab](Screenshot\Patchv2.5.0\KaryawanTab.png)
-![Karyawan Tab](Screenshot\Patchv2.5.0\KaryawanTabDark.png)
+<table>
+  <tr>
+    <td><img src="https://raw.githubusercontent.com/alexanderjanuar/coal-management/main/patch/Screenshot/Patchv2.5.0/KaryawanTab.png" alt="Karyawan Tab Light"></td>
+    <td><img src="https://raw.githubusercontent.com/alexanderjanuar/coal-management/main/patch/Screenshot/Patchv2.5.0/KaryawanTabDark.png" alt="Karyawan Tab Dark"></td>
+  </tr>
+</table>
 
-### Complience Tab
-![Complience Tab](Screenshot\Patchv2.5.0\ComplienceTab.png)
-![Complience Tab](Screenshot\Patchv2.5.0\ComplienceTabDark.png)
+### Compliance Tab
+<table>
+  <tr>
+    <td><img src="https://raw.githubusercontent.com/alexanderjanuar/coal-management/main/patch/Screenshot/Patchv2.5.0/ComplienceTab.png" alt="Compliance Tab Light"></td>
+    <td><img src="https://raw.githubusercontent.com/alexanderjanuar/coal-management/main/patch/Screenshot/Patchv2.5.0/ComplienceTabDark.png" alt="Compliance Tab Dark"></td>
+  </tr>
+</table>
 
 ### Project Tab
-![Project Tab](Screenshot\Patchv2.5.0\ProjectTab.png)
-![Project Tab](Screenshot\Patchv2.5.0\ProjectTabDark.png)
+<table>
+  <tr>
+    <td><img src="https://raw.githubusercontent.com/alexanderjanuar/coal-management/main/patch/Screenshot/Patchv2.5.0/ProjectTab.png" alt="Project Tab Light"></td>
+    <td><img src="https://raw.githubusercontent.com/alexanderjanuar/coal-management/main/patch/Screenshot/Patchv2.5.0/ProjectTabDark.png" alt="Project Tab Dark"></td>
+  </tr>
+</table>
+
 ---
 
 ## 🚀 Getting Started
@@ -292,7 +158,10 @@ Internal team management:
 
 ### Tab Functions
 
-#### **Tab Identitas (Identity)**
+<details>
+
+<summary>Tab Identitas (Identity)</summary>
+
 **Cara Menggunakan:**
 1. **Melihat Informasi Dasar**
    - Informasi perusahaan ditampilkan dalam kotak terpisah untuk kemudahan membaca
@@ -315,8 +184,11 @@ Internal team management:
 - Pastikan informasi kontak selalu update untuk komunikasi yang efektif
 - Gunakan catatan di bagian afiliasi untuk informasi tambahan yang penting
 - Kontak utama sebaiknya adalah orang yang paling mudah dihubungi
+</details>
 
-#### **Tab Perpajakan (Taxation)**
+<details>
+<summary>Tab Perpajakan (Taxation)</summary>
+
 **Cara Menggunakan:**
 1. **Memantau Status NPWP**
    - NPWP ditampilkan dalam format yang mudah dibaca (XX.XXX.XXX.X-XXX.XXX)
@@ -366,8 +238,11 @@ Internal team management:
 - Selalu isi nomor dokumen dan tanggal expired untuk tracking yang optimal
 - Gunakan preview sebelum download untuk memastikan dokumen yang benar
 - Monitor tanggal expired secara berkala (ditampilkan dengan warna merah jika expired)
+</details>
 
-#### **Tab Komunikasi (Communications)**
+<details>
+<summary>Tab Komunikasi (Communications)</summary>
+    
 **Cara Menggunakan:**
 1. **Melihat Timeline Komunikasi**
    - Timeline menampilkan semua komunikasi dalam urutan kronologis terbaru
@@ -397,8 +272,11 @@ Internal team management:
 - Gunakan attachment untuk menyimpan dokumen penting terkait komunikasi
 - Manfaatkan rich text editor untuk deskripsi yang detail dan terformat
 - Review timeline secara berkala untuk memantau frekuensi komunikasi klien
+</details>
 
-#### **Tab Karyawan (Employees)**
+<details>
+<summary>Tab Karyawan (Employees)</summary>
+    
 **Cara Menggunakan:**
 1. **Melihat Dashboard Statistik**
    - Cards di atas tabel menampilkan ringkasan data karyawan
@@ -435,8 +313,11 @@ Internal team management:
 - Gunakan tipe "Karyawan Tetap" untuk pegawai permanen dengan gaji bulanan
 - Gunakan tipe "Harian" untuk pekerja lepas atau kontrak
 - Data gaji bersifat opsional namun penting untuk kalkulasi pajak
+</details>
 
-#### **Tab Projek (Projects)**
+<details>
+<summary>Tab Projek (Projects)</summary>
+
 **Cara Menggunakan:**
 1. **Melihat Overview Proyek**
    - Dashboard cards menampilkan statistik real-time
@@ -463,8 +344,11 @@ Internal team management:
 - Monitor proyek "Completed (Not Paid Yet)" untuk follow up pembayaran
 - Review proyek dengan status "In Progress" secara berkala
 - Gunakan PIC assignment untuk koordinasi tim yang efektif
+</details>
 
-#### **Tab Compliance**
+<details>
+<summary>Tab Compliance</summary>
+    
 **Cara Menggunakan:**
 1. **Monitoring Kewajiban Pajak**
    - Dashboard menampilkan total kewajiban dengan breakdown status
@@ -530,13 +414,16 @@ Internal team management:
 - Gunakan tipe "Karyawan Tetap" untuk pegawai permanen dengan gaji bulanan
 - Gunakan tipe "Harian" untuk pekerja lepas atau kontrak
 - Data gaji bersifat opsional namun penting untuk kalkulasi pajak
+</details>
 
-#### **Tab Tim (Team)**
+<details>
+<summary>Tab Tim</summary>
 Internal team assignments:
 - Assigned team members
 - Role and responsibility tracking
 - Specialization management
 - Workload distribution
+</details>
 
 ---
 ## 🐛 Known Issues
