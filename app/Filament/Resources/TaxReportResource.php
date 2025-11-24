@@ -121,7 +121,7 @@ class TaxReportResource extends Resource
                     ->with([
                         'client:id,name',
                         'createdBy:id,name',
-                        'taxCalculationSummaries:id,tax_report_id,tax_type,report_status,reported_at,status_final,saldo_final',
+                        'taxCalculationSummaries:id,tax_report_id,tax_type,report_status,reported_at,status_final,saldo_final,bayar_status,bayar_at,bukti_bayar',
                     ])
                     ->withSum('invoices', 'ppn')
                     ->withSum([
@@ -491,6 +491,100 @@ class TaxReportResource extends Resource
                     Tables\Actions\EditAction::make()
                         ->icon('heroicon-o-pencil')
                         ->color('info'),
+
+                    Tables\Actions\Action::make('update_bayar_status')
+                        ->label('Update Status Bayar')
+                        ->icon('heroicon-o-banknotes')
+                        ->color('success')
+                        ->form([
+                            Select::make('tax_type')
+                                ->label('Jenis Pajak')
+                                ->options([
+                                    'ppn' => 'PPN',
+                                    'pph' => 'PPh',
+                                    'bupot' => 'PPh Unifikasi',
+                                ])
+                                ->required()
+                                ->native(false)
+                                ->reactive()
+                                ->afterStateUpdated(function (Set $set, Get $get, $state, TaxReport $record) {
+                                    // Load current bayar_status when tax_type changes
+                                    $summary = $record->taxCalculationSummaries->firstWhere('tax_type', $state);
+                                    if ($summary) {
+                                        $set('bayar_status', $summary->bayar_status);
+                                        $set('bayar_at', $summary->bayar_at);
+                                        $set('bukti_bayar', $summary->bukti_bayar);
+                                    }
+                                }),
+                            
+                            Select::make('bayar_status')
+                                ->label('Status Pembayaran')
+                                ->options([
+                                    'Belum Bayar' => 'Belum Bayar',
+                                    'Sudah Bayar' => 'Sudah Bayar',
+                                ])
+                                ->required()
+                                ->native(false)
+                                ->reactive()
+                                ->visible(fn(Get $get): bool => filled($get('tax_type'))),
+                            
+                            Forms\Components\DatePicker::make('bayar_at')
+                                ->label('Tanggal Pembayaran')
+                                ->visible(fn(Get $get): bool => $get('bayar_status') === 'Sudah Bayar')
+                                ->required(fn(Get $get): bool => $get('bayar_status') === 'Sudah Bayar')
+                                ->default(now()),
+                            
+                            Forms\Components\TextInput::make('bukti_bayar')
+                                ->label('Nomor NTPN / Bukti Bayar')
+                                ->visible(fn(Get $get): bool => $get('bayar_status') === 'Sudah Bayar')
+                                ->maxLength(100)
+                                ->placeholder('Masukkan nomor NTPN atau keterangan bukti bayar'),
+                        ])
+                        ->fillForm(function (TaxReport $record): array {
+                            // Default to PPN
+                            $ppnSummary = $record->taxCalculationSummaries->firstWhere('tax_type', 'ppn');
+                            return [
+                                'tax_type' => 'ppn',
+                                'bayar_status' => $ppnSummary?->bayar_status ?? 'Belum Bayar',
+                                'bayar_at' => $ppnSummary?->bayar_at,
+                                'bukti_bayar' => $ppnSummary?->bukti_bayar,
+                            ];
+                        })
+                        ->action(function (TaxReport $record, array $data): void {
+                            $taxType = $data['tax_type'];
+                            $summary = $record->taxCalculationSummaries()->firstOrCreate(
+                                ['tax_type' => $taxType],
+                                [
+                                    'pajak_masuk' => 0,
+                                    'pajak_keluar' => 0,
+                                    'selisih' => 0,
+                                    'status' => 'Nihil',
+                                    'saldo_final' => 0,
+                                    'status_final' => 'Nihil',
+                                    'report_status' => 'Belum Lapor',
+                                ]
+                            );
+
+                            $summary->update([
+                                'bayar_status' => $data['bayar_status'],
+                                'bayar_at' => $data['bayar_status'] === 'Sudah Bayar' ? $data['bayar_at'] : null,
+                                'bukti_bayar' => $data['bayar_status'] === 'Sudah Bayar' ? $data['bukti_bayar'] : null,
+                            ]);
+
+                            $taxTypeLabel = match($taxType) {
+                                'ppn' => 'PPN',
+                                'pph' => 'PPh',
+                                'bupot' => 'PPh Unifikasi'
+                            };
+
+                            Notification::make()
+                                ->title('Status Pembayaran Berhasil Diupdate')
+                                ->body("Status pembayaran {$taxTypeLabel} diubah menjadi: {$data['bayar_status']}")
+                                ->success()
+                                ->send();
+                        })
+                        ->modalHeading('Update Status Pembayaran')
+                        ->modalWidth('md'),
 
                     Tables\Actions\Action::make('update_ppn_status')
                         ->label('Update Status PPN')

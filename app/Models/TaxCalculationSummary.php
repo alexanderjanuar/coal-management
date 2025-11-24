@@ -25,6 +25,9 @@ class TaxCalculationSummary extends Model
         'notes',
         'calculated_at',
         'calculated_by',
+        'bayar_status',
+        'bayar_at',
+        'bukti_bayar',
     ];
 
     protected $casts = [
@@ -36,6 +39,7 @@ class TaxCalculationSummary extends Model
         'kompensasi_terpakai' => 'decimal:2',
         'saldo_final' => 'decimal:2',
         'calculated_at' => 'datetime',
+        'bayar_at' => 'date',
     ];
 
     /**
@@ -79,6 +83,16 @@ class TaxCalculationSummary extends Model
         return $query->where('status_final', 'Kurang Bayar');
     }
 
+    public function scopeSudahBayar(Builder $query): Builder
+    {
+        return $query->where('bayar_status', 'Sudah Bayar');
+    }
+
+    public function scopeBelumBayar(Builder $query): Builder
+    {
+        return $query->where('bayar_status', 'Belum Bayar');
+    }
+
     /**
      * Accessors
      */
@@ -99,6 +113,24 @@ class TaxCalculationSummary extends Model
             'Kurang Bayar' => 'warning',
             'Nihil' => 'gray',
             default => 'gray'
+        };
+    }
+
+    public function getBayarStatusBadgeColorAttribute(): string
+    {
+        return match($this->bayar_status) {
+            'Sudah Bayar' => 'success',
+            'Belum Bayar' => 'danger',
+            default => 'gray'
+        };
+    }
+
+    public function getBayarStatusLabelAttribute(): string
+    {
+        return match($this->bayar_status) {
+            'Sudah Bayar' => 'Sudah Dibayar',
+            'Belum Bayar' => 'Belum Dibayar',
+            default => 'Tidak Diketahui'
         };
     }
 
@@ -223,6 +255,46 @@ class TaxCalculationSummary extends Model
     }
 
     /**
+     * Check if tax has been paid
+     */
+    public function isSudahBayar(): bool
+    {
+        return $this->bayar_status === 'Sudah Bayar';
+    }
+
+    /**
+     * Check if tax is unpaid
+     */
+    public function isBelumBayar(): bool
+    {
+        return $this->bayar_status === 'Belum Bayar';
+    }
+
+    /**
+     * Mark tax as paid
+     */
+    public function markAsPaid(?string $buktiBayar = null, ?\Carbon\Carbon $bayarAt = null): bool
+    {
+        return $this->update([
+            'bayar_status' => 'Sudah Bayar',
+            'bayar_at' => $bayarAt ?? now(),
+            'bukti_bayar' => $buktiBayar,
+        ]);
+    }
+
+    /**
+     * Mark tax as unpaid
+     */
+    public function markAsUnpaid(): bool
+    {
+        return $this->update([
+            'bayar_status' => 'Belum Bayar',
+            'bayar_at' => null,
+            'bukti_bayar' => null,
+        ]);
+    }
+
+    /**
      * Recalculate summary
      */
     public function recalculate(): self
@@ -328,6 +400,7 @@ class TaxCalculationSummary extends Model
             'kompensasi_terpakai' => $kompensasiTerpakai,
             'saldo_final' => $saldoFinal,
             'status_final' => $statusFinal,
+            'bayar_status' => $this->bayar_status ?? 'Belum Bayar', // Keep existing status or default to Belum Bayar
         ];
     }
 
@@ -366,6 +439,7 @@ class TaxCalculationSummary extends Model
             'kompensasi_terpakai' => $kompensasiTerpakai,
             'saldo_final' => $saldoFinal,
             'status_final' => $statusFinal,
+            'bayar_status' => $this->bayar_status ?? 'Belum Bayar',
         ];
     }
 
@@ -404,6 +478,7 @@ class TaxCalculationSummary extends Model
             'kompensasi_terpakai' => $kompensasiTerpakai,
             'saldo_final' => $saldoFinal,
             'status_final' => $statusFinal,
+            'bayar_status' => $this->bayar_status ?? 'Belum Bayar',
         ];
     }
 

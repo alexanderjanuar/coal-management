@@ -24,6 +24,12 @@ class Index extends Page
 
     protected static string $view = 'filament.pages.client-communication.index';
 
+    public static function shouldRegisterNavigation(): bool
+    {
+        return auth()->user()->hasRole(['super-admin']);
+    }
+
+
     // Filters
     public $search = '';
     public $filterClient = '';

@@ -28,6 +28,15 @@
 
             $paymentStatus = $ppnSummary?->status_final ?? 'N/A';
 
+            // Payment status variables
+            $ppnBayarStatus = $ppnSummary?->bayar_status ?? 'Belum Bayar';
+            $pphBayarStatus = $pphSummary?->bayar_status ?? 'Belum Bayar';
+            $bupotBayarStatus = $bupotSummary?->bayar_status ?? 'Belum Bayar';
+
+            $allPaid = ($ppnBayarStatus === 'Sudah Bayar') &&
+            ($pphBayarStatus === 'Sudah Bayar') &&
+            ($bupotBayarStatus === 'Sudah Bayar');
+
             $statusConfig = match($paymentStatus) {
             'Lebih Bayar' => [
             'gradient' => 'from-emerald-500/90 to-emerald-600/90',
@@ -59,9 +68,20 @@
             <div wire:key="tax-report-{{ $record->id }}"
                 class="group relative flex flex-col overflow-hidden rounded-xl bg-white shadow-sm ring-1 ring-gray-200/60 transition-all duration-300 hover:shadow-md hover:ring-gray-300/60 dark:bg-gray-900 dark:ring-white/5 dark:hover:ring-white/10">
 
-                <!-- Header - Muted Colors -->
+                <!-- Header -->
                 <div class="relative bg-gradient-to-br {{ $statusConfig['gradient'] }} p-5 text-white">
-                    <!-- Completion Badge -->
+                    <!-- Payment Status Badge (Top Left) -->
+                    @if($allPaid)
+                    <div class="absolute left-4 top-4">
+                        <div
+                            class="flex items-center gap-1.5 rounded-full bg-emerald-500/90 px-2.5 py-1 backdrop-blur-sm">
+                            <x-heroicon-s-banknotes class="h-3.5 w-3.5" />
+                            <span class="text-xs font-semibold">Sudah Bayar</span>
+                        </div>
+                    </div>
+                    @endif
+
+                    <!-- Completion Badge (Top Right) -->
                     @if($allReported)
                     <div class="absolute right-4 top-4">
                         <div class="flex items-center gap-1.5 rounded-full bg-white/20 px-2.5 py-1 backdrop-blur-sm">
@@ -89,17 +109,36 @@
                                 <x-heroicon-m-calendar-days class="h-4 w-4" />
                                 <span class="text-sm font-medium">{{ $record->month }}</span>
                             </div>
-                            <!-- Mini Indicators -->
+                            <!-- Mini Indicators with Payment Status -->
                             <div class="flex items-center gap-1">
                                 <!-- PPN Indicator -->
-                                <div class="h-1.5 w-1.5 rounded-full {{ $ppnReported ? 'bg-emerald-300' : 'bg-white/30' }}"
-                                    title="PPN {{ $ppnReported ? 'Sudah Lapor' : 'Belum Lapor' }}"></div>
+                                <div class="relative group/indicator">
+                                    <div class="h-1.5 w-1.5 rounded-full {{ $ppnReported ? 'bg-emerald-300' : 'bg-white/30' }}"
+                                        title="PPN {{ $ppnReported ? 'Sudah Lapor' : 'Belum Lapor' }}"></div>
+                                    @if($ppnReported && $ppnBayarStatus === 'Sudah Bayar')
+                                    <div class="absolute -top-0.5 -right-0.5 h-1 w-1 rounded-full bg-amber-300 ring-1 ring-white/20"
+                                        title="Sudah Bayar"></div>
+                                    @endif
+                                </div>
                                 <!-- PPh Indicator -->
-                                <div class="h-1.5 w-1.5 rounded-full {{ $pphReported ? 'bg-emerald-300' : 'bg-white/30' }}"
-                                    title="PPh {{ $pphReported ? 'Sudah Lapor' : 'Belum Lapor' }}"></div>
+                                <div class="relative group/indicator">
+                                    <div class="h-1.5 w-1.5 rounded-full {{ $pphReported ? 'bg-emerald-300' : 'bg-white/30' }}"
+                                        title="PPh {{ $pphReported ? 'Sudah Lapor' : 'Belum Lapor' }}"></div>
+                                    @if($pphReported && $pphBayarStatus === 'Sudah Bayar')
+                                    <div class="absolute -top-0.5 -right-0.5 h-1 w-1 rounded-full bg-amber-300 ring-1 ring-white/20"
+                                        title="Sudah Bayar"></div>
+                                    @endif
+                                </div>
                                 <!-- Bupot Indicator -->
-                                <div class="h-1.5 w-1.5 rounded-full {{ $bupotReported ? 'bg-emerald-300' : 'bg-white/30' }}"
-                                    title="PPh Unifikasi {{ $bupotReported ? 'Sudah Lapor' : 'Belum Lapor' }}"></div>
+                                <div class="relative group/indicator">
+                                    <div class="h-1.5 w-1.5 rounded-full {{ $bupotReported ? 'bg-emerald-300' : 'bg-white/30' }}"
+                                        title="PPh Unifikasi {{ $bupotReported ? 'Sudah Lapor' : 'Belum Lapor' }}">
+                                    </div>
+                                    @if($bupotReported && $bupotBayarStatus === 'Sudah Bayar')
+                                    <div class="absolute -top-0.5 -right-0.5 h-1 w-1 rounded-full bg-amber-300 ring-1 ring-white/20"
+                                        title="Sudah Bayar"></div>
+                                    @endif
+                                </div>
                             </div>
                         </div>
                         <div class="rounded-lg px-2.5 py-1 text-xs font-semibold {{ $statusConfig['badge'] }}">
@@ -108,19 +147,29 @@
                     </div>
                 </div>
 
-                <!-- Report Status Grid -->
+                <!-- Report Status Grid with Payment Status -->
                 <div
                     class="grid grid-cols-3 divide-x divide-gray-100 border-b border-gray-100 dark:divide-white/5 dark:border-white/5">
-                    <!-- PPN -->
+                    <!-- PPN with Payment Status -->
                     <div
                         class="group/status flex flex-col items-center gap-2 py-3.5 transition-colors hover:bg-gray-50/50 dark:hover:bg-gray-800/30">
-                        @if($ppnReported)
-                        <x-heroicon-s-check-circle class="h-5 w-5 text-emerald-500/80" />
-                        @else
-                        <x-heroicon-o-clock
-                            class="h-5 w-5 text-gray-400 transition-transform group-hover/status:scale-110" />
-                        @endif
+                        <div class="relative">
+                            @if($ppnReported)
+                            <x-heroicon-s-check-circle class="h-5 w-5 text-emerald-500/80" />
+                            @else
+                            <x-heroicon-o-clock
+                                class="h-5 w-5 text-gray-400 transition-transform group-hover/status:scale-110" />
+                            @endif
+
+                            @if($ppnReported && $ppnBayarStatus === 'Sudah Bayar')
+                            <div class="absolute -bottom-0.5 -right-0.5">
+                                <x-heroicon-s-banknotes class="h-3 w-3 text-amber-500" />
+                            </div>
+                            @endif
+                        </div>
+
                         <span class="text-xs font-semibold text-gray-700 dark:text-gray-300">PPN</span>
+
                         @if($ppnSummary?->reported_at)
                         <span class="text-[10px] text-gray-500 dark:text-gray-400">
                             {{ \Carbon\Carbon::parse($ppnSummary->reported_at)->format('d M') }}
@@ -130,18 +179,40 @@
                             Belum Lapor
                         </span>
                         @endif
+
+                        @if($ppnReported)
+                        <div class="flex items-center gap-1">
+                            <div
+                                class="h-1 w-1 rounded-full {{ $ppnBayarStatus === 'Sudah Bayar' ? 'bg-emerald-500' : 'bg-amber-500' }}">
+                            </div>
+                            <span
+                                class="text-[9px] {{ $ppnBayarStatus === 'Sudah Bayar' ? 'text-emerald-600 dark:text-emerald-400' : 'text-amber-600 dark:text-amber-400' }}">
+                                {{ $ppnBayarStatus === 'Sudah Bayar' ? 'Paid' : 'Unpaid' }}
+                            </span>
+                        </div>
+                        @endif
                     </div>
 
-                    <!-- PPh -->
+                    <!-- PPh with Payment Status -->
                     <div
                         class="group/status flex flex-col items-center gap-2 py-3.5 transition-colors hover:bg-gray-50/50 dark:hover:bg-gray-800/30">
-                        @if($pphReported)
-                        <x-heroicon-s-check-circle class="h-5 w-5 text-emerald-500/80" />
-                        @else
-                        <x-heroicon-o-clock
-                            class="h-5 w-5 text-gray-400 transition-transform group-hover/status:scale-110" />
-                        @endif
+                        <div class="relative">
+                            @if($pphReported)
+                            <x-heroicon-s-check-circle class="h-5 w-5 text-emerald-500/80" />
+                            @else
+                            <x-heroicon-o-clock
+                                class="h-5 w-5 text-gray-400 transition-transform group-hover/status:scale-110" />
+                            @endif
+
+                            @if($pphReported && $pphBayarStatus === 'Sudah Bayar')
+                            <div class="absolute -bottom-0.5 -right-0.5">
+                                <x-heroicon-s-banknotes class="h-3 w-3 text-amber-500" />
+                            </div>
+                            @endif
+                        </div>
+
                         <span class="text-xs font-semibold text-gray-700 dark:text-gray-300">PPh</span>
+
                         @if($pphSummary?->reported_at)
                         <span class="text-[10px] text-gray-500 dark:text-gray-400">
                             {{ \Carbon\Carbon::parse($pphSummary->reported_at)->format('d M') }}
@@ -151,19 +222,41 @@
                             Belum Lapor
                         </span>
                         @endif
+
+                        @if($pphReported)
+                        <div class="flex items-center gap-1">
+                            <div
+                                class="h-1 w-1 rounded-full {{ $pphBayarStatus === 'Sudah Bayar' ? 'bg-emerald-500' : 'bg-amber-500' }}">
+                            </div>
+                            <span
+                                class="text-[9px] {{ $pphBayarStatus === 'Sudah Bayar' ? 'text-emerald-600 dark:text-emerald-400' : 'text-amber-600 dark:text-amber-400' }}">
+                                {{ $pphBayarStatus === 'Sudah Bayar' ? 'Paid' : 'Unpaid' }}
+                            </span>
+                        </div>
+                        @endif
                     </div>
 
-                    <!-- PPh Unifikasi (Bupot) -->
+                    <!-- PPh Unifikasi (Bupot) with Payment Status -->
                     <div
                         class="group/status flex flex-col items-center gap-2 py-3.5 transition-colors hover:bg-gray-50/50 dark:hover:bg-gray-800/30">
-                        @if($bupotReported)
-                        <x-heroicon-s-check-circle class="h-5 w-5 text-emerald-500/80" />
-                        @else
-                        <x-heroicon-o-clock
-                            class="h-5 w-5 text-gray-400 transition-transform group-hover/status:scale-110" />
-                        @endif
+                        <div class="relative">
+                            @if($bupotReported)
+                            <x-heroicon-s-check-circle class="h-5 w-5 text-emerald-500/80" />
+                            @else
+                            <x-heroicon-o-clock
+                                class="h-5 w-5 text-gray-400 transition-transform group-hover/status:scale-110" />
+                            @endif
+
+                            @if($bupotReported && $bupotBayarStatus === 'Sudah Bayar')
+                            <div class="absolute -bottom-0.5 -right-0.5">
+                                <x-heroicon-s-banknotes class="h-3 w-3 text-amber-500" />
+                            </div>
+                            @endif
+                        </div>
+
                         <span
                             class="text-[10px] font-semibold text-center leading-tight text-gray-700 dark:text-gray-300">PPh<br>Unifikasi</span>
+
                         @if($bupotSummary?->reported_at)
                         <span class="text-[10px] text-gray-500 dark:text-gray-400">
                             {{ \Carbon\Carbon::parse($bupotSummary->reported_at)->format('d M') }}
@@ -173,10 +266,22 @@
                             Belum Lapor
                         </span>
                         @endif
+
+                        @if($bupotReported)
+                        <div class="flex items-center gap-1">
+                            <div
+                                class="h-1 w-1 rounded-full {{ $bupotBayarStatus === 'Sudah Bayar' ? 'bg-emerald-500' : 'bg-amber-500' }}">
+                            </div>
+                            <span
+                                class="text-[9px] {{ $bupotBayarStatus === 'Sudah Bayar' ? 'text-emerald-600 dark:text-emerald-400' : 'text-amber-600 dark:text-amber-400' }}">
+                                {{ $bupotBayarStatus === 'Sudah Bayar' ? 'Paid' : 'Unpaid' }}
+                            </span>
+                        </div>
+                        @endif
                     </div>
                 </div>
 
-                <!-- Financial Summary - Softer Colors -->
+                <!-- Financial Summary -->
                 <div class="flex-1 space-y-3 p-4">
                     <!-- Main Amount -->
                     @if($ppnSummary && abs($ppnSummary->saldo_final) > 0)
@@ -272,6 +377,16 @@
 
                                     <div class="my-1 h-px bg-gray-100 dark:bg-gray-700"></div>
 
+                                    <!-- Update Bayar Status -->
+                                    <button wire:click="mountTableAction('update_bayar_status', '{{ $record->id }}')"
+                                        @click="open = false"
+                                        class="flex w-full items-center gap-2.5 px-4 py-2.5 text-sm text-gray-700 transition-colors hover:bg-gray-50 dark:text-gray-300 dark:hover:bg-gray-700/50">
+                                        <x-heroicon-o-banknotes class="h-4 w-4 text-gray-500 dark:text-gray-400" />
+                                        <span>Update Status Bayar</span>
+                                    </button>
+
+                                    <div class="my-1 h-px bg-gray-100 dark:bg-gray-700"></div>
+
                                     <!-- Delete -->
                                     <button wire:click="mountTableAction('delete', '{{ $record->id }}')"
                                         @click="open = false"
@@ -286,6 +401,28 @@
                 </div>
             </div>
             @endforeach
+        </div>
+
+        <!-- Payment Status Legend -->
+        <div class="mt-6 flex flex-wrap items-center justify-center gap-4 text-xs text-gray-600 dark:text-gray-400">
+            <div class="flex items-center gap-2">
+                <div class="flex items-center gap-1">
+                    <div class="h-1.5 w-1.5 rounded-full bg-emerald-300"></div>
+                    <span>Sudah Lapor</span>
+                </div>
+            </div>
+            <div class="flex items-center gap-2">
+                <div class="flex items-center gap-1">
+                    <x-heroicon-s-banknotes class="h-3.5 w-3.5 text-amber-500" />
+                    <span>Sudah Bayar</span>
+                </div>
+            </div>
+            <div class="flex items-center gap-2">
+                <div class="flex items-center gap-1">
+                    <div class="h-1.5 w-1.5 rounded-full bg-white/30 ring-1 ring-gray-300 dark:ring-gray-600"></div>
+                    <span>Belum Lapor</span>
+                </div>
+            </div>
         </div>
         @endif
     </div>

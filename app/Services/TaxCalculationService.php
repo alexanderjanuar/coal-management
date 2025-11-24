@@ -39,7 +39,7 @@ class TaxCalculationService
         // Calculate PPN (11% of DPP)
         $ppnValue = $dpp * 0.11;
         
-        // Round PPN to nearest whole number
+        // Round PPN to nearest whole numberw
         $ppnValueRounded = round($ppnValue);
         
         return [
