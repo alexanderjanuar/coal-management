@@ -22,10 +22,10 @@ class SuggestionResource extends Resource
 {
     protected static ?string $model = Suggestion::class;
 
-    public static function shouldRegisterNavigation(): bool
+        public static function shouldRegisterNavigation(): bool
     {
-        return auth()->user()->hasRole(['super-admin','admin','direktur','project-manager']);
-    }   
+        return auth()->user()->hasRole(['super-admin']);
+    }
 
     protected static ?string $navigationIcon = 'heroicon-o-light-bulb';
 
