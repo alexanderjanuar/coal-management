@@ -205,8 +205,8 @@ class TaxCalendar extends Component
         $day = $date->day;
         
         if ($day == 10) {
-            // PPh 21 & PPh Unifikasi Report
-            return $this->getUnreportedPPhClientsCount($date) + $this->getUnreportedBupotClientsCount($date);
+            // PPh 21 & PPh Unifikasi Report - Count UNIQUE clients with unreported PPh OR Bupot
+            return $this->getUniquePPhClientsCount($date);
         } elseif ($day == 20) {
             // PPN Report
             return $this->getUnreportedPPNClientsCount($date);
@@ -276,6 +276,27 @@ class TaxCalendar extends Component
     }
     
     /**
+     * Get count of UNIQUE ACTIVE clients with unreported PPh (PPh 21 OR Bupot)
+     * This prevents double-counting when a client has both PPh 21 and Bupot unreported
+     */
+    protected function getUniquePPhClientsCount(Carbon $date)
+    {
+        $targetMonth = $date->copy()->startOfMonth()->subMonth();
+        $monthName = $targetMonth->format('F');
+        
+        // Get unique client IDs that have either PPh 21 or Bupot (or both) unreported
+        return DB::table('tax_calculation_summaries')
+            ->join('tax_reports', 'tax_calculation_summaries.tax_report_id', '=', 'tax_reports.id')
+            ->join('clients', 'tax_reports.client_id', '=', 'clients.id')
+            ->where('tax_reports.month', $monthName)
+            ->where('clients.status', 'Active') // FILTER ACTIVE CLIENTS
+            ->whereIn('tax_calculation_summaries.tax_type', ['pph', 'bupot'])
+            ->where('tax_calculation_summaries.report_status', 'Belum Lapor')
+            ->distinct('clients.id') // Count unique CLIENTS, not tax reports
+            ->count('clients.id');
+    }
+    
+    /**
      * Get count of ACTIVE clients with unpaid taxes (any type)
      */
     protected function getUnpaidTaxClientsCount(Carbon $date)
@@ -312,6 +333,9 @@ class TaxCalendar extends Component
             // PPh 21 & PPh Unifikasi Report
             $reportType = "Lapor PPh 21 & PPh Unifikasi untuk periode {$monthName}";
             
+            // Use associative array with client_id as key to prevent duplicates
+            $clientsMap = [];
+            
             // Get PPh 21 unreported
             $pphReports = TaxReport::with(['client', 'pphSummary'])
                 ->where('month', $targetMonthFormatted)
@@ -324,20 +348,31 @@ class TaxCalendar extends Component
                 ->get();
                 
             foreach ($pphReports as $report) {
+                $clientId = $report->client->id;
                 $employeeCount = $report->client->employees()->count();
                 $pphSummary = $report->pphSummary;
                 
-                $clients[] = [
-                    'id' => $report->client->id,
-                    'tax_report_id' => $report->id,
-                    'name' => $report->client->name,
-                    'logo' => $report->client->logo,
-                    'status' => 'Belum lapor PPh 21',
-                    'employees' => $employeeCount,
-                    'NPWP' => $report->client->NPWP ?? 'Tidak Ada',
-                    'pphAmount' => $pphSummary ? $pphSummary->pajak_keluar : 0,
-                    'taxType' => 'PPh 21'
-                ];
+                // Initialize or update client entry
+                if (!isset($clientsMap[$clientId])) {
+                    $clientsMap[$clientId] = [
+                        'id' => $clientId,
+                        'tax_report_id' => $report->id,
+                        'name' => $report->client->name,
+                        'logo' => $report->client->logo,
+                        'NPWP' => $report->client->NPWP ?? 'Tidak Ada',
+                        'employees' => $employeeCount,
+                        'status' => '',
+                        'taxTypes' => [],
+                        'pphAmount' => 0,
+                        'bupotAmount' => 0,
+                        'bupotCount' => 0,
+                    ];
+                }
+                
+                // Add PPh 21 info
+                $clientsMap[$clientId]['status'] = 'Belum lapor PPh 21';
+                $clientsMap[$clientId]['taxTypes'][] = 'PPh 21';
+                $clientsMap[$clientId]['pphAmount'] = $pphSummary ? $pphSummary->pajak_keluar : 0;
             }
             
             // Get PPh Unifikasi unreported
@@ -352,21 +387,51 @@ class TaxCalendar extends Component
                 ->get();
                 
             foreach ($bupotReports as $report) {
+                $clientId = $report->client->id;
                 $bupotCount = $report->bupots()->count();
                 $bupotSummary = $report->bupotSummary;
                 
-                $clients[] = [
-                    'id' => $report->client->id,
-                    'tax_report_id' => $report->id,
-                    'name' => $report->client->name,
-                    'logo' => $report->client->logo,
-                    'status' => 'Belum lapor PPh Unifikasi',
-                    'bupotCount' => $bupotCount,
-                    'NPWP' => $report->client->NPWP ?? 'Tidak Ada',
-                    'bupotAmount' => $bupotSummary ? $bupotSummary->pajak_keluar : 0,
-                    'taxType' => 'PPh Unifikasi'
-                ];
+                // Initialize or update client entry
+                if (!isset($clientsMap[$clientId])) {
+                    $employeeCount = $report->client->employees()->count();
+                    $clientsMap[$clientId] = [
+                        'id' => $clientId,
+                        'tax_report_id' => $report->id,
+                        'name' => $report->client->name,
+                        'logo' => $report->client->logo,
+                        'NPWP' => $report->client->NPWP ?? 'Tidak Ada',
+                        'employees' => $employeeCount,
+                        'status' => '',
+                        'taxTypes' => [],
+                        'pphAmount' => 0,
+                        'bupotAmount' => 0,
+                        'bupotCount' => 0,
+                    ];
+                }
+                
+                // Add Bupot info
+                $clientsMap[$clientId]['taxTypes'][] = 'PPh Unifikasi';
+                $clientsMap[$clientId]['bupotCount'] = $bupotCount;
+                $clientsMap[$clientId]['bupotAmount'] = $bupotSummary ? $bupotSummary->pajak_keluar : 0;
             }
+            
+            // Build status text based on what's unreported
+            foreach ($clientsMap as $clientId => &$client) {
+                $taxTypes = $client['taxTypes'];
+                if (count($taxTypes) == 2) {
+                    $client['status'] = 'Belum lapor PPh 21 & PPh Unifikasi';
+                    $client['taxType'] = 'PPh 21 & PPh Unifikasi';
+                } elseif (in_array('PPh 21', $taxTypes)) {
+                    $client['status'] = 'Belum lapor PPh 21';
+                    $client['taxType'] = 'PPh 21';
+                } else {
+                    $client['status'] = 'Belum lapor PPh Unifikasi';
+                    $client['taxType'] = 'PPh Unifikasi';
+                }
+            }
+            
+            // Convert to indexed array
+            $clients = array_values($clientsMap);
         }
         elseif ($day == 20) {
             // PPN Report
