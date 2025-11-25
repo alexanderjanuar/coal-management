@@ -10,6 +10,8 @@ use App\Models\TaxCalculationSummary;
 use App\Models\User;
 use Filament\Notifications\Notification;
 use Illuminate\Support\Facades\DB;
+use Kenepa\Banner\Facades\BannerManager;
+use Kenepa\Banner\ValueObjects\BannerData;
 
 class TaxCalendar extends Component
 {
@@ -133,6 +135,8 @@ class TaxCalendar extends Component
         $day = $date->day;
         return $day == 10 || $day == 20 || $day == 30;
     }
+
+    
 
     protected function getTaxEventsForDate(Carbon $date)
     {
@@ -541,40 +545,101 @@ class TaxCalendar extends Component
             $clientCount = count($this->pendingClients['clients'] ?? []);
             $reportType = $this->pendingClients['reportType'] ?? '';
             $date = $this->pendingClients['date'] ?? '';
+            
+            // Extract just the action text (e.g., "Lapor PPh 21 & PPh Unifikasi")
+            $actionText = $reportType;
+            if (strpos($reportType, 'untuk periode') !== false) {
+                $actionText = substr($reportType, 0, strpos($reportType, 'untuk periode'));
+            }
+            
+            // Determine icon and urgent message based on report type
+            $icon = 'heroicon-o-exclamation-triangle';
+            $urgentText = '⚠️ URGENT';
+            
+            if (strpos($reportType, 'PPh') !== false && strpos($reportType, 'Bayar') === false) {
+                $icon = 'heroicon-o-document-text';
+                $urgentText = '📋 LAPOR PPh';
+            } elseif (strpos($reportType, 'PPN') !== false && strpos($reportType, 'Bayar') === false) {
+                $icon = 'heroicon-o-document-check';
+                $urgentText = '📄 LAPOR PPN';
+            } elseif (strpos($reportType, 'Bayar') !== false) {
+                $icon = 'heroicon-o-banknotes';
+                $urgentText = '💰 PEMBAYARAN TERAKHIR';
+            }
 
+            // Send notifications to project managers
             foreach ($projectManagers as $manager) {
                 Notification::make()
-                    ->title('Pengingat: Klien Tertunggak')
-                    ->body("Ada {$clientCount} klien AKTIF yang belum {$reportType} pada {$date}. Segera tindak lanjuti untuk memastikan kepatuhan pajak.")
-                    ->icon('heroicon-o-exclamation-triangle')
-                    ->color('warning')
+                    ->title('⚠️ Pengingat Mendesak: Klien Tertunggak')
+                    ->body("{$clientCount} klien AKTIF belum {$reportType}. Segera tindak lanjuti untuk menghindari denda dan sanksi pajak!")
+                    ->icon($icon)
+                    ->color('danger')
                     ->persistent()
                     ->actions([
                         \Filament\Notifications\Actions\Action::make('view')
-                            ->label('Lihat Detail')
+                            ->label('🔍 Lihat Detail Sekarang')
                             ->url(route('filament.admin.resources.tax-reports.index'))
+                            ->button()
+                            ->color('danger')
                             ->markAsRead(),
                         \Filament\Notifications\Actions\Action::make('dismiss')
                             ->label('Tutup')
+                            ->color('gray')
                             ->markAsRead(),
                     ])
                     ->sendToDatabase($manager)
                     ->broadcast($manager);
             }
 
+            // Create urgent banner for all users
+            $bannerData = new BannerData(
+                id: 'tax_reminder_' . time(),
+                name: 'Pengingat Pajak Mendesak',
+                content: "{$urgentText}: {$clientCount} klien AKTIF belum {$actionText} pada {$date}! Klik untuk melihat detail.",
+                is_active: true,
+                active_since: now()->format('Y-m-d'),
+                icon: $icon,
+                background_type: 'gradient',
+                start_color: '#DC2626', // Red-600
+                end_color: '#991B1B', // Red-800
+                start_time: '00:00',
+                end_time: '23:59',
+                can_be_closed_by_user: true,
+                text_color: '#FFFFFF',
+                icon_color: '#FEE2E2', // Red-100
+                render_location: 'header',
+                scope: [],
+                link_url: route('filament.admin.resources.tax-reports.index'),
+                link_text: '🔍 Lihat Detail Klien',
+                link_click_action: 'redirect',
+                link_button_style: 'filled',
+                link_button_color: '#FFFFFF',
+                link_text_color: '#DC2626',
+                link_active: 'true',
+                link_open_in_new_tab: false,
+                link_button_icon: 'heroicon-o-arrow-right',
+                link_button_icon_color: '#DC2626',
+            );
+
+            BannerManager::store($bannerData);
+
+            // Close the modal
             $this->dispatch('close-modal', ['id' => 'pending-clients-modal']);
 
+            // Success notification
             Notification::make()
-                ->title('Pengingat Terkirim')
-                ->body("Pengingat telah dikirim ke {$projectManagers->count()} project manager.")
+                ->title('✅ Pengingat Berhasil Dikirim')
+                ->body("Pengingat telah dikirim ke {$projectManagers->count()} project manager dan banner ditampilkan untuk semua pengguna.")
                 ->success()
+                ->duration(5000)
                 ->send();
 
         } catch (\Exception $e) {
             Notification::make()
-                ->title('Gagal Mengirim Pengingat')
-                ->body('Terjadi kesalahan saat mengirim pengingat. Silakan coba lagi.')
+                ->title('❌ Gagal Mengirim Pengingat')
+                ->body('Terjadi kesalahan saat mengirim pengingat: ' . $e->getMessage())
                 ->danger()
+                ->persistent()
                 ->send();
 
             report($e);
