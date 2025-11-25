@@ -82,9 +82,9 @@ class TaxCalendar extends Component
     {
         $day = $date->day;
         
-        if ($day == 15) return 'payment';
-        if ($day == 20) return 'pph';
-        if ($this->isLastDayOfMonth($date)) return 'ppn';
+        if ($day == 10) return 'pph_report'; // PPh 21 & PPh Unifikasi Report
+        if ($day == 20) return 'ppn_report'; // PPN Report
+        if ($day == 30) return 'payment_warning'; // Final Payment Warning
         
         return null;
     }
@@ -131,7 +131,7 @@ class TaxCalendar extends Component
     protected function hasTaxEvent(Carbon $date): bool
     {
         $day = $date->day;
-        return $day == 15 || $day == 20 || $this->isLastDayOfMonth($date);
+        return $day == 10 || $day == 20 || $day == 30;
     }
 
     protected function getTaxEventsForDate(Carbon $date)
@@ -163,15 +163,23 @@ class TaxCalendar extends Component
         $currentYear = $this->currentDate->year;
         $currentMonth = $this->currentDate->month;
         
-        $lastDay = Carbon::createFromDate($currentYear, $currentMonth, 1)->endOfMonth()->format('Y-m-d');
-        
         $targetMonth = $this->currentDate->copy()->subMonth();
         $targetMonthName = $targetMonth->translatedFormat('F Y');
         
         return [
             [
-                'date' => $lastDay,
-                'title' => 'Batas Akhir Lapor SPT Masa PPN',
+                'date' => Carbon::createFromDate($currentYear, $currentMonth, 10)->format('Y-m-d'),
+                'title' => 'Batas Akhir Lapor PPh 21 & PPh Unifikasi',
+                'description' => "Batas akhir lapor SPT Masa PPh 21 dan PPh Unifikasi periode {$targetMonthName}",
+                'actionText' => 'Kelola PPh',
+                'actionLink' => route('filament.admin.resources.tax-reports.index'),
+                'type' => 'report',
+                'priority' => 'high',
+                'icon' => 'document-check'
+            ],
+            [
+                'date' => Carbon::createFromDate($currentYear, $currentMonth, 20)->format('Y-m-d'),
+                'title' => 'Batas Akhir Lapor PPN',
                 'description' => "Batas akhir lapor SPT Masa PPN periode {$targetMonthName}",
                 'actionText' => 'Kelola PPN',
                 'actionLink' => route('filament.admin.resources.tax-reports.index'),
@@ -180,24 +188,14 @@ class TaxCalendar extends Component
                 'icon' => 'document-text'
             ],
             [
-                'date' => Carbon::createFromDate($currentYear, $currentMonth, 15)->format('Y-m-d'),
-                'title' => 'Batas Akhir Setor PPh dan PPN',
-                'description' => "Batas akhir setor PPh dan PPN periode {$targetMonthName}",
+                'date' => Carbon::createFromDate($currentYear, $currentMonth, 30)->format('Y-m-d'),
+                'title' => 'Batas Akhir Bayar PPN, PPh 21 & PPh Unifikasi',
+                'description' => "Peringatan terakhir: Batas akhir pembayaran semua jenis pajak periode {$targetMonthName}",
                 'actionText' => 'Kelola Pembayaran',
                 'actionLink' => route('filament.admin.resources.tax-reports.index'),
                 'type' => 'payment',
                 'priority' => 'high',
                 'icon' => 'banknotes'
-            ],
-            [
-                'date' => Carbon::createFromDate($currentYear, $currentMonth, 20)->format('Y-m-d'),
-                'title' => 'Batas Akhir Lapor SPT Masa PPh 21',
-                'description' => "Batas akhir lapor SPT Masa PPh 21 periode {$targetMonthName}",
-                'actionText' => 'Kelola PPh 21',
-                'actionLink' => route('filament.admin.resources.tax-reports.index'),
-                'type' => 'report',
-                'priority' => 'medium',
-                'icon' => 'document-check'
             ],
         ];
     }
@@ -206,58 +204,22 @@ class TaxCalendar extends Component
     {
         $day = $date->day;
         
-        if ($day == 15) {
-            return $this->getUnpaidTaxClientsCount($date);
+        if ($day == 10) {
+            // PPh 21 & PPh Unifikasi Report
+            return $this->getUnreportedPPhClientsCount($date) + $this->getUnreportedBupotClientsCount($date);
         } elseif ($day == 20) {
-            return $this->getUnreportedPPhClientsCount($date);
-        } elseif ($this->isLastDayOfMonth($date)) {
+            // PPN Report
             return $this->getUnreportedPPNClientsCount($date);
+        } elseif ($day == 30) {
+            // Payment Warning - All unpaid
+            return $this->getUnpaidTaxClientsCount($date);
         }
         
         return 0;
     }
     
-    protected function isLastDayOfMonth(Carbon $date)
-    {
-        return $date->day === $date->copy()->endOfMonth()->day;
-    }
-    
     /**
-     * FIXED: Get count of clients with unreported PPN using tax_calculation_summaries
-     */
-    protected function getUnpaidTaxClientsCount(Carbon $date)
-    {
-        $targetMonth = $date->copy()->startOfMonth()->subMonth();
-        $monthName = $targetMonth->format('F');
-        
-        return DB::table('tax_calculation_summaries')
-            ->join('tax_reports', 'tax_calculation_summaries.tax_report_id', '=', 'tax_reports.id')
-            ->where('tax_reports.month', $monthName)
-            ->where('tax_calculation_summaries.tax_type', 'ppn')
-            ->where('tax_calculation_summaries.report_status', 'Belum Lapor')
-            ->distinct('tax_reports.id')
-            ->count('tax_reports.id');
-    }
-    
-    /**
-     * FIXED: Get count of clients with unreported PPh using tax_calculation_summaries
-     */
-    protected function getUnreportedPPhClientsCount(Carbon $date)
-    {
-        $targetMonth = $date->copy()->startOfMonth()->subMonth();
-        $monthName = $targetMonth->format('F');
-        
-        return DB::table('tax_calculation_summaries')
-            ->join('tax_reports', 'tax_calculation_summaries.tax_report_id', '=', 'tax_reports.id')
-            ->where('tax_reports.month', $monthName)
-            ->where('tax_calculation_summaries.tax_type', 'pph')
-            ->where('tax_calculation_summaries.report_status', 'Belum Lapor')
-            ->distinct('tax_reports.id')
-            ->count('tax_reports.id');
-    }
-    
-    /**
-     * FIXED: Get count of clients with unreported PPN using tax_calculation_summaries
+     * Get count of ACTIVE clients with unreported PPN using tax_calculation_summaries
      */
     protected function getUnreportedPPNClientsCount(Carbon $date)
     {
@@ -266,7 +228,9 @@ class TaxCalendar extends Component
         
         return DB::table('tax_calculation_summaries')
             ->join('tax_reports', 'tax_calculation_summaries.tax_report_id', '=', 'tax_reports.id')
+            ->join('clients', 'tax_reports.client_id', '=', 'clients.id')
             ->where('tax_reports.month', $monthName)
+            ->where('clients.status', 'Active') // FILTER ACTIVE CLIENTS
             ->where('tax_calculation_summaries.tax_type', 'ppn')
             ->where('tax_calculation_summaries.report_status', 'Belum Lapor')
             ->distinct('tax_reports.id')
@@ -274,7 +238,64 @@ class TaxCalendar extends Component
     }
     
     /**
-     * FIXED: Get pending clients with proper join to tax_calculation_summaries
+     * Get count of ACTIVE clients with unreported PPh using tax_calculation_summaries
+     */
+    protected function getUnreportedPPhClientsCount(Carbon $date)
+    {
+        $targetMonth = $date->copy()->startOfMonth()->subMonth();
+        $monthName = $targetMonth->format('F');
+        
+        return DB::table('tax_calculation_summaries')
+            ->join('tax_reports', 'tax_calculation_summaries.tax_report_id', '=', 'tax_reports.id')
+            ->join('clients', 'tax_reports.client_id', '=', 'clients.id')
+            ->where('tax_reports.month', $monthName)
+            ->where('clients.status', 'Active') // FILTER ACTIVE CLIENTS
+            ->where('tax_calculation_summaries.tax_type', 'pph')
+            ->where('tax_calculation_summaries.report_status', 'Belum Lapor')
+            ->distinct('tax_reports.id')
+            ->count('tax_reports.id');
+    }
+    
+    /**
+     * Get count of ACTIVE clients with unreported Bupot using tax_calculation_summaries
+     */
+    protected function getUnreportedBupotClientsCount(Carbon $date)
+    {
+        $targetMonth = $date->copy()->startOfMonth()->subMonth();
+        $monthName = $targetMonth->format('F');
+        
+        return DB::table('tax_calculation_summaries')
+            ->join('tax_reports', 'tax_calculation_summaries.tax_report_id', '=', 'tax_reports.id')
+            ->join('clients', 'tax_reports.client_id', '=', 'clients.id')
+            ->where('tax_reports.month', $monthName)
+            ->where('clients.status', 'Active') // FILTER ACTIVE CLIENTS
+            ->where('tax_calculation_summaries.tax_type', 'bupot')
+            ->where('tax_calculation_summaries.report_status', 'Belum Lapor')
+            ->distinct('tax_reports.id')
+            ->count('tax_reports.id');
+    }
+    
+    /**
+     * Get count of ACTIVE clients with unpaid taxes (any type)
+     */
+    protected function getUnpaidTaxClientsCount(Carbon $date)
+    {
+        $targetMonth = $date->copy()->startOfMonth()->subMonth();
+        $monthName = $targetMonth->format('F');
+        
+        return DB::table('tax_calculation_summaries')
+            ->join('tax_reports', 'tax_calculation_summaries.tax_report_id', '=', 'tax_reports.id')
+            ->join('clients', 'tax_reports.client_id', '=', 'clients.id')
+            ->where('tax_reports.month', $monthName)
+            ->where('clients.status', 'Active') // FILTER ACTIVE CLIENTS
+            ->where('tax_calculation_summaries.bayar_status', 'Belum Bayar')
+            ->where('tax_calculation_summaries.status_final', '!=', 'Nihil') // Only count if there's actual tax to pay
+            ->distinct('tax_reports.id')
+            ->count('tax_reports.id');
+    }
+    
+    /**
+     * Get pending ACTIVE clients with proper join to tax_calculation_summaries
      */
     protected function getPendingClients(Carbon $date)
     {
@@ -287,43 +308,22 @@ class TaxCalendar extends Component
         $reportType = '';
         $clients = [];
         
-        if ($day == 15) {
-            $reportType = "Setor PPh dan PPN untuk periode {$monthName}";
+        if ($day == 10) {
+            // PPh 21 & PPh Unifikasi Report
+            $reportType = "Lapor PPh 21 & PPh Unifikasi untuk periode {$monthName}";
             
-            // Get tax reports with unreported PPN
-            $taxReports = TaxReport::with(['client', 'ppnSummary'])
+            // Get PPh 21 unreported
+            $pphReports = TaxReport::with(['client', 'pphSummary'])
                 ->where('month', $targetMonthFormatted)
-                ->whereHas('ppnSummary', function($q) {
-                    $q->where('report_status', 'Belum Lapor');
+                ->whereHas('client', function($q) {
+                    $q->where('status', 'Active'); // FILTER ACTIVE CLIENTS
                 })
-                ->get();
-                
-            foreach ($taxReports as $report) {
-                $ppnSummary = $report->ppnSummary;
-                
-                $clients[] = [
-                    'id' => $report->client->id,
-                    'tax_report_id' => $report->id,
-                    'name' => $report->client->name,
-                    'logo' => $report->client->logo,
-                    'status' => 'Belum bayar PPN',
-                    'dueAmount' => $ppnSummary ? $ppnSummary->pajak_keluar : 0,
-                    'NPWP' => $report->client->NPWP ?? 'Tidak Ada',
-                    'statusBadge' => $ppnSummary?->status_final ?? 'Nihil'
-                ];
-            }
-        }
-        elseif ($day == 20) {
-            $reportType = "Lapor SPT Masa PPh 21 untuk periode {$monthName}";
-            
-            $taxReports = TaxReport::with(['client', 'pphSummary'])
-                ->where('month', $targetMonthFormatted)
                 ->whereHas('pphSummary', function($q) {
                     $q->where('report_status', 'Belum Lapor');
                 })
                 ->get();
                 
-            foreach ($taxReports as $report) {
+            foreach ($pphReports as $report) {
                 $employeeCount = $report->client->employees()->count();
                 $pphSummary = $report->pphSummary;
                 
@@ -335,15 +335,48 @@ class TaxCalendar extends Component
                     'status' => 'Belum lapor PPh 21',
                     'employees' => $employeeCount,
                     'NPWP' => $report->client->NPWP ?? 'Tidak Ada',
-                    'pphAmount' => $pphSummary ? $pphSummary->pajak_keluar : 0
+                    'pphAmount' => $pphSummary ? $pphSummary->pajak_keluar : 0,
+                    'taxType' => 'PPh 21'
                 ];
             }
             
-        } elseif ($this->isLastDayOfMonth($date)) {
-            $reportType = "Lapor SPT Masa PPN untuk periode {$monthName}";
+            // Get PPh Unifikasi unreported
+            $bupotReports = TaxReport::with(['client', 'bupotSummary'])
+                ->where('month', $targetMonthFormatted)
+                ->whereHas('client', function($q) {
+                    $q->where('status', 'Active'); // FILTER ACTIVE CLIENTS
+                })
+                ->whereHas('bupotSummary', function($q) {
+                    $q->where('report_status', 'Belum Lapor');
+                })
+                ->get();
+                
+            foreach ($bupotReports as $report) {
+                $bupotCount = $report->bupots()->count();
+                $bupotSummary = $report->bupotSummary;
+                
+                $clients[] = [
+                    'id' => $report->client->id,
+                    'tax_report_id' => $report->id,
+                    'name' => $report->client->name,
+                    'logo' => $report->client->logo,
+                    'status' => 'Belum lapor PPh Unifikasi',
+                    'bupotCount' => $bupotCount,
+                    'NPWP' => $report->client->NPWP ?? 'Tidak Ada',
+                    'bupotAmount' => $bupotSummary ? $bupotSummary->pajak_keluar : 0,
+                    'taxType' => 'PPh Unifikasi'
+                ];
+            }
+        }
+        elseif ($day == 20) {
+            // PPN Report
+            $reportType = "Lapor PPN untuk periode {$monthName}";
             
             $taxReports = TaxReport::with(['client', 'ppnSummary'])
                 ->where('month', $targetMonthFormatted)
+                ->whereHas('client', function($q) {
+                    $q->where('status', 'Active'); // FILTER ACTIVE CLIENTS
+                })
                 ->whereHas('ppnSummary', function($q) {
                     $q->where('report_status', 'Belum Lapor');
                 })
@@ -362,8 +395,58 @@ class TaxCalendar extends Component
                     'transaksiCount' => $transactionCount,
                     'NPWP' => $report->client->NPWP ?? 'Tidak Ada',
                     'ppnAmount' => $ppnSummary ? $ppnSummary->pajak_keluar : 0,
-                    'statusBadge' => $ppnSummary?->status_final ?? 'Nihil'
+                    'statusBadge' => $ppnSummary?->status_final ?? 'Nihil',
+                    'taxType' => 'PPN'
                 ];
+            }
+        }
+        elseif ($day == 30) {
+            // Payment Warning - All Unpaid
+            $reportType = "Bayar PPN, PPh 21 & PPh Unifikasi untuk periode {$monthName} (PERINGATAN TERAKHIR)";
+            
+            // Get all tax reports with unpaid taxes
+            $taxReports = TaxReport::with(['client', 'taxCalculationSummaries'])
+                ->where('month', $targetMonthFormatted)
+                ->whereHas('client', function($q) {
+                    $q->where('status', 'Active'); // FILTER ACTIVE CLIENTS
+                })
+                ->whereHas('taxCalculationSummaries', function($q) {
+                    $q->where('bayar_status', 'Belum Bayar')
+                      ->where('status_final', '!=', 'Nihil'); // Only unpaid with actual tax
+                })
+                ->get();
+                
+            foreach ($taxReports as $report) {
+                $unpaidSummaries = $report->taxCalculationSummaries
+                    ->where('bayar_status', 'Belum Bayar')
+                    ->where('status_final', '!=', 'Nihil');
+                
+                if ($unpaidSummaries->isNotEmpty()) {
+                    $totalUnpaid = $unpaidSummaries->sum(function($summary) {
+                        return abs($summary->saldo_final);
+                    });
+                    
+                    $unpaidTypes = $unpaidSummaries->pluck('tax_type')->map(function($type) {
+                        return match($type) {
+                            'ppn' => 'PPN',
+                            'pph' => 'PPh 21',
+                            'bupot' => 'PPh Unifikasi',
+                            default => $type
+                        };
+                    })->join(', ');
+                    
+                    $clients[] = [
+                        'id' => $report->client->id,
+                        'tax_report_id' => $report->id,
+                        'name' => $report->client->name,
+                        'logo' => $report->client->logo,
+                        'status' => 'Belum bayar: ' . $unpaidTypes,
+                        'NPWP' => $report->client->NPWP ?? 'Tidak Ada',
+                        'totalUnpaid' => $totalUnpaid,
+                        'unpaidCount' => $unpaidSummaries->count(),
+                        'taxType' => 'Pembayaran'
+                    ];
+                }
             }
         }
         
@@ -397,7 +480,7 @@ class TaxCalendar extends Component
             foreach ($projectManagers as $manager) {
                 Notification::make()
                     ->title('Pengingat: Klien Tertunggak')
-                    ->body("Ada {$clientCount} klien yang belum {$reportType} pada {$date}. Segera tindak lanjuti untuk memastikan kepatuhan pajak.")
+                    ->body("Ada {$clientCount} klien AKTIF yang belum {$reportType} pada {$date}. Segera tindak lanjuti untuk memastikan kepatuhan pajak.")
                     ->icon('heroicon-o-exclamation-triangle')
                     ->color('warning')
                     ->persistent()

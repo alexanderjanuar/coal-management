@@ -94,19 +94,19 @@
                 @php
                 // Determine if this is a designated tax date
                 $dayNumber = (int) $day['day'];
-                $isPaymentDay = $dayNumber === 15; // Payment deadline
-                $isPPhDay = $dayNumber === 20; // PPh report deadline
-                $isLastDay = $day['date'] === \Carbon\Carbon::parse($day['date'])->endOfMonth()->format('Y-m-d');
-                $isDesignatedDate = $isPaymentDay || $isPPhDay || $isLastDay;
+                $isPPhReportDay = $dayNumber === 10; // PPh 21 & PPh Unifikasi report deadline
+                $isPPNReportDay = $dayNumber === 20; // PPN report deadline
+                $isPaymentWarningDay = $dayNumber === 30; // Final payment warning
+                $isDesignatedDate = $isPPhReportDay || $isPPNReportDay || $isPaymentWarningDay;
 
                 // Get tooltip text
                 $tooltipText = '';
-                if ($isPaymentDay && $day['isCurrentMonth']) {
-                $tooltipText = 'Batas Akhir Setor PPh & PPN';
-                } elseif ($isPPhDay && $day['isCurrentMonth']) {
-                $tooltipText = 'Batas Akhir Lapor SPT Masa PPh 21';
-                } elseif ($isLastDay && $day['isCurrentMonth']) {
-                $tooltipText = 'Batas Akhir Lapor SPT Masa PPN';
+                if ($isPPhReportDay && $day['isCurrentMonth']) {
+                $tooltipText = 'Batas Lapor PPh 21 & PPh Unifikasi';
+                } elseif ($isPPNReportDay && $day['isCurrentMonth']) {
+                $tooltipText = 'Batas Lapor PPN';
+                } elseif ($isPaymentWarningDay && $day['isCurrentMonth']) {
+                $tooltipText = 'Batas Bayar PPN, PPh 21 & PPh Unifikasi (Peringatan Terakhir)';
                 }
                 @endphp
 
@@ -152,15 +152,7 @@
                     <!-- Tax Event Type Badge (for designated dates) -->
                     @if($isDesignatedDate && $day['isCurrentMonth'])
                     <div class="absolute top-2 right-2">
-                        @if($isPaymentDay)
-                        <div
-                            class="flex items-center justify-center w-5 h-5 rounded-full bg-red-500 dark:bg-red-600 shadow-sm">
-                            <svg class="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                    d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1" />
-                            </svg>
-                        </div>
-                        @elseif($isPPhDay)
+                        @if($isPPhReportDay)
                         <div
                             class="flex items-center justify-center w-5 h-5 rounded-full bg-purple-500 dark:bg-purple-600 shadow-sm">
                             <svg class="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -168,12 +160,20 @@
                                     d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                             </svg>
                         </div>
-                        @elseif($isLastDay)
+                        @elseif($isPPNReportDay)
                         <div
-                            class="flex items-center justify-center w-5 h-5 rounded-full bg-orange-500 dark:bg-orange-600 shadow-sm">
+                            class="flex items-center justify-center w-5 h-5 rounded-full bg-blue-500 dark:bg-blue-600 shadow-sm">
                             <svg class="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                     d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                            </svg>
+                        </div>
+                        @elseif($isPaymentWarningDay)
+                        <div
+                            class="flex items-center justify-center w-5 h-5 rounded-full bg-red-500 dark:bg-red-600 shadow-sm">
+                            <svg class="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1" />
                             </svg>
                         </div>
                         @endif
@@ -185,12 +185,12 @@
                     <div
                         class="absolute inset-x-0 top-8 px-1 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
                         <div class="text-[10px] font-medium text-center leading-tight">
-                            @if($isPaymentDay)
-                            <span class="text-red-700 dark:text-red-300">Setor</span>
-                            @elseif($isPPhDay)
-                            <span class="text-purple-700 dark:text-purple-300">PPh 21</span>
-                            @elseif($isLastDay)
-                            <span class="text-orange-700 dark:text-orange-300">PPN</span>
+                            @if($isPPhReportDay)
+                            <span class="text-purple-700 dark:text-purple-300">PPh</span>
+                            @elseif($isPPNReportDay)
+                            <span class="text-blue-700 dark:text-blue-300">PPN</span>
+                            @elseif($isPaymentWarningDay)
+                            <span class="text-red-700 dark:text-red-300">Bayar</span>
                             @endif
                         </div>
                     </div>
@@ -231,36 +231,36 @@
                     <span>Tanggal Penting Pajak</span>
                 </div>
                 <div class="flex items-center gap-2">
+                    <div class="flex items-center justify-center w-5 h-5 rounded-full bg-purple-500">
+                        <svg class="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6" />
+                        </svg>
+                    </div>
+                    <span>Lapor PPh (Tgl 10)</span>
+                </div>
+                <div class="flex items-center gap-2">
+                    <div class="flex items-center justify-center w-5 h-5 rounded-full bg-blue-500">
+                        <svg class="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6" />
+                        </svg>
+                    </div>
+                    <span>Lapor PPN (Tgl 20)</span>
+                </div>
+                <div class="flex items-center gap-2">
                     <div class="flex items-center justify-center w-5 h-5 rounded-full bg-red-500">
                         <svg class="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                 d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2" />
                         </svg>
                     </div>
-                    <span>Batas Setor (Tgl 15)</span>
-                </div>
-                <div class="flex items-center gap-2">
-                    <div class="flex items-center justify-center w-5 h-5 rounded-full bg-purple-500">
-                        <svg class="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6" />
-                        </svg>
-                    </div>
-                    <span>Lapor PPh (Tgl 20)</span>
-                </div>
-                <div class="flex items-center gap-2">
-                    <div class="flex items-center justify-center w-5 h-5 rounded-full bg-orange-500">
-                        <svg class="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6" />
-                        </svg>
-                    </div>
-                    <span>Lapor PPN (Akhir Bulan)</span>
+                    <span>Bayar Semua (Tgl 30)</span>
                 </div>
                 <div class="flex items-center gap-2">
                     <div
                         class="flex items-center justify-center w-5 h-5 rounded-full bg-red-500 text-white text-xs font-semibold">
                         #
                     </div>
-                    <span>Klien Belum Lapor</span>
+                    <span>Klien Belum Lapor/Bayar</span>
                 </div>
                 <div class="flex items-center gap-2">
                     <div class="w-3 h-3 rounded ring-2 ring-blue-500"></div>
