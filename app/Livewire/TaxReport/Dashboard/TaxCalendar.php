@@ -607,7 +607,7 @@ class TaxCalendar extends Component
                 can_be_closed_by_user: true,
                 text_color: '#FFFFFF',
                 icon_color: '#FEE2E2', // Red-100
-                render_location: 'header',
+                render_location: 'Header',
                 scope: [],
                 link_url: route('filament.admin.resources.tax-reports.index'),
                 link_text: '🔍 Lihat Detail Klien',
