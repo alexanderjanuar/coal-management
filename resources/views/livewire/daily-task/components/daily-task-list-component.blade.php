@@ -760,9 +760,9 @@
     @endpush
 
 
-    {{-- CSS untuk scroll indicators dan dark mode enhancements --}}
+
     @push('styles')
-    <style>
+        <style>
         /* Custom scrollbar untuk dark mode */
         .scrollbar-thin::-webkit-scrollbar {
             height: 6px;
@@ -839,7 +839,6 @@
         }
     </style>
     @endpush
-
-
-
+    
+    
 </div>

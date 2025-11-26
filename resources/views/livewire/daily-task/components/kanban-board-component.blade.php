@@ -146,11 +146,11 @@
         <div class="kanban-board flex flex-col lg:flex-row lg:items-start gap-4 pb-4">
             @foreach($columns as $status => $config)
             <div class="w-full lg:flex-1 lg:min-w-[330px] xl:min-w-[400px] 
-                        bg-gray-50 dark:bg-gray-800/50
+                        bg-white dark:bg-gray-800
                         border border-gray-200 dark:border-gray-700/50
                         rounded-xl overflow-hidden">
                 {{-- Column Header Skeleton --}}
-                <div class="px-4 py-3 border-b border-gray-200 dark:border-gray-700/50 bg-white dark:bg-gray-800">
+                <div class="px-4 py-3 border-b border-gray-200 dark:border-gray-700/50 bg-gray-50 dark:bg-gray-800/80">
                     <div class="flex items-center justify-between">
                         <div class="flex items-center gap-2.5">
                             <div class="w-10 h-10 bg-gray-200 dark:bg-gray-700/60 rounded-lg animate-pulse"></div>
@@ -163,37 +163,37 @@
                 {{-- Task Cards Skeleton --}}
                 <div class="p-3 space-y-2.5">
                     @for($i = 0; $i < 3; $i++)
-                    <div class="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700/50 p-3 space-y-3 animate-pulse">
+                    <div class="bg-white dark:bg-gray-700/50 rounded-lg border border-gray-200 dark:border-gray-700/50 p-3 space-y-3 animate-pulse">
                         {{-- Title skeleton --}}
                         <div class="flex items-start gap-2">
-                            <div class="w-1 h-16 bg-gray-200 dark:bg-gray-700/60 rounded-full"></div>
+                            <div class="w-1 h-16 bg-gray-200 dark:bg-gray-600 rounded-full"></div>
                             <div class="flex-1 space-y-2">
-                                <div class="h-4 bg-gray-200 dark:bg-gray-700/60 rounded w-3/4"></div>
-                                <div class="h-3 bg-gray-200 dark:bg-gray-700/60 rounded w-1/2"></div>
+                                <div class="h-4 bg-gray-200 dark:bg-gray-600 rounded w-3/4"></div>
+                                <div class="h-3 bg-gray-200 dark:bg-gray-600 rounded w-1/2"></div>
                             </div>
                         </div>
                         
                         {{-- Meta skeleton --}}
                         <div class="space-y-2">
                             <div class="flex items-center gap-2">
-                                <div class="w-4 h-4 bg-gray-200 dark:bg-gray-700/60 rounded"></div>
-                                <div class="h-3 bg-gray-200 dark:bg-gray-700/60 rounded w-1/3"></div>
+                                <div class="w-4 h-4 bg-gray-200 dark:bg-gray-600 rounded"></div>
+                                <div class="h-3 bg-gray-200 dark:bg-gray-600 rounded w-1/3"></div>
                             </div>
                             <div class="flex items-center gap-2">
-                                <div class="w-4 h-4 bg-gray-200 dark:bg-gray-700/60 rounded"></div>
-                                <div class="h-3 bg-gray-200 dark:bg-gray-700/60 rounded w-1/4"></div>
+                                <div class="w-4 h-4 bg-gray-200 dark:bg-gray-600 rounded"></div>
+                                <div class="h-3 bg-gray-200 dark:bg-gray-600 rounded w-1/4"></div>
                             </div>
                         </div>
 
                         {{-- Footer skeleton --}}
-                        <div class="flex items-center justify-between pt-2 border-t border-gray-200 dark:border-gray-700/50">
+                        <div class="flex items-center justify-between pt-2 border-t border-gray-200 dark:border-gray-600">
                             <div class="flex -space-x-2">
                                 @for($j = 0; $j < 2; $j++)
-                                <div class="w-6 h-6 bg-gray-200 dark:bg-gray-700/60 rounded-full"></div>
+                                <div class="w-6 h-6 bg-gray-200 dark:bg-gray-600 rounded-full"></div>
                                 @endfor
                             </div>
                             <div class="flex gap-2">
-                                <div class="w-8 h-4 bg-gray-200 dark:bg-gray-700/60 rounded"></div>
+                                <div class="w-8 h-4 bg-gray-200 dark:bg-gray-600 rounded"></div>
                             </div>
                         </div>
                     </div>
@@ -270,7 +270,7 @@
 
         {{-- Kanban Columns - Responsive Layout with Dynamic Heights --}}
         <div class="kanban-board-wrapper w-full">
-            <div class="kanban-board flex flex-col lg:flex-row lg:items-start gap-3 lg:gap-4 pb-4"
+            <div class="kanban-board flex flex-col lg:flex-row lg:items-start gap-3 lg:gap-4 pb-4 scrollbar-thin"
                 style="scroll-behavior: smooth;">
 
                 @foreach($columns as $status => $config)
@@ -282,14 +282,12 @@
                 $isLoadingMore = isset($loadingMore[$status]) && $loadingMore[$status];
                 @endphp
 
-                {{-- Kanban Column - Fixed Dark Mode Colors --}}
+                {{-- Kanban Column - With Background --}}
                 <div wire:key="column-{{ $status }}-{{ json_encode($currentFilters) }}" 
                     class="kanban-column 
                         w-full lg:flex-1 lg:min-w-[330px] xl:min-w-[400px]
                         flex flex-col
-                        {{ $config['color'] === 'gray' 
-                            ? 'bg-gray-50/30 dark:bg-gray-800/60' 
-                            : 'bg-' . $config['color'] . '-50/30 dark:bg-' . $config['color'] . '-950/20' }}
+                        bg-white dark:bg-gray-800
                         border border-{{ $config['color'] }}-200 dark:border-{{ $config['color'] }}-800/50
                         rounded-xl overflow-hidden shadow-sm hover:shadow-md 
                         dark:hover:shadow-gray-900/30
@@ -299,11 +297,9 @@
 
                     {{-- Enhanced Column Header with Gradient --}}
                     <div class="column-header flex-shrink-0 px-4 py-3
-                        bg-gradient-to-br 
-                        {{ $config['color'] === 'gray'
-                            ? 'from-white to-gray-50/50 dark:from-gray-800 dark:to-gray-900/60'
-                            : 'from-white to-' . $config['color'] . '-50/50 dark:from-gray-800 dark:to-' . $config['color'] . '-950/30' }}
+                        bg-{{ $config['color'] }}-100 dark:bg-gradient-to-br dark:from-gray-800/80 dark:to-gray-900/60
                         backdrop-blur-sm
+                        scrollbar-thin
                         border-b-2 border-{{ $config['color'] }}-300 dark:border-{{ $config['color'] }}-700/70
                         shadow-sm">
 
@@ -382,9 +378,10 @@
                     {{-- Column Content (Scrollable) --}}
                     <div class="column-content 
                                 overflow-y-auto p-2.5 lg:p-3 space-y-2 lg:space-y-2.5 
-                                custom-scrollbar
+                                scrollbar-thin
+                                bg-gray-50 dark:bg-gray-900/30
                                 {{ $tasks->count() === 0 ? 'min-h-[200px]' : '' }}
-                                {{ $tasks->count() <= 3 ? 'max-h-fit' : 'max-h-[500px] lg:max-h-[600px]' }}"
+                                {{ $tasks->count() <= 3 ? 'max-h-fit' : 'max-h-[600px] lg:max-h-[700px]' }}"
                         data-status="{{ $status }}" 
                         x-ref="column_{{ $status }}">
 
@@ -626,111 +623,53 @@
             }
         }
 
-        /* Custom Scrollbar Design - Clearer and Simpler */
-        .custom-scrollbar {
-            scrollbar-width: thin;
-            scrollbar-color: rgba(156, 163, 175, 0.8) rgba(243, 244, 246, 0.5);
+        /* Custom scrollbar untuk dark mode - Updated Styles */
+        .scrollbar-thin::-webkit-scrollbar {
+            height: 6px;
+            width: 6px;
         }
 
-        .custom-scrollbar::-webkit-scrollbar {
-            width: 10px;
-            height: 10px;
+        .scrollbar-thin::-webkit-scrollbar-track {
+            @apply bg-gray-100 dark:bg-gray-800 rounded-lg;
         }
 
-        @media (min-width: 1024px) {
-            .custom-scrollbar::-webkit-scrollbar {
-                width: 12px;
-                height: 12px;
-            }
+        .scrollbar-thin::-webkit-scrollbar-thumb {
+            @apply bg-gray-300 dark:bg-gray-600 rounded-lg;
         }
 
-        .custom-scrollbar::-webkit-scrollbar-track {
-            background: rgba(243, 244, 246, 0.8);
-            border-radius: 6px;
-            margin: 4px 0;
+        .scrollbar-thin::-webkit-scrollbar-thumb:hover {
+            @apply bg-gray-400 dark:bg-gray-500;
         }
 
-        .custom-scrollbar::-webkit-scrollbar-thumb {
-            background: rgba(156, 163, 175, 0.9);
-            border-radius: 6px;
-            border: 2px solid rgba(243, 244, 246, 0.8);
-            transition: all 0.2s ease;
+        /* Scroll shadows untuk visual feedback */
+        .scroll-left-shadow {
+            box-shadow: inset 10px 0 8px -8px rgba(0, 0, 0, 0.15);
         }
 
-        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
-            background: rgba(107, 114, 128, 1);
-            border: 2px solid rgba(243, 244, 246, 0.9);
+        .dark .scroll-left-shadow {
+            box-shadow: inset 10px 0 8px -8px rgba(0, 0, 0, 0.3);
         }
 
-        .custom-scrollbar::-webkit-scrollbar-thumb:active {
-            background: rgba(75, 85, 99, 1);
+        .scroll-right-shadow {
+            box-shadow: inset -10px 0 8px -8px rgba(0, 0, 0, 0.15);
         }
 
-        /* Dark mode scrollbar */
-        .dark .custom-scrollbar {
-            scrollbar-color: rgba(107, 114, 128, 0.8) rgba(31, 41, 55, 0.5);
+        .dark .scroll-right-shadow {
+            box-shadow: inset -10px 0 8px -8px rgba(0, 0, 0, 0.3);
         }
 
-        .dark .custom-scrollbar::-webkit-scrollbar-track {
-            background: rgba(31, 41, 55, 0.8);
+        /* Progress bar animations */
+        .progress-bar {
+            transition: width 0.5s cubic-bezier(0.4, 0, 0.2, 1);
         }
 
-        .dark .custom-scrollbar::-webkit-scrollbar-thumb {
-            background: rgba(107, 114, 128, 0.9);
-            border-color: rgba(31, 41, 55, 0.8);
+        /* Enhanced hover effects untuk dark mode */
+        .group:hover .progress-bar {
+            filter: brightness(1.1);
         }
 
-        .dark .custom-scrollbar::-webkit-scrollbar-thumb:hover {
-            background: rgba(156, 163, 175, 1);
-            border-color: rgba(31, 41, 55, 0.9);
-        }
-
-        .dark .custom-scrollbar::-webkit-scrollbar-thumb:active {
-            background: rgba(209, 213, 219, 1);
-        }
-
-        /* Horizontal Scrollbar for Board - Clearer Design */
-        .kanban-board-wrapper::-webkit-scrollbar {
-            height: 12px;
-        }
-
-        .kanban-board-wrapper::-webkit-scrollbar-track {
-            background: rgba(243, 244, 246, 0.8);
-            border-radius: 6px;
-            margin: 0 8px;
-        }
-
-        .kanban-board-wrapper::-webkit-scrollbar-thumb {
-            background: rgba(156, 163, 175, 0.9);
-            border-radius: 6px;
-            border: 2px solid rgba(243, 244, 246, 0.8);
-            transition: background 0.2s ease;
-        }
-
-        .kanban-board-wrapper::-webkit-scrollbar-thumb:hover {
-            background: rgba(107, 114, 128, 1);
-        }
-
-        .kanban-board-wrapper::-webkit-scrollbar-thumb:active {
-            background: rgba(75, 85, 99, 1);
-        }
-
-        /* Dark mode horizontal scrollbar */
-        .dark .kanban-board-wrapper::-webkit-scrollbar-track {
-            background: rgba(31, 41, 55, 0.8);
-        }
-
-        .dark .kanban-board-wrapper::-webkit-scrollbar-thumb {
-            background: rgba(107, 114, 128, 0.9);
-            border-color: rgba(31, 41, 55, 0.8);
-        }
-
-        .dark .kanban-board-wrapper::-webkit-scrollbar-thumb:hover {
-            background: rgba(156, 163, 175, 1);
-        }
-
-        .dark .kanban-board-wrapper::-webkit-scrollbar-thumb:active {
-            background: rgba(209, 213, 219, 1);
+        .dark .group:hover .progress-bar {
+            filter: brightness(1.2);
         }
 
         /* Ghost Drag Styling - Brought Back */
@@ -804,43 +743,6 @@
             }
         }
 
-        .kanban-ghost {
-            opacity: 0.4;
-        }
-
-        /* Ghost Drag Styling - Brought Back */
-        .kanban-ghost {
-            opacity: 0.3;
-            background: linear-gradient(135deg, #e0e7ff 0%, #c7d2fe 100%);
-            border: 2px dashed #6366f1;
-            transform: rotate(2deg);
-        }
-
-        .dark .kanban-ghost {
-            background: linear-gradient(135deg, #312e81 0%, #1e1b4b 100%);
-            border-color: #818cf8;
-        }
-
-        .kanban-chosen {
-            cursor: grabbing !important;
-            transform: rotate(3deg) scale(1.02);
-            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
-            z-index: 9999;
-        }
-
-        .kanban-drag {
-            opacity: 0;
-        }
-
-        body.dragging {
-            cursor: grabbing !important;
-            user-select: none;
-        }
-
-        body.dragging * {
-            cursor: grabbing !important;
-        }
-
         .animate-in {
             animation: fade-in 0.2s ease-out;
         }
@@ -852,8 +754,8 @@
             }
         }
 
-        /* Loading skeleton pulse animation */
-        @keyframes pulse {
+        /* Skeleton pulse animation */
+        @keyframes skeleton-pulse {
             0%, 100% {
                 opacity: 1;
             }
@@ -863,7 +765,16 @@
         }
 
         .animate-pulse {
-            animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+            animation: skeleton-pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+        }
+
+        /* Smooth transition untuk loading states */
+        [wire\:loading\.delay] {
+            transition: opacity 0.3s ease-in-out;
+        }
+
+        [wire\:loading\.remove\.delay] {
+            transition: opacity 0.3s ease-in-out;
         }
     </style>
     @endpush
