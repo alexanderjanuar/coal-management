@@ -1,7 +1,5 @@
 {{-- Enhanced Task List Component dengan Dark Mode Support --}}
 <div class="space-y-4 lg:space-y-6" x-data="taskManager()">
-
-
     {{-- Filter Component - Separate component --}}
     <livewire:daily-task.form.daily-task-filter-component :initial-filters="$this->currentFilters"
         :total-tasks="$totalTasks" />
@@ -277,8 +275,7 @@
                                     scrollbar-track-gray-100 dark:scrollbar-track-gray-800">
                             <div class="min-w-[1200px]">
                                 {{-- Group Table Header --}}
-                                <div
-                                    class="border-b border-gray-200 dark:border-gray-600">
+                                <div class="border-b border-gray-200 dark:border-gray-600">
                                     <div class="px-6 py-3">
                                         <div class="grid grid-cols-12 gap-4 text-xs font-semibold text-gray-700 dark:text-gray-200 
                                                     uppercase tracking-wider">
@@ -462,27 +459,213 @@
 
         @else
         {{-- Kanban Board View (placeholder) --}}
-        <div class="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 
-                    shadow-sm dark:shadow-lg dark:shadow-gray-900/20 p-8 text-center">
-            <div class="w-24 h-24 bg-gray-100 dark:bg-gray-700 rounded-full flex items-center justify-center 
-                       mx-auto mb-6 shadow-inner dark:shadow-gray-900/50">
-                <x-heroicon-o-squares-2x2 class="w-12 h-12 text-gray-400 dark:text-gray-500" />
-            </div>
-            <h3 class="text-xl font-semibold text-gray-900 dark:text-gray-100 mb-2">Kanban Board</h3>
-            <p class="text-gray-500 dark:text-gray-400 mb-6">Tampilan Kanban Board akan segera hadir</p>
-            <x-filament::button wire:click="$set('currentFilters.view_mode', 'list')" color="primary">
-                Kembali ke List View
-            </x-filament::button>
-        </div>
+        <livewire:daily-task.components.kanban-board-component :initial-filters="$this->currentFilters"
+            :key="'kanban-' . json_encode($this->currentFilters)" />
         @endif
     </div>
 
-
-
     {{-- Task Detail Modal --}}
     <livewire:daily-task.modals.daily-task-detail-modal />
+    <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
 
-    {{-- JavaScript untuk manajemen task --}}
+    @push('scripts')
+    <script>
+        console.log('Kanban Board Component Loaded');
+            function kanbanBoard() {
+            return {
+                sortables: {},
+                isDragging: false,
+                draggedElement: null,
+                
+                init() {
+                    this.initializeSortable();
+                    
+                    Livewire.on('taskStatusChanged', () => {
+                        setTimeout(() => this.initializeSortable(), 100);
+                    });
+
+                    Livewire.on('task-created', () => {
+                        setTimeout(() => this.initializeSortable(), 100);
+                    });
+
+                    Livewire.on('revertTaskMove', (event) => {
+                        this.revertMove(event.taskId);
+                    });
+                },
+
+                initializeSortable() {
+                    Object.values(this.sortables).forEach(sortable => sortable.destroy());
+                    this.sortables = {};
+
+                    document.querySelectorAll('.column-content').forEach(column => {
+                        const status = column.dataset.status;
+                        
+                        this.sortables[status] = new Sortable(column, {
+                            group: 'kanban',
+                            animation: 200,
+                            delay: 50,
+                            delayOnTouchOnly: true,
+                            touchStartThreshold: 5,
+                            ghostClass: 'kanban-ghost',
+                            chosenClass: 'kanban-chosen',
+                            dragClass: 'kanban-drag',
+                            handle: '.kanban-card',
+                            
+                            onStart: (evt) => {
+                                this.isDragging = true;
+                                this.draggedElement = evt.item;
+                                document.body.classList.add('dragging');
+                            },
+
+                            onEnd: (evt) => {
+                                this.isDragging = false;
+                                document.body.classList.remove('dragging');
+                                
+                                const taskId = parseInt(evt.item.dataset.taskId);
+                                const newStatus = evt.to.dataset.status;
+                                const newPosition = evt.newIndex;
+
+                                if (evt.from !== evt.to) {
+                                    @this.call('handleTaskMoved', taskId, newStatus, newPosition);
+                                }
+                            },
+
+                            onMove: (evt) => {
+                                const toColumn = evt.to;
+                                const status = toColumn.dataset.status;
+                                const limit = this.getColumnLimit(status);
+                                
+                                if (limit) {
+                                    const currentCount = toColumn.querySelectorAll('.kanban-card').length;
+                                    if (currentCount >= limit && evt.from !== evt.to) {
+                                        return false;
+                                    }
+                                }
+                                
+                                return true;
+                            }
+                        });
+                    });
+                },
+
+                getColumnLimit(status) {
+                    const limits = {
+                        'in_progress': {{ $columns['in_progress']['limit'] ?? 'null' }}
+                    };
+                    return limits[status] || null;
+                },
+
+                revertMove(taskId) {
+                    const card = document.querySelector(`[data-task-id="${taskId}"]`);
+                    if (card) {
+                        setTimeout(() => {
+                            @this.call('$refresh');
+                        }, 100);
+                    }
+                }
+            }
+        }
+    </script>
+    @endpush
+
+    @push('styles')
+    <style>
+        /* Kanban Container */
+        .kanban-board {
+            -webkit-overflow-scrolling: touch;
+        }
+
+        /* Drag States */
+        .kanban-ghost {
+            opacity: 0.4;
+            background: #e0e7ff;
+            border: 2px dashed #6366f1;
+        }
+
+        .dark .kanban-ghost {
+            background: #312e81;
+            border-color: #818cf8;
+        }
+
+        .kanban-chosen {
+            cursor: grabbing;
+            transform: rotate(2deg);
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+        }
+
+        .kanban-drag {
+            opacity: 0;
+        }
+
+        body.dragging {
+            cursor: grabbing !important;
+        }
+
+        body.dragging * {
+            cursor: grabbing !important;
+        }
+
+        /* Card Hover Effect */
+        .kanban-card {
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+            cursor: grab;
+        }
+
+        .kanban-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.15);
+        }
+
+        .dark .kanban-card:hover {
+            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.5);
+        }
+
+        .kanban-card:active {
+            cursor: grabbing;
+        }
+
+        /* Scrollbar Styling */
+        .column-content {
+            scrollbar-width: thin;
+        }
+
+        .column-content::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        .column-content::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        .column-content::-webkit-scrollbar-thumb {
+            border-radius: 3px;
+        }
+
+        /* Smooth Animations */
+        .kanban-column {
+            transition: all 0.3s ease;
+        }
+
+        /* Priority Indicators */
+        .priority-urgent {
+            border-left: 4px solid #ef4444;
+        }
+
+        .priority-high {
+            border-left: 4px solid #f59e0b;
+        }
+
+        .priority-normal {
+            border-left: 4px solid #3b82f6;
+        }
+
+        .priority-low {
+            border-left: 4px solid #6b7280;
+        }
+    </style>
+    @endpush
+
+    @push('scripts')
     <script>
         function taskManager() {
             return {
@@ -574,8 +757,11 @@
             });
         });
     </script>
+    @endpush
+
 
     {{-- CSS untuk scroll indicators dan dark mode enhancements --}}
+    @push('styles')
     <style>
         /* Custom scrollbar untuk dark mode */
         .scrollbar-thin::-webkit-scrollbar {
@@ -652,4 +838,8 @@
             transition: opacity 0.3s ease-in-out;
         }
     </style>
+    @endpush
+
+
+
 </div>

@@ -9,6 +9,7 @@ use App\Models\Project;
 use Livewire\Component;
 use Livewire\WithPagination;
 use Livewire\Attributes\Computed;
+use Livewire\Attributes\On;
 use Filament\Notifications\Notification;
 use Illuminate\Support\Collection;
 use Carbon\Carbon;
@@ -54,15 +55,42 @@ class DailyTaskListComponent extends Component
     public int $initialGroupLoad = 10;
     public int $groupLoadIncrement = 5;
 
+    // Kanban settings
+    public array $kanbanColumns = [
+        'pending' => [
+            'title' => 'To Do',
+            'icon' => 'heroicon-o-queue-list',
+            'color' => 'gray',
+            'limit' => null
+        ],
+        'in_progress' => [
+            'title' => 'In Progress',
+            'icon' => 'heroicon-o-arrow-path',
+            'color' => 'blue',
+            'limit' => 5
+        ],
+        'completed' => [
+            'title' => 'Done',
+            'icon' => 'heroicon-o-check-circle',
+            'color' => 'green',
+            'limit' => null
+        ],
+    ];
+    
+    public array $creatingInColumn = [];
+    public bool $showCompletedTasks = true;
+    public int $maxCardsPerColumn = 50;
+
     protected $listeners = [
-        'taskUpdated' => 'handleTaskUpdated',          // Changed
-        'task-created' => 'handleTaskCreated',          // Changed
-        'taskStatusChanged' => 'handleTaskStatusChanged', // Changed
-        'taskDeleted' => 'handleTaskDeleted',          // Changed
-        'subtaskAdded' => 'handleSubtaskUpdated',      // Changed
-        'subtaskUpdated' => 'handleSubtaskUpdated',    // Changed
+        'taskUpdated' => 'handleTaskUpdated',
+        'task-created' => 'handleTaskCreated',
+        'taskStatusChanged' => 'handleTaskStatusChanged',
+        'taskDeleted' => 'handleTaskDeleted',
+        'subtaskAdded' => 'handleSubtaskUpdated',
+        'subtaskUpdated' => 'handleSubtaskUpdated',
         'cancelNewTask' => 'cancelNewTask',
         'filtersChanged' => 'updateFilters',
+        'taskMoved' => 'handleTaskMoved',
     ];
 
     public function boot(TaskGroupingService $groupingService, TaskFilterService $filterService)
@@ -95,8 +123,13 @@ class DailyTaskListComponent extends Component
     public function updateFilters(array $filters): void
     {
         $this->currentFilters = array_merge($this->currentFilters, $filters);
-        $this->resetPage(); // Reset pagination when filters change
+        $this->resetPage();
         $this->groupLoadedCounts = [];
+        
+        // Clear cached properties when switching views
+        unset($this->tasksQuery);
+        unset($this->groupedTasks);
+        
         $this->dispatch('$refresh');
     }
 
@@ -107,7 +140,7 @@ class DailyTaskListComponent extends Component
     {
         unset($this->tasksQuery);
         unset($this->groupedTasks);
-        // DON'T reset page here
+        unset($this->kanbanTasks);
         $this->dispatch('$refresh');
     }
 
@@ -118,7 +151,7 @@ class DailyTaskListComponent extends Component
     {
         unset($this->tasksQuery);
         unset($this->groupedTasks);
-        // DON'T reset page here
+        unset($this->kanbanTasks);
         $this->dispatch('$refresh');
     }
 
@@ -129,7 +162,7 @@ class DailyTaskListComponent extends Component
     {
         unset($this->tasksQuery);
         unset($this->groupedTasks);
-        // DON'T reset page here
+        unset($this->kanbanTasks);
         $this->dispatch('$refresh');
     }
 
@@ -140,7 +173,7 @@ class DailyTaskListComponent extends Component
     {
         unset($this->tasksQuery);
         unset($this->groupedTasks);
-        // DON'T reset page here
+        unset($this->kanbanTasks);
         $this->dispatch('$refresh');
     }
 
@@ -151,7 +184,7 @@ class DailyTaskListComponent extends Component
     {
         unset($this->tasksQuery);
         unset($this->groupedTasks);
-        // DON'T reset page here
+        unset($this->kanbanTasks);
         $this->dispatch('$refresh');
     }
 
@@ -162,7 +195,8 @@ class DailyTaskListComponent extends Component
     {
         unset($this->tasksQuery);
         unset($this->groupedTasks);
-        $this->resetPage(); // Reset when manually refreshed
+        unset($this->kanbanTasks);
+        $this->resetPage();
         $this->groupLoadedCounts = [];
         $this->dispatch('$refresh');
     }
@@ -216,6 +250,51 @@ class DailyTaskListComponent extends Component
     }
 
     /**
+     * Get tasks grouped by status for Kanban
+     */
+    #[Computed]
+    public function kanbanTasks(): Collection
+    {
+        $tasks = $this->tasksQuery->get();
+        $grouped = $tasks->groupBy('status');
+        
+        $result = collect();
+        foreach (array_keys($this->kanbanColumns) as $status) {
+            $columnTasks = $grouped->get($status, collect());
+            
+            if ($columnTasks->count() > $this->maxCardsPerColumn) {
+                $columnTasks = $columnTasks->take($this->maxCardsPerColumn);
+            }
+            
+            $result->put($status, $columnTasks);
+        }
+        
+        return $result;
+    }
+
+    /**
+     * Get column statistics for Kanban
+     */
+    public function getColumnStats(string $status): array
+    {
+        $tasks = $this->kanbanTasks->get($status, collect());
+        $total = $tasks->count();
+        
+        return [
+            'total' => $total,
+            'urgent' => $tasks->where('priority', 'urgent')->count(),
+            'high' => $tasks->where('priority', 'high')->count(),
+            'overdue' => $tasks->filter(function($task) {
+                return $task->task_date && $task->task_date->isPast() && $task->status !== 'completed';
+            })->count(),
+            'limit' => $this->kanbanColumns[$status]['limit'] ?? null,
+            'isAtLimit' => $this->kanbanColumns[$status]['limit'] 
+                ? $total >= $this->kanbanColumns[$status]['limit']
+                : false
+        ];
+    }
+
+    /**
      * Get limited tasks for a specific group
      */
     public function getGroupTasks(string $groupKey): Collection
@@ -236,7 +315,6 @@ class DailyTaskListComponent extends Component
     {
         $currentCount = $this->groupLoadedCounts[$groupKey] ?? $this->initialGroupLoad;
         $this->groupLoadedCounts[$groupKey] = $currentCount + $this->groupLoadIncrement;
-        // No page reset
     }
 
     /**
@@ -267,7 +345,7 @@ class DailyTaskListComponent extends Component
     public function updatePerPage(int $perPage): void
     {
         $this->perPage = $perPage;
-        $this->resetPage(); // Reset when changing per page
+        $this->resetPage();
     }
 
     /**
@@ -294,7 +372,6 @@ class DailyTaskListComponent extends Component
             ->success()
             ->send();
             
-        // Use the new handler that doesn't reset page
         $this->handleTaskStatusChanged();
     }
 
@@ -310,7 +387,7 @@ class DailyTaskListComponent extends Component
             $this->currentFilters['sort_direction'] = 'asc';
         }
         
-        $this->resetPage(); // Reset when sorting changes
+        $this->resetPage();
     }
 
     /**
@@ -319,7 +396,6 @@ class DailyTaskListComponent extends Component
     public function openTaskDetail(int $taskId): void
     {
         $this->dispatch('openTaskDetailModal', taskId: $taskId);
-        // No page reset
     }
 
     /**
@@ -346,8 +422,6 @@ class DailyTaskListComponent extends Component
             'project_id' => null,
             'assigned_users' => [],
         ], $filterDefaults, $groupDefaults);
-        
-        // No page reset
     }
 
     /**
@@ -446,7 +520,6 @@ class DailyTaskListComponent extends Component
             ->success()
             ->send();
 
-        // Use handler that doesn't reset page
         $this->handleTaskCreated();
     }
 
@@ -464,7 +537,6 @@ class DailyTaskListComponent extends Component
         }
         
         $this->editingGroup = null;
-        // No page reset
     }
 
     /**
@@ -482,6 +554,151 @@ class DailyTaskListComponent extends Component
     public function getGroupKey(string $groupType, string $groupValue): string
     {
         return $groupType . '_' . str_replace([' ', '+'], ['_', '_plus_'], $groupValue);
+    }
+
+    /**
+     * Handle task moved in Kanban
+     */
+    #[On('taskMoved')]
+    public function handleTaskMoved(int $taskId, string $newStatus, int $newPosition): void
+    {
+        try {
+            $task = DailyTask::find($taskId);
+            
+            if (!$task) {
+                throw new \Exception('Task not found');
+            }
+
+            // Check WIP limit
+            if ($this->kanbanColumns[$newStatus]['limit'] ?? null) {
+                $currentCount = $this->kanbanTasks->get($newStatus, collect())->count();
+                if ($currentCount >= $this->kanbanColumns[$newStatus]['limit']) {
+                    Notification::make()
+                        ->title('WIP Limit Reached')
+                        ->body("Column '{$this->kanbanColumns[$newStatus]['title']}' has reached its work-in-progress limit")
+                        ->warning()
+                        ->duration(5000)
+                        ->send();
+                    
+                    $this->dispatch('revertTaskMove', taskId: $taskId);
+                    return;
+                }
+            }
+
+            $oldStatus = $task->status;
+            $task->update(['status' => $newStatus]);
+
+            if ($newStatus === 'in_progress' && !$task->start_task_date) {
+                $task->update(['start_task_date' => now()]);
+            }
+
+            Notification::make()
+                ->title('Task Moved')
+                ->body("Task '{$task->title}' moved from {$this->kanbanColumns[$oldStatus]['title']} to {$this->kanbanColumns[$newStatus]['title']}")
+                ->success()
+                ->send();
+
+            $this->handleTaskStatusChanged();
+            
+        } catch (\Exception $e) {
+            Notification::make()
+                ->title('Error Moving Task')
+                ->body($e->getMessage())
+                ->danger()
+                ->send();
+                
+            $this->dispatch('revertTaskMove', taskId: $taskId);
+        }
+    }
+
+    /**
+     * Start creating task in Kanban column
+     */
+    public function startCreatingKanbanTask(string $status): void
+    {
+        if ($this->kanbanColumns[$status]['limit'] ?? null) {
+            $currentCount = $this->kanbanTasks->get($status, collect())->count();
+            if ($currentCount >= $this->kanbanColumns[$status]['limit']) {
+                Notification::make()
+                    ->title('WIP Limit Reached')
+                    ->body("Cannot add more tasks to '{$this->kanbanColumns[$status]['title']}' column")
+                    ->warning()
+                    ->send();
+                return;
+            }
+        }
+
+        $this->creatingInColumn = [$status => true];
+        $this->newTaskData[$status] = [
+            'title' => '',
+            'status' => $status,
+            'priority' => 'normal',
+            'task_date' => today(),
+            'start_task_date' => $status === 'in_progress' ? today() : null,
+            'project_id' => null,
+            'assigned_users' => !empty($this->currentFilters['assignee']) 
+                ? $this->currentFilters['assignee'] 
+                : [auth()->id()],
+        ];
+    }
+
+    /**
+     * Save new Kanban task
+     */
+    public function saveKanbanTask(string $status): void
+    {
+        if (empty($this->newTaskData[$status]['title'])) {
+            Notification::make()
+                ->title('Error')
+                ->body('Task title is required')
+                ->danger()
+                ->send();
+            return;
+        }
+
+        $data = $this->newTaskData[$status];
+        
+        $task = DailyTask::create([
+            'title' => $data['title'],
+            'status' => $data['status'],
+            'priority' => $data['priority'],
+            'task_date' => $data['task_date'],
+            'start_task_date' => $data['start_task_date'],
+            'project_id' => $data['project_id'],
+            'created_by' => auth()->id(),
+        ]);
+
+        if (!empty($data['assigned_users'])) {
+            $task->assignedUsers()->sync($data['assigned_users']);
+        }
+
+        unset($this->creatingInColumn[$status]);
+        unset($this->newTaskData[$status]);
+
+        Notification::make()
+            ->title('Task Created')
+            ->body("Task '{$task->title}' created successfully")
+            ->success()
+            ->send();
+
+        $this->handleTaskCreated();
+    }
+
+    /**
+     * Cancel Kanban task creation
+     */
+    public function cancelKanbanTask(string $status): void
+    {
+        unset($this->creatingInColumn[$status]);
+        unset($this->newTaskData[$status]);
+    }
+
+    /**
+     * Toggle show completed tasks
+     */
+    public function toggleCompletedTasks(): void
+    {
+        $this->showCompletedTasks = !$this->showCompletedTasks;
     }
 
     /**
@@ -559,6 +776,8 @@ class DailyTaskListComponent extends Component
             'groupBy' => $groupBy,
             'sortBy' => $this->getCurrentSortBy(),
             'sortDirection' => $this->getCurrentSortDirection(),
+            'kanbanTasks' => $viewMode === 'kanban' ? $this->kanbanTasks : collect(),
+            'kanbanColumns' => $this->kanbanColumns,
         ]);
     }
 }

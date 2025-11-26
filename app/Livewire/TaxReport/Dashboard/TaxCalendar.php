@@ -593,7 +593,7 @@ class TaxCalendar extends Component
 
             // Create urgent banner for all users
             $bannerData = new BannerData(
-                id: 'tax_reminder_' . time(),
+                id: uniqid(),
                 name: 'Pengingat Pajak Mendesak',
                 content: "{$urgentText}: {$clientCount} klien AKTIF belum {$actionText} pada {$date}! Klik untuk melihat detail.",
                 is_active: true,
@@ -615,7 +615,7 @@ class TaxCalendar extends Component
                 link_button_style: 'filled',
                 link_button_color: '#FFFFFF',
                 link_text_color: '#DC2626',
-                link_active: 'true',
+                link_active: true,
                 link_open_in_new_tab: false,
                 link_button_icon: 'heroicon-o-arrow-right',
                 link_button_icon_color: '#DC2626',
@@ -624,7 +624,7 @@ class TaxCalendar extends Component
             BannerManager::store($bannerData);
 
             // Close the modal
-            $this->dispatch('close-modal', ['id' => 'pending-clients-modal']);
+            $this->dispatch('close-modal', id : 'pending-clients-modal');
 
             // Success notification
             Notification::make()

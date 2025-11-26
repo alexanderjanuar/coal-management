@@ -161,7 +161,7 @@ class UserActivity extends Model
             'project_id' => $projectId,
             'created_by' => $this->user_id,
             'priority' => $priority,
-            'status' => 'pending',
+            'status' => 'completed',
             'task_date' => now()->format('Y-m-d'),
             'start_task_date' => now()->format('Y-m-d'),
         ]);
