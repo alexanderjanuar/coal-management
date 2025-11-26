@@ -281,12 +281,19 @@ class KanbanBoardComponent extends Component
      */
     public function getColumnStats(string $status): array
     {
+        // Get total count from database
+        $total = $this->getTasksQuery()->where('status', $status)->count();
+        
+        // Get actually loaded count (minimum of loaded limit or total)
+        $loadedLimit = $this->loadedTasksPerColumn[$status] ?? $this->tasksPerLoad;
+        $actualLoaded = min($loadedLimit, $total);
+        
+        // Get all tasks for other stats
         $allTasks = $this->getTasksQuery()->where('status', $status)->get();
-        $total = $allTasks->count();
         
         return [
             'total' => $total,
-            'loaded' => $this->loadedTasksPerColumn[$status] ?? $this->tasksPerLoad,
+            'loaded' => $actualLoaded,  // ← Fixed: now shows min(limit, total)
             'urgent' => $allTasks->where('priority', 'urgent')->count(),
             'high' => $allTasks->where('priority', 'high')->count(),
             'overdue' => $allTasks->filter(function($task) {

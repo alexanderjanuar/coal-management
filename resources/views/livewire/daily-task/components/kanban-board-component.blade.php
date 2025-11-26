@@ -132,12 +132,12 @@
             <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div class="flex items-center gap-2">
                     @for($i = 0; $i < 3; $i++)
-                    <div class="h-8 w-24 bg-gray-200 dark:bg-gray-700 rounded-lg"></div>
+                    <div class="h-8 w-24 bg-gray-200 dark:bg-gray-700/60 rounded-lg"></div>
                     @endfor
                 </div>
                 <div class="flex items-center gap-2">
-                    <div class="h-10 w-32 bg-gray-200 dark:bg-gray-700 rounded-lg"></div>
-                    <div class="h-10 w-24 bg-gray-200 dark:bg-gray-700 rounded-lg"></div>
+                    <div class="h-10 w-32 bg-gray-200 dark:bg-gray-700/60 rounded-lg"></div>
+                    <div class="h-10 w-24 bg-gray-200 dark:bg-gray-700/60 rounded-lg"></div>
                 </div>
             </div>
         </div>
@@ -146,16 +146,16 @@
         <div class="kanban-board flex flex-col lg:flex-row lg:items-start gap-4 pb-4">
             @foreach($columns as $status => $config)
             <div class="w-full lg:flex-1 lg:min-w-[330px] xl:min-w-[400px] 
-                        bg-{{ $config['color'] }}-50/30 dark:bg-{{ $config['color'] }}-950/20
-                        border border-{{ $config['color'] }}-200 dark:border-{{ $config['color'] }}-800/50
+                        bg-gray-50 dark:bg-gray-800/50
+                        border border-gray-200 dark:border-gray-700/50
                         rounded-xl overflow-hidden">
                 {{-- Column Header Skeleton --}}
-                <div class="px-4 py-3 border-b-2 border-{{ $config['color'] }}-300 dark:border-{{ $config['color'] }}-700/70">
+                <div class="px-4 py-3 border-b border-gray-200 dark:border-gray-700/50 bg-white dark:bg-gray-800">
                     <div class="flex items-center justify-between">
                         <div class="flex items-center gap-2.5">
-                            <div class="w-10 h-10 bg-{{ $config['color'] }}-200 dark:bg-{{ $config['color'] }}-800 rounded-lg animate-pulse"></div>
-                            <div class="h-5 w-32 bg-{{ $config['color'] }}-200 dark:bg-{{ $config['color'] }}-800 rounded animate-pulse"></div>
-                            <div class="h-6 w-10 bg-{{ $config['color'] }}-200 dark:bg-{{ $config['color'] }}-800 rounded-full animate-pulse"></div>
+                            <div class="w-10 h-10 bg-gray-200 dark:bg-gray-700/60 rounded-lg animate-pulse"></div>
+                            <div class="h-5 w-32 bg-gray-200 dark:bg-gray-700/60 rounded animate-pulse"></div>
+                            <div class="h-6 w-10 bg-gray-200 dark:bg-gray-700/60 rounded-full animate-pulse"></div>
                         </div>
                     </div>
                 </div>
@@ -163,37 +163,37 @@
                 {{-- Task Cards Skeleton --}}
                 <div class="p-3 space-y-2.5">
                     @for($i = 0; $i < 3; $i++)
-                    <div class="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-3 space-y-3 animate-pulse">
+                    <div class="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700/50 p-3 space-y-3 animate-pulse">
                         {{-- Title skeleton --}}
                         <div class="flex items-start gap-2">
-                            <div class="w-1 h-16 bg-gray-200 dark:bg-gray-700 rounded-full"></div>
+                            <div class="w-1 h-16 bg-gray-200 dark:bg-gray-700/60 rounded-full"></div>
                             <div class="flex-1 space-y-2">
-                                <div class="h-4 bg-gray-200 dark:bg-gray-700 rounded w-3/4"></div>
-                                <div class="h-3 bg-gray-200 dark:bg-gray-700 rounded w-1/2"></div>
+                                <div class="h-4 bg-gray-200 dark:bg-gray-700/60 rounded w-3/4"></div>
+                                <div class="h-3 bg-gray-200 dark:bg-gray-700/60 rounded w-1/2"></div>
                             </div>
                         </div>
                         
                         {{-- Meta skeleton --}}
                         <div class="space-y-2">
                             <div class="flex items-center gap-2">
-                                <div class="w-4 h-4 bg-gray-200 dark:bg-gray-700 rounded"></div>
-                                <div class="h-3 bg-gray-200 dark:bg-gray-700 rounded w-1/3"></div>
+                                <div class="w-4 h-4 bg-gray-200 dark:bg-gray-700/60 rounded"></div>
+                                <div class="h-3 bg-gray-200 dark:bg-gray-700/60 rounded w-1/3"></div>
                             </div>
                             <div class="flex items-center gap-2">
-                                <div class="w-4 h-4 bg-gray-200 dark:bg-gray-700 rounded"></div>
-                                <div class="h-3 bg-gray-200 dark:bg-gray-700 rounded w-1/4"></div>
+                                <div class="w-4 h-4 bg-gray-200 dark:bg-gray-700/60 rounded"></div>
+                                <div class="h-3 bg-gray-200 dark:bg-gray-700/60 rounded w-1/4"></div>
                             </div>
                         </div>
 
                         {{-- Footer skeleton --}}
-                        <div class="flex items-center justify-between pt-2 border-t border-gray-200 dark:border-gray-700">
+                        <div class="flex items-center justify-between pt-2 border-t border-gray-200 dark:border-gray-700/50">
                             <div class="flex -space-x-2">
                                 @for($j = 0; $j < 2; $j++)
-                                <div class="w-6 h-6 bg-gray-200 dark:bg-gray-700 rounded-full"></div>
+                                <div class="w-6 h-6 bg-gray-200 dark:bg-gray-700/60 rounded-full"></div>
                                 @endfor
                             </div>
                             <div class="flex gap-2">
-                                <div class="w-8 h-4 bg-gray-200 dark:bg-gray-700 rounded"></div>
+                                <div class="w-8 h-4 bg-gray-200 dark:bg-gray-700/60 rounded"></div>
                             </div>
                         </div>
                     </div>
@@ -216,10 +216,10 @@
                         @php $stats = $this->getColumnStats($status); @endphp
                         <div class="group relative px-3 py-1.5 rounded-lg text-xs font-semibold
                                     transition-all duration-200 hover:scale-105 cursor-pointer
-                                    bg-{{ $config['color'] }}-100 dark:bg-{{ $config['color'] }}-900/30
-                                    text-{{ $config['color'] }}-700 dark:text-{{ $config['color'] }}-300
-                                    border-2 border-{{ $config['color'] }}-200 dark:border-{{ $config['color'] }}-700/50
-                                    hover:border-{{ $config['color'] }}-400 dark:hover:border-{{ $config['color'] }}-500
+                                    bg-{{ $config['color'] }}-100 dark:bg-{{ $config['color'] }}-900/40
+                                    text-{{ $config['color'] }}-700 dark:text-{{ $config['color'] }}-200
+                                    border border-{{ $config['color'] }}-200 dark:border-{{ $config['color'] }}-700/50
+                                    hover:border-{{ $config['color'] }}-400 dark:hover:border-{{ $config['color'] }}-600
                                     shadow-sm hover:shadow-md">
                             <div class="flex items-center gap-1.5">
                                 <x-dynamic-component
@@ -227,7 +227,7 @@
                                     class="w-3.5 h-3.5" />
                                 <span class="hidden sm:inline">{{ $config['title'] }}</span>
                                 <span class="sm:hidden">{{ substr($config['title'], 0, 3) }}</span>
-                                <span class="px-1.5 py-0.5 bg-{{ $config['color'] }}-200 dark:bg-{{ $config['color'] }}-800 
+                                <span class="px-1.5 py-0.5 bg-{{ $config['color'] }}-200 dark:bg-{{ $config['color'] }}-800/60
                                              rounded-full text-xs font-bold">
                                     {{ $stats['total'] }}
                                 </span>
@@ -244,8 +244,8 @@
                         class="group flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium
                                transition-all duration-200 hover:scale-105 active:scale-95
                                {{ $showCompletedTasks 
-                                  ? 'bg-blue-500 text-white shadow-lg shadow-blue-500/30 hover:bg-blue-600' 
-                                  : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600' }}
+                                  ? 'bg-blue-500 dark:bg-blue-600 text-white shadow-lg shadow-blue-500/30 dark:shadow-blue-900/30 hover:bg-blue-600 dark:hover:bg-blue-700' 
+                                  : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200 hover:bg-gray-200 dark:hover:bg-gray-600' }}
                                border border-transparent hover:border-gray-300 dark:hover:border-gray-500">
                         <x-dynamic-component 
                             :component="$showCompletedTasks ? 'heroicon-o-eye' : 'heroicon-o-eye-slash'"
@@ -257,7 +257,7 @@
                     {{-- Refresh --}}
                     <button wire:click="$refresh" 
                         class="group flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium
-                               bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300
+                               bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200
                                hover:bg-gray-200 dark:hover:bg-gray-600
                                transition-all duration-200 hover:scale-105 active:scale-95
                                border border-transparent hover:border-gray-300 dark:hover:border-gray-500">
@@ -282,24 +282,30 @@
                 $isLoadingMore = isset($loadingMore[$status]) && $loadingMore[$status];
                 @endphp
 
-                {{-- Kanban Column - Responsive with Dynamic Height --}}
+                {{-- Kanban Column - Fixed Dark Mode Colors --}}
                 <div wire:key="column-{{ $status }}-{{ json_encode($currentFilters) }}" 
                     class="kanban-column 
                         w-full lg:flex-1 lg:min-w-[330px] xl:min-w-[400px]
                         flex flex-col
-                        bg-{{ $config['color'] }}-50/30 dark:bg-{{ $config['color'] }}-950/20
+                        {{ $config['color'] === 'gray' 
+                            ? 'bg-gray-50/30 dark:bg-gray-800/60' 
+                            : 'bg-' . $config['color'] . '-50/30 dark:bg-' . $config['color'] . '-950/20' }}
                         border border-{{ $config['color'] }}-200 dark:border-{{ $config['color'] }}-800/50
-                        rounded-xl overflow-hidden shadow-sm hover:shadow-md transition-shadow duration-200
+                        rounded-xl overflow-hidden shadow-sm hover:shadow-md 
+                        dark:hover:shadow-gray-900/30
+                        transition-shadow duration-200
                         {{ $tasks->count() > 5 ? 'h-full' : 'h-auto' }}" 
                     data-status="{{ $status }}">
 
-                    {{-- Enhanced Column Header --}}
+                    {{-- Enhanced Column Header with Gradient --}}
                     <div class="column-header flex-shrink-0 px-4 py-3
-                                bg-gradient-to-br from-white to-{{ $config['color'] }}-50/50 
-                                dark:from-gray-800 dark:to-{{ $config['color'] }}-950/30 
-                                backdrop-blur-sm
-                                border-b-2 border-{{ $config['color'] }}-300 dark:border-{{ $config['color'] }}-700/70
-                                shadow-sm">
+                        bg-gradient-to-br 
+                        {{ $config['color'] === 'gray'
+                            ? 'from-white to-gray-50/50 dark:from-gray-800 dark:to-gray-900/60'
+                            : 'from-white to-' . $config['color'] . '-50/50 dark:from-gray-800 dark:to-' . $config['color'] . '-950/30' }}
+                        backdrop-blur-sm
+                        border-b-2 border-{{ $config['color'] }}-300 dark:border-{{ $config['color'] }}-700/70
+                        shadow-sm">
 
                         <div class="flex items-center justify-between">
                             {{-- Title & Count --}}
@@ -325,7 +331,7 @@
                                                 text-{{ $config['color'] }}-800 dark:text-{{ $config['color'] }}-200
                                                 border-2 border-{{ $config['color'] }}-300 dark:border-{{ $config['color'] }}-700
                                                 shadow-sm">
-                                        {{ $stats['loaded'] }}/{{ $stats['total'] }}
+                                        {{ $stats['total'] }}
                                     </div>
                                 </div>
                             </div>
@@ -373,7 +379,7 @@
                         @endif
                     </div>
 
-                    {{-- Column Content (Scrollable) - Dynamic Height Based on Content --}}
+                    {{-- Column Content (Scrollable) --}}
                     <div class="column-content 
                                 overflow-y-auto p-2.5 lg:p-3 space-y-2 lg:space-y-2.5 
                                 custom-scrollbar
@@ -444,7 +450,7 @@
                         </div>
                         @endif
 
-                        {{-- Inline Task Creation - Responsive --}}
+                        {{-- Inline Task Creation --}}
                         @if($isCreating)
                         <div class="bg-white dark:bg-gray-800 rounded-lg border-2 border-dashed 
                                     border-blue-400 dark:border-blue-600 p-3 lg:p-4 space-y-2 lg:space-y-3
@@ -527,7 +533,7 @@
                         @endif
                     </div>
 
-                    {{-- Column Footer (Add Task Button) - Responsive --}}
+                    {{-- Column Footer (Add Task Button) --}}
                     @if(!$isCreating && !$stats['isAtLimit'])
                     <div class="column-footer flex-shrink-0 p-2.5 lg:p-3 
                                 border-t border-{{ $config['color'] }}-200 
@@ -727,6 +733,29 @@
             background: rgba(209, 213, 219, 1);
         }
 
+        /* Ghost Drag Styling - Brought Back */
+        .kanban-ghost {
+            opacity: 0.3;
+            background: linear-gradient(135deg, #e0e7ff 0%, #c7d2fe 100%);
+            border: 2px dashed #6366f1;
+            transform: rotate(2deg);
+        }
+
+        .dark .kanban-ghost {
+            background: linear-gradient(135deg, #312e81 0%, #1e1b4b 100%);
+            border-color: #818cf8;
+        }
+
+        .kanban-chosen {
+            cursor: grabbing !important;
+            transform: rotate(3deg) scale(1.02);
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+            z-index: 9999;
+        }
+
+        .kanban-drag {
+            opacity: 0;
+        }
 
         body.dragging {
             cursor: grabbing !important;
@@ -773,6 +802,43 @@
                 opacity: 1;
                 transform: translateY(0);
             }
+        }
+
+        .kanban-ghost {
+            opacity: 0.4;
+        }
+
+        /* Ghost Drag Styling - Brought Back */
+        .kanban-ghost {
+            opacity: 0.3;
+            background: linear-gradient(135deg, #e0e7ff 0%, #c7d2fe 100%);
+            border: 2px dashed #6366f1;
+            transform: rotate(2deg);
+        }
+
+        .dark .kanban-ghost {
+            background: linear-gradient(135deg, #312e81 0%, #1e1b4b 100%);
+            border-color: #818cf8;
+        }
+
+        .kanban-chosen {
+            cursor: grabbing !important;
+            transform: rotate(3deg) scale(1.02);
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+            z-index: 9999;
+        }
+
+        .kanban-drag {
+            opacity: 0;
+        }
+
+        body.dragging {
+            cursor: grabbing !important;
+            user-select: none;
+        }
+
+        body.dragging * {
+            cursor: grabbing !important;
         }
 
         .animate-in {
