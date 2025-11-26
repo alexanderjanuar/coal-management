@@ -157,12 +157,68 @@ class InvoiceTable extends Component implements HasForms, HasTable
                 Tables\Columns\TextColumn::make('dpp')
                     ->label('DPP')
                     ->money('Rp.')
-                    ->sortable(),
+                    ->sortable()
+                    ->summarize(
+                        Sum::make()
+                            ->money('Rp.')
+                            ->label('Peredaran Bruto')
+                            ->query(fn (QueryBuilder $query) => $query->where(function ($q) {
+                                // Include original invoices that don't have any revisions
+                                $q->where('is_revision', false)
+                                ->whereNotExists(function ($subQuery) {
+                                    $subQuery->select(\DB::raw(1))
+                                            ->from('invoices as revisions')
+                                            ->whereColumn('revisions.original_invoice_id', 'invoices.id')
+                                            ->where('revisions.is_revision', true);
+                                });
+                            })->orWhere(function ($q) {
+                                // Include only the latest revision for each original invoice
+                                $q->where('is_revision', true)
+                                ->whereIn('id', function ($subQuery) {
+                                    $subQuery->selectRaw('MAX(id)')
+                                            ->from('invoices as latest_revisions')
+                                            ->where('latest_revisions.is_revision', true)
+                                            ->whereNotNull('latest_revisions.original_invoice_id')
+                                            ->groupBy('latest_revisions.original_invoice_id');
+                                });
+                            }))
+                    )
+                    ->description(function ($record) {
+                        if (($record->ppn_percentage ?? '11') === '12' && ($record->dpp_nilai_lainnya ?? 0) > 0) {
+                            return 'Dihitung dari DPP Nilai Lainnya';
+                        }
+                        return null;
+                    }),
 
                 Tables\Columns\TextColumn::make('ppn')
                     ->label('PPN')
                     ->money('Rp.')
-                    ->sortable(),
+                    ->sortable()
+                    ->summarize(
+                        Sum::make()
+                            ->money('Rp.')
+                            ->label('Total PPN')
+                            ->query(fn (QueryBuilder $query) => $query->where(function ($q) {
+                                // Include original invoices that don't have any revisions
+                                $q->where('is_revision', false)
+                                ->whereNotExists(function ($subQuery) {
+                                    $subQuery->select(\DB::raw(1))
+                                            ->from('invoices as revisions')
+                                            ->whereColumn('revisions.original_invoice_id', 'invoices.id')
+                                            ->where('revisions.is_revision', true);
+                                });
+                            })->orWhere(function ($q) {
+                                // Include only the latest revision for each original invoice
+                                $q->where('is_revision', true)
+                                ->whereIn('id', function ($subQuery) {
+                                    $subQuery->selectRaw('MAX(id)')
+                                            ->from('invoices as latest_revisions')
+                                            ->where('latest_revisions.is_revision', true)
+                                            ->whereNotNull('latest_revisions.original_invoice_id')
+                                            ->groupBy('latest_revisions.original_invoice_id');
+                                });
+                            }))
+                    ),
 
                 Tables\Columns\TextColumn::make('invoice_date')
                     ->label('Tanggal Dibuat')
