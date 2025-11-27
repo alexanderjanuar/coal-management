@@ -23,6 +23,15 @@ class ApplicationResource extends Resource
     protected static ?string $pluralModelLabel = 'Aplikasi';
     protected static ?int $navigationSort = 3;
 
+    public static function shouldRegisterNavigation(): bool
+    {
+        return auth()->user()->can('applications.*');
+    }
+    
+    public static function canAccess(): bool
+    {
+        return auth()->user()->can('applications.*');
+    }
     public static function form(Form $form): Form
     {
         return $form

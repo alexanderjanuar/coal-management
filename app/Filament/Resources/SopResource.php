@@ -27,7 +27,12 @@ class SopResource extends Resource
 
     public static function shouldRegisterNavigation(): bool
     {
-        return !auth()->user()->hasRole(['client','staff']);
+        return auth()->user()->can('sop.*');
+    }
+    
+    public static function canAccess(): bool
+    {
+        return auth()->user()->can('sop.*');
     }
     
     public static function form(Form $form): Form

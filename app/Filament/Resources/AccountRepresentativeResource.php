@@ -39,6 +39,16 @@ class AccountRepresentativeResource extends Resource
 
     protected static ?string $recordTitleAttribute = 'name';
 
+    public static function shouldRegisterNavigation(): bool
+    {
+        return auth()->user()->can('account-representative.*');
+    }
+    
+    public static function canAccess(): bool
+    {
+        return auth()->user()->can('account-representative.*');
+    }
+
     public static function form(Form $form): Form
     {
         return $form

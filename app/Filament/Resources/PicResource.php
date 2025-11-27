@@ -34,6 +34,16 @@ class PicResource extends Resource
 
     protected static ?string $navigationGroup = 'Master Data';
 
+    public static function shouldRegisterNavigation(): bool
+    {
+        return auth()->user()->can('pic.*');
+    }
+    
+    public static function canAccess(): bool
+    {
+        return auth()->user()->can('pic.*');
+    }
+
     public static function form(Form $form): Form
     {
         return $form

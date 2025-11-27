@@ -34,7 +34,12 @@ class UserClientResource extends Resource
 
     public static function shouldRegisterNavigation(): bool
     {
-        return !auth()->user()->hasRole(['client', 'staff']);
+        return auth()->user()->can('pengguna.*');
+    }
+    
+    public static function canAccess(): bool
+    {
+        return auth()->user()->can('pengguna.*');
     }
 
     protected static ?string $navigationGroup = 'Master Data';
