@@ -18,7 +18,18 @@ class Index extends Page
     
     protected static ?string $navigationGroup = 'Client Management';
     protected static ?int $navigationSort = 2;
+
+    protected static ?string $slug = 'client-communication';
     
+    public static function shouldRegisterNavigation(): bool
+    {
+        return auth()->user()->can('client-communication.*');
+    }
+    
+    public static function canAccess(): bool
+    {
+        return auth()->user()->can('client-communication.*');
+    }
 
     protected static string $view = 'filament.pages.client-communication.index';
 
