@@ -22,7 +22,7 @@ class SuggestionResource extends Resource
 {
     protected static ?string $model = Suggestion::class;
 
-        public static function shouldRegisterNavigation(): bool
+    public static function shouldRegisterNavigation(): bool
     {
         return auth()->user()->hasRole(['super-admin']);
     }
@@ -35,7 +35,7 @@ class SuggestionResource extends Resource
 
     protected static ?string $pluralModelLabel = 'Pengembangan Sistem';
 
-    protected static ?string $navigationGroup = 'Manajemen';
+    protected static ?string $navigationGroup = 'Administration';
 
     protected static ?int $navigationSort = 99;
 

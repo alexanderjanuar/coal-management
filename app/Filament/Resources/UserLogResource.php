@@ -24,9 +24,9 @@ class UserLogResource extends Resource
 
     protected static ?string $navigationLabel = 'Pengguna Aktif';
 
-    protected static ?string $navigationGroup = 'System';
+    protected static ?string $navigationGroup = 'Administration';
 
-    protected static ?int $navigationSort = 100;
+    protected static ?int $navigationSort = 1;
 
     protected static ?string $recordTitleAttribute = 'user.name';
 

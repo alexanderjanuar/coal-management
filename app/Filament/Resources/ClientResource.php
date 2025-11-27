@@ -47,7 +47,8 @@ class ClientResource extends Resource
     protected static ?string $recordTitleAttribute = 'name';
     protected static ?string $navigationIcon = 'heroicon-o-users';
 
-    protected static ?string $navigationGroup = 'Master Data';
+    protected static ?string $navigationGroup = 'Client Management';
+    protected static ?int $navigationSort = 1;
 
     public static function form(Form $form): Form
     {

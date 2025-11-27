@@ -18,7 +18,8 @@ class DashboardTaxReport extends Page
 
     protected static ?string $title = '';
     
-    protected static ?string $navigationGroup = 'Tax';
+    protected static ?string $navigationGroup = 'Tax Management';
+    protected static ?int $navigationSort = 1;
 
     protected static ?string $navigationLabel = 'Dashboard';
 

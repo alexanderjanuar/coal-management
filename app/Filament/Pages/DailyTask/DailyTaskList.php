@@ -17,9 +17,10 @@ class DailyTaskList extends Page
 {
     protected static ?string $navigationIcon = 'heroicon-o-clipboard-document-check';
     
-    protected static ?string $navigationGroup = 'Manajemen Tugas';
+    protected static ?string $navigationGroup = 'Tugas Harian';
     
     protected static ?string $title = 'Tugas Harian';
+    
     
     protected static ?string $navigationLabel = 'Tugas Harian';
     

@@ -13,6 +13,8 @@ class TaxChat extends Page
     
     protected static ?string $navigationLabel = 'Tax Chat Assistant';
     
+    protected static ?string $navigationGroup = 'Tax Management';
+    protected static ?int $navigationSort = 3;
     protected static ?string $title = 'Tax Chat Assistant';
 
     protected static string $view = 'filament.pages.tax-chat';

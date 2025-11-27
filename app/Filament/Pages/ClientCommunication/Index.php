@@ -14,20 +14,18 @@ class Index extends Page
 
     protected static ?string $navigationIcon = 'heroicon-o-chat-bubble-left-right';
     
-    protected static ?string $navigationLabel = 'Communications';
-    
-    protected static ?string $title = 'Client Communications';
-    
-    protected static ?int $navigationSort = 3;
+    protected static ?string $navigationLabel = 'Komunikasi Klien';
     
     protected static ?string $navigationGroup = 'Client Management';
+    protected static ?int $navigationSort = 2;
+    
 
     protected static string $view = 'filament.pages.client-communication.index';
 
-    public static function shouldRegisterNavigation(): bool
-    {
-        return auth()->user()->hasRole(['super-admin']);
-    }
+    // public static function shouldRegisterNavigation(): bool
+    // {
+    //     return auth()->user()->hasRole(['super-admin']);
+    // }
 
 
     // Filters

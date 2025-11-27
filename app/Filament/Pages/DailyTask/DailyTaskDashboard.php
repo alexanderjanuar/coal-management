@@ -6,7 +6,7 @@ use Filament\Pages\Page;
 
 class DailyTaskDashboard extends Page
 {
-    protected static ?string $navigationGroup = 'Manajemen Tugas';
+    protected static ?string $navigationGroup = 'Tugas Harian';
     
     protected static ?string $title = '';
     

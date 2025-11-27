@@ -46,10 +46,11 @@ class TaxReportResource extends Resource
 {
     protected static ?string $model = TaxReport::class;
 
-    protected static ?string $modelLabel = 'Semua Laporan';
+    protected static ?string $modelLabel = 'Laporan Pajaks';
 
     // protected static ?string $cluster = LaporanPajak::class;
-    protected static ?string $navigationGroup = 'Tax';
+    protected static ?string $navigationGroup = 'Tax Management';
+    protected static ?int $navigationSort = 2;
 
 
     public static function shouldRegisterNavigation(): bool
