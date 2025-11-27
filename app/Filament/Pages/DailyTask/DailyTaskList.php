@@ -26,6 +26,15 @@ class DailyTaskList extends Page
     
     protected static string $view = 'filament.pages.daily-task.daily-task-list';
 
+    public static function shouldRegisterNavigation(): bool
+    {
+        return auth()->user()->can('daily-task.list.*');
+    }
+    
+    public static function canAccess(): bool
+    {
+        return auth()->user()->can('daily-task.list.*');
+    }
     protected static ?int $navigationSort = 2;
 
     /**

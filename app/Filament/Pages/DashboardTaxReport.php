@@ -25,6 +25,17 @@ class DashboardTaxReport extends Page
 
     protected static string $view = 'filament.pages.tax-report.dashboard-tax-report';
 
+    
+    public static function shouldRegisterNavigation(): bool
+    {
+        return auth()->user()->can('daily-task.dashboard.*');
+    }
+    
+    public static function canAccess(): bool
+    {
+        return auth()->user()->can('daily-task.dashboard.*');
+    }
+
     public function getMonthlyInvoicesData()
     {
         $currentYear = date('Y');

@@ -16,4 +16,14 @@ class DailyTaskDashboard extends Page
     protected static ?string $navigationIcon = 'heroicon-o-document-text';
 
     protected static string $view = 'filament.pages.daily-task.daily-task-dashboard';
+
+    public static function shouldRegisterNavigation(): bool
+    {
+        return auth()->user()->can('daily-task.dashboard.*');
+    }
+    
+    public static function canAccess(): bool
+    {
+        return auth()->user()->can('daily-task.dashboard.*');
+    }
 }

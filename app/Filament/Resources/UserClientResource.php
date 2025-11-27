@@ -27,10 +27,10 @@ class UserClientResource extends Resource
 {
     protected static ?string $model = UserClient::class;
     protected static ?string $navigationIcon = 'heroicon-o-user-circle';
-    protected static ?string $navigationLabel = 'Karyawan';
-    protected static ?string $modelLabel = 'Karyawan';
-    protected static ?string $pluralModelLabel = 'Karyawan';
-    protected static ?string $breadcrumb = 'Karyawan';
+    protected static ?string $navigationLabel = 'Pengguna';
+    protected static ?string $modelLabel = 'Pengguna';
+    protected static ?string $pluralModelLabel = 'Pengguna';
+    protected static ?string $breadcrumb = 'Pengguna';
 
     public static function shouldRegisterNavigation(): bool
     {

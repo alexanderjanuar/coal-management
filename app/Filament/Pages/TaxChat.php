@@ -23,6 +23,17 @@ class TaxChat extends Page
     
     public array $chatHistory = [];
 
+    
+    public static function shouldRegisterNavigation(): bool
+    {
+        return auth()->user()->can('tax-chat.*');
+    }
+    
+    public static function canAccess(): bool
+    {
+        return auth()->user()->can('tax-chat.*');
+    }
+
     // Tambahkan computed property untuk check apakah message kosong
     public function getIsMessageEmptyProperty(): bool
     {
