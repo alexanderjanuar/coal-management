@@ -22,7 +22,8 @@ class Project extends Model
     protected $fillable = ['client_id', 'name', 'description', 'status'];
 
     protected $casts = [
-        'due_date' => 'date'
+        'due_date' => 'date',
+        'deliverable_files' => 'array', // Make sure this is present
     ];
 
     // Auto-logging events
@@ -125,6 +126,97 @@ class Project extends Model
         return $this->belongsToMany(User::class, 'user_projects')
                     ->withPivot('role', 'specializations', 'assigned_date')
                     ->withTimestamps();
+    }
+
+    /**
+     * Get formatted deliverable files with full URLs
+     */
+    public function getDeliverableFilesWithUrlsAttribute(): array
+    {
+        if (!$this->deliverable_files) {
+            return [];
+        }
+        
+        return collect($this->deliverable_files)->map(function($file) {
+            return [
+                'name' => $file['name'] ?? basename($file['path'] ?? ''),
+                'path' => $file['path'] ?? null,
+                'url' => isset($file['path']) ? \Storage::disk('public')->url($file['path']) : null,
+                'size' => $file['size'] ?? null,
+                'type' => $file['type'] ?? null,
+                'uploaded_at' => $file['uploaded_at'] ?? null,
+            ];
+        })->toArray();
+    }
+
+    /**
+     * Get client-friendly status label
+     */
+    public function getClientStatusLabelAttribute(): string
+    {
+        return match($this->status) {
+            'draft' => 'Belum Dimulai',
+            'analysis' => 'Sedang Dianalisis',
+            'in_progress' => 'Sedang Dikerjakan',
+            'review' => 'Dalam Review',
+            'completed' => 'Selesai',
+            'completed (Not Payed Yet)' => 'Selesai',
+            'on_hold' => 'Ditunda',
+            'canceled' => 'Dibatalkan',
+            default => ucfirst($this->status),
+        };
+    }
+
+    /**
+     * Get status badge color for client view
+     */
+    public function getClientStatusColorAttribute(): string
+    {
+        return match($this->status) {
+            'draft' => 'gray',
+            'analysis' => 'purple',
+            'in_progress' => 'blue',
+            'review' => 'yellow',
+            'completed', 'completed (Not Payed Yet)' => 'green',
+            'on_hold', 'canceled' => 'red',
+            default => 'gray',
+        };
+    }
+
+    /**
+     * Check if project is active (not completed or canceled)
+     */
+    public function isActive(): bool
+    {
+        return !in_array($this->status, ['completed', 'completed (Not Payed Yet)', 'canceled']);
+    }
+
+    /**
+     * Get days until due date
+     */
+    public function getDaysUntilDueAttribute(): ?int
+    {
+        if (!$this->due_date) {
+            return null;
+        }
+        
+        return now()->diffInDays($this->due_date, false);
+    }
+
+    /**
+     * Check if project has deliverables
+     */
+    public function hasDeliverables(): bool
+    {
+        return !empty($this->deliverable_files);
+    }
+
+    /**
+     * Get deliverables count
+     */
+    public function getDeliverablesCountAttribute(): int
+    {
+        return count($this->deliverable_files ?? []);
     }
 
 }

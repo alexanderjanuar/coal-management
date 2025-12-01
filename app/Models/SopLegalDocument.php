@@ -33,8 +33,13 @@ class SopLegalDocument extends Model
     }
 
     // Scope untuk filter by client type
-    public function scopeForClientType($query, string $clientType)
+    public function scopeForClientType($query, ?string $clientType)
     {
+        // If client type is null, return all documents marked as 'Both' or empty result
+        if ($clientType === null) {
+            return $query->where('client_type', 'Both');
+        }
+        
         return $query->where(function ($q) use ($clientType) {
             $q->where('client_type', $clientType)
               ->orWhere('client_type', 'Both');
@@ -68,8 +73,12 @@ class SopLegalDocument extends Model
     }
 
     // Check if applicable for client type
-    public function isApplicableFor(string $clientType): bool
+    public function isApplicableFor(?string $clientType): bool
     {
+        if ($clientType === null) {
+            return $this->client_type === 'Both';
+        }
+        
         return $this->client_type === $clientType || $this->client_type === 'Both';
     }
 }

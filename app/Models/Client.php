@@ -184,7 +184,6 @@ class Client extends Model
 
     /**
      * Get dokumen checklist dengan status upload
-     * Return collection dengan info: SOP template + status upload
      */
     public function getLegalDocumentsChecklist()
     {
@@ -193,8 +192,8 @@ class Client extends Model
         
         // Map setiap SOP dengan status uploadnya
         return $sopDocuments->map(function ($sopDoc) {
-            // Cari dokumen yang sudah diupload untuk SOP ini
-            $uploadedDoc = $this->clientDocuments()
+            // Cari dokumen yang sudah ada untuk SOP ini
+            $clientDoc = $this->clientDocuments()
                             ->where('sop_legal_document_id', $sopDoc->id)
                             ->latest()
                             ->first();
@@ -205,11 +204,16 @@ class Client extends Model
                 'description' => $sopDoc->description,
                 'category' => $sopDoc->category,
                 'is_required' => $sopDoc->is_required,
-                'is_uploaded' => $uploadedDoc !== null,
-                'uploaded_document' => $uploadedDoc,
-                'file_path' => $uploadedDoc?->file_path,
-                'uploaded_at' => $uploadedDoc?->created_at,
-                'uploaded_by' => $uploadedDoc?->user,
+                'is_uploaded' => $clientDoc && $clientDoc->is_uploaded,
+                'uploaded_document' => $clientDoc,
+                'file_path' => $clientDoc?->file_path,
+                'uploaded_at' => $clientDoc?->updated_at,
+                'uploaded_by' => $clientDoc?->user,
+                'status' => $clientDoc?->status ?? 'required',
+                'status_label' => $clientDoc?->status_label ?? 'Belum Upload',
+                'admin_notes' => $clientDoc?->admin_notes,
+                'reviewed_by' => $clientDoc?->reviewer,
+                'reviewed_at' => $clientDoc?->reviewed_at,
             ];
         });
     }
@@ -226,12 +230,41 @@ class Client extends Model
                                     ->where('is_uploaded', true)
                                     ->count();
         
+        // Count by status
+        $validDocs = $this->clientDocuments()
+                        ->whereNotNull('file_path')
+                        ->whereNotNull('sop_legal_document_id')
+                        ->where('status', 'valid')
+                        ->count();
+        
+        $expiredDocs = $this->clientDocuments()
+                        ->whereNotNull('file_path')
+                        ->whereNotNull('sop_legal_document_id')
+                        ->where('status', 'expired')
+                        ->count();
+        
+        $pendingDocs = $this->clientDocuments()
+                        ->whereNotNull('file_path')
+                        ->whereNotNull('sop_legal_document_id')
+                        ->where('status', 'pending_review')
+                        ->count();
+        
+        $rejectedDocs = $this->clientDocuments()
+                            ->whereNotNull('file_path')
+                            ->whereNotNull('sop_legal_document_id')
+                            ->where('status', 'rejected')
+                            ->count();
+        
         return [
             'total_documents' => $checklist->count(),
             'total_required' => $totalRequired,
             'total_optional' => $checklist->where('is_required', false)->count(),
             'uploaded' => $checklist->where('is_uploaded', true)->count(),
             'not_uploaded' => $checklist->where('is_uploaded', false)->count(),
+            'valid' => $validDocs,
+            'expired' => $expiredDocs,
+            'pending_review' => $pendingDocs,
+            'rejected' => $rejectedDocs,
             'completion_percentage' => $totalRequired > 0 
                 ? round(($uploadedRequired / $totalRequired) * 100, 2) 
                 : 100,

@@ -9,6 +9,7 @@ use App\Filament\Pages\TaxChat;
 use App\Filament\Pages\ClientCommunication\Index;
 
 // use App\Filament\Resources\TaxReportResource\Pages\TaxReportDashboard;
+use App\Http\Middleware\RedirectToProperPanelMiddleware;
 use Filament\Http\Middleware\Authenticate;
 use Filament\Http\Middleware\AuthenticateSession;
 use Filament\Http\Middleware\DisableBladeIconComponents;
@@ -122,6 +123,7 @@ class AdminPanelProvider extends PanelProvider
             ->brandLogoHeight('3rem')
             ->viteTheme('resources/css/filament/admin/theme.css')
             ->authMiddleware([
+                // RedirectToProperPanelMiddleware::class,
                 Authenticate::class,
             ]);
     }

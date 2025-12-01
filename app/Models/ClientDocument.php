@@ -21,10 +21,14 @@ class ClientDocument extends Model
         'expired_at',
         'document_category',
         'status',
+        'admin_notes',
+        'reviewed_by',
+        'reviewed_at',
     ];
 
     protected $casts = [
         'expired_at' => 'date',
+        'reviewed_at' => 'datetime',
     ];
 
     // Relationships
@@ -41,6 +45,11 @@ class ClientDocument extends Model
     public function sopLegalDocument(): BelongsTo
     {
         return $this->belongsTo(SopLegalDocument::class);
+    }
+    
+    public function reviewer(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'reviewed_by');
     }
 
     // Scopes
@@ -65,11 +74,32 @@ class ClientDocument extends Model
 
     public function scopeExpired($query)
     {
-        return $query->where('status', 'expired')
-                    ->orWhere(function($q) {
-                        $q->whereNotNull('expired_at')
-                          ->where('expired_at', '<', now());
-                    });
+        return $query->where('status', 'expired');
+    }
+    
+    public function scopeRequired($query)
+    {
+        return $query->where('status', 'required');
+    }
+    
+    public function scopePendingReview($query)
+    {
+        return $query->where('status', 'pending_review');
+    }
+    
+    public function scopeRejected($query)
+    {
+        return $query->where('status', 'rejected');
+    }
+    
+    public function scopeUploaded($query)
+    {
+        return $query->whereNotNull('file_path');
+    }
+    
+    public function scopeNotUploaded($query)
+    {
+        return $query->whereNull('file_path');
     }
 
     // Accessors & Mutators
@@ -94,33 +124,89 @@ class ClientDocument extends Model
         
         return $this->expired_at->isPast();
     }
+    
+    public function getIsUploadedAttribute(): bool
+    {
+        return !is_null($this->file_path);
+    }
+    
+    public function getIsRequiredAttribute(): bool
+    {
+        return $this->status === 'required';
+    }
+    
+    public function getIsPendingReviewAttribute(): bool
+    {
+        return $this->status === 'pending_review';
+    }
+    
+    public function getIsValidAttribute(): bool
+    {
+        return $this->status === 'valid';
+    }
+    
+    public function getIsRejectedAttribute(): bool
+    {
+        return $this->status === 'rejected';
+    }
 
     public function getStatusBadgeAttribute(): array
     {
-        if ($this->is_expired) {
-            return [
-                'class' => 'bg-red-100 text-red-800',
-                'text' => 'Expired'
-            ];
-        }
-
         return match($this->status) {
-            'valid' => [
-                'class' => 'bg-green-100 text-green-800',
-                'text' => 'Valid'
+            'required' => [
+                'class' => 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300',
+                'text' => 'Belum Upload',
+                'icon' => 'heroicon-o-clock'
             ],
-            'pending' => [
-                'class' => 'bg-yellow-100 text-yellow-800',
-                'text' => 'Pending'
+            'pending_review' => [
+                'class' => 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400',
+                'text' => 'Menunggu Review',
+                'icon' => 'heroicon-o-eye'
+            ],
+            'valid' => [
+                'class' => 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400',
+                'text' => 'Valid',
+                'icon' => 'heroicon-o-check-circle'
+            ],
+            'expired' => [
+                'class' => 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400',
+                'text' => 'Expired',
+                'icon' => 'heroicon-o-exclamation-circle'
             ],
             'rejected' => [
-                'class' => 'bg-red-100 text-red-800',
-                'text' => 'Ditolak'
+                'class' => 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400',
+                'text' => 'Ditolak',
+                'icon' => 'heroicon-o-x-circle'
             ],
             default => [
                 'class' => 'bg-gray-100 text-gray-800',
-                'text' => 'Unknown'
+                'text' => 'Unknown',
+                'icon' => 'heroicon-o-question-mark-circle'
             ]
+        };
+    }
+    
+    public function getStatusColorAttribute(): string
+    {
+        return match($this->status) {
+            'required' => 'gray',
+            'pending_review' => 'warning',
+            'valid' => 'success',
+            'expired' => 'danger',
+            'rejected' => 'danger',
+            default => 'gray'
+        };
+    }
+    
+    public function getStatusLabelAttribute(): string
+    {
+        return match($this->status) {
+            'required' => 'Belum Upload',
+            'pending_review' => 'Menunggu Review',
+            'valid' => 'Valid',
+            'expired' => 'Expired',
+            'rejected' => 'Ditolak',
+            default => 'Unknown'
         };
     }
 
@@ -152,11 +238,41 @@ class ClientDocument extends Model
         return false;
     }
 
-    public function updateExpiryStatus(): void
+    public function checkAndUpdateExpiryStatus(): void
     {
         if ($this->expired_at && $this->expired_at->isPast() && $this->status === 'valid') {
-            $this->update(['status' => 'expired']);
+            $this->update([
+                'status' => 'expired',
+                'admin_notes' => ($this->admin_notes ? $this->admin_notes . "\n\n" : '') 
+                    . 'Dokumen expired pada: ' . $this->expired_at->format('d M Y')
+            ]);
         }
+    }
+    
+    /**
+     * Mark document as approved (admin action)
+     */
+    public function approve(?string $notes = null): bool
+    {
+        return $this->update([
+            'status' => 'valid',
+            'admin_notes' => $notes,
+            'reviewed_by' => auth()->id(),
+            'reviewed_at' => now(),
+        ]);
+    }
+    
+    /**
+     * Mark document as rejected (admin action)
+     */
+    public function reject(string $reason): bool
+    {
+        return $this->update([
+            'status' => 'rejected',
+            'admin_notes' => $reason,
+            'reviewed_by' => auth()->id(),
+            'reviewed_at' => now(),
+        ]);
     }
 
     // Static Methods
@@ -183,7 +299,18 @@ class ClientDocument extends Model
             'user_id' => auth()->id(),
             'file_path' => $filePath,
             'original_filename' => $originalName,
-            'status' => 'valid',
+            'status' => 'pending_review',
+        ], $data));
+    }
+    
+    /**
+     * Create document requirement without file (to be uploaded by client later)
+     */
+    public static function createRequirement(Client $client, array $data): self
+    {
+        return self::create(array_merge([
+            'client_id' => $client->id,
+            'status' => 'required',
         ], $data));
     }
 
@@ -191,25 +318,71 @@ class ClientDocument extends Model
     protected static function booted()
     {
         static::created(function ($clientDocument) {
-            $filename = $clientDocument->original_filename ?? basename($clientDocument->file_path);
-            
-            if ($clientDocument->isLegalDocument()) {
-                UserActivity::logLegalDocumentUpload(
-                    $clientDocument->client, 
-                    $filename, 
-                    $clientDocument
-                );
-            } else {
-                UserActivity::logClientDocumentUpload(
-                    $clientDocument->client, 
-                    $filename
-                );
+            // Only log if file is actually uploaded
+            if ($clientDocument->is_uploaded) {
+                $filename = $clientDocument->original_filename ?? basename($clientDocument->file_path);
+                
+                if ($clientDocument->isLegalDocument()) {
+                    UserActivity::logLegalDocumentUpload(
+                        $clientDocument->client, 
+                        $filename, 
+                        $clientDocument
+                    );
+                } else {
+                    UserActivity::logClientDocumentUpload(
+                        $clientDocument->client, 
+                        $filename
+                    );
+                }
             }
         });
 
         static::updating(function ($clientDocument) {
-            // Auto-update status if expired
-            $clientDocument->updateExpiryStatus();
+            // Auto-update to expired if date has passed
+            if ($clientDocument->expired_at && 
+                $clientDocument->expired_at->isPast() && 
+                $clientDocument->status === 'valid') {
+                $clientDocument->status = 'expired';
+            }
+            
+            // Log when file is uploaded to a requirement
+            if ($clientDocument->isDirty('file_path') && 
+                !$clientDocument->getOriginal('file_path') && 
+                $clientDocument->file_path) {
+                
+                $clientDocument->status = 'pending_review';
+                
+                $filename = $clientDocument->original_filename ?? basename($clientDocument->file_path);
+                
+                if ($clientDocument->isLegalDocument()) {
+                    UserActivity::logLegalDocumentUpload(
+                        $clientDocument->client, 
+                        $filename, 
+                        $clientDocument
+                    );
+                } else {
+                    UserActivity::logClientDocumentUpload(
+                        $clientDocument->client, 
+                        $filename
+                    );
+                }
+            }
+            
+            // Log status changes
+            if ($clientDocument->isDirty('status')) {
+                $oldStatus = $clientDocument->getOriginal('status');
+                $newStatus = $clientDocument->status;
+                
+                UserActivity::log([
+                    'action' => 'document_status_changed',
+                    'description' => "Status dokumen '{$clientDocument->file_name}' diubah dari '{$oldStatus}' menjadi '{$newStatus}' untuk {$clientDocument->client->name}",
+                    'actionable_type' => ClientDocument::class,
+                    'actionable_id' => $clientDocument->id,
+                    'client_id' => $clientDocument->client_id,
+                    'old_values' => ['status' => $oldStatus],
+                    'new_values' => ['status' => $newStatus],
+                ]);
+            }
         });
     }
 }

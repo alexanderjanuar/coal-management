@@ -2,6 +2,7 @@
 
 namespace App\Providers\Filament;
 
+use App\Http\Middleware\RedirectToProperPanelMiddleware;
 use Filament\Http\Middleware\Authenticate;
 use Filament\Http\Middleware\AuthenticateSession;
 use Filament\Http\Middleware\DisableBladeIconComponents;
@@ -17,14 +18,21 @@ use Illuminate\Foundation\Http\Middleware\VerifyCsrfToken;
 use Illuminate\Routing\Middleware\SubstituteBindings;
 use Illuminate\Session\Middleware\StartSession;
 use Illuminate\View\Middleware\ShareErrorsFromSession;
+use Filament\Support\Enums\MaxWidth;
+use EightCedars\FilamentInactivityGuard\FilamentInactivityGuardPlugin;
+use Leandrocfe\FilamentApexCharts\FilamentApexChartsPlugin;
+use Devonab\FilamentEasyFooter\EasyFooterPlugin;
+use Njxqlus\FilamentProgressbar\FilamentProgressbarPlugin;
+use Cmsmaxinc\FilamentErrorPages\FilamentErrorPagesPlugin;
+use Illuminate\Support\HtmlString;
 
 class ClientPanelProvider extends PanelProvider
 {
     public function panel(Panel $panel): Panel
     {
         return $panel
-            ->id('client')
-            ->path('client')
+            ->id('klien')
+            ->path('klien')
             ->colors([
                 'primary' => Color::Amber,
             ])
@@ -38,6 +46,11 @@ class ClientPanelProvider extends PanelProvider
                 Widgets\AccountWidget::class,
                 Widgets\FilamentInfoWidget::class,
             ])
+            ->databaseNotifications(
+                fn() =>
+                preg_match('/(android|iphone|ipad|mobile)/i', request()->header('User-Agent'))
+            )
+            ->maxContentWidth(MaxWidth::Full)
             ->middleware([
                 EncryptCookies::class,
                 AddQueuedCookiesToResponse::class,
@@ -49,7 +62,20 @@ class ClientPanelProvider extends PanelProvider
                 DisableBladeIconComponents::class,
                 DispatchServingFilamentEvent::class,
             ])
+            ->plugins([
+                FilamentInactivityGuardPlugin::make(),
+                \TomatoPHP\FilamentPWA\FilamentPWAPlugin::make(),
+                FilamentApexChartsPlugin::make(),
+                EasyFooterPlugin::make()
+                    ->withFooterPosition('sidebar.footer')  
+                    ->withSentence(new HtmlString('<img src="' . asset('images/Logo/Logo Vertical.png') . '" style="margin-right:.5rem;" alt="Laravel Logo" width="20" height="20"> Kisantra Management')),
+                FilamentProgressbarPlugin::make()->color('#f59e0b'),
+                FilamentErrorPagesPlugin::make(),
+               
+            ])
+            ->viteTheme('resources/css/filament/admin/theme.css')
             ->authMiddleware([
+                RedirectToProperPanelMiddleware::class,
                 Authenticate::class,
             ]);
     }

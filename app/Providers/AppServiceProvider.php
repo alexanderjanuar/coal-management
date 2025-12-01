@@ -24,6 +24,10 @@ use Illuminate\Support\Facades\Vite;
 
 class AppServiceProvider extends ServiceProvider
 {
+    public $singletons = [
+        \Filament\Http\Responses\Auth\Contracts\LoginResponse::class => \App\Http\Responses\LoginResponse::class,
+        \Filament\Http\Responses\Auth\Contracts\LogoutResponse::class => \App\Http\Responses\LogoutResponse::class, 
+    ];
     /**
      * Register any application services.
      */
@@ -38,6 +42,8 @@ class AppServiceProvider extends ServiceProvider
     public function boot(): void
     {
         //
+
+        
         Model::unguard();
         Invoice::observe(InvoiceObserver::class);
         TaxReport::observe(TaxReportObserver::class);
@@ -66,10 +72,6 @@ class AppServiceProvider extends ServiceProvider
         FilamentView::registerRenderHook(
             PanelsRenderHook::GLOBAL_SEARCH_BEFORE,
             fn(): string => Blade::render('@livewire(\'notification.notification-button\')'),
-        );
-
-        
-
-
+        );        
     }
 }

@@ -1,8 +1,9 @@
 <?php
 
-namespace App\Livewire\Client\Components;
+namespace App\Livewire\Client;
 
 use App\Models\Client;
+use App\Models\UserClient;
 use App\Models\ClientDocument;
 use App\Models\SopLegalDocument;
 use Filament\Notifications\Notification;
@@ -15,22 +16,24 @@ use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\Section;
 use Filament\Forms\Components\Grid;
-use Filament\Forms\Components\Textarea;
 use Livewire\Component;
 use Livewire\Attributes\On;
 use Livewire\WithFileUploads;
 
-class DokumenTab extends Component implements HasForms
+class DocumentTab extends Component implements HasForms
 {
     use InteractsWithForms;
     use WithFileUploads;
 
-    public Client $client;
+    public $clients = [];
+    public $selectedClientId = null;
+    
     public $checklist = [];
     public $additionalDocuments = [];
     public $stats = [];
     
     // Modal state
+    public $currentClient = null;
     public $selectedSopId = null;
     public $uploadFile = [];
     public $documentNumber = '';
@@ -38,20 +41,60 @@ class DokumenTab extends Component implements HasForms
     public $expiredAt = '';
     public $isAdditionalDocument = false;
     public $documentToDelete = null;
-    public $adminNotes = '';
     
     // Preview state
     public $previewDocument = null;
-    
-    // Review modal state
-    public $documentToReview = null;
-    public $reviewAction = null;
-    public $reviewNotes = '';
 
-    public function mount(Client $client)
+    public function mount()
     {
-        $this->client = $client;
-        $this->loadData();
+        $this->loadClients();
+        
+        // Auto-select first client as default
+        if ($this->clients->isNotEmpty()) {
+            $this->selectedClientId = $this->clients->first()->id;
+            $this->loadClientData($this->selectedClientId);
+        }
+    }
+
+    public function loadClients()
+    {
+        // Get all clients linked to current user
+        $clientIds = UserClient::where('user_id', auth()->id())
+            ->pluck('client_id');
+
+        if ($clientIds->isEmpty()) {
+            $this->clients = collect([]);
+            return;
+        }
+
+        $this->clients = Client::whereIn('id', $clientIds)
+            ->with(['pic', 'accountRepresentative'])
+            ->orderBy('name')
+            ->get()
+            ->map(function ($client) {
+                // Calculate stats for each client
+                $client->document_stats = $client->getLegalDocumentsStats();
+                return $client;
+            });
+    }
+
+    public function selectClient($clientId)
+    {
+        $this->selectedClientId = $clientId;
+        $this->loadClientData($clientId);
+    }
+
+    public function loadClientData($clientId)
+    {
+        $this->currentClient = Client::find($clientId);
+        
+        if (!$this->currentClient) {
+            return;
+        }
+        
+        $this->checklist = $this->currentClient->getLegalDocumentsChecklist();
+        $this->loadAdditionalDocuments();
+        $this->calculateStats();
     }
 
     public function form(Form $form): Form
@@ -65,10 +108,10 @@ class DokumenTab extends Component implements HasForms
                                 Select::make('selectedSopId')
                                     ->label('Jenis Dokumen')
                                     ->options(function () {
-                                        if ($this->isAdditionalDocument) {
+                                        if ($this->isAdditionalDocument || !$this->currentClient) {
                                             return [];
                                         }
-                                        return $this->client->getApplicableSopDocuments()
+                                        return $this->currentClient->getApplicableSopDocuments()
                                                    ->pluck('name', 'id');
                                     })
                                     ->searchable()
@@ -94,23 +137,19 @@ class DokumenTab extends Component implements HasForms
                                     ->after('today')
                                     ->columnSpan(1),
                             ]),
-                        
-                        Textarea::make('adminNotes')
-                            ->label('Catatan Admin')
-                            ->placeholder('Tambahkan catatan untuk dokumen ini (opsional)')
-                            ->rows(3)
-                            ->columnSpanFull(),
                             
                         FileUpload::make('uploadFile')
                             ->label('File Dokumen')
                             ->acceptedFileTypes(['application/pdf', 'image/*', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'])
                             ->maxSize(10240) // 10MB
+                            ->required()
                             ->helperText('Format: PDF, JPG, JPEG, PNG, DOC, DOCX (Maksimal 10MB)')
                             ->disk('public')
                             ->directory(function () {
+                                if (!$this->currentClient) return 'temp';
                                 return $this->isAdditionalDocument 
-                                    ? $this->client->getFolderPath() 
-                                    : $this->client->getLegalFolderPath();
+                                    ? $this->currentClient->getFolderPath() 
+                                    : $this->currentClient->getLegalFolderPath();
                             })
                             ->visibility('private')
                             ->uploadingMessage('Sedang mengupload...')
@@ -119,29 +158,33 @@ class DokumenTab extends Component implements HasForms
             ]);
     }
 
-    public function loadData()
-    {
-        $this->checklist = $this->client->getLegalDocumentsChecklist();
-        $this->loadAdditionalDocuments();
-        $this->calculateStats();
-    }
-
     public function loadAdditionalDocuments()
     {
-        $this->additionalDocuments = $this->client->clientDocuments()
+        if (!$this->currentClient) {
+            $this->additionalDocuments = collect([]);
+            return;
+        }
+        
+        $this->additionalDocuments = $this->currentClient->clientDocuments()
             ->whereNull('sop_legal_document_id')
-            ->with('user', 'reviewer')
+            ->with('user')
             ->latest()
             ->get();
     }
 
     public function calculateStats()
     {
-        $this->stats = $this->client->getLegalDocumentsStats();
+        if (!$this->currentClient) {
+            $this->stats = [];
+            return;
+        }
+        
+        $this->stats = $this->currentClient->getLegalDocumentsStats();
     }
 
-    public function openUploadModal($sopId = null, $isAdditional = false)
+    public function openUploadModal($clientId, $sopId = null, $isAdditional = false)
     {
+        $this->currentClient = Client::find($clientId);
         $this->selectedSopId = $sopId;
         $this->isAdditionalDocument = $isAdditional;
         $this->resetModalFields();
@@ -161,7 +204,6 @@ class DokumenTab extends Component implements HasForms
         $this->documentNumber = '';
         $this->documentName = '';
         $this->expiredAt = '';
-        $this->adminNotes = '';
         
         if (!$this->selectedSopId) {
             $this->selectedSopId = null;
@@ -170,12 +212,23 @@ class DokumenTab extends Component implements HasForms
 
     public function uploadDocument()
     {
+        if (!$this->currentClient) {
+            Notification::make()
+                ->title('Error!')
+                ->body('Client tidak ditemukan')
+                ->danger()
+                ->send();
+            return;
+        }
+        
         $data = $this->form->getState();
         
         try {
+            // Handle file upload
             if (!empty($data['uploadFile'])) {
                 $uploadedFile = is_array($data['uploadFile']) ? $data['uploadFile'][0] : $data['uploadFile'];
                 
+                // Get original filename
                 if (is_object($uploadedFile) && method_exists($uploadedFile, 'getClientOriginalName')) {
                     $originalName = $uploadedFile->getClientOriginalName();
                 } else {
@@ -184,27 +237,27 @@ class DokumenTab extends Component implements HasForms
                 
                 $filename = time() . '_' . $originalName;
                 
+                // Determine storage path
                 $storagePath = $this->isAdditionalDocument 
-                    ? $this->client->getFolderPath() 
-                    : $this->client->getLegalFolderPath();
+                    ? $this->currentClient->getFolderPath() 
+                    : $this->currentClient->getLegalFolderPath();
                 
+                // Store file
                 if (is_object($uploadedFile) && method_exists($uploadedFile, 'storeAs')) {
                     $filePath = $uploadedFile->storeAs($storagePath, $filename, 'public');
                 } else {
                     $filePath = $uploadedFile;
                 }
 
+                // Create document record
                 $documentData = [
-                    'client_id' => $this->client->id,
+                    'client_id' => $this->currentClient->id,
                     'user_id' => auth()->id(),
                     'file_path' => $filePath,
                     'original_filename' => $originalName,
                     'document_number' => $data['documentNumber'] ?? null,
                     'expired_at' => $data['expiredAt'] ?? null,
-                    'status' => 'valid', // Admin uploads are auto-approved
-                    'admin_notes' => $data['adminNotes'] ?? null,
-                    'reviewed_by' => auth()->id(),
-                    'reviewed_at' => now(),
+                    'status' => 'valid',
                 ];
 
                 if (!$this->isAdditionalDocument) {
@@ -217,7 +270,8 @@ class DokumenTab extends Component implements HasForms
                 ClientDocument::create($documentData);
 
                 $this->closeUploadModal();
-                $this->loadData();
+                $this->loadClientData($this->currentClient->id);
+                $this->loadClients(); // Refresh stats
                 
                 Notification::make()
                     ->title('Berhasil!')
@@ -240,69 +294,6 @@ class DokumenTab extends Component implements HasForms
                 ->body('Gagal mengupload dokumen: ' . $e->getMessage())
                 ->danger()
                 ->duration(5000)
-                ->send();
-        }
-    }
-
-    public function openReviewModal($documentId, $action)
-    {
-        $this->documentToReview = ClientDocument::find($documentId);
-        $this->reviewAction = $action;
-        $this->reviewNotes = '';
-        
-        $this->dispatch('open-modal', id: 'review-document-modal');
-    }
-
-    public function closeReviewModal()
-    {
-        $this->documentToReview = null;
-        $this->reviewAction = null;
-        $this->reviewNotes = '';
-        $this->dispatch('close-modal', id: 'review-document-modal');
-    }
-
-    public function submitReview()
-    {
-        if (!$this->documentToReview) {
-            return;
-        }
-
-        try {
-            if ($this->reviewAction === 'approve') {
-                $this->documentToReview->approve($this->reviewNotes);
-                
-                Notification::make()
-                    ->title('Berhasil!')
-                    ->body('Dokumen telah disetujui')
-                    ->success()
-                    ->send();
-            } elseif ($this->reviewAction === 'reject') {
-                if (empty($this->reviewNotes)) {
-                    Notification::make()
-                        ->title('Error!')
-                        ->body('Alasan penolakan harus diisi')
-                        ->danger()
-                        ->send();
-                    return;
-                }
-                
-                $this->documentToReview->reject($this->reviewNotes);
-                
-                Notification::make()
-                    ->title('Dokumen Ditolak')
-                    ->body('Dokumen telah ditolak')
-                    ->warning()
-                    ->send();
-            }
-
-            $this->closeReviewModal();
-            $this->loadData();
-
-        } catch (\Exception $e) {
-            Notification::make()
-                ->title('Error!')
-                ->body('Gagal memproses review: ' . $e->getMessage())
-                ->danger()
                 ->send();
         }
     }
@@ -334,8 +325,11 @@ class DokumenTab extends Component implements HasForms
                     \Storage::disk('public')->delete($document->file_path);
                 }
                 
+                $clientId = $document->client_id;
                 $document->delete();
-                $this->loadData();
+                
+                $this->loadClientData($clientId);
+                $this->loadClients(); // Refresh stats
                 
                 Notification::make()
                     ->title('Berhasil!')
@@ -370,7 +364,7 @@ class DokumenTab extends Component implements HasForms
 
     public function previewDocuments($documentId)
     {
-        $this->previewDocument = ClientDocument::with('user', 'reviewer')->find($documentId);
+        $this->previewDocument = ClientDocument::with('user')->find($documentId);
         if ($this->previewDocument) {
             $this->dispatch('open-modal', id: 'preview-document-modal');
         } else {
@@ -392,11 +386,14 @@ class DokumenTab extends Component implements HasForms
     #[On('refresh-data')]
     public function refreshData()
     {
-        $this->loadData();
+        $this->loadClients();
+        if ($this->selectedClientId) {
+            $this->loadClientData($this->selectedClientId);
+        }
     }
 
     public function render()
     {
-        return view('livewire.client.components.dokumen-tab');
+        return view('livewire.client.document-tab');
     }
 }

@@ -6,6 +6,8 @@ use App\Filament\Resources\ProjectResource;
 use Filament\Actions;
 use Filament\Resources\Pages\ViewRecord;
 use Filament\Forms\Components\RichEditor;
+use Filament\Forms\Components\Textarea;
+use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Form;
 use Filament\Forms\Contracts\HasForms;
 use Filament\Forms\Concerns\InteractsWithForms;
@@ -355,13 +357,61 @@ class ViewProject extends ViewRecord
                 ->disabled(!$requirementsMet)
                 ->requiresConfirmation()
                 ->modalHeading('Complete Project')
-                ->modalDescription('Are you sure you want to mark this project as completed? This will lock all steps, tasks, and documents, preventing further changes.')
-                ->modalSubmitActionLabel('Yes, complete project')
+                ->modalDescription('Upload deliverable files and add completion notes for this project.')
+                ->modalSubmitActionLabel('Complete Project')
                 ->visible(!$this->isProjectLocked())
-                ->action(function() {
-                    // Set project status to completed
-                    $this->record->status = 'completed';
-                    $this->record->save();
+                ->form([    
+                    FileUpload::make('deliverable_files')
+                        ->label('Deliverable Files')
+                        ->multiple()
+                        ->directory(function () {
+                            $clientName = \Illuminate\Support\Str::slug($this->record->client->name);
+                            $projectName = \Illuminate\Support\Str::slug($this->record->name);
+                            return "clients/{$clientName}/{$projectName}/deliverables";
+                        })
+                        ->maxSize(10240) // 10MB
+                        ->helperText('Upload files to be delivered to the client (Max 10MB per file)')
+                        ->preserveFilenames()
+                        ->acceptedFileTypes(['application/pdf', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', 'application/vnd.ms-excel', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', 'image/*', 'application/zip'])
+                        ->downloadable()
+                        ->openable()
+                        ->storeFileNamesIn('deliverable_file_names'),
+                    
+                    Textarea::make('result_notes')
+                        ->label('Completion Notes')
+                        ->placeholder('Describe the results and deliverables of this project...')
+                        ->rows(5)
+                        ->helperText('Add notes about the completed work, results, and any important information for the client')
+                        ->maxLength(1000),
+                ])
+                ->action(function(array $data) {
+                    // Process uploaded files and create structured data
+                    $deliverableFiles = [];
+                    
+                    if (!empty($data['deliverable_files'])) {
+                        $fileNames = $data['deliverable_file_names'] ?? [];
+                        
+                        foreach ($data['deliverable_files'] as $index => $filePath) {
+                            $fileName = $fileNames[$index] ?? basename($filePath);
+                            $fileSize = \Storage::disk('public')->size($filePath);
+                            $mimeType = \Storage::disk('public')->mimeType($filePath);
+                            
+                            $deliverableFiles[] = [
+                                'name' => $fileName,
+                                'path' => $filePath,
+                                'size' => $fileSize,
+                                'type' => $mimeType,
+                                'uploaded_at' => now()->toDateTimeString(),
+                            ];
+                        }
+                    }
+                    
+                    // Update project with deliverables and notes
+                    $this->record->update([
+                        'deliverable_files' => $deliverableFiles,
+                        'result_notes' => $data['result_notes'] ?? null,
+                        'status' => 'completed',
+                    ]);
                     
                     // Mark all steps as completed
                     foreach ($this->record->steps as $step) {
@@ -379,7 +429,6 @@ class ViewProject extends ViewRecord
                         // Mark all documents as approved/completed
                         foreach ($step->requiredDocuments as $document) {
                             if (!in_array($document->status, ['approved', 'approved_without_document'])) {
-                                // Only change status if not already approved or approved_without_document
                                 $document->status = 'approved';
                                 $document->save();
                             }
@@ -387,16 +436,26 @@ class ViewProject extends ViewRecord
                     }
 
                     // Create record in activity log
+                    $activityMessage = "Project marked as completed and locked. All steps, tasks, and documents were finalized.";
+                    
+                    if (!empty($deliverableFiles)) {
+                        $activityMessage .= " " . count($deliverableFiles) . " deliverable file(s) uploaded.";
+                    }
+                    
+                    if (!empty($data['result_notes'])) {
+                        $activityMessage .= " Completion notes added.";
+                    }
+                    
                     Comment::create([
                         'user_id' => auth()->id(),
                         'commentable_id' => $this->record->id,
                         'commentable_type' => get_class($this->record),
-                        'content' => "Project marked as completed and locked. All steps, tasks, and documents were finalized."
+                        'content' => $activityMessage
                     ]);
 
                     Notification::make()
                         ->title('Project completed successfully')
-                        ->body('The project has been marked as completed and all items have been locked.')
+                        ->body('The project has been marked as completed with deliverables and notes.')
                         ->success()
                         ->send();
                 }),
