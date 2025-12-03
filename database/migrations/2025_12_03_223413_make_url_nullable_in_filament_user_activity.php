@@ -12,7 +12,13 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('user_activities', function (Blueprint $table) {
-            $table->string("url")->nullable()->change();
+            if (Schema::hasColumn('user_activities', 'url')) {
+                // If column exists, make it nullable
+                $table->string("url")->nullable()->change();
+            } else {
+                // If column doesn't exist, create it as nullable
+                $table->string("url")->nullable()->after('description');
+            }
         });
     }
 
@@ -22,7 +28,11 @@ return new class extends Migration
     public function down(): void
     {
         Schema::table('user_activities', function (Blueprint $table) {
-            $table->string("url")->nullable(false)->change();
+            if (Schema::hasColumn('user_activities', 'url')) {
+                // If column exists, make it non-nullable (or drop it if it was created)
+                // You can choose to drop it or make it non-nullable
+                $table->dropColumn('url');
+            }
         });
     }
 };
