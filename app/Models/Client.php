@@ -97,6 +97,53 @@ class Client extends Model
         return $this->hasMany(ClientCommunication::class);
     }
 
+    public function documentRequirements(): HasMany
+    {
+        return $this->hasMany(ClientDocumentRequirement::class);
+    }
+
+    public function pendingRequirements()
+    {
+        return $this->documentRequirements()->pending();
+    }
+
+    /**
+     * ✅ ADD THIS - Get fulfilled requirements
+     */
+    public function fulfilledRequirements()
+    {
+        return $this->documentRequirements()->fulfilled();
+    }
+
+    /**
+     * ✅ ADD THIS - Get overdue requirements
+     */
+    public function overdueRequirements()
+    {
+        return $this->documentRequirements()->overdue();
+    }
+
+    /**
+     * ✅ ADD THIS - Get requirement completion stats
+     */
+    public function getRequirementStatsAttribute(): array
+    {
+        $total = $this->documentRequirements()->count();
+        $fulfilled = $this->documentRequirements()->fulfilled()->count();
+        $pending = $this->documentRequirements()->pending()->count();
+        $overdue = $this->documentRequirements()->overdue()->count();
+        $waived = $this->documentRequirements()->waived()->count();
+        
+        return [
+            'total' => $total,
+            'fulfilled' => $fulfilled,
+            'pending' => $pending,
+            'overdue' => $overdue,
+            'waived' => $waived,
+            'completion_percentage' => $total > 0 ? round(($fulfilled / $total) * 100, 1) : 0,
+        ];
+    }
+
     /**
      * Get active affiliates only
      */

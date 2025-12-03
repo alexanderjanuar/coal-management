@@ -52,6 +52,11 @@ class ClientDocument extends Model
         return $this->belongsTo(User::class, 'reviewed_by');
     }
 
+    public function requirement(): BelongsTo
+    {
+        return $this->belongsTo(ClientDocumentRequirement::class, 'requirement_id');
+    }
+
     // Scopes
     public function scopeLegalDocuments($query)
     {
@@ -67,16 +72,86 @@ class ClientDocument extends Model
         });
     }
 
+
+    /**
+     * ✅ ADD THIS - Documents fulfilling requirements
+     */
+    public function scopeRequirementDocuments($query)
+    {
+        return $query->whereNotNull('requirement_id');
+    }
+
+    /**
+     * ✅ ADD THIS - Ad-hoc additional documents (not linked to requirements)
+     */
+    public function scopeAdditionalDocuments($query)
+    {
+        return $query->whereNull('sop_legal_document_id')
+                     ->whereNull('requirement_id');
+    }
+
+
+    public function scopeExpired($query)
+    {
+        return $query->where('status', 'expired')
+                    ->orWhere(function($q) {
+                        $q->whereNotNull('expired_at')
+                          ->where('expired_at', '<', now());
+                    });
+    }
+
+
     public function scopeValid($query)
     {
         return $query->where('status', 'valid');
     }
 
-    public function scopeExpired($query)
+    public function scopeTemplates($query)
     {
-        return $query->where('status', 'expired');
+        return $query->where('is_template', true);
     }
-    
+
+    public function scopeUploaded($query)
+    {
+        return $query->where('is_template', false)
+                    ->whereNotNull('file_path');
+    }
+
+
+    // Add new static method
+    public static function createRequiredDocument(Client $client, string $filename, ?string $description = null): self
+    {
+        return self::create([
+            'client_id' => $client->id,
+            'original_filename' => $filename,
+            'description' => $description,
+            'is_template' => true,
+            'status' => 'required',
+            'file_path' => null,
+            'user_id' => auth()->id(),
+        ]);
+    }
+
+    // Check if this is a requirement/template
+    public function isTemplate(): bool
+    {
+        return $this->is_template;
+    }
+
+    // Check if template has been fulfilled
+    public function isFulfilled(): bool
+    {
+        if (!$this->is_template) {
+            return false;
+        }
+        
+        return $this->client->clientDocuments()
+                    ->where('is_template', false)
+                    ->whereNotNull('file_path')
+                    ->where('original_filename', 'LIKE', '%' . $this->original_filename . '%')
+                    ->exists();
+    }
+  
     public function scopeRequired($query)
     {
         return $query->where('status', 'required');
@@ -91,11 +166,7 @@ class ClientDocument extends Model
     {
         return $query->where('status', 'rejected');
     }
-    
-    public function scopeUploaded($query)
-    {
-        return $query->whereNotNull('file_path');
-    }
+
     
     public function scopeNotUploaded($query)
     {
@@ -314,74 +385,92 @@ class ClientDocument extends Model
         ], $data));
     }
 
+
+    /**
+     * ✅ ADD THIS - Check if this fulfills a requirement
+     */
+    public function isRequirementDocument(): bool
+    {
+        return !is_null($this->requirement_id);
+    }
+
+    /**
+     * ✅ ADD THIS - Check if this is ad-hoc additional document
+     */
+    public function isAdditionalDocument(): bool
+    {
+        return is_null($this->sop_legal_document_id) && 
+               is_null($this->requirement_id);
+    }
+
+    public function updateExpiryStatus(): void
+    {
+        if ($this->expired_at && $this->expired_at->isPast() && $this->status === 'valid') {
+            $this->update(['status' => 'expired']);
+        }
+    }
+
     // Event Handlers
     protected static function booted()
     {
         static::created(function ($clientDocument) {
-            // Only log if file is actually uploaded
-            if ($clientDocument->is_uploaded) {
-                $filename = $clientDocument->original_filename ?? basename($clientDocument->file_path);
-                
-                if ($clientDocument->isLegalDocument()) {
-                    UserActivity::logLegalDocumentUpload(
-                        $clientDocument->client, 
-                        $filename, 
-                        $clientDocument
-                    );
-                } else {
-                    UserActivity::logClientDocumentUpload(
-                        $clientDocument->client, 
-                        $filename
-                    );
-                }
+            $filename = $clientDocument->original_filename ?? basename($clientDocument->file_path);
+            
+            if ($clientDocument->isLegalDocument()) {
+                UserActivity::logLegalDocumentUpload(
+                    $clientDocument->client, 
+                    $filename, 
+                    $clientDocument
+                );
+            } elseif ($clientDocument->isRequirementDocument()) {
+                // ✅ ADD THIS - Log requirement document upload
+                UserActivity::log([
+                    'action' => 'requirement_document_uploaded',
+                    'description' => "Dokumen '{$filename}' diunggah untuk persyaratan '{$clientDocument->requirement->name}' oleh " . auth()->user()?->name,
+                    'actionable_type' => ClientDocument::class,
+                    'actionable_id' => $clientDocument->id,
+                    'client_id' => $clientDocument->client_id,
+                ]);
+            } else {
+                UserActivity::logClientDocumentUpload(
+                    $clientDocument->client, 
+                    $filename
+                );
             }
         });
 
         static::updating(function ($clientDocument) {
-            // Auto-update to expired if date has passed
-            if ($clientDocument->expired_at && 
-                $clientDocument->expired_at->isPast() && 
-                $clientDocument->status === 'valid') {
-                $clientDocument->status = 'expired';
-            }
-            
-            // Log when file is uploaded to a requirement
-            if ($clientDocument->isDirty('file_path') && 
-                !$clientDocument->getOriginal('file_path') && 
-                $clientDocument->file_path) {
+            // Auto-update status if expired
+            $clientDocument->updateExpiryStatus();
+        });
+
+        // ✅ ADD THIS - Auto-update requirement status when document status changes
+        static::updated(function ($clientDocument) {
+            if ($clientDocument->wasChanged('status') && $clientDocument->requirement_id) {
+                $requirement = $clientDocument->requirement;
                 
-                $clientDocument->status = 'pending_review';
-                
-                $filename = $clientDocument->original_filename ?? basename($clientDocument->file_path);
-                
-                if ($clientDocument->isLegalDocument()) {
-                    UserActivity::logLegalDocumentUpload(
-                        $clientDocument->client, 
-                        $filename, 
-                        $clientDocument
-                    );
-                } else {
-                    UserActivity::logClientDocumentUpload(
-                        $clientDocument->client, 
-                        $filename
-                    );
+                // If document is approved, mark requirement as fulfilled
+                if ($clientDocument->status === 'valid') {
+                    $requirement->markAsFulfilled();
+                }
+                // If document was rejected and no other valid docs, mark as pending
+                elseif ($clientDocument->status === 'rejected') {
+                    if (!$requirement->hasValidDocument()) {
+                        $requirement->markAsPending();
+                    }
                 }
             }
-            
-            // Log status changes
-            if ($clientDocument->isDirty('status')) {
-                $oldStatus = $clientDocument->getOriginal('status');
-                $newStatus = $clientDocument->status;
+        });
+
+        // ✅ ADD THIS - Handle requirement status when document is deleted
+        static::deleted(function ($clientDocument) {
+            if ($clientDocument->requirement_id) {
+                $requirement = $clientDocument->requirement;
                 
-                UserActivity::log([
-                    'action' => 'document_status_changed',
-                    'description' => "Status dokumen '{$clientDocument->file_name}' diubah dari '{$oldStatus}' menjadi '{$newStatus}' untuk {$clientDocument->client->name}",
-                    'actionable_type' => ClientDocument::class,
-                    'actionable_id' => $clientDocument->id,
-                    'client_id' => $clientDocument->client_id,
-                    'old_values' => ['status' => $oldStatus],
-                    'new_values' => ['status' => $newStatus],
-                ]);
+                // If this was the only valid document, mark requirement as pending
+                if (!$requirement->hasValidDocument()) {
+                    $requirement->markAsPending();
+                }
             }
         });
     }

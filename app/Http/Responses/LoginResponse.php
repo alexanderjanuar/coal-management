@@ -2,6 +2,7 @@
 
 namespace App\Http\Responses;
 
+use App\Filament\Client\Pages\DashboardClient;
 use Filament\Pages\Dashboard;
 use Illuminate\Http\RedirectResponse;
 use Livewire\Features\SupportRedirects\Redirector;
@@ -15,7 +16,7 @@ class LoginResponse extends BaseLoginResponse
         
         // Check if user has any role/permission that indicates they're admin/staff
         if ($user->hasAnyRole(['client'])) {
-            return redirect()->to(Dashboard::getUrl(panel: 'klien'));
+            return redirect()->to(DashboardClient::getUrl(panel: 'klien'));
         }
            
         // Default: redirect to client dashboard

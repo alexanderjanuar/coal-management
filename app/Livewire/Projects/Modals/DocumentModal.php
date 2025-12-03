@@ -820,7 +820,7 @@ class DocumentModal extends Component implements HasForms
             // Recalculate overall document status
             $this->calculateOverallStatus();
 
-            $this->dispatch('refresh');
+            // $this->dispatch('refresh');
 
             // Get related project information
             $projectStep = $this->document->projectStep;

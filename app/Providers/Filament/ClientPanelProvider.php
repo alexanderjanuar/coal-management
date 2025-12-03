@@ -3,6 +3,7 @@
 namespace App\Providers\Filament;
 
 use App\Http\Middleware\RedirectToProperPanelMiddleware;
+use Edwink\FilamentUserActivity\FilamentUserActivityPlugin;
 use Filament\Http\Middleware\Authenticate;
 use Filament\Http\Middleware\AuthenticateSession;
 use Filament\Http\Middleware\DisableBladeIconComponents;
@@ -39,7 +40,7 @@ class ClientPanelProvider extends PanelProvider
             ->discoverResources(in: app_path('Filament/Client/Resources'), for: 'App\\Filament\\Client\\Resources')
             ->discoverPages(in: app_path('Filament/Client/Pages'), for: 'App\\Filament\\Client\\Pages')
             ->pages([
-                Pages\Dashboard::class,
+                // Pages\Dashboard::class,
             ])
             ->discoverWidgets(in: app_path('Filament/Client/Widgets'), for: 'App\\Filament\\Client\\Widgets')
             ->widgets([
@@ -64,6 +65,7 @@ class ClientPanelProvider extends PanelProvider
             ])
             ->plugins([
                 FilamentInactivityGuardPlugin::make(),
+                FilamentUserActivityPlugin::make(),
                 \TomatoPHP\FilamentPWA\FilamentPWAPlugin::make(),
                 FilamentApexChartsPlugin::make(),
                 EasyFooterPlugin::make()

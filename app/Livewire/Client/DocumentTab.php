@@ -5,6 +5,7 @@ namespace App\Livewire\Client;
 use App\Models\Client;
 use App\Models\UserClient;
 use App\Models\ClientDocument;
+use App\Models\ClientDocumentRequirement;
 use App\Models\SopLegalDocument;
 use Filament\Notifications\Notification;
 use Filament\Forms\Concerns\InteractsWithForms;
@@ -16,6 +17,7 @@ use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\Section;
 use Filament\Forms\Components\Grid;
+use Filament\Forms\Components\Textarea;
 use Livewire\Component;
 use Livewire\Attributes\On;
 use Livewire\WithFileUploads;
@@ -30,6 +32,7 @@ class DocumentTab extends Component implements HasForms
     
     public $checklist = [];
     public $additionalDocuments = [];
+    public $requiredAdditionalDocuments = [];
     public $stats = [];
     
     // Modal state
@@ -40,7 +43,9 @@ class DocumentTab extends Component implements HasForms
     public $documentName = '';
     public $expiredAt = '';
     public $isAdditionalDocument = false;
+    public $selectedRequirementId = null;
     public $documentToDelete = null;
+    public $documentDescription = '';
     
     // Preview state
     public $previewDocument = null;
@@ -74,6 +79,7 @@ class DocumentTab extends Component implements HasForms
             ->map(function ($client) {
                 // Calculate stats for each client
                 $client->document_stats = $client->getLegalDocumentsStats();
+                $client->requirement_stats = $client->requirement_stats;
                 return $client;
             });
     }
@@ -94,6 +100,7 @@ class DocumentTab extends Component implements HasForms
         
         $this->checklist = $this->currentClient->getLegalDocumentsChecklist();
         $this->loadAdditionalDocuments();
+        $this->loadRequiredAdditionalDocuments();
         $this->calculateStats();
     }
 
@@ -105,10 +112,11 @@ class DocumentTab extends Component implements HasForms
                     ->schema([
                         Grid::make(2)
                             ->schema([
+                                // For Legal Documents (SOP-based)
                                 Select::make('selectedSopId')
                                     ->label('Jenis Dokumen')
                                     ->options(function () {
-                                        if ($this->isAdditionalDocument || !$this->currentClient) {
+                                        if ($this->isAdditionalDocument || $this->selectedRequirementId || !$this->currentClient) {
                                             return [];
                                         }
                                         return $this->currentClient->getApplicableSopDocuments()
@@ -116,27 +124,38 @@ class DocumentTab extends Component implements HasForms
                                     })
                                     ->searchable()
                                     ->required()
-                                    ->visible(!$this->isAdditionalDocument)
+                                    ->visible(fn () => !$this->isAdditionalDocument && !$this->selectedRequirementId)
+                                    ->columnSpan(2),
+                                
+                                // For uploading to a requirement
+                                Select::make('selectedRequirementId')
+                                    ->label('Untuk Persyaratan')
+                                    ->options(function () {
+                                        if (!$this->currentClient) return [];
+                                        return $this->currentClient->documentRequirements()
+                                            ->pending()
+                                            ->pluck('name', 'id');
+                                    })
+                                    ->searchable()
+                                    ->required()
+                                    ->visible(fn () => $this->selectedRequirementId)
+                                    ->disabled()
                                     ->columnSpan(2),
                                     
+                                // For additional documents
                                 TextInput::make('documentName')
                                     ->label('Nama Dokumen')
                                     ->placeholder('Masukkan nama dokumen')
                                     ->required()
-                                    ->visible($this->isAdditionalDocument)
+                                    ->visible(fn () => $this->isAdditionalDocument && !$this->selectedRequirementId)
                                     ->columnSpan(2),
-                                    
-                                TextInput::make('documentNumber')
-                                    ->label('Nomor Dokumen')
-                                    ->placeholder('Masukkan nomor dokumen (opsional)')
-                                    ->columnSpan(1),
-                                    
-                                DatePicker::make('expiredAt')
-                                    ->label('Tanggal Kadaluarsa')
-                                    ->placeholder('Pilih tanggal kadaluarsa (opsional)')
-                                    ->after('today')
-                                    ->columnSpan(1),
                             ]),
+                        
+                        Textarea::make('documentDescription')
+                            ->label('Catatan')
+                            ->placeholder('Tambahkan catatan untuk dokumen ini (opsional)')
+                            ->rows(3)
+                            ->columnSpanFull(),
                             
                         FileUpload::make('uploadFile')
                             ->label('File Dokumen')
@@ -147,7 +166,7 @@ class DocumentTab extends Component implements HasForms
                             ->disk('public')
                             ->directory(function () {
                                 if (!$this->currentClient) return 'temp';
-                                return $this->isAdditionalDocument 
+                                return $this->isAdditionalDocument || $this->selectedRequirementId
                                     ? $this->currentClient->getFolderPath() 
                                     : $this->currentClient->getLegalFolderPath();
                             })
@@ -166,8 +185,23 @@ class DocumentTab extends Component implements HasForms
         }
         
         $this->additionalDocuments = $this->currentClient->clientDocuments()
-            ->whereNull('sop_legal_document_id')
+            ->additionalDocuments()
             ->with('user')
+            ->latest()
+            ->get();
+    }
+
+    public function loadRequiredAdditionalDocuments()
+    {
+        if (!$this->currentClient) {
+            $this->requiredAdditionalDocuments = collect([]);
+            return;
+        }
+        
+        $this->requiredAdditionalDocuments = $this->currentClient->documentRequirements()
+            ->with(['createdBy', 'documents' => function($query) {
+                $query->latest()->with('user');
+            }])
             ->latest()
             ->get();
     }
@@ -182,11 +216,12 @@ class DocumentTab extends Component implements HasForms
         $this->stats = $this->currentClient->getLegalDocumentsStats();
     }
 
-    public function openUploadModal($clientId, $sopId = null, $isAdditional = false)
+    public function openUploadModal($clientId, $sopId = null, $isAdditional = false, $requirementId = null)
     {
         $this->currentClient = Client::find($clientId);
         $this->selectedSopId = $sopId;
         $this->isAdditionalDocument = $isAdditional;
+        $this->selectedRequirementId = $requirementId;
         $this->resetModalFields();
         
         $this->dispatch('open-modal', id: 'upload-document-modal');
@@ -204,9 +239,11 @@ class DocumentTab extends Component implements HasForms
         $this->documentNumber = '';
         $this->documentName = '';
         $this->expiredAt = '';
+        $this->documentDescription = '';
         
-        if (!$this->selectedSopId) {
+        if (!$this->selectedSopId && !$this->selectedRequirementId) {
             $this->selectedSopId = null;
+            $this->selectedRequirementId = null;
         }
     }
 
@@ -238,7 +275,7 @@ class DocumentTab extends Component implements HasForms
                 $filename = time() . '_' . $originalName;
                 
                 // Determine storage path
-                $storagePath = $this->isAdditionalDocument 
+                $storagePath = $this->isAdditionalDocument || $this->selectedRequirementId
                     ? $this->currentClient->getFolderPath() 
                     : $this->currentClient->getLegalFolderPath();
                 
@@ -255,19 +292,29 @@ class DocumentTab extends Component implements HasForms
                     'user_id' => auth()->id(),
                     'file_path' => $filePath,
                     'original_filename' => $originalName,
-                    'document_number' => $data['documentNumber'] ?? null,
-                    'expired_at' => $data['expiredAt'] ?? null,
-                    'status' => 'valid',
+                    'description' => $data['documentDescription'] ?? null,
+                    'status' => 'pending_review',
                 ];
 
-                if (!$this->isAdditionalDocument) {
+                // Link to SOP Legal Document
+                if (!$this->isAdditionalDocument && !$this->selectedRequirementId && $this->selectedSopId) {
                     $documentData['sop_legal_document_id'] = $data['selectedSopId'];
-                } else {
+                }
+                
+                // Link to Requirement
+                if ($this->selectedRequirementId) {
+                    $documentData['requirement_id'] = $this->selectedRequirementId;
+                }
+                
+                // Set category for additional documents
+                if ($this->isAdditionalDocument && !$this->selectedRequirementId) {
                     $documentData['document_category'] = 'additional';
-                    $documentData['description'] = $data['documentName'] ?? null;
                 }
 
                 ClientDocument::create($documentData);
+
+                // Send notifications to other client users
+                $this->sendDocumentUploadNotification($this->currentClient, $originalName);
 
                 $this->closeUploadModal();
                 $this->loadClientData($this->currentClient->id);
@@ -275,7 +322,7 @@ class DocumentTab extends Component implements HasForms
                 
                 Notification::make()
                     ->title('Berhasil!')
-                    ->body('Dokumen berhasil diupload!')
+                    ->body('Dokumen berhasil diupload dan menunggu review!')
                     ->success()
                     ->duration(3000)
                     ->send();
@@ -321,6 +368,16 @@ class DocumentTab extends Component implements HasForms
             
             $document = ClientDocument::find($this->documentToDelete);
             if ($document) {
+                // Only allow client to delete their own documents that are not yet approved
+                if ($document->user_id !== auth()->id() || $document->status === 'valid') {
+                    Notification::make()
+                        ->title('Error!')
+                        ->body('Anda tidak dapat menghapus dokumen ini')
+                        ->danger()
+                        ->send();
+                    return;
+                }
+                
                 if (\Storage::disk('public')->exists($document->file_path)) {
                     \Storage::disk('public')->delete($document->file_path);
                 }
@@ -352,6 +409,18 @@ class DocumentTab extends Component implements HasForms
 
     public function deleteDocumentConfirm($documentId)
     {
+        $document = ClientDocument::find($documentId);
+        
+        // Check if user can delete this document
+        if (!$document || $document->user_id !== auth()->id() || $document->status === 'valid') {
+            Notification::make()
+                ->title('Error!')
+                ->body('Anda tidak dapat menghapus dokumen ini')
+                ->danger()
+                ->send();
+            return;
+        }
+        
         $this->documentToDelete = $documentId;
         $this->dispatch('open-modal', id: 'confirm-delete-modal');
     }
@@ -381,6 +450,66 @@ class DocumentTab extends Component implements HasForms
     {
         $this->previewDocument = null;
         $this->dispatch('close-modal', id: 'preview-document-modal');
+    }
+
+    protected function sendDocumentUploadNotification(Client $client, string $filename)
+    {
+        try {
+            // Get all users linked to this client who have 'client' role (except current user)
+            $clientUsers = \App\Models\User::whereHas('userClients', function ($query) use ($client) {
+                $query->where('client_id', $client->id);
+            })
+            ->whereHas('roles', function ($query) {
+                $query->where('name', 'client');
+            })
+            ->where('id', '!=', auth()->id())
+            ->get();
+
+            if ($clientUsers->isEmpty()) {
+                return;
+            }
+
+            $uploaderName = auth()->user()->name;
+            $clientName = $client->name;
+
+            // Determine document type for better message
+            $docType = 'dokumen';
+            if ($this->selectedRequirementId) {
+                $requirement = \App\Models\ClientDocumentRequirement::find($this->selectedRequirementId);
+                $docType = $requirement ? $requirement->name : 'dokumen persyaratan';
+            } elseif ($this->selectedSopId) {
+                $sopDoc = \App\Models\SopLegalDocument::find($this->selectedSopId);
+                $docType = $sopDoc ? $sopDoc->name : 'dokumen legal';
+            } elseif ($this->isAdditionalDocument) {
+                $docType = 'dokumen tambahan';
+            }
+
+            // Send notification to each client user
+            foreach ($clientUsers as $user) {
+                Notification::make()
+                    ->title('📄 Dokumen Baru Diupload')
+                    ->body("{$uploaderName} telah mengupload {$docType} untuk {$clientName}: {$filename}")
+                    ->icon('heroicon-o-document-arrow-up')
+                    ->color('info')
+                    ->actions([
+                        \Filament\Notifications\Actions\Action::make('view')
+                            ->label('👁️ Lihat Dokumen')
+                            ->url(route('filament.client.pages.document-page'))
+                            ->button()
+                            ->color('primary')
+                            ->markAsRead(),
+                        \Filament\Notifications\Actions\Action::make('dismiss')
+                            ->label('Tutup')
+                            ->color('gray')
+                            ->markAsRead(),
+                    ])
+                    ->sendToDatabase($user);
+            }
+
+        } catch (\Exception $e) {
+            // Log error but don't interrupt the upload process
+            \Log::error('Failed to send document upload notification: ' . $e->getMessage());
+        }
     }
 
     #[On('refresh-data')]
