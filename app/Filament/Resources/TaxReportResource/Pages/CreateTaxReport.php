@@ -34,7 +34,17 @@ class CreateTaxReport extends CreateRecord
                         Select::make('client_id')
                             ->label('Klien')
                             ->required()
-                            ->relationship('client', 'name')
+                            ->relationship(
+                                'client',
+                                'name',
+                                fn ($query) => $query
+                                    ->where('status', 'Active')
+                                    ->where(function ($q) {
+                                        $q->where('ppn_contract', true)
+                                          ->orWhere('pph_contract', true)
+                                          ->orWhere('bupot_contract', true);
+                                    })
+                            )
                             ->searchable()
                             ->reactive()
                             ->afterStateUpdated(function (Set $set, $state) {
@@ -42,6 +52,7 @@ class CreateTaxReport extends CreateRecord
                                 $set('months', []);
                                 $set('month', null);
                             })
+                            ->helperText('Hanya menampilkan klien aktif dengan kontrak PPN, PPH, atau Bupot')
                             ->createOptionForm([
                                 TextInput::make('name')
                                     ->label('Nama')

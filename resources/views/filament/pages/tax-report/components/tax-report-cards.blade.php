@@ -26,6 +26,11 @@
             $pphSummary = $record->taxCalculationSummaries->firstWhere('tax_type', 'pph');
             $bupotSummary = $record->taxCalculationSummaries->firstWhere('tax_type', 'bupot');
 
+            // Get client contracts
+            $hasPpnContract = $record->client->ppn_contract ?? false;
+            $hasPphContract = $record->client->pph_contract ?? false;
+            $hasBupotContract = $record->client->bupot_contract ?? false;
+
             $paymentStatus = $ppnSummary?->status_final ?? 'N/A';
 
             // Payment status variables
@@ -100,6 +105,28 @@
                                 {{ Str::limit($record->client->name, 30) }}
                             </h3>
                         </a>
+
+                        <!-- Contract Indicators -->
+                        <div class="mt-2 flex items-center gap-1.5">
+                            @if($hasPpnContract)
+                            <div class="rounded-md bg-white/20 px-2 py-0.5 text-[10px] font-semibold backdrop-blur-sm"
+                                title="Kontrak PPN Aktif">
+                                PPN
+                            </div>
+                            @endif
+                            @if($hasPphContract)
+                            <div class="rounded-md bg-white/20 px-2 py-0.5 text-[10px] font-semibold backdrop-blur-sm"
+                                title="Kontrak PPh Aktif">
+                                PPh
+                            </div>
+                            @endif
+                            @if($hasBupotContract)
+                            <div class="rounded-md bg-white/20 px-2 py-0.5 text-[10px] font-semibold backdrop-blur-sm"
+                                title="Kontrak Bupot Aktif">
+                                Bupot
+                            </div>
+                            @endif
+                        </div>
                     </div>
 
                     <!-- Period & Status Badge with Indicators -->
@@ -111,7 +138,8 @@
                             </div>
                             <!-- Mini Indicators with Payment Status -->
                             <div class="flex items-center gap-1">
-                                <!-- PPN Indicator -->
+                                <!-- PPN Indicator - Only show if contract exists -->
+                                @if($hasPpnContract)
                                 <div class="relative group/indicator">
                                     <div class="h-1.5 w-1.5 rounded-full {{ $ppnReported ? 'bg-emerald-300' : 'bg-white/30' }}"
                                         title="PPN {{ $ppnReported ? 'Sudah Lapor' : 'Belum Lapor' }}"></div>
@@ -120,7 +148,9 @@
                                         title="Sudah Bayar"></div>
                                     @endif
                                 </div>
-                                <!-- PPh Indicator -->
+                                @endif
+                                <!-- PPh Indicator - Only show if contract exists -->
+                                @if($hasPphContract)
                                 <div class="relative group/indicator">
                                     <div class="h-1.5 w-1.5 rounded-full {{ $pphReported ? 'bg-emerald-300' : 'bg-white/30' }}"
                                         title="PPh {{ $pphReported ? 'Sudah Lapor' : 'Belum Lapor' }}"></div>
@@ -129,7 +159,9 @@
                                         title="Sudah Bayar"></div>
                                     @endif
                                 </div>
-                                <!-- Bupot Indicator -->
+                                @endif
+                                <!-- Bupot Indicator - Only show if contract exists -->
+                                @if($hasBupotContract)
                                 <div class="relative group/indicator">
                                     <div class="h-1.5 w-1.5 rounded-full {{ $bupotReported ? 'bg-emerald-300' : 'bg-white/30' }}"
                                         title="PPh Unifikasi {{ $bupotReported ? 'Sudah Lapor' : 'Belum Lapor' }}">
@@ -139,6 +171,7 @@
                                         title="Sudah Bayar"></div>
                                     @endif
                                 </div>
+                                @endif
                             </div>
                         </div>
                         <div class="rounded-lg px-2.5 py-1 text-xs font-semibold {{ $statusConfig['badge'] }}">
@@ -147,10 +180,11 @@
                     </div>
                 </div>
 
-                <!-- Report Status Grid with Payment Status -->
+                <!-- Report Status Grid with Payment Status - Dynamic columns based on contracts -->
                 <div
-                    class="grid grid-cols-3 divide-x divide-gray-100 border-b border-gray-100 dark:divide-white/5 dark:border-white/5">
-                    <!-- PPN with Payment Status -->
+                    class="grid grid-cols-{{ ($hasPpnContract ? 1 : 0) + ($hasPphContract ? 1 : 0) + ($hasBupotContract ? 1 : 0) }} divide-x divide-gray-100 border-b border-gray-100 dark:divide-white/5 dark:border-white/5">
+                    <!-- PPN with Payment Status - Only show if contract exists -->
+                    @if($hasPpnContract)
                     <div
                         class="group/status flex flex-col items-center gap-2 py-3.5 transition-colors hover:bg-gray-50/50 dark:hover:bg-gray-800/30">
                         <div class="relative">
@@ -192,8 +226,10 @@
                         </div>
                         @endif
                     </div>
+                    @endif
 
-                    <!-- PPh with Payment Status -->
+                    <!-- PPh with Payment Status - Only show if contract exists -->
+                    @if($hasPphContract)
                     <div
                         class="group/status flex flex-col items-center gap-2 py-3.5 transition-colors hover:bg-gray-50/50 dark:hover:bg-gray-800/30">
                         <div class="relative">
@@ -235,8 +271,10 @@
                         </div>
                         @endif
                     </div>
+                    @endif
 
-                    <!-- PPh Unifikasi (Bupot) with Payment Status -->
+                    <!-- PPh Unifikasi (Bupot) with Payment Status - Only show if contract exists -->
+                    @if($hasBupotContract)
                     <div
                         class="group/status flex flex-col items-center gap-2 py-3.5 transition-colors hover:bg-gray-50/50 dark:hover:bg-gray-800/30">
                         <div class="relative">
@@ -279,6 +317,7 @@
                         </div>
                         @endif
                     </div>
+                    @endif
                 </div>
 
                 <!-- Financial Summary -->
@@ -350,15 +389,18 @@
                                 class="absolute bottom-full right-0 z-[100] mb-2 w-56 origin-bottom-right rounded-lg bg-white shadow-xl ring-1 ring-black/5 dark:bg-gray-800 dark:ring-white/10"
                                 @click.away="open = false" style="display: none;" x-cloak>
                                 <div class="py-1">
-                                    <!-- Update PPN Status -->
+                                    <!-- Update PPN Status - Only show if contract exists -->
+                                    @if($hasPpnContract)
                                     <button wire:click="mountTableAction('update_ppn_status', '{{ $record->id }}')"
                                         @click="open = false"
                                         class="flex w-full items-center gap-2.5 px-4 py-2.5 text-sm text-gray-700 transition-colors hover:bg-gray-50 dark:text-gray-300 dark:hover:bg-gray-700/50">
                                         <x-heroicon-o-document-check class="h-4 w-4 text-gray-500 dark:text-gray-400" />
                                         <span>Update Status PPN</span>
                                     </button>
+                                    @endif
 
-                                    <!-- Update PPh Status -->
+                                    <!-- Update PPh Status - Only show if contract exists -->
+                                    @if($hasPphContract)
                                     <button wire:click="mountTableAction('update_pph_status', '{{ $record->id }}')"
                                         @click="open = false"
                                         class="flex w-full items-center gap-2.5 px-4 py-2.5 text-sm text-gray-700 transition-colors hover:bg-gray-50 dark:text-gray-300 dark:hover:bg-gray-700/50">
@@ -366,14 +408,17 @@
                                             class="h-4 w-4 text-gray-500 dark:text-gray-400" />
                                         <span>Update Status PPh</span>
                                     </button>
+                                    @endif
 
-                                    <!-- Update Bupot Status -->
+                                    <!-- Update Bupot Status - Only show if contract exists -->
+                                    @if($hasBupotContract)
                                     <button wire:click="mountTableAction('update_bupot_status', '{{ $record->id }}')"
                                         @click="open = false"
                                         class="flex w-full items-center gap-2.5 px-4 py-2.5 text-sm text-gray-700 transition-colors hover:bg-gray-50 dark:text-gray-300 dark:hover:bg-gray-700/50">
                                         <x-heroicon-o-document-text class="h-4 w-4 text-gray-500 dark:text-gray-400" />
                                         <span>Update Status PPh Unifikasi</span>
                                     </button>
+                                    @endif
 
                                     <div class="my-1 h-px bg-gray-100 dark:bg-gray-700"></div>
 
@@ -421,6 +466,13 @@
                 <div class="flex items-center gap-1">
                     <div class="h-1.5 w-1.5 rounded-full bg-white/30 ring-1 ring-gray-300 dark:ring-gray-600"></div>
                     <span>Belum Lapor</span>
+                </div>
+            </div>
+            <div class="flex items-center gap-2">
+                <div class="flex items-center gap-1">
+                    <div class="rounded-md bg-gray-200 px-2 py-0.5 text-[10px] font-semibold dark:bg-gray-700">
+                        PPN/PPh/Bupot</div>
+                    <span>Kontrak Aktif</span>
                 </div>
             </div>
         </div>

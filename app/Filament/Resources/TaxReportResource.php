@@ -67,9 +67,20 @@ class TaxReportResource extends Resource
                         Select::make('client_id')
                             ->label('Client')
                             ->required()
-                            ->relationship('client', 'name')
+                            ->relationship(
+                                'client',
+                                'name',
+                                fn ($query) => $query
+                                    ->where('status', 'Active')
+                                    ->where(function ($q) {
+                                        $q->where('ppn_contract', true)
+                                          ->orWhere('pph_contract', true)
+                                          ->orWhere('bupot_contract', true);
+                                    })
+                            )
                             ->searchable()
                             ->preload()
+                            ->helperText('Hanya menampilkan klien aktif dengan kontrak PPN, PPH, atau Bupot')
                             ->createOptionForm([
                                 TextInput::make('name')
                                     ->required()
@@ -116,11 +127,11 @@ class TaxReportResource extends Resource
     public static function table(Table $table): Table
     {
         return $table
-            // CRITICAL: Add eager loading with tax_calculation_summaries
+            // CRITICAL: Add eager loading with tax_calculation_summaries AND client contracts
             ->modifyQueryUsing(function (Builder $query) {
                 return $query
                     ->with([
-                        'client:id,name',
+                        'client:id,name,ppn_contract,pph_contract,bupot_contract',
                         'createdBy:id,name',
                         'taxCalculationSummaries:id,tax_report_id,tax_type,report_status,reported_at,status_final,saldo_final,bayar_status,bayar_at,bukti_bayar',
                     ])
@@ -299,6 +310,22 @@ class TaxReportResource extends Resource
             ])
             ->deferLoading()
             ->filters([
+                // NEW: Client Contract Filter (Default Active)
+                Tables\Filters\Filter::make('has_contracts')
+                    ->label('Kontrak Aktif')
+                    ->query(function (Builder $query): Builder {
+                        return $query->whereHas('client', function (Builder $q) {
+                            $q->where('status', 'Active')
+                              ->where(function ($subQuery) {
+                                  $subQuery->where('ppn_contract', true)
+                                           ->orWhere('pph_contract', true)
+                                           ->orWhere('bupot_contract', true);
+                              });
+                        });
+                    })
+                    ->default() // This makes it active by default
+                    ->toggle(),
+
                 // Status filters using tax_calculation_summaries
                 Tables\Filters\Filter::make('ppn_report_status')
                     ->label('Status Laporan PPN')
@@ -492,6 +519,14 @@ class TaxReportResource extends Resource
                     Tables\Actions\EditAction::make()
                         ->icon('heroicon-o-pencil')
                         ->color('info'),
+
+                    Tables\Actions\DeleteAction::make()
+                        ->icon('heroicon-o-trash')
+                        ->color('danger')
+                        ->requiresConfirmation()
+                        ->modalHeading('Hapus Laporan Pajak')
+                        ->modalDescription('Apakah Anda yakin ingin menghapus laporan pajak ini? Tindakan ini tidak dapat dibatalkan.')
+                        ->successNotificationTitle('Laporan pajak berhasil dihapus'),
 
                     Tables\Actions\Action::make('update_bayar_status')
                         ->label('Update Status Bayar')
@@ -768,7 +803,11 @@ class TaxReportResource extends Resource
             ])
             ->bulkActions([
                 Tables\Actions\BulkActionGroup::make([
-                    Tables\Actions\DeleteBulkAction::make(),
+                    Tables\Actions\DeleteBulkAction::make()
+                        ->requiresConfirmation()
+                        ->modalHeading('Hapus Laporan Pajak Terpilih')
+                        ->modalDescription('Apakah Anda yakin ingin menghapus laporan pajak yang dipilih? Tindakan ini tidak dapat dibatalkan.')
+                        ->successNotificationTitle('Laporan pajak berhasil dihapus'),
                     
                     Tables\Actions\BulkAction::make('bulk_update_status')
                         ->label('Update Status Laporan')
