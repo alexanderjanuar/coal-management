@@ -178,7 +178,7 @@
                     {{-- Status & Quick Stats - Responsive --}}
                     <div class="flex flex-col gap-3 md:flex-row md:items-center md:gap-4">
                         {{-- Quick Stats - Mobile: 2x2 grid, Desktop: horizontal --}}
-                        <div class="stats-grid grid grid-cols-3 gap-2 md:flex md:items-center md:gap-4">
+                        <div class="stats-grid grid grid-cols-4 gap-2 md:flex md:items-center md:gap-4">
                             <div class="flex items-center gap-1.5 md:gap-2">
                                 <div
                                     class="flex h-6 w-6 md:h-8 md:w-8 items-center justify-center rounded-md md:rounded-lg bg-blue-50 dark:bg-blue-900/30">
@@ -221,6 +221,21 @@
                                         $record->bupots->count() }}</p>
                                 </div>
                             </div>
+
+                            <div class="hidden md:block h-8 w-px bg-gray-200 dark:bg-gray-700"></div>
+
+                            {{-- ✅ NEW: PPh Badan Stats --}}
+                            <div class="flex items-center gap-1.5 md:gap-2">
+                                <div
+                                    class="flex h-6 w-6 md:h-8 md:w-8 items-center justify-center rounded-md md:rounded-lg bg-indigo-50 dark:bg-indigo-900/30">
+                                    <x-filament::icon icon="heroicon-o-building-office"
+                                        class="h-3 w-3 md:h-4 md:w-4 text-indigo-600 dark:text-indigo-400" />
+                                </div>
+                                <div class="min-w-0">
+                                    <p class="text-[10px] md:text-xs text-gray-500 dark:text-gray-400">PPh Badan</p>
+                                    <p class="text-xs md:text-sm font-bold text-gray-900 dark:text-white">0</p>
+                                </div>
+                            </div>
                         </div>
 
                         <div class="hidden md:block h-8 w-px bg-gray-200 dark:bg-gray-700"></div>
@@ -237,14 +252,17 @@
                         $ppnSummary = $summaries->firstWhere('tax_type', 'ppn');
                         $pphSummary = $summaries->firstWhere('tax_type', 'pph');
                         $bupotSummary = $summaries->firstWhere('tax_type', 'bupot');
+                        $pphBadanSummary = $summaries->firstWhere('tax_type', 'pph_badan');
 
                         $ppnReported = $ppnSummary && $ppnSummary->report_status === 'Sudah Lapor';
                         $pphReported = $pphSummary && $pphSummary->report_status === 'Sudah Lapor';
                         $bupotReported = $bupotSummary && $bupotSummary->report_status === 'Sudah Lapor';
+                        $pphBadanReported = $pphBadanSummary && $pphBadanSummary->report_status === 'Sudah Lapor';
 
                         // Count reported
-                        $reportedCount = ($ppnReported ? 1 : 0) + ($pphReported ? 1 : 0) + ($bupotReported ? 1 : 0);
-                        $totalCount = 3;
+                        $reportedCount = ($ppnReported ? 1 : 0) + ($pphReported ? 1 : 0) + ($bupotReported ? 1 : 0) +
+                        ($pphBadanReported ? 1 : 0);
+                        $totalCount = 4;
 
                         // All reported check
                         $allReported = $reportedCount === $totalCount;
@@ -254,6 +272,7 @@
                         if (!$ppnReported && $ppnSummary) $notReportedList[] = 'PPN';
                         if (!$pphReported && $pphSummary) $notReportedList[] = 'PPh';
                         if (!$bupotReported && $bupotSummary) $notReportedList[] = 'Bupot';
+                        if (!$pphBadanReported && $pphBadanSummary) $notReportedList[] = 'PPh Badan';
 
                         // Status text with details
                         if ($allReported) {
@@ -348,12 +367,14 @@
                             $ppnSum = $monthSummaries->firstWhere('tax_type', 'ppn');
                             $pphSum = $monthSummaries->firstWhere('tax_type', 'pph');
                             $bupotSum = $monthSummaries->firstWhere('tax_type', 'bupot');
+                            $pphBadanSum = $monthSummaries->firstWhere('tax_type', 'pph_badan');
 
                             $ppnRep = $ppnSum && $ppnSum->report_status === 'Sudah Lapor';
                             $pphRep = $pphSum && $pphSum->report_status === 'Sudah Lapor';
                             $bupotRep = $bupotSum && $bupotSum->report_status === 'Sudah Lapor';
+                            $pphBadanRep = $pphBadanSum && $pphBadanSum->report_status === 'Sudah Lapor';
 
-                            $monthIsReported = $ppnRep && $pphRep && $bupotRep;
+                            $monthIsReported = $ppnRep && $pphRep && $bupotRep && $pphBadanRep;
                             @endphp
                             <a href="{{ route('filament.admin.resources.tax-reports.view', $monthReport) }}"
                                 wire:navigate
@@ -470,7 +491,7 @@
             <div
                 class="overflow-hidden rounded-lg md:rounded-xl bg-white shadow-sm ring-1 ring-gray-900/5 dark:bg-gray-900 dark:ring-white/10">
                 <div class="p-2 md:p-3">
-                    <div class="grid grid-cols-1 md:grid-cols-3 gap-2 md:gap-3">
+                    <div class="grid grid-cols-2 md:grid-cols-4 gap-2 md:gap-3">
                         {{-- PPN Tab --}}
                         <button @click="activeTab = 'invoices'"
                             :class="activeTab === 'invoices' 
@@ -639,6 +660,62 @@
                                 <div class="h-1 w-16 rounded-full bg-orange-600 shadow-lg"></div>
                             </div>
                         </button>
+
+                        {{-- ✅ NEW: PPh Badan Tab --}}
+                        <button @click="activeTab = 'pph_badan'"
+                            :class="activeTab === 'pph_badan' 
+                                    ? 'border-indigo-500 bg-gradient-to-br from-indigo-50 to-indigo-100 shadow-lg shadow-indigo-500/20 dark:border-indigo-400 dark:from-indigo-900/30 dark:to-indigo-900/10' 
+                                    : 'border-gray-200 bg-white hover:border-indigo-300 hover:bg-indigo-50/50 dark:border-gray-700 dark:bg-gray-800/50 dark:hover:border-indigo-600'"
+                            class="group relative flex flex-row md:flex-col items-center gap-3 rounded-lg md:rounded-xl border-2 px-3 py-3 md:px-4 md:py-4 transition-all duration-200">
+
+                            {{-- Reporting Status Badge --}}
+                            <div class="absolute -right-1 -top-1 md:-right-2 md:-top-2 z-10">
+                                @if($pphBadanReported)
+                                <div class="flex h-6 w-6 md:h-8 md:w-8 items-center justify-center rounded-full bg-green-500 shadow-lg ring-2 ring-white dark:ring-gray-900"
+                                    title="Sudah Lapor">
+                                    <x-filament::icon icon="heroicon-m-check-circle"
+                                        class="h-4 w-4 md:h-5 md:w-5 text-white" />
+                                </div>
+                                @else
+                                <div class="status-pulse flex h-6 w-6 md:h-8 md:w-8 items-center justify-center rounded-full bg-orange-500 shadow-lg ring-2 ring-white dark:ring-gray-900"
+                                    title="Belum Lapor">
+                                    <x-filament::icon icon="heroicon-m-exclamation-circle"
+                                        class="h-4 w-4 md:h-5 md:w-5 text-white" />
+                                </div>
+                                @endif
+                            </div>
+
+                            {{-- Icon --}}
+                            <div :class="activeTab === 'pph_badan' ? 'bg-indigo-600 shadow-lg shadow-indigo-500/50' : 'bg-gray-100 group-hover:bg-indigo-100 dark:bg-gray-700'"
+                                class="flex h-10 w-10 md:h-12 md:w-12 items-center justify-center rounded-lg md:rounded-xl transition-all duration-200 flex-shrink-0">
+                                <x-filament::icon icon="heroicon-o-building-office"
+                                    :class="activeTab === 'pph_badan' ? 'text-white' : 'text-gray-600 group-hover:text-indigo-600 dark:text-gray-400'"
+                                    class="h-5 w-5 md:h-6 md:w-6" />
+                            </div>
+
+                            {{-- Label & Count --}}
+                            <div class="flex-1 text-left md:text-center">
+                                <p :class="activeTab === 'pph_badan' ? 'text-indigo-900 dark:text-indigo-100' : 'text-gray-900 dark:text-white'"
+                                    class="text-sm font-bold">
+                                    PPh Badan
+                                </p>
+                                <p :class="activeTab === 'pph_badan' ? 'text-indigo-600 dark:text-indigo-400' : 'text-gray-500 dark:text-gray-400'"
+                                    class="mt-0.5 text-xs font-medium">
+                                    0 Transaksi
+                                </p>
+                                {{-- Status Text --}}
+                                <p
+                                    class="mt-1 text-[10px] font-semibold {{ $pphBadanReported ? 'text-green-600 dark:text-green-400' : 'text-orange-600 dark:text-orange-400' }}">
+                                    {{ $pphBadanReported ? '✓ Sudah Lapor' : '⚠ Belum Lapor' }}
+                                </p>
+                            </div>
+
+                            {{-- Active Indicator - Desktop Only --}}
+                            <div x-show="activeTab === 'pph_badan'"
+                                class="absolute -bottom-1 left-1/2 -translate-x-1/2 hidden md:block">
+                                <div class="h-1 w-16 rounded-full bg-indigo-600 shadow-lg"></div>
+                            </div>
+                        </button>
                     </div>
                 </div>
             </div>
@@ -665,6 +742,36 @@
                 x-transition:enter-start="opacity-0 transform translate-y-2"
                 x-transition:enter-end="opacity-100 transform translate-y-0" style="display: none;">
                 @livewire('tax-report.components.tax-report-bupot', ['taxReportId' => $record->id])
+            </div>
+
+            {{-- ✅ NEW: PPh Badan Content --}}
+            <div x-show="activeTab === 'pph_badan'" x-transition:enter="transition ease-out duration-200"
+                x-transition:enter-start="opacity-0 transform translate-y-2"
+                x-transition:enter-end="opacity-100 transform translate-y-0" style="display: none;">
+                {{-- Livewire component commented out for now --}}
+                {{-- @livewire('tax-report.components.tax-report-pph-badan', ['taxReportId' => $record->id]) --}}
+
+                {{-- Placeholder content --}}
+                <div
+                    class="overflow-hidden rounded-lg md:rounded-xl bg-white shadow-sm ring-1 ring-gray-900/5 dark:bg-gray-900 dark:ring-white/10">
+                    <div class="p-6 md:p-8 text-center">
+                        <div
+                            class="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-indigo-100 dark:bg-indigo-900/30">
+                            <x-filament::icon icon="heroicon-o-building-office"
+                                class="h-8 w-8 text-indigo-600 dark:text-indigo-400" />
+                        </div>
+                        <h3 class="mt-4 text-lg font-semibold text-gray-900 dark:text-white">
+                            PPh Badan
+                        </h3>
+                        <p class="mt-2 text-sm text-gray-600 dark:text-gray-400">
+                            Fitur PPh Badan (Corporate Income Tax) akan segera tersedia.
+                        </p>
+                        <p class="mt-1 text-xs text-gray-500 dark:text-gray-500">
+                            Livewire component: <code
+                                class="text-indigo-600 dark:text-indigo-400">tax-report.components.tax-report-pph-badan</code>
+                        </p>
+                    </div>
+                </div>
             </div>
         </div>
 

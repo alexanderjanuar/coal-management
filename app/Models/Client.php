@@ -108,7 +108,7 @@ class Client extends Model
     }
 
     /**
-     * ✅ ADD THIS - Get fulfilled requirements
+     * âœ… ADD THIS - Get fulfilled requirements
      */
     public function fulfilledRequirements()
     {
@@ -116,7 +116,7 @@ class Client extends Model
     }
 
     /**
-     * ✅ ADD THIS - Get overdue requirements
+     * âœ… ADD THIS - Get overdue requirements
      */
     public function overdueRequirements()
     {
@@ -124,7 +124,7 @@ class Client extends Model
     }
 
     /**
-     * ✅ ADD THIS - Get requirement completion stats
+     * âœ… ADD THIS - Get requirement completion stats
      */
     public function getRequirementStatsAttribute(): array
     {
@@ -372,7 +372,7 @@ class Client extends Model
             }
 
             // Log contract changes
-            $contractFields = ['ppn_contract', 'pph_contract', 'bupot_contract'];
+            $contractFields = ['ppn_contract', 'pph_contract', 'bupot_contract', 'pph_badan_contract'];
             foreach ($contractFields as $field) {
                 if ($client->wasChanged($field)) {
                     $status = $client->$field ? 'Aktif' : 'Tidak Aktif';

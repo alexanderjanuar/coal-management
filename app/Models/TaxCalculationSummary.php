@@ -73,6 +73,11 @@ class TaxCalculationSummary extends Model
         return $query->where('tax_type', 'bupot');
     }
 
+    public function scopePphBadan(Builder $query): Builder
+    {
+        return $query->where('tax_type', 'pph_badan');
+    }
+
     public function scopeLebihBayar(Builder $query): Builder
     {
         return $query->where('status_final', 'Lebih Bayar');
@@ -102,6 +107,7 @@ class TaxCalculationSummary extends Model
             'ppn' => 'PPN',
             'pph' => 'PPh',
             'bupot' => 'PPh Unifikasi',
+            'pph_badan' => 'PPh Badan',
             default => 'Unknown'
         };
     }
@@ -322,6 +328,7 @@ class TaxCalculationSummary extends Model
             'ppn' => $this->calculatePpn($taxReport),
             'pph' => $this->calculatePph($taxReport),
             'bupot' => $this->calculateBupot($taxReport),
+            'pph_badan' => $this->calculatePphBadan($taxReport),
             default => []
         };
     }
@@ -461,6 +468,48 @@ class TaxCalculationSummary extends Model
         
         $kompensasiTerpakai = $taxReport->approvedCompensationsGiven()
             ->where('tax_type', 'bupot')
+            ->sum('amount_compensated');
+        
+        $saldoFinal = $selisih - $kompensasiDiterima;
+        $status = $this->determineStatus($selisih);
+        $statusFinal = $this->determineStatus($saldoFinal);
+        $kompensasiTersedia = $statusFinal === 'Lebih Bayar' ? abs($saldoFinal) : 0;
+        
+        return [
+            'pajak_masuk' => $pajakDipotong,
+            'pajak_keluar' => $pajakTerutang,
+            'selisih' => $selisih,
+            'status' => $status,
+            'kompensasi_diterima' => $kompensasiDiterima,
+            'kompensasi_tersedia' => $kompensasiTersedia,
+            'kompensasi_terpakai' => $kompensasiTerpakai,
+            'saldo_final' => $saldoFinal,
+            'status_final' => $statusFinal,
+            'bayar_status' => $this->bayar_status ?? 'Belum Bayar',
+        ];
+    }
+
+    /**
+     * Calculate PPh Badan (Corporate Income Tax)
+     */
+    protected function calculatePphBadan($taxReport): array
+    {
+        // TODO: Implement calculation logic for PPh Badan
+        // This will likely be based on annual corporate income
+        // For now, returning a basic structure similar to other tax types
+        
+        $pajakTerutang = 0; // Will be calculated based on corporate income
+        $pajakDipotong = 0; // Any advance payments or withholdings
+        
+        $selisih = $pajakTerutang - $pajakDipotong;
+        
+        // Kompensasi logic
+        $kompensasiDiterima = $taxReport->approvedCompensationsReceived()
+            ->where('tax_type', 'pph_badan')
+            ->sum('amount_compensated');
+        
+        $kompensasiTerpakai = $taxReport->approvedCompensationsGiven()
+            ->where('tax_type', 'pph_badan')
             ->sum('amount_compensated');
         
         $saldoFinal = $selisih - $kompensasiDiterima;

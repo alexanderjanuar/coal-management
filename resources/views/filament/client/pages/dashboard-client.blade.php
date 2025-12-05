@@ -135,7 +135,7 @@
                 x-transition:leave="transition ease-in duration-200"
                 x-transition:leave-start="opacity-100 transform translate-y-0"
                 x-transition:leave-end="opacity-0 transform -translate-y-4">
-                {{-- @livewire('client.tax-reports-tab') --}}
+                @livewire('client.tax-report-tab')
             </div>
 
             {{-- Loading Overlay --}}

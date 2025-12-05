@@ -25,11 +25,13 @@
             $ppnSummary = $record->taxCalculationSummaries->firstWhere('tax_type', 'ppn');
             $pphSummary = $record->taxCalculationSummaries->firstWhere('tax_type', 'pph');
             $bupotSummary = $record->taxCalculationSummaries->firstWhere('tax_type', 'bupot');
+            $pphBadanSummary = $record->taxCalculationSummaries->firstWhere('tax_type', 'pph_badan');
 
             // Get client contracts
             $hasPpnContract = $record->client->ppn_contract ?? false;
             $hasPphContract = $record->client->pph_contract ?? false;
             $hasBupotContract = $record->client->bupot_contract ?? false;
+            $hasPphBadanContract = $record->client->pph_badan_contract ?? false;
 
             $paymentStatus = $ppnSummary?->status_final ?? 'N/A';
 
@@ -37,10 +39,12 @@
             $ppnBayarStatus = $ppnSummary?->bayar_status ?? 'Belum Bayar';
             $pphBayarStatus = $pphSummary?->bayar_status ?? 'Belum Bayar';
             $bupotBayarStatus = $bupotSummary?->bayar_status ?? 'Belum Bayar';
+            $pphBadanBayarStatus = $pphBadanSummary?->bayar_status ?? 'Belum Bayar';
 
             $allPaid = ($ppnBayarStatus === 'Sudah Bayar') &&
             ($pphBayarStatus === 'Sudah Bayar') &&
-            ($bupotBayarStatus === 'Sudah Bayar');
+            ($bupotBayarStatus === 'Sudah Bayar') &&
+            ($pphBadanBayarStatus === 'Sudah Bayar');
 
             $statusConfig = match($paymentStatus) {
             'Lebih Bayar' => [
@@ -63,11 +67,13 @@
 
             $allReported = ($ppnSummary?->report_status === 'Sudah Lapor') &&
             ($pphSummary?->report_status === 'Sudah Lapor') &&
-            ($bupotSummary?->report_status === 'Sudah Lapor');
+            ($bupotSummary?->report_status === 'Sudah Lapor') &&
+            ($pphBadanSummary?->report_status === 'Sudah Lapor');
 
             $ppnReported = $ppnSummary?->report_status === 'Sudah Lapor';
             $pphReported = $pphSummary?->report_status === 'Sudah Lapor';
             $bupotReported = $bupotSummary?->report_status === 'Sudah Lapor';
+            $pphBadanReported = $pphBadanSummary?->report_status === 'Sudah Lapor';
             @endphp
 
             <div wire:key="tax-report-{{ $record->id }}"
@@ -126,6 +132,12 @@
                                 Bupot
                             </div>
                             @endif
+                            @if($hasPphBadanContract)
+                            <div class="rounded-md bg-white/20 px-2 py-0.5 text-[10px] font-semibold backdrop-blur-sm"
+                                title="Kontrak PPh Badan Aktif">
+                                PPh Badan
+                            </div>
+                            @endif
                         </div>
                     </div>
 
@@ -172,6 +184,18 @@
                                     @endif
                                 </div>
                                 @endif
+                                <!-- PPh Badan Indicator - Only show if contract exists -->
+                                @if($hasPphBadanContract)
+                                <div class="relative group/indicator">
+                                    <div class="h-1.5 w-1.5 rounded-full {{ $pphBadanReported ? 'bg-emerald-300' : 'bg-white/30' }}"
+                                        title="PPh Badan {{ $pphBadanReported ? 'Sudah Lapor' : 'Belum Lapor' }}">
+                                    </div>
+                                    @if($pphBadanReported && $pphBadanBayarStatus === 'Sudah Bayar')
+                                    <div class="absolute -top-0.5 -right-0.5 h-1 w-1 rounded-full bg-amber-300 ring-1 ring-white/20"
+                                        title="Sudah Bayar"></div>
+                                    @endif
+                                </div>
+                                @endif
                             </div>
                         </div>
                         <div class="rounded-lg px-2.5 py-1 text-xs font-semibold {{ $statusConfig['badge'] }}">
@@ -182,7 +206,7 @@
 
                 <!-- Report Status Grid with Payment Status - Dynamic columns based on contracts -->
                 <div
-                    class="grid grid-cols-{{ ($hasPpnContract ? 1 : 0) + ($hasPphContract ? 1 : 0) + ($hasBupotContract ? 1 : 0) }} divide-x divide-gray-100 border-b border-gray-100 dark:divide-white/5 dark:border-white/5">
+                    class="grid grid-cols-{{ ($hasPpnContract ? 1 : 0) + ($hasPphContract ? 1 : 0) + ($hasBupotContract ? 1 : 0) + ($hasPphBadanContract ? 1 : 0) }} divide-x divide-gray-100 border-b border-gray-100 dark:divide-white/5 dark:border-white/5">
                     <!-- PPN with Payment Status - Only show if contract exists -->
                     @if($hasPpnContract)
                     <div
@@ -318,6 +342,52 @@
                         @endif
                     </div>
                     @endif
+
+                    <!-- PPh Badan with Payment Status - Only show if contract exists -->
+                    @if($hasPphBadanContract)
+                    <div
+                        class="group/status flex flex-col items-center gap-2 py-3.5 transition-colors hover:bg-gray-50/50 dark:hover:bg-gray-800/30">
+                        <div class="relative">
+                            @if($pphBadanReported)
+                            <x-heroicon-s-check-circle class="h-5 w-5 text-emerald-500/80" />
+                            @else
+                            <x-heroicon-o-clock
+                                class="h-5 w-5 text-gray-400 transition-transform group-hover/status:scale-110" />
+                            @endif
+
+                            @if($pphBadanReported && $pphBadanBayarStatus === 'Sudah Bayar')
+                            <div class="absolute -bottom-0.5 -right-0.5">
+                                <x-heroicon-s-banknotes class="h-3 w-3 text-amber-500" />
+                            </div>
+                            @endif
+                        </div>
+
+                        <span
+                            class="text-[10px] font-semibold text-center leading-tight text-gray-700 dark:text-gray-300">PPh<br>Badan</span>
+
+                        @if($pphBadanSummary?->reported_at)
+                        <span class="text-[10px] text-gray-500 dark:text-gray-400">
+                            {{ \Carbon\Carbon::parse($pphBadanSummary->reported_at)->format('d M') }}
+                        </span>
+                        @else
+                        <span class="text-[10px] text-gray-400 dark:text-gray-500">
+                            Belum Lapor
+                        </span>
+                        @endif
+
+                        @if($pphBadanReported)
+                        <div class="flex items-center gap-1">
+                            <div
+                                class="h-1 w-1 rounded-full {{ $pphBadanBayarStatus === 'Sudah Bayar' ? 'bg-emerald-500' : 'bg-amber-500' }}">
+                            </div>
+                            <span
+                                class="text-[9px] {{ $pphBadanBayarStatus === 'Sudah Bayar' ? 'text-emerald-600 dark:text-emerald-400' : 'text-amber-600 dark:text-amber-400' }}">
+                                {{ $pphBadanBayarStatus === 'Sudah Bayar' ? 'Paid' : 'Unpaid' }}
+                            </span>
+                        </div>
+                        @endif
+                    </div>
+                    @endif
                 </div>
 
                 <!-- Financial Summary -->
@@ -333,7 +403,6 @@
                         </div>
                     </div>
                     @endif
-
                 </div>
 
                 <!-- Footer -->
@@ -420,6 +489,18 @@
                                     </button>
                                     @endif
 
+                                    <!-- Update PPh Badan Status - Only show if contract exists -->
+                                    @if($hasPphBadanContract)
+                                    <button
+                                        wire:click="mountTableAction('update_pph_badan_status', '{{ $record->id }}')"
+                                        @click="open = false"
+                                        class="flex w-full items-center gap-2.5 px-4 py-2.5 text-sm text-gray-700 transition-colors hover:bg-gray-50 dark:text-gray-300 dark:hover:bg-gray-700/50">
+                                        <x-heroicon-o-building-office
+                                            class="h-4 w-4 text-gray-500 dark:text-gray-400" />
+                                        <span>Update Status PPh Badan</span>
+                                    </button>
+                                    @endif
+
                                     <div class="my-1 h-px bg-gray-100 dark:bg-gray-700"></div>
 
                                     <!-- Update Bayar Status -->
@@ -471,7 +552,7 @@
             <div class="flex items-center gap-2">
                 <div class="flex items-center gap-1">
                     <div class="rounded-md bg-gray-200 px-2 py-0.5 text-[10px] font-semibold dark:bg-gray-700">
-                        PPN/PPh/Bupot</div>
+                        PPN/PPh/Bupot/PPh Badan</div>
                     <span>Kontrak Aktif</span>
                 </div>
             </div>

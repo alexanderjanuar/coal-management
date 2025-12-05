@@ -515,12 +515,17 @@ class TaxReport extends Model
         return $this->hasOne(TaxCalculationSummary::class)->where('tax_type', 'bupot');
     }
 
+    public function pphBadanSummary()
+    {
+        return $this->hasOne(TaxCalculationSummary::class)->where('tax_type', 'pph_badan');
+    }
+
     /**
      * Recalculate all tax summaries
      */
     public function recalculateAllSummaries(): void
     {
-        foreach (['ppn', 'pph', 'bupot'] as $taxType) {
+        foreach (['ppn', 'pph', 'bupot', 'pph_badan'] as $taxType) {
             $summary = $this->getOrCreateSummary($taxType);
             $summary->recalculate();
         }
@@ -562,7 +567,7 @@ class TaxReport extends Model
     /**
      * Get or create tax calculation summary for specific tax type
      * 
-     * @param string $taxType 'ppn', 'pph', or 'bupot'
+     * @param string $taxType 'ppn', 'pph', 'bupot', or 'pph_badan'
      * @return TaxCalculationSummary
      */
     public function getOrCreateSummary(string $taxType): TaxCalculationSummary

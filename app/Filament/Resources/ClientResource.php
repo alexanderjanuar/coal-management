@@ -332,7 +332,7 @@ class ClientResource extends Resource
                     ->description('Tax service contracts and agreements')
                     ->icon('heroicon-o-document-check')
                     ->schema([
-                        Forms\Components\Grid::make(3)
+                        Forms\Components\Grid::make(4)
                             ->schema([
                                 Forms\Components\Toggle::make('ppn_contract')
                                     ->label('PPN Contract')
@@ -358,10 +358,16 @@ class ClientResource extends Resource
                                     ->helperText('Kontrak untuk bukti potong')
                                     ->columnSpan(1),
                                 
+                                Forms\Components\Toggle::make('pph_badan_contract')
+                                    ->label('PPh Badan Contract')
+                                    ->reactive()
+                                    ->helperText('Kontrak untuk PPh Badan')
+                                    ->columnSpan(1),
+                                
                                 Forms\Components\FileUpload::make('contract_file')
                                     ->label('Contract Document')
                                     ->visible(function (callable $get) {
-                                        return $get('ppn_contract') || $get('pph_contract') || $get('bupot_contract');
+                                        return $get('ppn_contract') || $get('pph_contract') || $get('bupot_contract') || $get('pph_badan_contract');
                                     })
                                     ->preserveFilenames()
                                     ->openable()
@@ -369,7 +375,7 @@ class ClientResource extends Resource
                                     ->directory('client-contracts')
                                     ->acceptedFileTypes(['application/pdf', 'image/*'])
                                     ->helperText('Upload signed contract document (PDF or image)')
-                                    ->columnSpan(3),
+                                    ->columnSpan(4),
                             ]),
                     ])
                     ->collapsible(),

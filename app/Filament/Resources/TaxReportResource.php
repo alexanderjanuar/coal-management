@@ -74,8 +74,9 @@ class TaxReportResource extends Resource
                                     ->where('status', 'Active')
                                     ->where(function ($q) {
                                         $q->where('ppn_contract', true)
-                                          ->orWhere('pph_contract', true)
-                                          ->orWhere('bupot_contract', true);
+                                        ->orWhere('pph_contract', true)
+                                        ->orWhere('bupot_contract', true)
+                                        ->orWhere('pph_badan_contract', true); // ✅ ADD THIS
                                     })
                             )
                             ->searchable()
@@ -131,7 +132,7 @@ class TaxReportResource extends Resource
             ->modifyQueryUsing(function (Builder $query) {
                 return $query
                     ->with([
-                        'client:id,name,ppn_contract,pph_contract,bupot_contract',
+                        'client:id,name,ppn_contract,pph_contract,bupot_contract,pph_badan_contract',
                         'createdBy:id,name',
                         'taxCalculationSummaries:id,tax_report_id,tax_type,report_status,reported_at,status_final,saldo_final,bayar_status,bayar_at,bukti_bayar',
                     ])
@@ -286,6 +287,36 @@ class TaxReportResource extends Resource
                     ->alignCenter()
                     ->sortable(false),
 
+                Tables\Columns\IconColumn::make('pph_badan_status')
+                    ->label('Status PPh Badan')
+                    ->boolean()
+                    ->trueIcon('heroicon-o-check-circle')
+                    ->falseIcon('heroicon-o-x-circle')
+                    ->trueColor('success')
+                    ->falseColor('danger')
+                    ->getStateUsing(function (TaxReport $record): bool {
+                        $pphBadanSummary = $record->taxCalculationSummaries->firstWhere('tax_type', 'pph_badan');
+                        return $pphBadanSummary && $pphBadanSummary->report_status === 'Sudah Lapor';
+                    })
+                    ->tooltip(function (TaxReport $record): string {
+                        $pphBadanSummary = $record->taxCalculationSummaries->firstWhere('tax_type', 'pph_badan');
+                        
+                        if ($pphBadanSummary && $pphBadanSummary->report_status === 'Sudah Lapor') {
+                            $dateText = '';
+                            if ($pphBadanSummary->reported_at) {
+                                try {
+                                    $dateText = ' pada ' . \Carbon\Carbon::parse($pphBadanSummary->reported_at)->format('d M Y');
+                                } catch (\Exception $e) {
+                                    $dateText = '';
+                                }
+                            }
+                            return 'PPh Badan sudah dilaporkan' . $dateText;
+                        }
+                        return 'PPh Badan belum dilaporkan';
+                    })
+                    ->alignCenter()
+                    ->sortable(false),
+
                 // Payment Status from PPN summary
                 TextColumn::make('payment_status')
                     ->label('Status Bayar')
@@ -316,14 +347,15 @@ class TaxReportResource extends Resource
                     ->query(function (Builder $query): Builder {
                         return $query->whereHas('client', function (Builder $q) {
                             $q->where('status', 'Active')
-                              ->where(function ($subQuery) {
-                                  $subQuery->where('ppn_contract', true)
-                                           ->orWhere('pph_contract', true)
-                                           ->orWhere('bupot_contract', true);
-                              });
+                            ->where(function ($subQuery) {
+                                $subQuery->where('ppn_contract', true)
+                                        ->orWhere('pph_contract', true)
+                                        ->orWhere('bupot_contract', true)
+                                        ->orWhere('pph_badan_contract', true); // ✅ ADD THIS
+                            });
                         });
                     })
-                    ->default() // This makes it active by default
+                    ->default()
                     ->toggle(),
 
                 // Status filters using tax_calculation_summaries
@@ -386,6 +418,27 @@ class TaxReportResource extends Resource
                             fn (Builder $query, $status): Builder => $query->whereHas('taxCalculationSummaries', function ($q) use ($status) {
                                 $q->where('tax_type', 'bupot')
                                   ->where('report_status', $status);
+                            })
+                        );
+                    }),
+                
+                Tables\Filters\Filter::make('pph_badan_report_status')
+                    ->label('Status Laporan PPh Badan')
+                    ->form([
+                        Select::make('value')
+                            ->label('Status')
+                            ->options([
+                                'Belum Lapor' => 'Belum Lapor',
+                                'Sudah Lapor' => 'Sudah Lapor',
+                            ])
+                            ->native(false),
+                    ])
+                    ->query(function (Builder $query, array $data): Builder {
+                        return $query->when(
+                            $data['value'],
+                            fn (Builder $query, $status): Builder => $query->whereHas('taxCalculationSummaries', function ($q) use ($status) {
+                                $q->where('tax_type', 'pph_badan')
+                                ->where('report_status', $status);
                             })
                         );
                     }),
@@ -539,6 +592,7 @@ class TaxReportResource extends Resource
                                     'ppn' => 'PPN',
                                     'pph' => 'PPh',
                                     'bupot' => 'PPh Unifikasi',
+                                    'pph_badan' => 'PPh Badan',
                                 ])
                                 ->required()
                                 ->native(false)
@@ -610,7 +664,8 @@ class TaxReportResource extends Resource
                             $taxTypeLabel = match($taxType) {
                                 'ppn' => 'PPN',
                                 'pph' => 'PPh',
-                                'bupot' => 'PPh Unifikasi'
+                                'bupot' => 'PPh Unifikasi',
+                                'pph_badan' => 'PPh Badan',
                             };
 
                             Notification::make()
@@ -795,7 +850,65 @@ class TaxReportResource extends Resource
                         })
                         ->modalHeading('Update Status Laporan Bupot')
                         ->modalWidth('md'),
-                ])
+                    
+                    Tables\Actions\Action::make('update_pph_badan_status')
+                        ->label('Update Status PPh Badan')
+                        ->icon('heroicon-o-building-office')
+                        ->color(function (TaxReport $record): string {
+                            $pphBadanSummary = $record->taxCalculationSummaries->firstWhere('tax_type', 'pph_badan');
+                            return $pphBadanSummary && $pphBadanSummary->report_status === 'Sudah Lapor' ? 'success' : 'warning';
+                        })
+                        ->form([
+                            Select::make('report_status')
+                                ->label('Status Laporan PPh Badan')
+                                ->options([
+                                    'Belum Lapor' => 'Belum Lapor',
+                                    'Sudah Lapor' => 'Sudah Lapor',
+                                ])
+                                ->native(false)
+                                ->required()
+                                ->reactive(),
+                            
+                            Forms\Components\DatePicker::make('reported_at')
+                                ->label('Tanggal Pelaporan')
+                                ->visible(fn(Get $get): bool => $get('report_status') === 'Sudah Lapor')
+                                ->required(fn(Get $get): bool => $get('report_status') === 'Sudah Lapor')
+                                ->default(now()),
+                        ])
+                        ->fillForm(function (TaxReport $record): array {
+                            $pphBadanSummary = $record->taxCalculationSummaries->firstWhere('tax_type', 'pph_badan');
+                            return [
+                                'report_status' => $pphBadanSummary?->report_status ?? 'Belum Lapor',
+                                'reported_at' => $pphBadanSummary?->reported_at,
+                            ];
+                        })
+                        ->action(function (TaxReport $record, array $data): void {
+                            $pphBadanSummary = $record->taxCalculationSummaries()->firstOrCreate(
+                                ['tax_type' => 'pph_badan'],
+                                [
+                                    'pajak_masuk' => 0,
+                                    'pajak_keluar' => 0,
+                                    'selisih' => 0,
+                                    'status' => 'Nihil',
+                                    'saldo_final' => 0,
+                                    'status_final' => 'Nihil',
+                                ]
+                            );
+
+                            $pphBadanSummary->update([
+                                'report_status' => $data['report_status'],
+                                'reported_at' => $data['report_status'] === 'Sudah Lapor' ? $data['reported_at'] : null,
+                            ]);
+
+                            Notification::make()
+                                ->title('Status PPh Badan Berhasil Diupdate')
+                                ->body("Status PPh Badan diubah menjadi: {$data['report_status']}")
+                                ->success()
+                                ->send();
+                        })
+                        ->modalHeading('Update Status Laporan PPh Badan')
+                        ->modalWidth('md'),
+                    ])
                     ->icon('heroicon-m-ellipsis-vertical')
                     ->label('Actions')
                     ->size('sm')
@@ -820,6 +933,7 @@ class TaxReportResource extends Resource
                                     'ppn' => 'PPN',
                                     'pph' => 'PPh',
                                     'bupot' => 'Bupot',
+                                    'pph_badan' => 'PPh Badan',
                                 ])
                                 ->required()
                                 ->reactive(),
@@ -870,7 +984,8 @@ class TaxReportResource extends Resource
                             $taxTypeLabel = match($taxType) {
                                 'ppn' => 'PPN',
                                 'pph' => 'PPh', 
-                                'bupot' => 'Bupot'
+                                'bupot' => 'Bupot',
+                                'pph_badan' => 'PPh Badan',
                             };
                             
                             Notification::make()
