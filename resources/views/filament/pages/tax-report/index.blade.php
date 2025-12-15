@@ -156,7 +156,7 @@
         {{-- Client Header - Responsive --}}
         <div class="page-transition mb-3 md:mb-4">
             <div
-                class="overflow-hidden rounded-lg md:rounded-xl bg-white shadow-sm ring-1 ring-gray-900/5 dark:bg-gray-900 dark:ring-white/10">
+                class="">
                 <div class="flex flex-col gap-3 p-3 md:flex-row md:items-center md:justify-between md:px-6 md:py-4">
                     {{-- Client Info --}}
                     <div class="flex items-center gap-3">
@@ -289,7 +289,7 @@
                         @endphp
 
                         <div
-                            class="inline-flex items-center gap-2 rounded-full {{ $allReported ? 'bg-green-50 dark:bg-green-900/20' : ($reportedCount > 0 ? 'bg-yellow-50 dark:bg-yellow-900/20' : 'bg-orange-50 dark:bg-orange-900/20') }} px-3 py-1.5">
+                            class="inline-flex items-center gap-2 rounded-lg shadow-sm {{ $allReported ? 'bg-green-50 dark:bg-green-900/20' : ($reportedCount > 0 ? 'bg-yellow-50 dark:bg-yellow-900/20' : 'bg-orange-50 dark:bg-orange-900/20') }} px-3 py-1.5">
                             <span class="relative flex h-2 w-2">
                                 @if($allReported)
                                 <span class="relative inline-flex h-2 w-2 rounded-full bg-green-500"></span>
@@ -323,7 +323,7 @@
 
         {{-- 12-Month Navigation Tabs - Responsive --}}
         <div class="mb-3 md:mb-4">
-            <div
+            <div    
                 class="overflow-hidden rounded-lg md:rounded-xl bg-white shadow-sm ring-1 ring-gray-900/5 dark:bg-gray-900 dark:ring-white/10">
                 <div class="p-2 md:p-3">
                     @php
@@ -489,7 +489,7 @@
         {{-- Tax Type Navigation Tabs - Responsive Redesign --}}
         <div class="mb-3 md:mb-4">
             <div
-                class="overflow-hidden rounded-lg md:rounded-xl bg-white shadow-sm ring-1 ring-gray-900/5 dark:bg-gray-900 dark:ring-white/10">
+                class="overflow-hidden">
                 <div class="p-2 md:p-3">
                     <div class="grid grid-cols-2 md:grid-cols-4 gap-2 md:gap-3">
                         {{-- PPN Tab --}}

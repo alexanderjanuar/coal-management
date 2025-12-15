@@ -7,10 +7,14 @@ use App\Models\ClientCommunication;
 use App\Models\Client;
 use Livewire\WithPagination;
 use Carbon\Carbon;
+use Filament\Forms\Concerns\InteractsWithForms;
+use Filament\Forms\Contracts\HasForms;
+use CodeWithKyrian\FilamentDateRange\Forms\Components\DateRangePicker;
+use Illuminate\Support\Facades\Storage;
 
-class Index extends Page
+class Index extends Page implements HasForms
 {
-    use WithPagination;
+    use WithPagination, InteractsWithForms;
 
     protected static ?string $navigationIcon = 'heroicon-o-chat-bubble-left-right';
     
@@ -18,6 +22,8 @@ class Index extends Page
     
     protected static ?string $navigationGroup = 'Client Management';
     protected static ?int $navigationSort = 2;
+
+    protected static ?string $title = '';
 
     protected static ?string $slug = 'client-communication';
     
@@ -30,232 +36,352 @@ class Index extends Page
     {
         return auth()->user()->can('client-communication.*');
     }
-
+    
     protected static string $view = 'filament.pages.client-communication.index';
-
-    // public static function shouldRegisterNavigation(): bool
-    // {
-    //     return auth()->user()->hasRole(['super-admin']);
-    // }
-
-
-    // Filters
-    public $search = '';
-    public $filterClient = '';
-    public $filterType = '';
-    public $filterStatus = '';
-    public $filterPriority = '';
     
-    // Date & Time Filters
-    public $filterDateFrom = '';
-    public $filterDateTo = '';
-    public $filterDateRange = 'all'; // all, today, week, month, custom
-    public $filterTimeOfDay = ''; // morning, afternoon, evening, all
+    // Public properties for filters
+    public $activeTab = 'all';
+    public $event_period = null;
+    public $searchTerm = '';
     
-    public $sortField = 'communication_date';
-    public $sortDirection = 'desc';
-
-    protected $queryString = [
-        'search' => ['except' => ''],
-        'filterClient' => ['except' => ''],
-        'filterType' => ['except' => ''],
-        'filterStatus' => ['except' => ''],
-        'filterPriority' => ['except' => ''],
-        'filterDateRange' => ['except' => 'all'],
-        'filterDateFrom' => ['except' => ''],
-        'filterDateTo' => ['except' => ''],
-    ];
-
-    public function mount()
+    // Modal properties
+    public $selectedCommunicationId = null;
+    public $completeFormData = [];
+    public $viewCommunication = null;
+    
+    public function mount(): void
     {
-        // Set default date range to this month
-        if (!$this->filterDateRange || $this->filterDateRange === 'all') {
-            $this->filterDateRange = 'month';
-        }
+        $this->form->fill([
+            'event_period' => null,
+        ]);
     }
-
-    public function updatingSearch()
+    
+    protected function getForms(): array
     {
-        $this->resetPage();
-    }
-
-    public function updatingFilterClient()
-    {
-        $this->resetPage();
-    }
-
-    public function updatedFilterDateRange($value)
-    {
-        // Auto-set date range based on selection
-        switch ($value) {
-            case 'today':
-                $this->filterDateFrom = now()->format('Y-m-d');
-                $this->filterDateTo = now()->format('Y-m-d');
-                break;
-            case 'yesterday':
-                $this->filterDateFrom = now()->subDay()->format('Y-m-d');
-                $this->filterDateTo = now()->subDay()->format('Y-m-d');
-                break;
-            case 'week':
-                $this->filterDateFrom = now()->startOfWeek()->format('Y-m-d');
-                $this->filterDateTo = now()->endOfWeek()->format('Y-m-d');
-                break;
-            case 'month':
-                $this->filterDateFrom = now()->startOfMonth()->format('Y-m-d');
-                $this->filterDateTo = now()->endOfMonth()->format('Y-m-d');
-                break;
-            case 'last_month':
-                $this->filterDateFrom = now()->subMonth()->startOfMonth()->format('Y-m-d');
-                $this->filterDateTo = now()->subMonth()->endOfMonth()->format('Y-m-d');
-                break;
-            case 'all':
-                $this->filterDateFrom = '';
-                $this->filterDateTo = '';
-                break;
-        }
-        
-        $this->resetPage();
-    }
-
-    public function sortBy($field)
-    {
-        if ($this->sortField === $field) {
-            $this->sortDirection = $this->sortDirection === 'asc' ? 'desc' : 'asc';
-        } else {
-            $this->sortField = $field;
-            $this->sortDirection = 'asc';
-        }
-    }
-
-    public function resetFilters()
-    {
-        $this->search = '';
-        $this->filterClient = '';
-        $this->filterType = '';
-        $this->filterStatus = '';
-        $this->filterPriority = '';
-        $this->filterDateRange = 'month';
-        $this->filterDateFrom = now()->startOfMonth()->format('Y-m-d');
-        $this->filterDateTo = now()->endOfMonth()->format('Y-m-d');
-        $this->filterTimeOfDay = '';
-        $this->resetPage();
-    }
-
-    public function getCommunicationsProperty()
-    {
-        $query = ClientCommunication::query()
-            ->with(['client', 'user', 'project']);
-
-        // Search
-        if ($this->search) {
-            $query->where(function ($q) {
-                $q->where('title', 'like', '%' . $this->search . '%')
-                  ->orWhere('description', 'like', '%' . $this->search . '%')
-                  ->orWhere('location', 'like', '%' . $this->search . '%')
-                  ->orWhereHas('client', function ($q) {
-                      $q->where('name', 'like', '%' . $this->search . '%');
-                  });
-            });
-        }
-
-        // Date Range Filter
-        if ($this->filterDateFrom && $this->filterDateTo) {
-            $query->whereBetween('communication_date', [
-                $this->filterDateFrom,
-                $this->filterDateTo
-            ]);
-        } elseif ($this->filterDateFrom) {
-            $query->where('communication_date', '>=', $this->filterDateFrom);
-        } elseif ($this->filterDateTo) {
-            $query->where('communication_date', '<=', $this->filterDateTo);
-        }
-
-        // Time of Day Filter
-        if ($this->filterTimeOfDay) {
-            $query->whereNotNull('communication_time');
-            switch ($this->filterTimeOfDay) {
-                case 'morning': // 6:00 - 11:59
-                    $query->whereTime('communication_time', '>=', '06:00:00')
-                          ->whereTime('communication_time', '<', '12:00:00');
-                    break;
-                case 'afternoon': // 12:00 - 17:59
-                    $query->whereTime('communication_time', '>=', '12:00:00')
-                          ->whereTime('communication_time', '<', '18:00:00');
-                    break;
-                case 'evening': // 18:00 - 23:59
-                    $query->whereTime('communication_time', '>=', '18:00:00')
-                          ->whereTime('communication_time', '<=', '23:59:59');
-                    break;
-            }
-        }
-
-        // Other Filters
-        if ($this->filterClient) {
-            $query->where('client_id', $this->filterClient);
-        }
-
-        if ($this->filterType) {
-            $query->where('type', $this->filterType);
-        }
-
-        if ($this->filterStatus) {
-            $query->where('status', $this->filterStatus);
-        }
-
-        if ($this->filterPriority) {
-            $query->where('priority', $this->filterPriority);
-        }
-
-        // Sorting
-        $query->orderBy($this->sortField, $this->sortDirection);
-
-        return $query->paginate(12);
-    }
-
-    public function getClientsProperty()
-    {
-        return Client::orderBy('name')->get();
-    }
-
-    public function getStatsProperty()
-    {
-        $baseQuery = ClientCommunication::query();
-
-        // Apply date filter to stats if set
-        if ($this->filterDateFrom && $this->filterDateTo) {
-            $baseQuery->whereBetween('communication_date', [
-                $this->filterDateFrom,
-                $this->filterDateTo
-            ]);
-        }
-
         return [
-            'total' => (clone $baseQuery)->count(),
-            'scheduled' => (clone $baseQuery)->where('status', 'scheduled')->count(),
-            'completed' => (clone $baseQuery)->where('status', 'completed')->count(),
-            'upcoming' => ClientCommunication::where('status', 'scheduled')
-                ->where('communication_date', '>=', now()->format('Y-m-d'))
-                ->count(),
+            'form',
+            'completeForm',
         ];
     }
-
-    public function getDateRangeLabelProperty()
+    
+    public function completeForm(\Filament\Forms\Form $form): \Filament\Forms\Form
     {
-        if (!$this->filterDateFrom || !$this->filterDateTo) {
-            return 'All Time';
+        return $form
+            ->schema($this->getCompleteFormSchema())
+            ->statePath('completeFormData');
+    }
+    
+    protected function getFormSchema(): array
+    {
+        return [
+            DateRangePicker::make('event_period')
+                ->label('Tanggal Komunikasi')
+                ->reactive(),
+        ];
+    }
+    
+    protected function getCompleteFormSchema(): array
+    {
+        return [
+            \Filament\Forms\Components\RichEditor::make('outcome')
+                ->label('Hasil/Kesimpulan')
+                ->required()
+                ->placeholder('Dokumentasikan hasil komunikasi...')
+                ->helperText('Jelaskan apa yang dibahas dan kesimpulan dari komunikasi ini')
+                ->toolbarButtons([
+                    'bold',
+                    'italic',
+                    'underline',
+                    'strike',
+                    'bulletList',
+                    'orderedList',
+                    'h2',
+                    'h3',
+                    'blockquote',
+                    'codeBlock',
+                ])
+                ->columnSpanFull(),
+            
+            \Filament\Forms\Components\FileUpload::make('attachments')
+                ->label('Lampiran')
+                ->multiple()
+                ->directory('client-communications/attachments')
+                ->maxSize(5120)
+                ->acceptedFileTypes(['application/pdf', 'image/*', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'])
+                ->helperText('Upload dokumen pendukung (PDF, gambar, atau Word). Maksimal 5MB per file.')
+                ->downloadable()
+                ->previewable()
+                ->columnSpanFull(),
+        ];
+    }
+    
+    public function openCompleteModal($communicationId)
+    {
+        $this->selectedCommunicationId = $communicationId;
+        
+        $communication = ClientCommunication::find($communicationId);
+        
+        $this->completeForm->fill([
+            'outcome' => $communication->outcome ?? '',
+            'attachments' => $communication->attachments ?? [],
+        ]);
+        
+        $this->dispatch('open-modal', id: 'complete-communication-modal');
+    }
+    
+    public function closeCompleteModal()
+    {
+        $this->selectedCommunicationId = null;
+        $this->completeForm->fill([]);
+        $this->dispatch('close-modal', id: 'complete-communication-modal');
+    }
+    
+    public function markAsCompleted()
+    {
+        $data = $this->completeForm->getState();
+        
+        $communication = ClientCommunication::findOrFail($this->selectedCommunicationId);
+        
+        $communication->update([
+            'status' => 'completed',
+            'outcome' => $data['outcome'],
+            'attachments' => $data['attachments'] ?? [],
+        ]);
+        
+        \Filament\Notifications\Notification::make()
+            ->success()
+            ->title('Komunikasi Ditandai Selesai')
+            ->body('Komunikasi telah berhasil ditandai sebagai selesai.')
+            ->send();
+        
+        $this->closeCompleteModal();
+        
+        // Refresh the list
+        $this->dispatch('$refresh');
+    }
+    
+    public function openViewModal($communicationId)
+    {
+        $this->viewCommunication = ClientCommunication::with(['client', 'user', 'project'])
+            ->findOrFail($communicationId);
+        
+        $this->dispatch('open-modal', id: 'view-communication-modal');
+    }
+    
+    public function closeViewModal()
+    {
+        $this->viewCommunication = null;
+        $this->dispatch('close-modal', id: 'view-communication-modal');
+    }
+    
+    public function clearDateRange()
+    {
+        $this->event_period = null;
+        $this->form->fill([
+            'event_period' => null,
+        ]);
+    }
+    
+    protected function applyDateRangeFilter($query)
+    {
+        // Apply date range filter if set
+        if ($this->event_period && is_array($this->event_period)) {
+            if (isset($this->event_period['start']) && $this->event_period['start']) {
+                $query->where('communication_date', '>=', $this->event_period['start']);
+            }
+            if (isset($this->event_period['end']) && $this->event_period['end']) {
+                $query->where('communication_date', '<=', $this->event_period['end']);
+            }
         }
-
-        $from = Carbon::parse($this->filterDateFrom);
-        $to = Carbon::parse($this->filterDateTo);
-
-        if ($from->isSameDay($to)) {
-            return $from->format('d M Y');
-        }
-
-        if ($from->isSameMonth($to)) {
-            return $from->format('d') . ' - ' . $to->format('d M Y');
-        }
-
-        return $from->format('d M Y') . ' - ' . $to->format('d M Y');
+        
+        return $query;
+    }
+    
+    public function getAllCommunications()
+    {
+        $query = ClientCommunication::query()
+            ->select([
+                'id',
+                'client_id',
+                'user_id',
+                'title',
+                'description',
+                'type',
+                'communication_date',
+                'communication_time_start',
+                'communication_time_end',
+                'location',
+                'status',
+                'internal_participants'
+            ])
+            ->with([
+                'client:id,name',
+                'user:id,name'
+            ]);
+        
+        $query = $this->applyDateRangeFilter($query);
+        
+        return $query->orderBy('communication_date', 'desc')
+            ->orderBy('communication_time_start', 'desc')
+            ->get()
+            ->groupBy(function($item) {
+                return $item->communication_date->format('Y-m-d');
+            });
+    }
+    
+    public function getScheduledCommunications()
+    {
+        $query = ClientCommunication::query()
+            ->select([
+                'id',
+                'client_id',
+                'user_id',
+                'title',
+                'description',
+                'type',
+                'communication_date',
+                'communication_time_start',
+                'communication_time_end',
+                'location',
+                'status',
+                'internal_participants'
+            ])
+            ->with([
+                'client:id,name',
+                'user:id,name'
+            ])
+            ->where('status', 'scheduled');
+        
+        $query = $this->applyDateRangeFilter($query);
+        
+        return $query->orderBy('communication_date')
+            ->orderBy('communication_time_start')
+            ->get()
+            ->groupBy(function($item) {
+                return $item->communication_date->format('Y-m-d');
+            });
+    }
+    
+    public function getCompletedCommunications()
+    {
+        $query = ClientCommunication::query()
+            ->select([
+                'id',
+                'client_id',
+                'user_id',
+                'title',
+                'description',
+                'type',
+                'communication_date',
+                'communication_time_start',
+                'communication_time_end',
+                'location',
+                'status',
+                'internal_participants'
+            ])
+            ->with([
+                'client:id,name',
+                'user:id,name'
+            ])
+            ->where('status', 'completed');
+        
+        $query = $this->applyDateRangeFilter($query);
+        
+        return $query->orderBy('communication_date', 'desc')
+            ->orderBy('communication_time_start', 'desc')
+            ->get()
+            ->groupBy(function($item) {
+                return $item->communication_date->format('Y-m-d');
+            });
+    }
+    
+    public function getCancelledCommunications()
+    {
+        $query = ClientCommunication::query()
+            ->select([
+                'id',
+                'client_id',
+                'user_id',
+                'title',
+                'description',
+                'type',
+                'communication_date',
+                'communication_time_start',
+                'communication_time_end',
+                'location',
+                'status',
+                'internal_participants'
+            ])
+            ->with([
+                'client:id,name',
+                'user:id,name'
+            ])
+            ->where('status', 'cancelled');
+        
+        $query = $this->applyDateRangeFilter($query);
+        
+        return $query->orderBy('communication_date', 'desc')
+            ->orderBy('communication_time_start', 'desc')
+            ->get()
+            ->groupBy(function($item) {
+                return $item->communication_date->format('Y-m-d');
+            });
+    }
+    
+    public function getRescheduledCommunications()
+    {
+        $query = ClientCommunication::query()
+            ->select([
+                'id',
+                'client_id',
+                'user_id',
+                'title',
+                'description',
+                'type',
+                'communication_date',
+                'communication_time_start',
+                'communication_time_end',
+                'location',
+                'status',
+                'internal_participants'
+            ])
+            ->with([
+                'client:id,name',
+                'user:id,name'
+            ])
+            ->where('status', 'rescheduled');
+        
+        $query = $this->applyDateRangeFilter($query);
+        
+        return $query->orderBy('communication_date')
+            ->orderBy('communication_time_start')
+            ->get()
+            ->groupBy(function($item) {
+                return $item->communication_date->format('Y-m-d');
+            });
+    }
+    
+    public function setActiveTab($tab)
+    {
+        $this->activeTab = $tab;
+    }
+    
+    // Computed property for the view
+    public function getCommunicationsByMonthProperty()
+    {
+        $communications = match($this->activeTab) {
+            'scheduled' => $this->getScheduledCommunications(),
+            'completed' => $this->getCompletedCommunications(),
+            'cancelled' => $this->getCancelledCommunications(),
+            'rescheduled' => $this->getRescheduledCommunications(),
+            default => $this->getAllCommunications(),
+        };
+        
+        // Group by month and year
+        return $communications->groupBy(function($items, $date) {
+            return Carbon::parse($date)->format('F Y');
+        })->map(function($monthGroup) {
+            return $monthGroup;
+        });
     }
 }

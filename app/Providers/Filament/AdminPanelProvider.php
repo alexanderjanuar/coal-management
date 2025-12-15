@@ -39,6 +39,7 @@ use Njxqlus\FilamentProgressbar\FilamentProgressbarPlugin;
 use Leandrocfe\FilamentApexCharts\FilamentApexChartsPlugin;
 use EightCedars\FilamentInactivityGuard\FilamentInactivityGuardPlugin;
 use Edwink\FilamentUserActivity\FilamentUserActivityPlugin;
+use Moataz01\FilamentNotificationSound\FilamentNotificationSoundPlugin;
 
 class AdminPanelProvider extends PanelProvider
 {
@@ -99,6 +100,11 @@ class AdminPanelProvider extends PanelProvider
                 'primary' => Color::Cyan,
             ])
             ->plugins([
+                FilamentNotificationSoundPlugin::make()
+                    ->soundPath('sounds/notification.mp3') // Custom sound path
+                    ->volume(0.8) // Volume (0.0 to 1.0)
+                    ->showAnimation(true) // Show animation on notification badge
+                    ->enabled(true), // Enable/disable the plugin
                 FilamentInactivityGuardPlugin::make(),
                 FilamentUserActivityPlugin::make(),
                 \TomatoPHP\FilamentPWA\FilamentPWAPlugin::make(),

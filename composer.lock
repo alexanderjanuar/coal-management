@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "2c2e691e81827651a6a9811c4434a774",
+    "content-hash": "475bc943965b9fb93b2bf7485aceb078",
     "packages": [
         {
             "name": "anourvalar/eloquent-serialize",
@@ -1051,6 +1051,55 @@
                 "source": "https://github.com/cmsmaxinc/filament-error-pages"
             },
             "time": "2025-04-27T15:39:34+00:00"
+        },
+        {
+            "name": "codewithkyrian/filament-date-range",
+            "version": "1.0.0",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/CodeWithKyrian/filament-date-range.git",
+                "reference": "75021f0986870706c5aa5761894821023fc8aa73"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/CodeWithKyrian/filament-date-range/zipball/75021f0986870706c5aa5761894821023fc8aa73",
+                "reference": "75021f0986870706c5aa5761894821023fc8aa73",
+                "shasum": ""
+            },
+            "require": {
+                "filament/forms": "^3.0",
+                "filament/tables": "^3.0",
+                "php": "^8.1"
+            },
+            "type": "library",
+            "extra": {
+                "laravel": {
+                    "providers": [
+                        "CodeWithKyrian\\FilamentDateRange\\DateRangeServiceProvider"
+                    ]
+                }
+            },
+            "autoload": {
+                "psr-4": {
+                    "CodeWithKyrian\\FilamentDateRange\\": "src/"
+                }
+            },
+            "notification-url": "https://packagist.org/downloads/",
+            "license": [
+                "MIT"
+            ],
+            "authors": [
+                {
+                    "name": "Kyrian Obikwelu",
+                    "email": "kyrianobikwelu@gmail.com"
+                }
+            ],
+            "description": "A date range field and filter for Filament v3.",
+            "support": {
+                "issues": "https://github.com/CodeWithKyrian/filament-date-range/issues",
+                "source": "https://github.com/CodeWithKyrian/filament-date-range/tree/1.0.0"
+            },
+            "time": "2025-05-30T21:47:52+00:00"
         },
         {
             "name": "composer/pcre",
@@ -6578,6 +6627,85 @@
                 "source": "https://github.com/Masterminds/html5-php/tree/2.10.0"
             },
             "time": "2025-07-25T09:04:22+00:00"
+        },
+        {
+            "name": "moataz-01/filament-notification-sound",
+            "version": "v1.0.0",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/moataz-01/filament-notification-sound.git",
+                "reference": "c608ddddff0331d1523588a74b6454dee883e8ca"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/moataz-01/filament-notification-sound/zipball/c608ddddff0331d1523588a74b6454dee883e8ca",
+                "reference": "c608ddddff0331d1523588a74b6454dee883e8ca",
+                "shasum": ""
+            },
+            "require": {
+                "filament/filament": "^3.0|^4.0",
+                "php": "^8.1",
+                "spatie/laravel-package-tools": "^1.15.0"
+            },
+            "require-dev": {
+                "larastan/larastan": "^2.0",
+                "laravel/pint": "^1.0",
+                "nunomaduro/collision": "^7.9",
+                "orchestra/testbench": "^8.0",
+                "pestphp/pest": "^2.1",
+                "pestphp/pest-plugin-arch": "^2.0",
+                "pestphp/pest-plugin-laravel": "^2.0",
+                "phpstan/extension-installer": "^1.1",
+                "phpstan/phpstan-deprecation-rules": "^1.0",
+                "phpstan/phpstan-phpunit": "^1.0",
+                "spatie/laravel-ray": "^1.26"
+            },
+            "type": "library",
+            "extra": {
+                "laravel": {
+                    "aliases": {
+                        "FilamentNotificationSound": "Moataz01\\FilamentNotificationSound\\Facades\\FilamentNotificationSound"
+                    },
+                    "providers": [
+                        "Moataz01\\FilamentNotificationSound\\FilamentNotificationSoundServiceProvider"
+                    ]
+                }
+            },
+            "autoload": {
+                "psr-4": {
+                    "Moataz01\\FilamentNotificationSound\\": "src/",
+                    "Moataz01\\FilamentNotificationSound\\Database\\Factories\\": "database/factories/"
+                }
+            },
+            "notification-url": "https://packagist.org/downloads/",
+            "license": [
+                "MIT"
+            ],
+            "authors": [
+                {
+                    "name": "Moataz",
+                    "email": "moatazsayed119@gmail.com",
+                    "role": "Developer"
+                }
+            ],
+            "description": "Add sound notifications to Filament database notifications",
+            "homepage": "https://github.com/moataz-01/filament-notification-sound",
+            "keywords": [
+                "filament-notification-sound",
+                "laravel",
+                "moataz-01"
+            ],
+            "support": {
+                "issues": "https://github.com/moataz-01/filament-notification-sound/issues",
+                "source": "https://github.com/moataz-01/filament-notification-sound"
+            },
+            "funding": [
+                {
+                    "url": "https://github.com/moataz-01",
+                    "type": "github"
+                }
+            ],
+            "time": "2025-11-30T09:36:59+00:00"
         },
         {
             "name": "mobiledetect/mobiledetectlib",

@@ -25,6 +25,8 @@ class TaxReportKompensasi extends Component
     public $kompensasiDiterima = 0;
     public $kompensasiTersedia = 0;
     public $kompensasiTerpakai = 0;
+    public $manualKompensasi = 0;
+    public $manualKompensasiNotes = '';
     public $saldoSebelumKompensasi = 0;
     public $saldoSetelahKompensasi = 0;
     public $statusSebelum = 'Nihil';
@@ -34,6 +36,11 @@ class TaxReportKompensasi extends Component
     public $compensationAmount = 0;
     public $compensationNotes = '';
     public $maxCompensationAmount = 0;
+    
+    // Manual compensation form
+    public $editingManualKompensasi = false;
+    public $tempManualKompensasi = 0;
+    public $tempManualKompensasiNotes = '';
     
     // Approval/Rejection
     public $selectedCompensationId = null;
@@ -84,6 +91,8 @@ class TaxReportKompensasi extends Component
             $this->kompensasiDiterima = $ppnSummary->kompensasi_diterima;
             $this->kompensasiTersedia = $ppnSummary->sisa_kompensasi_tersedia;
             $this->kompensasiTerpakai = $ppnSummary->kompensasi_terpakai;
+            $this->manualKompensasi = $ppnSummary->manual_kompensasi ?? 0;
+            $this->manualKompensasiNotes = $ppnSummary->manual_kompensasi_notes ?? '';
             $this->saldoSebelumKompensasi = $ppnSummary->selisih;
             $this->saldoSetelahKompensasi = $ppnSummary->saldo_final;
             $this->statusSebelum = $ppnSummary->status;
@@ -180,6 +189,78 @@ class TaxReportKompensasi extends Component
             ->orderBy('status', 'asc') // pending first
             ->orderBy('created_at', 'desc')
             ->get();
+    }
+
+    /**
+     * Open manual kompensasi edit form
+     */
+    public function openManualKompensasiForm()
+    {
+        $this->editingManualKompensasi = true;
+        $this->tempManualKompensasi = $this->manualKompensasi;
+        $this->tempManualKompensasiNotes = $this->manualKompensasiNotes;
+        $this->dispatch('open-modal', id: 'manual-kompensasi-modal');
+    }
+
+    /**
+     * Save manual kompensasi
+     */
+    public function saveManualKompensasi()
+    {
+        $this->validate([
+            'tempManualKompensasi' => 'required|numeric|min:0',
+            'tempManualKompensasiNotes' => 'nullable|string|max:1000',
+        ], [
+            'tempManualKompensasi.required' => 'Jumlah manual kompensasi wajib diisi',
+            'tempManualKompensasi.numeric' => 'Jumlah harus berupa angka',
+            'tempManualKompensasi.min' => 'Jumlah tidak boleh negatif',
+        ]);
+
+        try {
+            $ppnSummary = $this->taxReport->ppnSummary;
+            
+            if (!$ppnSummary) {
+                throw new \Exception('PPN Summary tidak ditemukan');
+            }
+
+            // Update manual kompensasi
+            $ppnSummary->update([
+                'manual_kompensasi' => $this->tempManualKompensasi,
+                'manual_kompensasi_notes' => $this->tempManualKompensasiNotes,
+            ]);
+
+            // Recalculate to apply the manual kompensasi
+            $ppnSummary->recalculate();
+
+            Notification::make()
+                ->success()
+                ->title('Manual Kompensasi Diperbarui')
+                ->body('Kompensasi manual berhasil diperbarui dan saldo telah dikalkulasi ulang.')
+                ->send();
+
+            $this->dispatch('close-modal', id: 'manual-kompensasi-modal');
+            $this->editingManualKompensasi = false;
+            $this->loadData();
+            
+        } catch (\Exception $e) {
+            Notification::make()
+                ->danger()
+                ->title('Error')
+                ->body('Gagal menyimpan manual kompensasi: ' . $e->getMessage())
+                ->send();
+        }
+    }
+
+    /**
+     * Cancel manual kompensasi edit
+     */
+    public function cancelManualKompensasiEdit()
+    {
+        $this->editingManualKompensasi = false;
+        $this->tempManualKompensasi = $this->manualKompensasi;
+        $this->tempManualKompensasiNotes = $this->manualKompensasiNotes;
+        $this->resetValidation();
+        $this->dispatch('close-modal', id: 'manual-kompensasi-modal');
     }
 
     /**

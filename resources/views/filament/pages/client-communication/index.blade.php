@@ -1,440 +1,588 @@
 <x-filament-panels::page>
     <div class="space-y-6">
-        {{-- Statistics Cards --}}
-        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-            {{-- Total (Filtered) --}}
-            <div
-                class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6 hover:shadow-md transition-shadow">
-                <div class="flex items-center justify-between">
-                    <div class="flex-1">
-                        <p class="text-sm font-medium text-gray-500 dark:text-gray-400">Total</p>
-                        <p class="text-3xl font-bold text-gray-900 dark:text-white mt-2">{{ $this->stats['total'] }}</p>
-                        <p class="text-xs text-gray-400 dark:text-gray-500 mt-1">{{ $this->dateRangeLabel }}</p>
-                    </div>
-                    <div class="p-4 bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl">
-                        <x-heroicon-o-chat-bubble-left-right class="w-7 h-7 text-white" />
-                    </div>
-                </div>
+        {{-- Header Section --}}
+        <div class="flex items-center justify-between">
+            <div>
+                <h1 class="text-3xl font-bold text-gray-900 dark:text-white">
+                    Jadwal Komunikasi Klien
+                </h1>
+                <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
+                    Kelola dan pantau semua jadwal komunikasi dengan klien Anda
+                </p>
             </div>
 
-            {{-- Upcoming --}}
-            <div
-                class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6 hover:shadow-md transition-shadow">
-                <div class="flex items-center justify-between">
-                    <div class="flex-1">
-                        <p class="text-sm font-medium text-gray-500 dark:text-gray-400">Upcoming</p>
-                        <p class="text-3xl font-bold text-gray-900 dark:text-white mt-2">{{ $this->stats['upcoming'] }}
-                        </p>
-                        <p class="text-xs text-gray-400 dark:text-gray-500 mt-1">Future scheduled</p>
-                    </div>
-                    <div class="p-4 bg-gradient-to-br from-orange-500 to-orange-600 rounded-xl">
-                        <x-heroicon-o-calendar-days class="w-7 h-7 text-white" />
-                    </div>
+            {{-- Create Button --}}
+            <a href="{{ route('filament.admin.pages.client-communication.create') }}" 
+               class="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-primary-600 hover:bg-primary-700 rounded-lg transition-colors">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+                </svg>
+                <span>Buat Komunikasi Baru</span>
+            </a>
+        </div>
+
+        {{-- Filters and Tabs Section --}}
+        <div class="flex items-center justify-between gap-4 pb-4 border-b border-gray-200 dark:border-gray-700">
+            {{-- Date Range Filter --}}
+            <div class="flex items-center gap-3">
+                <div class="w-80">
+                    {{ $this->form }}
                 </div>
+                
+                @if($event_period && is_array($event_period) && (isset($event_period['start']) || isset($event_period['end'])))
+                    <button 
+                        wire:click="clearDateRange"
+                        class="px-3 py-1.5 text-xs font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 dark:bg-gray-800 dark:text-gray-200 dark:border-gray-600 dark:hover:bg-gray-700"
+                    >
+                        Clear Filter
+                    </button>
+                @endif
             </div>
 
-            {{-- Scheduled --}}
-            <div
-                class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6 hover:shadow-md transition-shadow">
-                <div class="flex items-center justify-between">
-                    <div class="flex-1">
-                        <p class="text-sm font-medium text-gray-500 dark:text-gray-400">Scheduled</p>
-                        <p class="text-3xl font-bold text-gray-900 dark:text-white mt-2">{{ $this->stats['scheduled'] }}
-                        </p>
-                        <p class="text-xs text-gray-400 dark:text-gray-500 mt-1">In date range</p>
-                    </div>
-                    <div class="p-4 bg-gradient-to-br from-yellow-500 to-yellow-600 rounded-xl">
-                        <x-heroicon-o-clock class="w-7 h-7 text-white" />
-                    </div>
-                </div>
-            </div>
+            {{-- Status Tabs with Sliding Animation --}}
+            <div class="relative inline-flex items-center bg-gray-100 dark:bg-gray-800 rounded-lg p-1">
+                {{-- Sliding Background Indicator --}}
+                @php
+                    $tabPositions = [
+                        'all' => 0,
+                        'scheduled' => 1,
+                        'completed' => 2,
+                        'cancelled' => 3,
+                        'rescheduled' => 4
+                    ];
+                    $currentPosition = $tabPositions[$activeTab] ?? 0;
+                @endphp
+                <div 
+                    class="absolute h-[calc(100%-8px)] bg-white dark:bg-gray-900 rounded-md shadow-sm transition-all duration-300 ease-in-out"
+                    style="
+                        width: {{ $activeTab === 'all' ? '44px' : ($activeTab === 'scheduled' ? '84px' : ($activeTab === 'completed' ? '86px' : ($activeTab === 'cancelled' ? '80px' : '96px'))) }};
+                        left: {{ 
+                            match($activeTab) {
+                                'all' => '4px',
+                                'scheduled' => '52px',
+                                'completed' => '144px',
+                                'cancelled' => '238px',
+                                'rescheduled' => '326px',
+                                default => '4px'
+                            }
+                        }};
+                    "
+                ></div>
 
-            {{-- Completed --}}
-            <div
-                class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6 hover:shadow-md transition-shadow">
-                <div class="flex items-center justify-between">
-                    <div class="flex-1">
-                        <p class="text-sm font-medium text-gray-500 dark:text-gray-400">Completed</p>
-                        <p class="text-3xl font-bold text-gray-900 dark:text-white mt-2">{{ $this->stats['completed'] }}
-                        </p>
-                        <p class="text-xs text-gray-400 dark:text-gray-500 mt-1">In date range</p>
-                    </div>
-                    <div class="p-4 bg-gradient-to-br from-green-500 to-green-600 rounded-xl">
-                        <x-heroicon-o-check-circle class="w-7 h-7 text-white" />
-                    </div>
-                </div>
+                <button 
+                    wire:click="setActiveTab('all')"
+                    class="relative z-10 px-4 py-1.5 text-xs font-medium rounded-md transition-colors duration-200 {{ $activeTab === 'all' ? 'text-gray-900 dark:text-white' : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white' }}"
+                >
+                    All
+                </button>
+                <button 
+                    wire:click="setActiveTab('scheduled')"
+                    class="relative z-10 px-4 py-1.5 text-xs font-medium rounded-md transition-colors duration-200 {{ $activeTab === 'scheduled' ? 'text-gray-900 dark:text-white' : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white' }}"
+                >
+                    Scheduled
+                </button>
+                <button 
+                    wire:click="setActiveTab('completed')"
+                    class="relative z-10 px-4 py-1.5 text-xs font-medium rounded-md transition-colors duration-200 {{ $activeTab === 'completed' ? 'text-gray-900 dark:text-white' : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white' }}"
+                >
+                    Completed
+                </button>
+                <button 
+                    wire:click="setActiveTab('cancelled')"
+                    class="relative z-10 px-4 py-1.5 text-xs font-medium rounded-md transition-colors duration-200 {{ $activeTab === 'cancelled' ? 'text-gray-900 dark:text-white' : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white' }}"
+                >
+                    Cancelled
+                </button>
+                <button 
+                    wire:click="setActiveTab('rescheduled')"
+                    class="relative z-10 px-4 py-1.5 text-xs font-medium rounded-md transition-colors duration-200 {{ $activeTab === 'rescheduled' ? 'text-gray-900 dark:text-white' : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white' }}"
+                >
+                    Rescheduled
+                </button>
             </div>
         </div>
 
-        {{-- Improved Collapsible Filters --}}
-        <div x-data="{ filtersOpen: false }"
-            class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
-
-            {{-- Main Filter Bar (Always Visible) --}}
-            <div class="p-4">
-                <div class="flex flex-col lg:flex-row gap-4">
-                    {{-- Search & Client Selection --}}
-                    <div class="flex-1 grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div class="relative">
-                            <x-heroicon-o-magnifying-glass
-                                class="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
-                            <input type="text" wire:model.live.debounce.300ms="search"
-                                placeholder="Search communications..."
-                                class="w-full pl-10 pr-4 py-2.5 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400 focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20 transition-all">
-                        </div>
-                        <div class="relative">
-                            <x-heroicon-o-building-office
-                                class="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
-                            <select wire:model.live="filterClient"
-                                class="w-full pl-10 pr-4 py-2.5 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20 transition-all appearance-none">
-                                <option value="">All Clients</option>
-                                @foreach($this->clients as $client)
-                                <option value="{{ $client->id }}">{{ $client->name }}</option>
-                                @endforeach
-                            </select>
-                        </div>
+        {{-- Communications List --}}
+        <div class="space-y-6">
+            @forelse($this->communicationsByMonth as $monthYear => $monthCommunications)
+                {{-- Month Header --}}
+                <div class="space-y-4">
+                    <div class="sticky top-0 z-10 bg-gray-50/95 dark:bg-gray-900/95 backdrop-blur-md py-5 px-6 rounded-xl">
+                        <h3 class="text-2xl font-bold text-gray-900 dark:text-white">
+                            {{ $monthYear }}
+                        </h3>
                     </div>
 
-                    {{-- Quick Date Range Pills --}}
-                    <div class="flex flex-wrap gap-2 items-center">
-                        <span class="text-sm font-medium text-gray-700 dark:text-gray-300 hidden lg:block">Quick:</span>
+                    {{-- Communications for this month --}}
+                    <div class="space-y-4">
+                        @foreach($monthCommunications as $date => $items)
+                            @foreach($items as $communication)
+                                <div class="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 hover:shadow-lg transition-shadow duration-200">
+                                    <div class="p-6">
+                                        <div class="flex items-center gap-4">
+                                            {{-- Date Badge --}}
+                                            <div class="flex-shrink-0 text-center w-12">
+                                                <div class="text-xs font-medium {{ $communication->communication_date->isToday() ? 'text-orange-600 dark:text-orange-400' : 'text-gray-500 dark:text-gray-400' }}">
+                                                    @php
+                                                        $dayMap = [
+                                                            'Mon' => 'Sen',
+                                                            'Tue' => 'Sel',
+                                                            'Wed' => 'Rab',
+                                                            'Thu' => 'Kam',
+                                                            'Fri' => 'Jum',
+                                                            'Sat' => 'Sab',
+                                                            'Sun' => 'Min'
+                                                        ];
+                                                        $englishDay = $communication->communication_date->format('D');
+                                                    @endphp
+                                                    {{ $dayMap[$englishDay] ?? $englishDay }}
+                                                </div>
+                                                <div class="text-3xl font-bold {{ $communication->communication_date->isToday() ? 'text-orange-600 dark:text-orange-400' : 'text-gray-900 dark:text-white' }}">
+                                                    {{ $communication->communication_date->format('d') }}
+                                                </div>
+                                            </div>
 
-                        <button wire:click="$set('filterDateRange', 'today')"
-                            class="px-3 py-1.5 text-sm font-medium rounded-full transition-all duration-200 {{ $filterDateRange === 'today' ? 'bg-primary-600 text-white shadow-sm' : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-primary-100 dark:hover:bg-primary-900/30' }}">
-                            Today
-                        </button>
-                        <button wire:click="$set('filterDateRange', 'week')"
-                            class="px-3 py-1.5 text-sm font-medium rounded-full transition-all duration-200 {{ $filterDateRange === 'week' ? 'bg-primary-600 text-white shadow-sm' : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-primary-100 dark:hover:bg-primary-900/30' }}">
-                            Week
-                        </button>
-                        <button wire:click="$set('filterDateRange', 'month')"
-                            class="px-3 py-1.5 text-sm font-medium rounded-full transition-all duration-200 {{ $filterDateRange === 'month' ? 'bg-primary-600 text-white shadow-sm' : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-primary-100 dark:hover:bg-primary-900/30' }}">
-                            Month
-                        </button>
-                    </div>
+                                            {{-- Vertical Divider --}}
+                                            <div class="h-12 w-px bg-gray-300 dark:bg-gray-600 flex-shrink-0"></div>
 
-                    {{-- Filter Toggle & Actions --}}
-                    <div class="flex items-center gap-3">
-                        {{-- Active Filter Count --}}
-                        @php
-                        $activeFilters = collect([
-                        $search !== '',
-                        $filterClient !== '',
-                        $filterType !== '',
-                        $filterStatus !== '',
-                        $filterTimeOfDay !== '',
-                        $filterDateRange === 'custom' && ($filterDateFrom || $filterDateTo),
-                        !in_array($filterDateRange, ['month', 'all'])
-                        ])->filter()->count();
-                        @endphp
+                                            {{-- Column 1: Time and Location (Fixed Width) --}}
+                                            <div class="flex-shrink-0 flex flex-col justify-center" style="width: 160px;">
+                                                {{-- Time Range --}}
+                                                <div class="flex items-center gap-2 text-sm text-gray-900 dark:text-white mb-1.5">
+                                                    <svg class="w-4 h-4 text-gray-400 dark:text-gray-500 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                                    </svg>
+                                                    <span>
+                                                        {{ $communication->communication_time_start ? \Carbon\Carbon::parse($communication->communication_time_start)->format('H:i') : '00:00' }}
+                                                        -
+                                                        @if($communication->communication_time_end)
+                                                            {{ \Carbon\Carbon::parse($communication->communication_time_end)->format('H:i') }}
+                                                        @else
+                                                            {{ $communication->communication_time_start ? \Carbon\Carbon::parse($communication->communication_time_start)->addMinutes(30)->format('H:i') : '00:30' }}
+                                                        @endif
+                                                    </span>
+                                                </div>
 
-                        @if($activeFilters > 0)
-                        <span
-                            class="px-2 py-1 text-xs font-medium bg-primary-100 dark:bg-primary-900/30 text-primary-700 dark:text-primary-400 rounded-full">
-                            {{ $activeFilters }} active
-                        </span>
-                        @endif
+                                                {{-- Location --}}
+                                                <div class="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
+                                                    <svg class="w-4 h-4 text-gray-400 dark:text-gray-500 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                                                    </svg>
+                                                    <span class="truncate">{{ $communication->location ?? 'Online' }}</span>
+                                                </div>
+                                            </div>
 
-                        <button x-on:click="filtersOpen = !filtersOpen"
-                            class="flex items-center gap-2 px-4 py-2.5 text-sm font-medium text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors">
-                            <x-heroicon-o-funnel class="w-4 h-4" />
-                            <span x-text="filtersOpen ? 'Hide Filters' : 'More Filters'"></span>
-                            <x-heroicon-m-chevron-down class="w-4 h-4 transition-transform"
-                                x-bind:class="filtersOpen ? 'rotate-180' : ''" />
-                        </button>
+                                            {{-- Column 2: Title, Status Badge and Client (Fixed Width) --}}
+                                            <div class="flex-shrink-0 flex flex-col justify-center" style="width: 260px;">
+                                                {{-- Title with Status Badge --}}
+                                                <div class="flex items-start gap-2 mb-1.5">
+                                                    <div class="text-base font-bold text-gray-900 dark:text-white line-clamp-2 flex-1">
+                                                        {{ $communication->title }}
+                                                    </div>
+                                                    
+                                                    {{-- Status Badge (Compact) --}}
+                                                    <div class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md flex-shrink-0 {{ 
+                                                        match($communication->status) {
+                                                            'scheduled' => 'bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800',
+                                                            'completed' => 'bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800',
+                                                            'cancelled' => 'bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800',
+                                                            'rescheduled' => 'bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800',
+                                                            default => 'bg-gray-50 dark:bg-gray-900/20 border border-gray-200 dark:border-gray-800'
+                                                        }
+                                                    }}">
+                                                        {{-- Status Icon (Small) --}}
+                                                        @if($communication->status === 'scheduled')
+                                                            <svg class="w-2.5 h-2.5 text-blue-600 dark:text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                                                            </svg>
+                                                        @elseif($communication->status === 'completed')
+                                                            <svg class="w-2.5 h-2.5 text-green-600 dark:text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+                                                            </svg>
+                                                        @elseif($communication->status === 'cancelled')
+                                                            <svg class="w-2.5 h-2.5 text-red-600 dark:text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                                                            </svg>
+                                                        @elseif($communication->status === 'rescheduled')
+                                                            <svg class="w-2.5 h-2.5 text-yellow-600 dark:text-yellow-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                                                            </svg>
+                                                        @endif
+                                                        
+                                                        {{-- Status Label (Tiny) --}}
+                                                        <span class="text-[10px] font-medium leading-none {{ 
+                                                            match($communication->status) {
+                                                                'scheduled' => 'text-blue-700 dark:text-blue-300',
+                                                                'completed' => 'text-green-700 dark:text-green-300',
+                                                                'cancelled' => 'text-red-700 dark:text-red-300',
+                                                                'rescheduled' => 'text-yellow-700 dark:text-yellow-300',
+                                                                default => 'text-gray-700 dark:text-gray-300'
+                                                            }
+                                                        }}">
+                                                            {{ 
+                                                                match($communication->status) {
+                                                                    'scheduled' => 'Terjadwal',
+                                                                    'completed' => 'Selesai',
+                                                                    'cancelled' => 'Dibatalkan',
+                                                                    'rescheduled' => 'Dijadwalkan Ulang',
+                                                                    default => $communication->status
+                                                                }
+                                                            }}
+                                                        </span>
+                                                    </div>
+                                                </div>
 
-                        <button wire:click="resetFilters"
-                            class="px-4 py-2.5 text-sm font-medium text-gray-500 hover:text-red-600 dark:text-gray-400 dark:hover:text-red-400 transition-colors">
-                            Reset
-                        </button>
-                    </div>
-                </div>
-            </div>
+                                                {{-- Client Name --}}
+                                                @if($communication->client)
+                                                    <div class="flex items-center gap-1.5 text-sm text-gray-600 dark:text-gray-400">
+                                                        <svg class="w-3.5 h-3.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2 2v2m4 6h.01M5 20h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                                                        </svg>
+                                                        <span class="truncate">{{ $communication->client->name }}</span>
+                                                    </div>
+                                                @endif
+                                            </div>
 
-            {{-- Advanced Filters (Collapsible) --}}
-            <div x-show="filtersOpen" x-transition:enter="transition ease-out duration-200"
-                x-transition:enter-start="opacity-0 transform -translate-y-2"
-                x-transition:enter-end="opacity-100 transform translate-y-0"
-                x-transition:leave="transition ease-in duration-150"
-                x-transition:leave-start="opacity-100 transform translate-y-0"
-                x-transition:leave-end="opacity-0 transform -translate-y-2"
-                class="border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/50">
-                <div class="p-4 space-y-4">
+                                            {{-- Column 3: Description with Label (Flexible Width - Takes Remaining Space) --}}
+                                            <div class="flex-1 min-w-0 flex flex-col justify-center">
+                                                {{-- Description Label --}}
+                                                <div class="text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">
+                                                    Description
+                                                </div>
+                                                
+                                                {{-- Description Content --}}
+                                                @if($communication->description)
+                                                    <p class="text-sm text-gray-600 dark:text-gray-400 line-clamp-2">
+                                                        {{ $communication->description }}
+                                                    </p>
+                                                @else
+                                                    <p class="text-sm text-gray-400 dark:text-gray-500 italic">
+                                                        No description
+                                                    </p>
+                                                @endif
+                                            </div>
 
-                    {{-- Extended Date Range Options --}}
-                    <div>
-                        <label
-                            class="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-2 uppercase tracking-wide">
-                            Date Range
-                        </label>
-                        <div class="flex flex-wrap gap-2">
-                            @foreach([
-                            'today' => 'Today',
-                            'yesterday' => 'Yesterday',
-                            'week' => 'This Week',
-                            'month' => 'This Month',
-                            'last_month' => 'Last Month',
-                            'custom' => 'Custom Range'
-                            ] as $key => $label)
-                            <button wire:click="$set('filterDateRange', '{{ $key }}')"
-                                class="px-3 py-1.5 text-sm font-medium rounded-lg transition-all {{ $filterDateRange === $key ? 'bg-primary-600 text-white shadow-sm' : 'bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300 border border-gray-300 dark:border-gray-600 hover:border-primary-500' }}">
-                                {{ $label }}
-                            </button>
+                                            {{-- Action Buttons - Enhanced Design --}}
+                                            <div class="flex-shrink-0 flex items-center gap-2 ml-10">
+                                                {{-- View Button --}}
+                                                <button 
+                                                    wire:click="openViewModal({{ $communication->id }})"
+                                                    class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-blue-700 bg-blue-50 border border-blue-200 rounded-lg hover:bg-blue-100 dark:bg-blue-900/20 dark:text-blue-400 dark:border-blue-800 dark:hover:bg-blue-900/30 transition-all duration-200"
+                                                    title="Lihat Detail">
+                                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                                                    </svg>
+                                                    <span>Lihat</span>
+                                                </button>
+                                                
+                                                {{-- Mark as Completed Button (only for scheduled/rescheduled) --}}
+                                                @if(in_array($communication->status, ['scheduled', 'rescheduled']))
+                                                    <button 
+                                                        wire:click="openCompleteModal({{ $communication->id }})"
+                                                        class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-green-700 bg-green-50 border border-green-200 rounded-lg hover:bg-green-100 dark:bg-green-900/20 dark:text-green-400 dark:border-green-800 dark:hover:bg-green-900/30 transition-all duration-200"
+                                                        title="Tandai Selesai">
+                                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+                                                        </svg>
+                                                        <span>Selesai</span>
+                                                    </button>
+                                                @endif
+                                                
+                                                {{-- Edit Button --}}
+                                                <a href="{{ route('filament.admin.pages.client-communication.{record}.edit', ['record' => $communication->id]) }}" 
+                                                   class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-gray-700 bg-gray-50 border border-gray-200 rounded-lg hover:bg-gray-100 dark:bg-gray-800 dark:text-gray-300 dark:border-gray-700 dark:hover:bg-gray-700 transition-all duration-200"
+                                                   title="Edit">
+                                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                                                    </svg>
+                                                    <span>Edit</span>
+                                                </a>
+                                            </div>
+
+                                            {{-- Participants Avatars --}}
+                                            <div class="flex -space-x-2 flex-shrink-0 items-center">
+                                                @php
+                                                    $participants = $communication->internalParticipantUsers ?? collect([]);
+                                                    $displayCount = min(2, $participants->count());
+                                                    $remaining = max(0, $participants->count() - 2);
+                                                @endphp
+                                                
+                                                @foreach($participants->take(2) as $participant)
+                                                    <div class="relative inline-flex items-center justify-center w-8 h-8 overflow-hidden bg-gradient-to-br from-purple-500 to-pink-500 rounded-full border-2 border-white dark:border-gray-800">
+                                                        @if($participant->avatar_url)
+                                                            <img src="{{ $participant->avatar_url }}" alt="{{ $participant->name }}" class="w-full h-full object-cover">
+                                                        @else
+                                                            <span class="text-xs font-medium text-white">
+                                                                {{ strtoupper(substr($participant->name, 0, 2)) }}
+                                                            </span>
+                                                        @endif
+                                                    </div>
+                                                @endforeach
+
+                                                @if($remaining > 0)
+                                                    <div class="relative inline-flex items-center justify-center w-8 h-8 bg-gray-200 dark:bg-gray-700 rounded-full border-2 border-white dark:border-gray-800">
+                                                        <span class="text-xs font-medium text-gray-600 dark:text-gray-300">
+                                                            +{{ $remaining }}
+                                                        </span>
+                                                    </div>
+                                                @endif
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
                             @endforeach
-                        </div>
-
-                        {{-- Custom Date Inputs --}}
-                        @if($filterDateRange === 'custom')
-                        <div class="grid grid-cols-2 gap-3 mt-3">
-                            <input type="date" wire:model.live="filterDateFrom" placeholder="From"
-                                class="px-3 py-2 text-sm rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:border-primary-500 focus:ring-1 focus:ring-primary-500/20">
-                            <input type="date" wire:model.live="filterDateTo" placeholder="To"
-                                class="px-3 py-2 text-sm rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:border-primary-500 focus:ring-1 focus:ring-primary-500/20">
-                        </div>
-                        @endif
-                    </div>
-
-                    {{-- Compact Filter Grid --}}
-                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-
-                        {{-- Communication Type --}}
-                        <div>
-                            <label
-                                class="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-2 uppercase tracking-wide">
-                                Type
-                            </label>
-                            <div class="grid grid-cols-2 gap-1">
-                                @foreach([
-                                '' => ['All', '🔍'],
-                                'meeting' => ['Meeting', '📅'],
-                                'email' => ['Email', '✉️'],
-                                'phone' => ['Phone', '📞'],
-                                'video_call' => ['Video', '🎥'],
-                                'other' => ['Other', '💬']
-                                ] as $value => [$label, $icon])
-                                <button wire:click="$set('filterType', '{{ $value }}')"
-                                    class="px-2 py-1.5 text-xs font-medium rounded-md transition-all text-left {{ $filterType === $value ? 'bg-blue-500 text-white' : 'bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300 border border-gray-300 dark:border-gray-600 hover:border-blue-400' }}">
-                                    {{ $icon }} {{ $label }}
-                                </button>
-                                @endforeach
-                            </div>
-                        </div>
-
-                        {{-- Status --}}
-                        <div>
-                            <label
-                                class="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-2 uppercase tracking-wide">
-                                Status
-                            </label>
-                            <div class="grid grid-cols-2 gap-1">
-                                @foreach([
-                                '' => ['All', '🔍'],
-                                'scheduled' => ['Scheduled', '⏰'],
-                                'completed' => ['Completed', '✅'],
-                                'cancelled' => ['Cancelled', '❌'],
-                                'rescheduled' => ['Rescheduled', '🔄']
-                                ] as $value => [$label, $icon])
-                                <button wire:click="$set('filterStatus', '{{ $value }}')"
-                                    class="px-2 py-1.5 text-xs font-medium rounded-md transition-all text-left {{ $filterStatus === $value ? 'bg-green-500 text-white' : 'bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300 border border-gray-300 dark:border-gray-600 hover:border-green-400' }}">
-                                    {{ $icon }} {{ $label }}
-                                </button>
-                                @endforeach
-                            </div>
-                        </div>
-
-                        {{-- Time of Day --}}
-                        <div>
-                            <label
-                                class="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-2 uppercase tracking-wide">
-                                Time of Day
-                            </label>
-                            <div class="grid grid-cols-2 gap-1">
-                                @foreach([
-                                '' => ['All Day', '🌍'],
-                                'morning' => ['Morning', '🌅'],
-                                'afternoon' => ['Afternoon', '☀️'],
-                                'evening' => ['Evening', '🌙']
-                                ] as $value => [$label, $icon])
-                                <button wire:click="$set('filterTimeOfDay', '{{ $value }}')"
-                                    class="px-2 py-1.5 text-xs font-medium rounded-md transition-all text-left {{ $filterTimeOfDay === $value ? 'bg-orange-500 text-white' : 'bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300 border border-gray-300 dark:border-gray-600 hover:border-orange-400' }}">
-                                    {{ $icon }} {{ $label }}
-                                </button>
-                                @endforeach
-                            </div>
-                        </div>
+                        @endforeach
                     </div>
                 </div>
-            </div>
-        </div>
-
-        {{-- Communications Grid --}}
-        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            @forelse($this->communications as $communication)
-            <div
-                class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 hover:shadow-lg transition-all duration-300 overflow-hidden group">
-                {{-- Header with gradient --}}
-                <div class="p-6 pb-4 
-                        @if($communication->type === 'meeting') bg-gradient-to-r from-blue-50 to-blue-100 dark:from-blue-900/20 dark:to-blue-800/20
-                        @elseif($communication->type === 'email') bg-gradient-to-r from-green-50 to-green-100 dark:from-green-900/20 dark:to-green-800/20
-                        @elseif($communication->type === 'phone') bg-gradient-to-r from-yellow-50 to-yellow-100 dark:from-yellow-900/20 dark:to-yellow-800/20
-                        @elseif($communication->type === 'video_call') bg-gradient-to-r from-purple-50 to-purple-100 dark:from-purple-900/20 dark:to-purple-800/20
-                        @else bg-gradient-to-r from-gray-50 to-gray-100 dark:from-gray-900/20 dark:to-gray-800/20
-                        @endif
-                    ">
-                    <div class="flex items-start justify-between">
-                        <div class="flex items-center space-x-3">
-                            {{-- Type Icon --}}
-                            <div class="p-2 rounded-lg
-                                    @if($communication->type === 'meeting') bg-blue-500
-                                    @elseif($communication->type === 'email') bg-green-500
-                                    @elseif($communication->type === 'phone') bg-yellow-500
-                                    @elseif($communication->type === 'video_call') bg-purple-500
-                                    @else bg-gray-500
-                                    @endif
-                                ">
-                                @if($communication->type === 'meeting')
-                                <x-heroicon-o-calendar class="w-5 h-5 text-white" />
-                                @elseif($communication->type === 'email')
-                                <x-heroicon-o-envelope class="w-5 h-5 text-white" />
-                                @elseif($communication->type === 'phone')
-                                <x-heroicon-o-phone class="w-5 h-5 text-white" />
-                                @elseif($communication->type === 'video_call')
-                                <x-heroicon-o-video-camera class="w-5 h-5 text-white" />
-                                @else
-                                <x-heroicon-o-chat-bubble-left-right class="w-5 h-5 text-white" />
-                                @endif
-                            </div>
-
-                            <div>
-                                <p class="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">
-                                    {{ ucfirst(str_replace('_', ' ', $communication->type)) }}
-                                </p>
-                            </div>
-                        </div>
-
-                        {{-- Priority Badge --}}
-                        <span class="px-2.5 py-1 text-xs font-semibold rounded-full
-                                @if($communication->priority === 'urgent') bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400
-                                @elseif($communication->priority === 'high') bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-400
-                                @elseif($communication->priority === 'normal') bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400
-                                @else bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-400
-                                @endif
-                            ">
-                            {{ ucfirst($communication->priority) }}
-                        </span>
-                    </div>
-                </div>
-
-                {{-- Content --}}
-                <div class="p-6 space-y-4">
-                    {{-- Client Name --}}
-                    <div>
-                        <p class="text-sm text-gray-500 dark:text-gray-400 mb-1">Client</p>
-                        <p class="text-lg font-bold text-gray-900 dark:text-white">{{ $communication->client->name }}
-                        </p>
-                    </div>
-
-                    {{-- Title --}}
-                    <div>
-                        <h3
-                            class="text-base font-semibold text-gray-900 dark:text-white line-clamp-2 group-hover:text-primary-600 transition-colors">
-                            {{ $communication->title }}
-                        </h3>
-                        @if($communication->description)
-                        <p class="text-sm text-gray-600 dark:text-gray-400 mt-2 line-clamp-2">
-                            {{ $communication->description }}
-                        </p>
-                        @endif
-                    </div>
-
-                    {{-- Date & Time --}}
-                    <div class="flex items-center space-x-4 text-sm">
-                        <div class="flex items-center text-gray-600 dark:text-gray-400">
-                            <x-heroicon-o-calendar-days class="w-4 h-4 mr-1.5" />
-                            {{ \Carbon\Carbon::parse($communication->communication_date)->format('d M Y') }}
-                        </div>
-                        @if($communication->communication_time)
-                        <div class="flex items-center text-gray-600 dark:text-gray-400">
-                            <x-heroicon-o-clock class="w-4 h-4 mr-1.5" />
-                            {{ \Carbon\Carbon::parse($communication->communication_time)->format('H:i') }}
-                        </div>
-                        @endif
-                    </div>
-
-                    {{-- Location --}}
-                    @if($communication->location)
-                    <div class="flex items-start text-sm text-gray-600 dark:text-gray-400">
-                        <x-heroicon-o-map-pin class="w-4 h-4 mr-1.5 mt-0.5 flex-shrink-0" />
-                        <span class="line-clamp-1">{{ $communication->location }}</span>
-                    </div>
-                    @endif
-
-                    {{-- Project --}}
-                    @if($communication->project)
-                    <div class="flex items-center text-sm">
-                        <x-heroicon-o-briefcase class="w-4 h-4 mr-1.5 text-gray-400" />
-                        <span class="text-gray-600 dark:text-gray-400">{{ $communication->project->name }}</span>
-                    </div>
-                    @endif
-
-                    {{-- Status Badge --}}
-                    <div class="pt-3 border-t border-gray-200 dark:border-gray-700">
-                        <div class="flex items-center justify-between">
-                            <span class="inline-flex items-center px-3 py-1 text-xs font-medium rounded-full
-                                    @if($communication->status === 'completed') bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400
-                                    @elseif($communication->status === 'scheduled') bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400
-                                    @elseif($communication->status === 'cancelled') bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400
-                                    @else bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400
-                                    @endif
-                                ">
-                                @if($communication->status === 'completed')
-                                <x-heroicon-m-check-circle class="w-4 h-4 mr-1" />
-                                @elseif($communication->status === 'scheduled')
-                                <x-heroicon-m-clock class="w-4 h-4 mr-1" />
-                                @elseif($communication->status === 'cancelled')
-                                <x-heroicon-m-x-circle class="w-4 h-4 mr-1" />
-                                @else
-                                <x-heroicon-m-arrow-path class="w-4 h-4 mr-1" />
-                                @endif
-                                {{ ucfirst($communication->status) }}
-                            </span>
-
-                            <span class="text-xs text-gray-500 dark:text-gray-400">
-                                by {{ $communication->user->name }}
-                            </span>
-                        </div>
-                    </div>
-                </div>
-            </div>
             @empty
-            <div class="col-span-full">
-                <div
-                    class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-12 text-center">
-                    <div class="max-w-md mx-auto">
-                        <div
-                            class="w-16 h-16 bg-gray-100 dark:bg-gray-700 rounded-full flex items-center justify-center mx-auto mb-4">
-                            <x-heroicon-o-chat-bubble-left-right class="w-8 h-8 text-gray-400" />
-                        </div>
-                        <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-2">No communications found
-                        </h3>
-                        <p class="text-gray-500 dark:text-gray-400">
-                            @if($search || $filterClient || $filterType || $filterStatus)
-                            Try adjusting your filters or search terms
-                            @else
-                            No communications in the selected date range
-                            @endif
-                        </p>
-                    </div>
+                <div class="text-center py-12">
+                    <svg class="mx-auto h-12 w-12 text-gray-400 dark:text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                    </svg>
+                    <h3 class="mt-2 text-sm font-medium text-gray-900 dark:text-white">No communications found</h3>
+                    <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
+                        Get started by creating a new communication event.
+                    </p>
                 </div>
-            </div>
             @endforelse
         </div>
-
-        {{-- Pagination --}}
-        @if($this->communications->hasPages())
-        <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-4">
-            {{ $this->communications->links() }}
-        </div>
-        @endif
     </div>
+
+    {{-- Mark as Completed Modal --}}
+    <x-filament::modal id="complete-communication-modal" width="4xl">
+        <x-slot name="heading">
+            <div class="flex items-center gap-2">
+                <svg class="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                <span>Tandai Komunikasi Selesai</span>
+            </div>
+        </x-slot>
+
+        @if($selectedCommunicationId)
+            <form wire:submit="markAsCompleted">
+                {{ $this->completeForm }}
+                
+                <div class="mt-6 flex justify-end gap-3">
+                    <x-filament::button
+                        color="gray"
+                        wire:click="closeCompleteModal"
+                        type="button"
+                    >
+                        Batal
+                    </x-filament::button>
+                    
+                    <x-filament::button
+                        type="submit"
+                        color="success"
+                    >
+                        <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+                        </svg>
+                        Tandai Selesai
+                    </x-filament::button>
+                </div>
+            </form>
+        @endif
+    </x-filament::modal>
+
+    {{-- View Detail Modal --}}
+    <x-filament::modal id="view-communication-modal" width="3xl">
+        <x-slot name="heading">
+            <div class="flex items-center justify-between">
+                <div class="flex items-center gap-3">
+                    <div class="p-2 bg-blue-100 dark:bg-blue-900/30 rounded-lg">
+                        <svg class="w-5 h-5 text-blue-600 dark:text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                        </svg>
+                    </div>
+                    <div>
+                        <h3 class="text-lg font-semibold text-gray-900 dark:text-white">{{ $viewCommunication->title ?? 'Detail Komunikasi' }}</h3>
+                        <p class="text-sm text-gray-500 dark:text-gray-400">Informasi lengkap komunikasi dengan klien</p>
+                    </div>
+                </div>
+            </div>
+        </x-slot>
+
+        @if($viewCommunication)
+            <div class="space-y-1">
+                {{-- General Information Section --}}
+                <div class="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden">
+                    <button 
+                        type="button"
+                        class="w-full px-4 py-3 flex items-center justify-between text-left bg-gray-50 dark:bg-gray-900/50 hover:bg-gray-100 dark:hover:bg-gray-900/80 transition-colors"
+                        x-data="{ open: true }"
+                        @click="open = !open"
+                    >
+                        <span class="text-sm font-semibold text-gray-900 dark:text-white">Informasi Umum</span>
+                        <svg class="w-5 h-5 text-gray-500 transition-transform" :class="{ 'rotate-180': open }" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                        </svg>
+                    </button>
+                    <div class="px-4 py-3 space-y-3" x-show="open" x-collapse>
+                        <div class="flex justify-between py-2 border-b border-gray-100 dark:border-gray-700">
+                            <span class="text-sm text-gray-600 dark:text-gray-400">Status:</span>
+                            <span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 text-xs font-medium rounded-md {{ 
+                                match($viewCommunication->status) {
+                                    'scheduled' => 'bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 text-blue-700 dark:text-blue-300',
+                                    'completed' => 'bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 text-green-700 dark:text-green-300',
+                                    'cancelled' => 'bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-300',
+                                    'rescheduled' => 'bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 text-yellow-700 dark:text-yellow-300',
+                                    default => 'bg-gray-50 dark:bg-gray-900/20 border border-gray-200 dark:border-gray-800 text-gray-700 dark:text-gray-300'
+                                }
+                            }}">
+                                {{ $viewCommunication->status_label }}
+                            </span>
+                        </div>
+                        <div class="flex justify-between py-2 border-b border-gray-100 dark:border-gray-700">
+                            <span class="text-sm text-gray-600 dark:text-gray-400">Klien:</span>
+                            <span class="text-sm font-medium text-gray-900 dark:text-white">{{ $viewCommunication->client->name ?? '-' }}</span>
+                        </div>
+                        <div class="flex justify-between py-2 border-b border-gray-100 dark:border-gray-700">
+                            <span class="text-sm text-gray-600 dark:text-gray-400">Penanggung Jawab:</span>
+                            <span class="text-sm font-medium text-gray-900 dark:text-white">{{ $viewCommunication->user->name ?? '-' }}</span>
+                        </div>
+                        <div class="flex justify-between py-2 border-b border-gray-100 dark:border-gray-700">
+                            <span class="text-sm text-gray-600 dark:text-gray-400">Jenis Komunikasi:</span>
+                            <span class="text-sm font-medium text-gray-900 dark:text-white">{{ $viewCommunication->type_label }}</span>
+                        </div>
+                        @if($viewCommunication->project)
+                            <div class="flex justify-between py-2">
+                                <span class="text-sm text-gray-600 dark:text-gray-400">Proyek Terkait:</span>
+                                <span class="text-sm font-medium text-gray-900 dark:text-white">{{ $viewCommunication->project->name }}</span>
+                            </div>
+                        @endif
+                    </div>
+                </div>
+
+                {{-- Schedule Section --}}
+                <div class="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden">
+                    <button 
+                        type="button"
+                        class="w-full px-4 py-3 flex items-center justify-between text-left bg-gray-50 dark:bg-gray-900/50 hover:bg-gray-100 dark:hover:bg-gray-900/80 transition-colors"
+                        x-data="{ open: true }"
+                        @click="open = !open"
+                    >
+                        <span class="text-sm font-semibold text-gray-900 dark:text-white">Jadwal & Lokasi</span>
+                        <svg class="w-5 h-5 text-gray-500 transition-transform" :class="{ 'rotate-180': open }" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                        </svg>
+                    </button>
+                    <div class="px-4 py-3 space-y-3" x-show="open" x-collapse>
+                        <div class="flex justify-between py-2 border-b border-gray-100 dark:border-gray-700">
+                            <span class="text-sm text-gray-600 dark:text-gray-400">Tanggal:</span>
+                            <span class="text-sm font-medium text-gray-900 dark:text-white">{{ $viewCommunication->communication_date->format('d F Y') }}</span>
+                        </div>
+                        <div class="flex justify-between py-2 border-b border-gray-100 dark:border-gray-700">
+                            <span class="text-sm text-gray-600 dark:text-gray-400">Waktu Mulai:</span>
+                            <span class="text-sm font-medium text-gray-900 dark:text-white">{{ $viewCommunication->communication_time_start ? \Carbon\Carbon::parse($viewCommunication->communication_time_start)->format('H:i') : '-' }}</span>
+                        </div>
+                        <div class="flex justify-between py-2 border-b border-gray-100 dark:border-gray-700">
+                            <span class="text-sm text-gray-600 dark:text-gray-400">Waktu Selesai:</span>
+                            <span class="text-sm font-medium text-gray-900 dark:text-white">{{ $viewCommunication->communication_time_end ? \Carbon\Carbon::parse($viewCommunication->communication_time_end)->format('H:i') : '-' }}</span>
+                        </div>
+                        <div class="flex justify-between py-2 {{ $viewCommunication->meeting_platform ? 'border-b border-gray-100 dark:border-gray-700' : '' }}">
+                            <span class="text-sm text-gray-600 dark:text-gray-400">Lokasi:</span>
+                            <span class="text-sm font-medium text-gray-900 dark:text-white">{{ $viewCommunication->location ?? '-' }}</span>
+                        </div>
+                        @if($viewCommunication->meeting_platform)
+                            <div class="flex justify-between py-2 {{ $viewCommunication->meeting_link ? 'border-b border-gray-100 dark:border-gray-700' : '' }}">
+                                <span class="text-sm text-gray-600 dark:text-gray-400">Platform:</span>
+                                <span class="text-sm font-medium text-gray-900 dark:text-white">{{ $viewCommunication->meeting_platform }}</span>
+                            </div>
+                        @endif
+                        @if($viewCommunication->meeting_link)
+                            <div class="flex justify-between py-2">
+                                <span class="text-sm text-gray-600 dark:text-gray-400">Link Meeting:</span>
+                                <a href="{{ $viewCommunication->meeting_link }}" target="_blank" class="text-sm font-medium text-blue-600 hover:text-blue-700 dark:text-blue-400">
+                                    Buka Link
+                                </a>
+                            </div>
+                        @endif
+                    </div>
+                </div>
+
+                {{-- Details Section --}}
+                @if($viewCommunication->description || $viewCommunication->outcome || $viewCommunication->notes)
+                    <div class="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden">
+                        <button 
+                            type="button"
+                            class="w-full px-4 py-3 flex items-center justify-between text-left bg-gray-50 dark:bg-gray-900/50 hover:bg-gray-100 dark:hover:bg-gray-900/80 transition-colors"
+                            x-data="{ open: true }"
+                            @click="open = !open"
+                        >
+                            <span class="text-sm font-semibold text-gray-900 dark:text-white">Detail & Catatan</span>
+                            <svg class="w-5 h-5 text-gray-500 transition-transform" :class="{ 'rotate-180': open }" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                            </svg>
+                        </button>
+                        <div class="px-4 py-3 space-y-4" x-show="open" x-collapse>
+                            @if($viewCommunication->description)
+                                <div>
+                                    <label class="text-xs font-medium text-gray-600 dark:text-gray-400 uppercase tracking-wide">Deskripsi</label>
+                                    <p class="mt-1 text-sm text-gray-900 dark:text-white">{{ $viewCommunication->description }}</p>
+                                </div>
+                            @endif
+                            
+                            @if($viewCommunication->outcome)
+                                <div>
+                                    <label class="text-xs font-medium text-gray-600 dark:text-gray-400 uppercase tracking-wide">Hasil/Kesimpulan</label>
+                                    <div class="mt-1 prose prose-sm dark:prose-invert max-w-none text-sm">
+                                        {!! $viewCommunication->outcome !!}
+                                    </div>
+                                </div>
+                            @endif
+                            
+                            @if($viewCommunication->notes)  
+                                <div>
+                                    <label class="text-xs font-medium text-gray-600 dark:text-gray-400 uppercase tracking-wide">Catatan</label>
+                                    <p class="mt-1 text-sm text-gray-900 dark:text-white">{{ $viewCommunication->notes }}</p>
+                                </div>
+                            @endif
+                        </div>
+                    </div>
+                @endif
+
+                {{-- Attachments Section --}}
+                @if($viewCommunication->attachments && count($viewCommunication->attachments) > 0)
+                    <div class="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden">
+                        <button 
+                            type="button"
+                            class="w-full px-4 py-3 flex items-center justify-between text-left bg-gray-50 dark:bg-gray-900/50 hover:bg-gray-100 dark:hover:bg-gray-900/80 transition-colors"
+                            x-data="{ open: true }"
+                            @click="open = !open"
+                        >
+                            <span class="text-sm font-semibold text-gray-900 dark:text-white">Lampiran ({{ count($viewCommunication->attachments) }})</span>
+                            <svg class="w-5 h-5 text-gray-500 transition-transform" :class="{ 'rotate-180': open }" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                            </svg>
+                        </button>
+                        <div class="px-4 py-3 space-y-2" x-show="open" x-collapse>
+                            @foreach($viewCommunication->attachments as $attachment)
+                                <a href="{{ Storage::url($attachment) }}" target="_blank" class="flex items-center gap-3 p-2 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-900/50 transition-colors group">
+                                    <div class="flex-shrink-0 w-8 h-8 bg-blue-100 dark:bg-blue-900/30 rounded-lg flex items-center justify-center">
+                                        <svg class="w-4 h-4 text-blue-600 dark:text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13" />
+                                        </svg>
+                                    </div>
+                                    <span class="text-sm text-gray-700 dark:text-gray-300 group-hover:text-blue-600 dark:group-hover:text-blue-400">{{ basename($attachment) }}</span>
+                                </a>
+                            @endforeach
+                        </div>
+                    </div>
+                @endif
+            </div>
+
+            <div class="mt-6 flex justify-end">
+                <x-filament::button
+                    color="gray"
+                    wire:click="closeViewModal"
+                >
+                    Tutup
+                </x-filament::button>
+            </div>
+        @endif
+    </x-filament::modal>
 </x-filament-panels::page>

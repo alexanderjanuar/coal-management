@@ -20,6 +20,8 @@ class TaxCalculationSummary extends Model
         'kompensasi_diterima',
         'kompensasi_tersedia',
         'kompensasi_terpakai',
+        'manual_kompensasi',
+        'manual_kompensasi_notes',
         'saldo_final',
         'status_final',
         'notes',
@@ -37,6 +39,7 @@ class TaxCalculationSummary extends Model
         'kompensasi_diterima' => 'decimal:2',
         'kompensasi_tersedia' => 'decimal:2',
         'kompensasi_terpakai' => 'decimal:2',
+        'manual_kompensasi' => 'decimal:2',
         'saldo_final' => 'decimal:2',
         'calculated_at' => 'datetime',
         'bayar_at' => 'date',
@@ -173,6 +176,11 @@ class TaxCalculationSummary extends Model
     public function getFormattedSisaKompensasiAttribute(): string
     {
         return 'Rp ' . number_format($this->sisa_kompensasi_tersedia, 0, ',', '.');
+    }
+
+    public function getFormattedManualKompensasiAttribute(): string
+    {
+        return 'Rp ' . number_format($this->manual_kompensasi, 0, ',', '.');
     }
 
     public function getCompensationsReceivedCountAttribute(): int
@@ -385,8 +393,11 @@ class TaxCalculationSummary extends Model
             ->where('tax_type', 'ppn')
             ->sum('amount_compensated');
         
-        // Saldo final setelah kompensasi
-        $saldoFinal = $selisih - $kompensasiDiterima;
+        // Keep existing manual_kompensasi value if it exists
+        $manualKompensasi = $this->manual_kompensasi ?? 0;
+        
+        // Saldo final setelah kompensasi (termasuk manual kompensasi)
+        $saldoFinal = $selisih - $kompensasiDiterima - $manualKompensasi;
         
         // Status awal (sebelum kompensasi)
         $status = $this->determineStatus($selisih);
@@ -405,6 +416,7 @@ class TaxCalculationSummary extends Model
             'kompensasi_diterima' => $kompensasiDiterima,
             'kompensasi_tersedia' => $kompensasiTersedia,
             'kompensasi_terpakai' => $kompensasiTerpakai,
+            'manual_kompensasi' => $manualKompensasi,
             'saldo_final' => $saldoFinal,
             'status_final' => $statusFinal,
             'bayar_status' => $this->bayar_status ?? 'Belum Bayar', // Keep existing status or default to Belum Bayar
@@ -431,7 +443,10 @@ class TaxCalculationSummary extends Model
             ->where('tax_type', 'pph')
             ->sum('amount_compensated');
         
-        $saldoFinal = $selisih - $kompensasiDiterima;
+        // Keep existing manual_kompensasi value if it exists
+        $manualKompensasi = $this->manual_kompensasi ?? 0;
+        
+        $saldoFinal = $selisih - $kompensasiDiterima - $manualKompensasi;
         $status = $this->determineStatus($selisih);
         $statusFinal = $this->determineStatus($saldoFinal);
         $kompensasiTersedia = $statusFinal === 'Lebih Bayar' ? abs($saldoFinal) : 0;
@@ -444,6 +459,7 @@ class TaxCalculationSummary extends Model
             'kompensasi_diterima' => $kompensasiDiterima,
             'kompensasi_tersedia' => $kompensasiTersedia,
             'kompensasi_terpakai' => $kompensasiTerpakai,
+            'manual_kompensasi' => $manualKompensasi,
             'saldo_final' => $saldoFinal,
             'status_final' => $statusFinal,
             'bayar_status' => $this->bayar_status ?? 'Belum Bayar',
@@ -470,7 +486,10 @@ class TaxCalculationSummary extends Model
             ->where('tax_type', 'bupot')
             ->sum('amount_compensated');
         
-        $saldoFinal = $selisih - $kompensasiDiterima;
+        // Keep existing manual_kompensasi value if it exists
+        $manualKompensasi = $this->manual_kompensasi ?? 0;
+        
+        $saldoFinal = $selisih - $kompensasiDiterima - $manualKompensasi;
         $status = $this->determineStatus($selisih);
         $statusFinal = $this->determineStatus($saldoFinal);
         $kompensasiTersedia = $statusFinal === 'Lebih Bayar' ? abs($saldoFinal) : 0;
@@ -483,6 +502,7 @@ class TaxCalculationSummary extends Model
             'kompensasi_diterima' => $kompensasiDiterima,
             'kompensasi_tersedia' => $kompensasiTersedia,
             'kompensasi_terpakai' => $kompensasiTerpakai,
+            'manual_kompensasi' => $manualKompensasi,
             'saldo_final' => $saldoFinal,
             'status_final' => $statusFinal,
             'bayar_status' => $this->bayar_status ?? 'Belum Bayar',
@@ -512,7 +532,10 @@ class TaxCalculationSummary extends Model
             ->where('tax_type', 'pph_badan')
             ->sum('amount_compensated');
         
-        $saldoFinal = $selisih - $kompensasiDiterima;
+        // Keep existing manual_kompensasi value if it exists
+        $manualKompensasi = $this->manual_kompensasi ?? 0;
+        
+        $saldoFinal = $selisih - $kompensasiDiterima - $manualKompensasi;
         $status = $this->determineStatus($selisih);
         $statusFinal = $this->determineStatus($saldoFinal);
         $kompensasiTersedia = $statusFinal === 'Lebih Bayar' ? abs($saldoFinal) : 0;
@@ -525,6 +548,7 @@ class TaxCalculationSummary extends Model
             'kompensasi_diterima' => $kompensasiDiterima,
             'kompensasi_tersedia' => $kompensasiTersedia,
             'kompensasi_terpakai' => $kompensasiTerpakai,
+            'manual_kompensasi' => $manualKompensasi,
             'saldo_final' => $saldoFinal,
             'status_final' => $statusFinal,
             'bayar_status' => $this->bayar_status ?? 'Belum Bayar',

@@ -19,7 +19,8 @@ class ClientCommunication extends Model
         'description',
         'type',
         'communication_date',
-        'communication_time',
+        'communication_time_start',  // Added
+        'communication_time_end',     // Added
         'location',
         'latitude',
         'longitude',
@@ -302,12 +303,13 @@ class ClientCommunication extends Model
         $this->update(['status' => 'cancelled']);
     }
 
-    public function reschedule($newDate, $newTime = null): void
+    public function reschedule($newDate, $newTimeStart = null, $newTimeEnd = null): void
     {
         $this->update([
             'status' => 'rescheduled',
             'communication_date' => $newDate,
-            'communication_time' => $newTime,
+            'communication_time_start' => $newTimeStart,
+            'communication_time_end' => $newTimeEnd,
         ]);
     }
 
@@ -449,6 +451,8 @@ class ClientCommunication extends Model
                 'title',
                 'type',
                 'communication_date',
+                'communication_time_start',
+                'communication_time_end',
                 'location',
                 'latitude',
                 'longitude',

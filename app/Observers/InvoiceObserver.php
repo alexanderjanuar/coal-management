@@ -66,6 +66,8 @@ class InvoiceObserver
                         'kompensasi_diterima' => 0,
                         'kompensasi_tersedia' => 0,
                         'kompensasi_terpakai' => 0,
+                        'manual_kompensasi' => 0,
+                        'manual_kompensasi_notes' => null,
                         'saldo_final' => 0,
                         'status_final' => 'Nihil',
                         'report_status' => 'Belum Lapor',
@@ -101,8 +103,11 @@ class InvoiceObserver
                 ->where('tax_type', 'ppn')
                 ->sum('amount_compensated');
             
-            // Calculate final balance after compensation
-            $saldoFinal = $selisihPpn - $kompensasiDiterima;
+            // Preserve existing manual kompensasi value
+            $manualKompensasi = $ppnSummary->manual_kompensasi ?? 0;
+            
+            // Calculate final balance after compensation (including manual kompensasi)
+            $saldoFinal = $selisihPpn - $kompensasiDiterima - $manualKompensasi;
             
             // Determine status before compensation
             $status = $this->determineStatus($selisihPpn);
@@ -113,7 +118,7 @@ class InvoiceObserver
             // Calculate available compensation (if overpayment)
             $kompensasiTersedia = $statusFinal === 'Lebih Bayar' ? abs($saldoFinal) : 0;
             
-            // Update PPN summary
+            // Update PPN summary (preserve manual_kompensasi and manual_kompensasi_notes)
             $ppnSummary->update([
                 'pajak_masuk' => $totalPpnMasuk,
                 'pajak_keluar' => $totalPpnKeluar,
@@ -122,6 +127,8 @@ class InvoiceObserver
                 'kompensasi_diterima' => $kompensasiDiterima,
                 'kompensasi_tersedia' => $kompensasiTersedia,
                 'kompensasi_terpakai' => $kompensasiTerpakai,
+                'manual_kompensasi' => $manualKompensasi, // Preserve existing value
+                // manual_kompensasi_notes is intentionally not updated here to preserve it
                 'saldo_final' => $saldoFinal,
                 'status_final' => $statusFinal,
                 'calculated_at' => now(),
@@ -134,6 +141,8 @@ class InvoiceObserver
                 'total_ppn_masuk' => $totalPpnMasuk,
                 'total_ppn_keluar' => $totalPpnKeluar,
                 'selisih_ppn' => $selisihPpn,
+                'kompensasi_diterima' => $kompensasiDiterima,
+                'manual_kompensasi' => $manualKompensasi,
                 'saldo_final' => $saldoFinal,
                 'status' => $status,
                 'status_final' => $statusFinal
