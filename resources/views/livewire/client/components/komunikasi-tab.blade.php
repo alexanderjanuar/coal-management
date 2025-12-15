@@ -10,10 +10,6 @@
                     Dokumentasi seluruh interaksi dengan klien {{ $client->name }}
                 </p>
             </div>
-
-            <x-filament::button wire:click="openCreateModal" icon="heroicon-o-plus" size="lg">
-                Tambah Catatan
-            </x-filament::button>
         </div>
     </div>
 
@@ -21,14 +17,10 @@
     <div class="grid grid-cols-1 gap-4 sm:grid-cols-4">
         @php
         $stats = [
-        ['label' => 'Total Komunikasi', 'value' => $communications->count(), 'icon' =>
-        'heroicon-o-chat-bubble-left-right', 'color' => 'text-blue-600 dark:text-blue-400'],
-        ['label' => 'Meeting', 'value' => $communications->where('type', 'meeting')->count(), 'icon' =>
-        'heroicon-o-calendar', 'color' => 'text-green-600 dark:text-green-400'],
-        ['label' => 'Email', 'value' => $communications->where('type', 'email')->count(), 'icon' =>
-        'heroicon-o-envelope', 'color' => 'text-purple-600 dark:text-purple-400'],
-        ['label' => 'Telepon', 'value' => $communications->where('type', 'phone')->count(), 'icon' =>
-        'heroicon-o-phone', 'color' => 'text-orange-600 dark:text-orange-400'],
+            ['label' => 'Total Komunikasi', 'value' => $communications->count(), 'icon' => 'heroicon-o-chat-bubble-left-right', 'color' => 'text-blue-600 dark:text-blue-400'],
+            ['label' => 'Meeting', 'value' => $communications->where('type', 'meeting')->count(), 'icon' => 'heroicon-o-calendar', 'color' => 'text-green-600 dark:text-green-400'],
+            ['label' => 'Email', 'value' => $communications->where('type', 'email')->count(), 'icon' => 'heroicon-o-envelope', 'color' => 'text-purple-600 dark:text-purple-400'],
+            ['label' => 'Telepon', 'value' => $communications->where('type', 'phone')->count(), 'icon' => 'heroicon-o-phone', 'color' => 'text-orange-600 dark:text-orange-400'],
         ];
         @endphp
 
@@ -51,7 +43,7 @@
         @endforeach
     </div>
 
-    {{-- Communication Timeline --}}
+    {{-- Communication Timeline (Read-Only) --}}
     <div class="space-y-4">
         @forelse($communications as $index => $communication)
         <div wire:click="openDetailModal({{ $communication->id }})"
@@ -94,10 +86,13 @@
                                         {{ $communication->communication_date->format('d M Y') }}
                                     </span>
 
-                                    @if($communication->communication_time)
+                                    @if($communication->communication_time_start)
                                     <span class="flex items-center gap-1.5">
                                         <x-filament::icon icon="heroicon-o-clock" class="h-4 w-4" />
-                                        {{ \Carbon\Carbon::parse($communication->communication_time)->format('H:i') }}
+                                        {{ \Carbon\Carbon::parse($communication->communication_time_start)->format('H:i') }}
+                                        @if($communication->communication_time_end)
+                                            - {{ \Carbon\Carbon::parse($communication->communication_time_end)->format('H:i') }}
+                                        @endif
                                     </span>
                                     @endif
 
@@ -113,15 +108,6 @@
                                     </span>
                                     @endif
                                 </div>
-                            </div>
-
-                            {{-- Quick Actions (Show on Hover) --}}
-                            <div class="flex gap-2 opacity-0 transition-opacity group-hover:opacity-100">
-                                <x-filament::icon-button wire:click.stop="openEditModal({{ $communication->id }})"
-                                    icon="heroicon-o-pencil" label="Edit" color="gray" size="sm" />
-
-                                <x-filament::icon-button wire:click.stop="deleteConfirm({{ $communication->id }})"
-                                    icon="heroicon-o-trash" label="Hapus" color="danger" size="sm" />
                             </div>
                         </div>
 
@@ -156,47 +142,13 @@
                 Belum ada catatan komunikasi
             </h3>
             <p class="mt-2 text-sm text-gray-600 dark:text-gray-400">
-                Mulai dokumentasikan komunikasi Anda dengan klien ini untuk tracking yang lebih baik.
+                Belum ada komunikasi yang tercatat dengan klien ini.
             </p>
-            <div class="mt-8">
-                <x-filament::button wire:click="openCreateModal" icon="heroicon-o-plus" size="lg">
-                    Tambah Catatan Pertama
-                </x-filament::button>
-            </div>
         </div>
         @endforelse
     </div>
 
-    {{-- Create/Edit Modal --}}
-    <x-filament::modal id="communication-modal" width="4xl">
-        <x-slot name="heading">
-            <div class="flex items-center gap-3">
-                <div
-                    class="flex h-10 w-10 items-center justify-center rounded-lg bg-gradient-to-br from-gray-900 to-gray-700 text-white shadow-md dark:from-white dark:to-gray-100 dark:text-gray-900">
-                    <x-filament::icon icon="heroicon-o-pencil-square" class="h-5 w-5" />
-                </div>
-                <span>{{ $editingId ? 'Edit Catatan Komunikasi' : 'Tambah Catatan Komunikasi' }}</span>
-            </div>
-        </x-slot>
-
-        <form wire:submit="saveCommunication">
-            {{ $this->form }}
-
-            <x-slot name="footer">
-                <div class="flex gap-3 justify-end">
-                    <x-filament::button color="gray" wire:click="closeModal" type="button" outlined>
-                        Batal
-                    </x-filament::button>
-
-                    <x-filament::button type="submit" icon="heroicon-o-check" wire:click="saveCommunication">
-                        {{ $editingId ? 'Perbarui' : 'Simpan' }}
-                    </x-filament::button>
-                </div>
-            </x-slot>
-        </form>
-    </x-filament::modal>
-
-    {{-- Detail Modal --}}
+    {{-- Detail Modal (Read-Only) --}}
     <x-filament::modal id="detail-communication-modal" width="4xl">
         @if($viewingCommunication)
         <x-slot name="heading">
@@ -227,8 +179,11 @@
                     <p class="text-sm font-medium text-gray-600 dark:text-gray-400">Tanggal & Waktu</p>
                     <p class="mt-1 text-sm font-semibold text-gray-900 dark:text-white">
                         {{ $viewingCommunication->communication_date->format('d M Y') }}
-                        @if($viewingCommunication->communication_time)
-                        • {{ \Carbon\Carbon::parse($viewingCommunication->communication_time)->format('H:i') }}
+                        @if($viewingCommunication->communication_time_start)
+                        • {{ \Carbon\Carbon::parse($viewingCommunication->communication_time_start)->format('H:i') }}
+                        @if($viewingCommunication->communication_time_end)
+                        - {{ \Carbon\Carbon::parse($viewingCommunication->communication_time_end)->format('H:i') }}
+                        @endif
                         @endif
                     </p>
                 </div>
@@ -306,52 +261,12 @@
         </div>
 
         <x-slot name="footer">
-            <div class="flex gap-3 justify-between w-full">
-                <div class="flex gap-3">
-                    <x-filament::button wire:click="openEditModal({{ $viewingCommunication->id }}); closeDetailModal()"
-                        icon="heroicon-o-pencil" color="gray" outlined>
-                        Edit
-                    </x-filament::button>
-                </div>
+            <div class="flex justify-end">
                 <x-filament::button color="gray" wire:click="closeDetailModal">
                     Tutup
                 </x-filament::button>
             </div>
         </x-slot>
         @endif
-    </x-filament::modal>
-
-    {{-- Delete Confirmation Modal --}}
-    <x-filament::modal id="delete-communication-modal" width="xl">
-        <x-slot name="heading">
-            <div class="flex items-center gap-3">
-                <div
-                    class="flex h-10 w-10 items-center justify-center rounded-lg bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-400">
-                    <x-filament::icon icon="heroicon-o-exclamation-triangle" class="h-5 w-5" />
-                </div>
-                <span>Konfirmasi Hapus</span>
-            </div>
-        </x-slot>
-
-        <div class="py-4">
-            <p class="text-sm text-gray-600 dark:text-gray-400">
-                Apakah Anda yakin ingin menghapus catatan komunikasi ini?
-            </p>
-            <p class="mt-2 text-sm font-semibold text-gray-900 dark:text-white">
-                Tindakan ini tidak dapat dibatalkan dan akan menghapus semua file terkait.
-            </p>
-        </div>
-
-        <x-slot name="footer">
-            <div class="flex gap-3 justify-end">
-                <x-filament::button color="gray" wire:click="closeDeleteModal" outlined>
-                    Batal
-                </x-filament::button>
-
-                <x-filament::button color="danger" wire:click="deleteCommunication" icon="heroicon-o-trash">
-                    Hapus
-                </x-filament::button>
-            </div>
-        </x-slot>
     </x-filament::modal>
 </div>
