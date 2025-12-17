@@ -28,8 +28,22 @@ class YearlySummary extends Component
         // Get all tax reports for this client with PPN summaries
         $taxReports = TaxReport::where('client_id', $this->clientId)
             ->with(['ppnSummary'])
-            ->orderByRaw('STR_TO_DATE(month, "%Y-%m") DESC')
-            ->get();
+            ->get()
+            ->sortBy(function ($report) {
+                // Parse the month string and convert to timestamp for proper sorting
+                // Using sortBy (ascending) instead of sortByDesc for chronological order
+                try {
+                    return Carbon::parse($report->month)->timestamp;
+                } catch (\Exception $e) {
+                    // If parsing fails, try different formats
+                    try {
+                        return Carbon::createFromFormat('Y-m', $report->month)->timestamp;
+                    } catch (\Exception $e2) {
+                        return 0;
+                    }
+                }
+            })
+            ->values(); // Reset collection keys after sorting
 
         $timelineData = [];
         $totalPpnMasuk = 0;
@@ -51,11 +65,22 @@ class YearlySummary extends Component
                 }
             }
 
+            // Parse month for display
+            try {
+                $monthDate = Carbon::parse($report->month);
+            } catch (\Exception $e) {
+                try {
+                    $monthDate = Carbon::createFromFormat('Y-m', $report->month);
+                } catch (\Exception $e2) {
+                    $monthDate = Carbon::now();
+                }
+            }
+
             $timelineData[] = [
                 'id' => $report->id,
                 'month' => $report->month,
-                'month_name' => Carbon::parse($report->month)->format('F Y'),
-                'month_short' => Carbon::parse($report->month)->format('M Y'),
+                'month_name' => $monthDate->format('F Y'),
+                'month_short' => $monthDate->format('M Y'),
                 'ppn_summary' => $ppnSummary,
                 'is_current' => $report->month === $this->currentMonth,
             ];
