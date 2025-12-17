@@ -95,7 +95,7 @@
             {{-- Month Header --}}
             <div class="space-y-4">
                 <div class="sticky top-0 z-2 bg-gray-50/95 dark:bg-gray-900/95 backdrop-blur-md py-5 rounded-xl">
-                    <h3 class="text-2xl font-bold text-gray-900 dark:text-white">
+                    <h3 class="text-xl font-bold text-gray-700 dark:text-white">
                         {{ $monthYear }}
                     </h3>
                 </div>
