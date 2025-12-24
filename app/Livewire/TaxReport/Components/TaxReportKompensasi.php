@@ -301,15 +301,15 @@ class TaxReportKompensasi extends Component
 
         // Check if compensation already exists and is pending/approved
         $existingCompensation = $this->givenCompensations
-            ->where('target_tax_report_id', $this->nextMonthTarget->id)
-            ->whereIn('status', ['pending', 'approved'])
-            ->first();
+        ->where('target_tax_report_id', $this->nextMonthTarget->id)
+        ->where('status', 'pending')  // ✅ Only check for pending
+        ->first();
 
         if ($existingCompensation) {
             Notification::make()
                 ->warning()
-                ->title('Kompensasi Sudah Ada')
-                ->body('Sudah ada kompensasi ' . $existingCompensation->status_label . ' untuk periode berikutnya.')
+                ->title('Kompensasi Pending Sudah Ada')
+                ->body('Terdapat kompensasi yang masih menunggu approval. Selesaikan atau batalkan kompensasi tersebut terlebih dahulu.')
                 ->send();
             return;
         }
@@ -554,10 +554,10 @@ class TaxReportKompensasi extends Component
     public function getCanCreateCompensationProperty()
     {
         return $this->nextMonthExists 
-            && $this->statusSetelah === 'Lebih Bayar'  // Only Lebih Bayar
-            && $this->kompensasiTersedia > 0  // Must have available balance
+            && $this->statusSetelah === 'Lebih Bayar'
+            && $this->kompensasiTersedia > 0
             && !$this->givenCompensations
-                ->whereIn('status', ['pending', 'approved'])
+                ->where('status', 'pending')  // ✅ Only block if there's a PENDING one
                 ->where('target_tax_report_id', $this->nextMonthTarget?->id)
                 ->count();
     }

@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "475bc943965b9fb93b2bf7485aceb078",
+    "content-hash": "78f15dfe5b1ad51b1d538bb3252f5f5b",
     "packages": [
         {
             "name": "anourvalar/eloquent-serialize",
@@ -2450,6 +2450,80 @@
             "time": "2025-01-30T12:23:04+00:00"
         },
         {
+            "name": "eightynine/filament-excel-import",
+            "version": "v3.1.11",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/eighty9nine/filament-excel-import.git",
+                "reference": "a8167515d8f6a946a96774ad8e93ad1f10b43f31"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/eighty9nine/filament-excel-import/zipball/a8167515d8f6a946a96774ad8e93ad1f10b43f31",
+                "reference": "a8167515d8f6a946a96774ad8e93ad1f10b43f31",
+                "shasum": ""
+            },
+            "require": {
+                "filament/filament": "^3.0",
+                "illuminate/contracts": "^10.0|^11.0|^12.0",
+                "maatwebsite/excel": "^3.1",
+                "php": "^8.1",
+                "spatie/laravel-package-tools": "^1.15.0"
+            },
+            "require-dev": {
+                "laravel/pint": "^1.0",
+                "nunomaduro/collision": "^7.9|^8.1",
+                "nunomaduro/larastan": "^2.0.1",
+                "orchestra/testbench": "^8.0|^10.0",
+                "pestphp/pest": "^2.0|^3.7",
+                "pestphp/pest-plugin-arch": "^2.0|^3.0",
+                "pestphp/pest-plugin-laravel": "^2.0|^3.1",
+                "phpstan/extension-installer": "^1.1",
+                "phpstan/phpstan-deprecation-rules": "^1.0|^2.0",
+                "phpstan/phpstan-phpunit": "^1.0|^2.0"
+            },
+            "type": "library",
+            "extra": {
+                "laravel": {
+                    "aliases": {
+                        "ExcelImportAction": "EightyNine\\ExcelImport\\Facades\\ExcelImportAction"
+                    },
+                    "providers": [
+                        "EightyNine\\ExcelImport\\ExcelImportServiceProvider"
+                    ]
+                }
+            },
+            "autoload": {
+                "psr-4": {
+                    "EightyNine\\ExcelImport\\": "src/",
+                    "EightyNine\\ExcelImport\\Database\\Factories\\": "database/factories/"
+                }
+            },
+            "notification-url": "https://packagist.org/downloads/",
+            "license": [
+                "MIT"
+            ],
+            "authors": [
+                {
+                    "name": "Eighty Nine",
+                    "email": "eighty9nine@gmail.com",
+                    "role": "Developer"
+                }
+            ],
+            "description": "Import Excel files with Laravel Filament.",
+            "homepage": "https://github.com/eightynine/filament-excel-import",
+            "keywords": [
+                "eightynine",
+                "filament-excel-import",
+                "laravel"
+            ],
+            "support": {
+                "issues": "https://github.com/eightynine/filament-excel-import/issues",
+                "source": "https://github.com/eightynine/filament-excel-import"
+            },
+            "time": "2025-06-20T06:08:41+00:00"
+        },
+        {
             "name": "evenement/evenement",
             "version": "v3.0.2",
             "source": {
@@ -4214,6 +4288,64 @@
                 }
             ],
             "time": "2025-08-22T14:27:06+00:00"
+        },
+        {
+            "name": "hayderhatem/filament-excel-import",
+            "version": "v4.0.0",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/HayderHatem/filament-excel-import.git",
+                "reference": "e458cb3a8ded8b9a942782234d219d5b81fb505f"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/HayderHatem/filament-excel-import/zipball/e458cb3a8ded8b9a942782234d219d5b81fb505f",
+                "reference": "e458cb3a8ded8b9a942782234d219d5b81fb505f",
+                "shasum": ""
+            },
+            "require": {
+                "filament/filament": "^3.2",
+                "laravel/framework": "^10.0|^11.0",
+                "php": "^8.1",
+                "phpoffice/phpspreadsheet": "^1.29.9|^2.0"
+            },
+            "require-dev": {
+                "friendsofphp/php-cs-fixer": "^3.0",
+                "mockery/mockery": "^1.6",
+                "orchestra/testbench": "^8.0|^9.0",
+                "phpstan/phpstan": "^1.0",
+                "phpstan/phpstan-phpunit": "^1.0",
+                "phpunit/phpunit": "^10.0|^11.0"
+            },
+            "type": "library",
+            "extra": {
+                "laravel": {
+                    "providers": [
+                        "HayderHatem\\FilamentExcelImport\\FilamentExcelImportServiceProvider"
+                    ]
+                }
+            },
+            "autoload": {
+                "psr-4": {
+                    "HayderHatem\\FilamentExcelImport\\": "src/"
+                }
+            },
+            "notification-url": "https://packagist.org/downloads/",
+            "license": [
+                "MIT"
+            ],
+            "authors": [
+                {
+                    "name": "Hayder Hatem",
+                    "email": "hayderhatem@example.com"
+                }
+            ],
+            "description": "Filament Excel import trait for Laravel",
+            "support": {
+                "issues": "https://github.com/HayderHatem/filament-excel-import/issues",
+                "source": "https://github.com/HayderHatem/filament-excel-import/tree/v4.0.0"
+            },
+            "time": "2025-07-29T19:39:10+00:00"
         },
         {
             "name": "hugomyb/filament-media-action",

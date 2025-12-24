@@ -342,19 +342,19 @@ class FilamentNotificationSounds {
     }
 }
 
-// Initialize when DOM is ready
-document.addEventListener('DOMContentLoaded', () => {
-    window.filamentSounds = new FilamentNotificationSounds();
-    console.log('FilamentNotificationSounds initialized'); // Debug log
-});
+// // Initialize when DOM is ready
+// document.addEventListener('DOMContentLoaded', () => {
+//     window.filamentSounds = new FilamentNotificationSounds();
+//     console.log('FilamentNotificationSounds initialized'); // Debug log
+// });
 
-// Also initialize if DOM is already loaded
-if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', () => {
-        window.filamentSounds = new FilamentNotificationSounds();
-        console.log('FilamentNotificationSounds initialized (DOM ready)'); // Debug log
-    });
-} else {
-    window.filamentSounds = new FilamentNotificationSounds();
-    console.log('FilamentNotificationSounds initialized (immediate)'); // Debug log
-}
+// // Also initialize if DOM is already loaded
+// if (document.readyState === 'loading') {
+//     document.addEventListener('DOMContentLoaded', () => {
+//         window.filamentSounds = new FilamentNotificationSounds();
+//         console.log('FilamentNotificationSounds initialized (DOM ready)'); // Debug log
+//     });
+// } else {
+//     window.filamentSounds = new FilamentNotificationSounds();
+//     console.log('FilamentNotificationSounds initialized (immediate)'); // Debug log
+// }

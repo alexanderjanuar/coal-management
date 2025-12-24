@@ -1,7 +1,7 @@
 <?php
 // app/Exports/TaxReportInvoicesExport.php
 
-namespace App\Exports;
+namespace App\Exports\TaxReport;
 
 use App\Models\TaxReport;
 use Maatwebsite\Excel\Concerns\FromArray;

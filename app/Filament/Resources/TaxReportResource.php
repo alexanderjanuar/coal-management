@@ -158,7 +158,7 @@ class TaxReportResource extends Resource
                             $query->where('type', 'Faktur Keluaran');
                         }
                     ], 'dpp')
-                    ->withSum('incomeTaxs', 'pph_21_amount')
+                    ->withSum('incomeTaxs', 'pajak_penghasilan')  // ✅ CHANGED FROM 'pph_21_amount'
                     ->withSum('bupots', 'bupot_amount')
                     ->withCount([
                         'invoices as total_invoices_count',
@@ -170,12 +170,10 @@ class TaxReportResource extends Resource
                         },
                         'incomeTaxs as income_taxes_count',
                         'bupots as bupots_count',
+                        // ✅ UPDATED - use 'bukti_potong' for income_taxes
                         'incomeTaxs as income_taxes_with_bukti_count' => function ($query) {
-                            $query->whereNotNull('bukti_setor')->where('bukti_setor', '!=', '');
+                            $query->whereNotNull('bukti_potong')->where('bukti_potong', '!=', '');
                         },
-                        'bupots as bupots_with_bukti_count' => function ($query) {
-                            $query->whereNotNull('bukti_setor')->where('bukti_setor', '!=', '');
-                        }
                     ]);
             })
             // Use custom content view for card layout

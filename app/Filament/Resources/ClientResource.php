@@ -71,25 +71,106 @@ class ClientResource extends Resource
                         Forms\Components\Select::make('client_type')
                             ->label('Tipe Klien')
                             ->options([
-                                'Badan' => 'Badan/Perusahaan',
                                 'Pribadi' => 'Pribadi/Perorangan',
+                                'Badan' => 'Badan/Perusahaan',
+                                'Pemerintah' => 'Pemerintah',
+                                'Pemungut PPN PMSE Luar Negeri' => 'Pemungut PPN PMSE Luar Negeri',
                             ])
                             ->default('Pribadi')
                             ->required()
                             ->live()
                             ->afterStateUpdated(function (Forms\Get $get, Forms\Set $set, ?string $state) {
+                                // Reset subtype when client type changes
+                                $set('client_subtype', null);
+                                
+                                // Reset PIC for Pribadi
                                 if ($state === 'Pribadi') {
                                     $set('pic_id', null);
                                 }
                             })
                             ->native(false)
                             ->helperText(function (Forms\Get $get) {
-                                if ($get('client_type') === 'Badan') {
-                                    return '✅ Klien Badan memerlukan PIC (Person In Charge)';
-                                }
-                                return 'ℹ️ Klien Pribadi tidak memerlukan PIC';
+                                $type = $get('client_type');
+                                return match($type) {
+                                    'Badan' => '✅ Klien Badan memerlukan PIC (Person In Charge)',
+                                    'Pemerintah' => '🏛️ Klien Pemerintahan memerlukan informasi instansi',
+                                    'Pemungut PPN PMSE Luar Negeri' => '🌐 Pemungut PPN untuk platform digital luar negeri',
+                                    default => 'ℹ️ Klien Pribadi tidak memerlukan PIC',
+                                };
                             })
                             ->columnSpanFull(),
+
+                        // Dynamic Subtype Field - Shows different options based on client_type
+                        Forms\Components\Select::make('client_subtype')
+                            ->label(function (Forms\Get $get) {
+                                return match($get('client_type')) {
+                                    'Badan' => 'Jenis Badan Usaha',
+                                    'Pemerintah' => 'Jenis Instansi Pemerintah',
+                                    default => 'Sub Tipe',
+                                };
+                            })
+                            ->options(function (Forms\Get $get) {
+                                $clientType = $get('client_type');
+                                
+                                if ($clientType === 'Badan') {
+                                    return [
+                                        'Badan Internasional' => 'Badan Internasional',
+                                        'Badan Usaha Milik Desa' => 'Badan Usaha Milik Desa',
+                                        'Bentuk Usaha Tetap (BUT)' => 'Bentuk Usaha Tetap (BUT)',
+                                        'Dana Pensiun' => 'Dana Pensiun',
+                                        'Firma' => 'Firma',
+                                        'Kantor Perwakilan Perusahaan Asing (KPPA)' => 'Kantor Perwakilan Perusahaan Asing (KPPA)',
+                                        'Kerja Sama Operasi (KSO/JO)' => 'Kerja Sama Operasi (KSO/JO)',
+                                        'Kongsi' => 'Kongsi',
+                                        'Kontrak Investasi Kolektif' => 'Kontrak Investasi Kolektif',
+                                        'Koperasi' => 'Koperasi',
+                                        'Lembaga dan bentuk badan lainnya' => 'Lembaga dan bentuk badan lainnya',
+                                        'Organisasi Lainnya' => 'Organisasi Lainnya',
+                                        'Organisasi Massa' => 'Organisasi Massa',
+                                        'Organisasi sosial politik' => 'Organisasi sosial politik',
+                                        'PT Perorangan' => 'PT Perorangan',
+                                        'Penyelenggara Kegiatan' => 'Penyelenggara Kegiatan',
+                                        'Perkumpulan' => 'Perkumpulan',
+                                        'Persekutuan Perdata' => 'Persekutuan Perdata',
+                                        'Perseroan Komanditer (CV)' => 'Perseroan Komanditer (CV)',
+                                        'Perseroan Lainnya' => 'Perseroan Lainnya',
+                                        'Perseroan Terbatas (PT)' => 'Perseroan Terbatas (PT)',
+                                        'Perusahaan Umum' => 'Perusahaan Umum',
+                                        'Perwakilan Negara Asing' => 'Perwakilan Negara Asing',
+                                        'Yayasan' => 'Yayasan',
+                                    ];
+                                } elseif ($clientType === 'Pemerintah') {
+                                    return [
+                                        'Institusi Pemerintah Pusat' => 'Institusi Pemerintah Pusat',
+                                        'Institusi Pemerintah Daerah' => 'Institusi Pemerintah Daerah',
+                                        'Lembaga Pemerintah Desa' => 'Lembaga Pemerintah Desa',
+                                        'Badan Layanan Umum Pusat' => 'Badan Layanan Umum Pusat',
+                                        'Badan Layanan Umum Daerah' => 'Badan Layanan Umum Daerah',
+                                    ];
+                                }
+                                
+                                return [];
+                            })
+                            ->visible(fn (Forms\Get $get) => in_array($get('client_type'), ['Badan', 'Pemerintah']))
+                            ->required(fn (Forms\Get $get) => in_array($get('client_type'), ['Badan', 'Pemerintah']))
+                            ->searchable()
+                            ->native(false)
+                            ->helperText(function (Forms\Get $get) {
+                                return match($get('client_type')) {
+                                    'Badan' => 'Pilih jenis badan usaha sesuai dengan dokumen legal',
+                                    'Pemerintah' => 'Pilih jenis instansi pemerintahan',
+                                    default => '',
+                                };
+                            })
+                            ->columnSpanFull()
+                            ->placeholder(function (Forms\Get $get) {
+                                return match($get('client_type')) {
+                                    'Badan' => 'Pilih jenis badan usaha...',
+                                    'Pemerintah' => 'Pilih jenis instansi...',
+                                    default => 'Pilih sub tipe...',
+                                };
+                            }),
+
                         Forms\Components\TextInput::make('name')
                             ->required()
                             ->label('Client Name')
@@ -431,12 +512,24 @@ class ClientResource extends Resource
                     ->colors([
                         'primary' => 'Badan',
                         'warning' => 'Pribadi',
+                        'success' => 'Pemerintah',
+                        'info' => 'Pemungut PPN PMSE Luar Negeri',
                     ])
                     ->icons([
                         'heroicon-o-building-office' => 'Badan',
                         'heroicon-o-user' => 'Pribadi',
+                        'heroicon-o-building-library' => 'Pemerintah',
+                        'heroicon-o-globe-alt' => 'Pemungut PPN PMSE Luar Negeri',
                     ])
                     ->sortable(),
+
+                Tables\Columns\TextColumn::make('client_subtype')
+                    ->label('Sub Tipe')
+                    ->searchable()
+                    ->sortable()
+                    ->wrap()
+                    ->placeholder('-')
+                    ->toggleable(),
                   
                 // PKP STATUS COLUMN
                 Tables\Columns\BadgeColumn::make('pkp_status')
@@ -470,10 +563,23 @@ class ClientResource extends Resource
                 Tables\Filters\SelectFilter::make('client_type')
                     ->label('Tipe Klien')
                     ->options([
-                        'Badan' => 'Badan/Perusahaan',
                         'Pribadi' => 'Pribadi/Perorangan',
+                        'Badan' => 'Badan/Perusahaan',
+                        'Pemerintah' => 'Pemerintah',
+                        'Pemungut PPN PMSE Luar Negeri' => 'Pemungut PPN PMSE Luar Negeri',
                     ])
                     ->native(false),
+
+                Tables\Filters\SelectFilter::make('client_subtype')
+                    ->label('Sub Tipe')
+                    ->options(function () {
+                        return \App\Models\Client::whereNotNull('client_subtype')
+                            ->distinct()
+                            ->pluck('client_subtype', 'client_subtype')
+                            ->toArray();
+                    })
+                    ->searchable()
+                    ->multiple(),
          
                 Tables\Filters\SelectFilter::make('status')
                     ->label('Client Status')
@@ -903,39 +1009,6 @@ class ClientResource extends Resource
             ->deferLoading();
     }
 
-    // public static function getExportStatistics($records = null): array
-    // {
-    //     if ($records) {
-    //         // Statistics for selected records
-    //         $clientsCount = $records->count();
-    //         $withPIC = $records->whereNotNull('pic_id')->count();
-    //         $withCoreTax = $records->filter(function($client) {
-    //             return $client->core_tax_user_id && $client->core_tax_password;
-    //         })->count();
-    //         $activeContracts = $records->filter(function($client) {
-    //             return $client->ppn_contract || $client->pph_contract || $client->bupot_contract;
-    //         })->count();
-    //     } else {
-    //         // Statistics for all records
-    //         $clientsCount = Client::count();
-    //         $withPIC = Client::whereNotNull('pic_id')->count();
-    //         $withCoreTax = Client::whereNotNull('core_tax_user_id')
-    //             ->whereNotNull('core_tax_password')->count();
-    //         $activeContracts = Client::where(function($q) {
-    //             $q->where('ppn_contract', true)
-    //             ->orWhere('pph_contract', true)
-    //             ->orWhere('bupot_contract', true);
-    //         })->count();
-    //     }
-
-    //     return [
-    //         'total_clients' => $clientsCount,
-    //         'with_pic' => $withPIC,
-    //         'with_core_tax' => $withCoreTax,
-    //         'with_contracts' => $activeContracts,
-    //     ];
-    // }
-
     public static function getNavigationBadge(): ?string
     {
         return static::getModel()::where('status', 'Active')->count();
@@ -950,7 +1023,7 @@ class ClientResource extends Resource
     {
         return [
             ProgressRelationManager::class,
-            ApplicationsRelationManager::class, // TAMBAH INI
+            ApplicationsRelationManager::class,
             ClientDocumentsRelationManager::class,
         ];
     }

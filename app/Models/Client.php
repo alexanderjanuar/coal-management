@@ -216,6 +216,14 @@ class Client extends Model
         }
     }
 
+    public function getFormattedClientTypeAttribute(): string
+    {
+        if ($this->client_subtype) {
+            return $this->client_type . ' - ' . $this->client_subtype;
+        }
+        return $this->client_type;
+    }
+
 
     /**
      * Get SOP legal documents yang applicable untuk client ini

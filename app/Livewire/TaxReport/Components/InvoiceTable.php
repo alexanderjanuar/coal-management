@@ -275,7 +275,7 @@ class InvoiceTable extends Component implements HasForms, HasTable
                         $filename = 'Faktur_' . $monthYear . '.xlsx';
                         
                         return \Maatwebsite\Excel\Facades\Excel::download(
-                            new \App\Exports\TaxReportInvoicesExport($this->taxReport),
+                            new \App\Exports\TaxReport\TaxReportInvoicesExport($this->taxReport),
                             $filename
                         );
                     })
@@ -484,7 +484,7 @@ class InvoiceTable extends Component implements HasForms, HasTable
                             $filename = 'Faktur_Terpilih_' . $monthYear . '.xlsx';
                             
                             return \Maatwebsite\Excel\Facades\Excel::download(
-                                new \App\Exports\TaxReportInvoicesExport($this->taxReport, $selectedIds),
+                                new \App\Exports\TaxReport\TaxReportInvoicesExport($this->taxReport, $selectedIds),
                                 $filename
                             );
                         })
