@@ -95,10 +95,10 @@
         {{-- Communications List - Responsive --}}
         <div class="space-y-4 md:space-y-6">
             @forelse($this->communicationsByMonth as $monthYear => $monthCommunications)
-            {{-- Month Header --}}
+            {{-- Month Header - Updated Dark Mode Background --}}
             <div class="space-y-4">
                 <div
-                    class="sticky top-0 z-2 bg-gray-50/95 dark:bg-gray-900/95 backdrop-blur-md py-3 md:py-5 rounded-xl">
+                    class="sticky top-0 z-2 bg-gray-50/95 dark:bg-gray-950/95 backdrop-blur-md py-3 md:py-5 rounded-xl">
                     <h3 class="text-lg md:text-xl font-bold text-gray-700 dark:text-white">
                         {{ $monthYear }}
                     </h3>
@@ -561,8 +561,8 @@
         </div>
     </div>
 
-    {{-- Mark as Completed Modal - Responsive --}}
-    <x-filament::modal id="complete-communication-modal" width="xl sm:2xl md:3xl lg:4xl">
+    {{-- Mark as Completed Modal - Reduced Width: 2xl --}}
+    <x-filament::modal id="complete-communication-modal" width="2xl">
         <x-slot name="heading">
             <div class="flex items-center gap-2">
                 <svg class="w-5 h-5 sm:w-6 sm:h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -593,8 +593,8 @@
         @endif
     </x-filament::modal>
 
-    {{-- View Detail Modal - Responsive --}}
-    <x-filament::modal id="view-communication-modal" width="xl sm:2xl md:3xl lg:4xl xl:5xl">
+    {{-- View Detail Modal - Reduced Width: 3xl, Added Delete Button & View More Divider --}}
+    <x-filament::modal id="view-communication-modal" width="3xl">
         <x-slot name="heading">
             <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                 <div class="flex items-center gap-3">
@@ -662,6 +662,18 @@
                         <span class="text-xs sm:text-sm font-medium text-gray-900 dark:text-white">{{
                             $viewCommunication->project->name ?? '-' }}</span>
                     </div>
+                </div>
+            </div>
+
+            {{-- View More Divider --}}
+            <div class="relative">
+                <div class="absolute inset-0 flex items-center" aria-hidden="true">
+                    <div class="w-full border-t border-gray-200 dark:border-gray-700"></div>
+                </div>
+                <div class="relative flex justify-center">
+                    <span class="px-3 bg-white dark:bg-gray-950 text-xs font-medium text-gray-500 dark:text-gray-400">
+                        Detail Lengkap
+                    </span>
                 </div>
             </div>
 
@@ -791,7 +803,15 @@
             @endif
         </div>
 
-        <div class="mt-4 sm:mt-6 flex justify-end">
+        {{-- Modal Footer with Close and Delete Buttons --}}
+        <div class="mt-4 sm:mt-6 flex flex-col-reverse sm:flex-row justify-between gap-3">
+            {{-- Delete Button (Left) --}}
+            <x-filament::button color="danger" wire:click="confirmDelete({{ $viewCommunication->id }})"
+                wire:confirm="Apakah Anda yakin ingin menghapus komunikasi ini?" class="w-full sm:w-auto">
+                Hapus
+            </x-filament::button>
+
+            {{-- Close Button (Right) --}}
             <x-filament::button color="gray" wire:click="closeViewModal" class="w-full sm:w-auto">
                 Tutup
             </x-filament::button>

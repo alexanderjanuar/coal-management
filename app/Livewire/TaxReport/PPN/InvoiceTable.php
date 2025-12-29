@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Livewire\TaxReport\Components;
+namespace App\Livewire\TaxReport\PPN;
 
 use App\Models\Invoice;
 use App\Models\TaxReport;
@@ -275,7 +275,7 @@ class InvoiceTable extends Component implements HasForms, HasTable
                         $filename = 'Faktur_' . $monthYear . '.xlsx';
                         
                         return \Maatwebsite\Excel\Facades\Excel::download(
-                            new \App\Exports\TaxReport\TaxReportInvoicesExport($this->taxReport),
+                            new \App\Exports\TaxReport\PPN\TaxReportInvoicesExport($this->taxReport),
                             $filename
                         );
                     })
@@ -687,6 +687,6 @@ class InvoiceTable extends Component implements HasForms, HasTable
 
     public function render()
     {
-        return view('livewire.tax-report.components.invoice-table');
+        return view('livewire.tax-report.PPN.invoice-table');
     }
 }

@@ -151,7 +151,7 @@
             <div x-show="activeTab === 'daftar-pajak'" x-transition:enter="transition ease-out duration-200"
                 x-transition:enter-start="opacity-0 translate-y-4" x-transition:enter-end="opacity-100 translate-y-0"
                 x-cloak>
-                @livewire('tax-report.components.invoice-table', ['taxReportId' => $taxReportId], key('invoice-table-' .
+                @livewire('tax-report.PPN.invoice-table', ['taxReportId' => $taxReportId], key('invoice-table-' .
                 $taxReportId))
             </div>
 
@@ -631,14 +631,14 @@
             <div x-show="activeTab === 'kompensasi'" x-transition:enter="transition ease-out duration-200"
                 x-transition:enter-start="opacity-0 translate-y-4" x-transition:enter-end="opacity-100 translate-y-0"
                 x-cloak>
-                @livewire('tax-report.components.tax-report-kompensasi', ['taxReportId' => $taxReportId])
+                @livewire('tax-report.PPN.tax-report-kompensasi', ['taxReportId' => $taxReportId])
             </div>
 
             {{-- Yearly Summary Tab --}}
             <div x-show="activeTab === 'yearly-summary'" x-transition:enter="transition ease-out duration-200"
                 x-transition:enter-start="opacity-0 translate-y-4" x-transition:enter-end="opacity-100 translate-y-0"
                 x-cloak>
-                @livewire('tax-report.components.yearly-summary', ['taxReportId' => $taxReportId, 'clientId' =>
+                @livewire('tax-report.PPN.yearly-summary', ['taxReportId' => $taxReportId, 'clientId' =>
                 $taxReport->client_id])
             </div>
 

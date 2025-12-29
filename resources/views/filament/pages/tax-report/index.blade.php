@@ -805,21 +805,21 @@
             <div x-show="activeTab === 'invoices'" x-transition:enter="transition ease-out duration-200"
                 x-transition:enter-start="opacity-0 transform translate-y-2"
                 x-transition:enter-end="opacity-100 transform translate-y-0" style="display: none;">
-                @livewire('tax-report.components.tax-report-invoices', ['taxReportId' => $record->id])
+                @livewire('tax-report.PPN.tax-report-invoices', ['taxReportId' => $record->id])
             </div>
 
             {{-- PPh Content --}}
             <div x-show="activeTab === 'pph'" x-transition:enter="transition ease-out duration-200"
                 x-transition:enter-start="opacity-0 transform translate-y-2"
                 x-transition:enter-end="opacity-100 transform translate-y-0" style="display: none;">
-                @livewire('tax-report.components.tax-report-pph', ['taxReportId' => $record->id])
+                @livewire('tax-report.pph.tax-report-pph', ['taxReportId' => $record->id])
             </div>
 
             {{-- Bupot Content --}}
             <div x-show="activeTab === 'bupot'" x-transition:enter="transition ease-out duration-200"
                 x-transition:enter-start="opacity-0 transform translate-y-2"
                 x-transition:enter-end="opacity-100 transform translate-y-0" style="display: none;">
-                @livewire('tax-report.components.tax-report-bupot', ['taxReportId' => $record->id])
+                {{-- @livewire('tax-report.components.tax-report-bupot', ['taxReportId' => $record->id]) --}}
             </div>
 
             {{-- ✅ NEW: PPh Badan Content --}}

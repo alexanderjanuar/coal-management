@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Livewire\TaxReport\Components;
+namespace App\Livewire\TaxReport\Pph;
 
 use App\Models\IncomeTax;
 use App\Models\TaxReport;
@@ -215,6 +215,6 @@ class TaxReportPph extends Component
      */
     public function render()
     {
-        return view('livewire.tax-report.components.tax-report-pph');
+        return view('livewire.tax-report.Pph.tax-report-pph');
     }
 }

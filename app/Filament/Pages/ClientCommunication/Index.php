@@ -160,6 +160,43 @@ class Index extends Page implements HasForms
         $this->dispatch('$refresh');
     }
     
+    public function confirmDelete($communicationId)
+    {
+        try {
+            $communication = ClientCommunication::findOrFail($communicationId);
+            
+            // Delete attachments if any
+            if ($communication->attachments && is_array($communication->attachments)) {
+                foreach ($communication->attachments as $attachment) {
+                    if (Storage::exists($attachment)) {
+                        Storage::delete($attachment);
+                    }
+                }
+            }
+            
+            // Delete the communication record
+            $communication->delete();
+            
+            \Filament\Notifications\Notification::make()
+                ->success()
+                ->title('Komunikasi Dihapus')
+                ->body('Komunikasi telah berhasil dihapus.')
+                ->send();
+            
+            $this->closeViewModal();
+            
+            // Refresh the list
+            $this->dispatch('$refresh');
+            
+        } catch (\Exception $e) {
+            \Filament\Notifications\Notification::make()
+                ->danger()
+                ->title('Gagal Menghapus')
+                ->body('Terjadi kesalahan saat menghapus komunikasi.')
+                ->send();
+        }
+    }
+    
     public function openViewModal($communicationId)
     {
         $this->viewCommunication = ClientCommunication::with(['client', 'user', 'project'])

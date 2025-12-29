@@ -1,11 +1,48 @@
 <div class="space-y-6 md:space-y-8" x-data="{ openMonth: null }">
-    {{-- Header --}}
+    {{-- Header with Export Button --}}
     <div>
-        <h2 class="text-lg md:text-xl font-semibold text-gray-900 dark:text-gray-100">Riwayat Laporan PPN</h2>
-        <p class="text-xs md:text-sm text-gray-500 dark:text-gray-400 mt-1">Ringkasan perhitungan pajak bulanan</p>
+        <div class="flex items-center justify-between flex-wrap gap-3">
+            <div>
+                <h2 class="text-lg md:text-xl font-semibold text-gray-900 dark:text-gray-100">
+                    Riwayat Laporan PPN {{ $timelineData['year'] }}
+                </h2>
+                <p class="text-xs md:text-sm text-gray-500 dark:text-gray-400 mt-1">
+                    Ringkasan perhitungan pajak bulanan tahun {{ $timelineData['year'] }}
+                </p>
+            </div>
+            
+            <div class="flex items-center gap-2">
+                {{-- Year Stats Badge --}}
+                <div class="inline-flex items-center gap-2 px-3 py-2 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg">
+                    <svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                    </svg>
+                    <span class="text-sm font-medium text-gray-900 dark:text-gray-100">
+                        {{ $timelineData['statistics']['months_with_reports'] }}/12 Bulan
+                    </span>
+                </div>
+
+                {{-- Export All Button --}}
+                <button 
+                    wire:click="exportYearlyReport"
+                    wire:loading.attr="disabled"
+                    class="inline-flex items-center gap-2 px-4 py-2 bg-primary-600 hover:bg-primary-700 text-white font-semibold text-sm rounded-lg transition-all duration-200 shadow-sm hover:shadow-md disabled:opacity-50 disabled:cursor-not-allowed dark:bg-primary-500 dark:hover:bg-primary-600"
+                >
+                    <svg wire:loading.remove wire:target="exportYearlyReport" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                    </svg>
+                    <svg wire:loading wire:target="exportYearlyReport" class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    <span wire:loading.remove wire:target="exportYearlyReport">Export Excel</span>
+                    <span wire:loading wire:target="exportYearlyReport">Exporting...</span>
+                </button>
+            </div>
+        </div>
     </div>
 
-    {{-- Timeline --}}
+    {{-- Timeline (rest of the existing code remains exactly the same) --}}
     <div class="relative space-y-6 md:space-y-8">
         @foreach($timelineData['timeline'] as $item)
             <div class="relative flex gap-4 md:gap-6" x-data="{ isOpen: {{ $item['is_current'] ? 'true' : 'false' }} }">
@@ -223,7 +260,7 @@
             <svg class="mx-auto w-12 h-12 text-gray-300 dark:text-gray-600 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
             </svg>
-            <h3 class="text-base font-semibold text-gray-900 dark:text-gray-100 mb-1">Belum ada laporan pajak</h3>
+            <h3 class="text-base font-semibold text-gray-900 dark:text-gray-100 mb-1">Belum ada laporan pajak untuk tahun {{ $timelineData['year'] }}</h3>
             <p class="text-sm text-gray-500 dark:text-gray-400">Mulai dengan membuat laporan pajak pertama</p>
         </div>
     @endif
