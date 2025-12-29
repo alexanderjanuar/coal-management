@@ -22,7 +22,8 @@
 
     <div class="tax-filter-container">
         {{-- Single Row Filter: Year Dropdown | Month Pills --}}
-        <div class="mb-6 p-4 bg-gradient-to-b from-gray-50/50 to-white dark:from-gray-800/50 dark:to-gray-900 rounded-xl border border-gray-200/60 dark:border-gray-700/60 shadow-sm">
+        <div
+            class="mb-6 p-4 bg-gradient-to-b from-gray-50/50 to-white dark:from-gray-800/50 dark:to-gray-900 rounded-xl border border-gray-200/60 dark:border-gray-700/60 shadow-sm">
             <div class="flex items-center gap-4 flex-wrap">
                 {{-- Year Dropdown Pill --}}
                 <div class="relative" x-data="{ open: false }" @click.away="open = false">
@@ -37,12 +38,13 @@
                         $yearCount = \App\Models\TaxReport::where('year', $selectedYear ?? now()->year)->count();
                         @endphp
                         @if($yearCount > 0)
-                        <span class="px-2 py-0.5 rounded-md text-xs font-bold bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300">
+                        <span
+                            class="px-2 py-0.5 rounded-md text-xs font-bold bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300">
                             {{ $yearCount }}
                         </span>
                         @endif
-                        <svg class="w-4 h-4 text-gray-400 transition-transform duration-200" :class="{ 'rotate-180': open }" fill="none"
-                            stroke="currentColor" viewBox="0 0 24 24">
+                        <svg class="w-4 h-4 text-gray-400 transition-transform duration-200"
+                            :class="{ 'rotate-180': open }" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
                         </svg>
                     </button>
@@ -63,27 +65,29 @@
                             @endphp
 
                             <button wire:click="$set('selectedYear', {{ $year }})" @click="open = false"
-                                @class([
-                                    'w-full flex items-center justify-between px-4 py-3 text-sm transition-all duration-150 group',
-                                    'bg-gray-50 text-gray-900 font-semibold dark:bg-gray-700/50 dark:text-white' => $isSelected,
-                                    'text-gray-700 hover:bg-gray-50 dark:text-gray-300 dark:hover:bg-gray-700/30' => !$isSelected,
+                                @class([ 'w-full flex items-center justify-between px-4 py-3 text-sm transition-all duration-150 group'
+                                , 'bg-gray-50 text-gray-900 font-semibold dark:bg-gray-700/50 dark:text-white'=>
+                                $isSelected,
+                                'text-gray-700 hover:bg-gray-50 dark:text-gray-300 dark:hover:bg-gray-700/30' =>
+                                !$isSelected,
                                 ])
                                 >
                                 <div class="flex items-center gap-2.5">
                                     <span class="font-semibold">{{ $year }}</span>
                                     @if($isCurrent)
                                     <span class="flex h-2 w-2">
-                                        <span class="absolute inline-flex h-2 w-2 rounded-full bg-green-400 opacity-75 {{ !$isSelected ? 'animate-ping' : '' }}"></span>
+                                        <span
+                                            class="absolute inline-flex h-2 w-2 rounded-full bg-green-400 opacity-75 {{ !$isSelected ? 'animate-ping' : '' }}"></span>
                                         <span class="relative inline-flex h-2 w-2 rounded-full bg-green-500"></span>
                                     </span>
                                     @endif
                                 </div>
                                 @if($count > 0)
-                                <span @class([
-                                    'text-xs px-2.5 py-1 rounded-md font-bold',
-                                    'bg-gray-200 text-gray-900 dark:bg-gray-600 dark:text-white' => $isSelected,
-                                    'bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-400 group-hover:bg-gray-200 dark:group-hover:bg-gray-600' => !$isSelected,
-                                ])>
+                                <span @class([ 'text-xs px-2.5 py-1 rounded-md font-bold'
+                                    , 'bg-gray-200 text-gray-900 dark:bg-gray-600 dark:text-white'=> $isSelected,
+                                    'bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-400
+                                    group-hover:bg-gray-200 dark:group-hover:bg-gray-600' => !$isSelected,
+                                    ])>
                                     {{ $count }}
                                 </span>
                                 @endif
@@ -95,7 +99,8 @@
 
                 {{-- Divider --}}
                 @if($selectedYear)
-                <div class="h-8 w-px bg-gradient-to-b from-transparent via-gray-300 to-transparent dark:via-gray-600"></div>
+                <div class="h-8 w-px bg-gradient-to-b from-transparent via-gray-300 to-transparent dark:via-gray-600">
+                </div>
 
                 {{-- Month Pills --}}
                 <div class="flex items-center gap-2 flex-wrap">
@@ -126,26 +131,30 @@
                     @endphp
 
                     <button wire:click="$set('selectedMonth', '{{ $monthFull }}')" @if(!$hasData) disabled @endif
-                        @class([
-                            'relative inline-flex items-center gap-2 px-3.5 py-2 rounded-lg text-sm font-semibold transition-all duration-200 group',
-                            'bg-gray-900 text-white shadow-md hover:shadow-lg hover:bg-gray-800 dark:bg-gray-100 dark:text-gray-900 dark:hover:bg-white' => $isSelected && $hasData,
-                            'bg-white text-gray-700 border border-gray-200 hover:border-gray-300 hover:shadow-sm dark:bg-gray-800 dark:text-gray-300 dark:border-gray-700 dark:hover:border-gray-600' => !$isSelected && $hasData,
-                            'bg-gray-50/50 text-gray-300 border border-gray-100 cursor-not-allowed dark:bg-gray-900/50 dark:text-gray-600 dark:border-gray-800' => !$hasData,
+                        @class([ 'relative inline-flex items-center gap-2 px-3.5 py-2 rounded-lg text-sm font-semibold transition-all duration-200 group'
+                        , 'bg-teal-600 text-white shadow-md hover:shadow-lg hover:bg-teal-700 dark:bg-teal-500 dark:text-white dark:hover:bg-teal-600'=>
+                        $isSelected && $hasData,
+                        'bg-white text-gray-700 hover:bg-gray-50 hover:shadow-sm dark:bg-gray-800 dark:text-gray-300
+                        dark:hover:bg-gray-700/50' => !$isSelected && $hasData,
+                        'bg-gray-50/50 text-gray-300 cursor-not-allowed dark:bg-gray-900/50 dark:text-gray-600' =>
+                        !$hasData,
                         ])
                         >
                         @if($isCurrent && $hasData)
                         <span class="flex h-2 w-2 absolute -top-1 -right-1">
-                            <span class="absolute inline-flex h-full w-full rounded-full {{ $isSelected ? 'bg-white opacity-75' : 'bg-green-500 opacity-75 animate-ping' }}"></span>
-                            <span class="relative inline-flex h-2 w-2 rounded-full {{ $isSelected ? 'bg-white' : 'bg-green-500' }}"></span>
+                            <span
+                                class="absolute inline-flex h-full w-full rounded-full {{ $isSelected ? 'bg-white opacity-75' : 'bg-green-500 opacity-75 animate-ping' }}"></span>
+                            <span
+                                class="relative inline-flex h-2 w-2 rounded-full {{ $isSelected ? 'bg-white' : 'bg-green-500' }}"></span>
                         </span>
                         @endif
                         <span class="font-bold tracking-wide">{{ $monthShort }}</span>
                         @if($hasData)
-                        <span @class([
-                            'px-2 py-0.5 rounded-md text-xs font-bold leading-none',
-                            'bg-gray-800 text-gray-100 dark:bg-white dark:text-gray-900' => $isSelected,
-                            'bg-gray-100 text-gray-600 group-hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-400 dark:group-hover:bg-gray-600' => !$isSelected,
-                        ])>
+                        <span @class([ 'px-2 py-0.5 rounded-md text-xs font-bold leading-none'
+                            , 'bg-teal-700 text-teal-50 dark:bg-teal-400 dark:text-teal-950'=> $isSelected,
+                            'bg-gray-100 text-gray-600 group-hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-400
+                            dark:group-hover:bg-gray-600' => !$isSelected,
+                            ])>
                             {{ $count }}
                         </span>
                         @endif
@@ -155,7 +164,7 @@
                     {{-- Reset Month Filter Button --}}
                     @if($selectedMonth)
                     <button wire:click="$set('selectedMonth', null)"
-                        class="inline-flex items-center gap-2 px-3.5 py-2 rounded-lg text-sm font-semibold bg-gray-100 text-gray-700 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600 transition-all duration-200 border border-gray-200 dark:border-gray-600"
+                        class="inline-flex items-center gap-2 px-3.5 py-2 rounded-lg text-sm font-semibold bg-gray-100 text-gray-700 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600 transition-all duration-200"
                         title="Reset month filter">
                         <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5"
