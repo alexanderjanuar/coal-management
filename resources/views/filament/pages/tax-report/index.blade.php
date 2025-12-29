@@ -155,8 +155,7 @@
 
         {{-- Client Header - Responsive --}}
         <div class="page-transition mb-3 md:mb-4">
-            <div
-                class="">
+            <div class="">
                 <div class="flex flex-col gap-3 p-3 md:flex-row md:items-center md:justify-between md:px-6 md:py-4">
                     {{-- Client Info --}}
                     <div class="flex items-center gap-3">
@@ -323,138 +322,78 @@
 
         {{-- 12-Month Navigation Tabs - Responsive --}}
         <div class="mb-3 md:mb-4">
-            <div    
+            <div
                 class="overflow-hidden rounded-lg md:rounded-xl bg-white shadow-sm ring-1 ring-gray-900/5 dark:bg-gray-900 dark:ring-white/10">
-                <div class="p-2 md:p-3">
-                    @php
-                    $months = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September',
-                    'October', 'November', 'December'];
-                    $currentYear = $record->created_at->format('Y');
+                <div class="p-2 md:p-3 space-y-3">
+                    {{-- Year Navigation --}}
+                    {{-- Year Navigation --}}
+                    <div class="flex items-center justify-between gap-2">
+                        <h3 class="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                            Navigasi Tahun</h3>
 
-                    // EFFICIENT: Single query with eager loading and minimal columns
-                    $yearReports = \App\Models\TaxReport::where('client_id', $record->client_id)
-                    ->whereYear('created_at', $currentYear)
-                    ->with(['taxCalculationSummaries' => function($query) {
-                    $query->select('id', 'tax_report_id', 'tax_type', 'report_status');
-                    }])
-                    ->withCount(['invoices', 'incomeTaxs', 'bupots'])
-                    ->select('id', 'client_id', 'month', 'created_at')
-                    ->get()
-                    ->keyBy('month');
-                    @endphp
+                        @php
+                        // Get available years for this client
+                        $availableYears = \App\Models\TaxReport::where('client_id', $record->client_id)
+                        ->select('year')
+                        ->distinct()
+                        ->orderBy('year', 'desc')
+                        ->pluck('year')
+                        ->toArray();
 
-                    {{-- Mobile: Horizontal scrollable, Desktop: Grid --}}
-                    <div class="month-scroll overflow-x-auto md:overflow-x-visible">
-                        <div class="flex gap-1.5 md:grid md:grid-cols-12 md:gap-2" style="min-width: max-content;">
-                            @foreach($months as $index => $monthName)
+                        if (empty($availableYears)) {
+                        $availableYears = [$record->year ?? $record->created_at->year];
+                        }
+
+                        $currentRecordYear = $record->year ?? $record->created_at->year;
+
+                        // Pre-load ALL year-month reports for this client
+                        $allReports = \App\Models\TaxReport::where('client_id', $record->client_id)
+                        ->with(['taxCalculationSummaries' => function($query) {
+                        $query->select('id', 'tax_report_id', 'tax_type', 'report_status');
+                        }])
+                        ->withCount(['invoices', 'incomeTaxs', 'bupots'])
+                        ->select('id', 'client_id', 'month', 'year')
+                        ->get()
+                        ->groupBy('year');
+                        @endphp
+
+                        <div class="flex items-center gap-1">
+                            @foreach($availableYears as $year)
                             @php
-                            $monthReport = $yearReports->get($monthName);
-                            $hasReport = !is_null($monthReport);
-                            $isCurrent = $monthName === $record->month;
+                            $yearReportCount = \App\Models\TaxReport::where('client_id', $record->client_id)
+                            ->where('year', $year)
+                            ->count();
+                            $isCurrentYear = $year == $currentRecordYear;
 
-                            // Use counts from withCount (already loaded, no extra query)
-                            $hasActivity = $hasReport && (
-                            ($monthReport->invoices_count ?? 0) > 0 ||
-                            ($monthReport->income_taxs_count ?? 0) > 0 ||
-                            ($monthReport->bupots_count ?? 0) > 0
-                            );
+                            // Get first month report for this year (ordered by calendar month)
+                            $firstMonthReport = \App\Models\TaxReport::where('client_id', $record->client_id)
+                            ->where('year', $year)
+                            ->orderByRaw("FIELD(month, 'January', 'February', 'March', 'April', 'May', 'June', 'July',
+                            'August', 'September', 'October', 'November', 'December')")
+                            ->first();
                             @endphp
 
-                            @if($hasReport)
-                            @php
-                            // Check if ALL tax types are reported using summaries
-                            $monthSummaries = $monthReport->taxCalculationSummaries ?? collect();
-                            $ppnSum = $monthSummaries->firstWhere('tax_type', 'ppn');
-                            $pphSum = $monthSummaries->firstWhere('tax_type', 'pph');
-                            $bupotSum = $monthSummaries->firstWhere('tax_type', 'bupot');
-                            $pphBadanSum = $monthSummaries->firstWhere('tax_type', 'pph_badan');
-
-                            $ppnRep = $ppnSum && $ppnSum->report_status === 'Sudah Lapor';
-                            $pphRep = $pphSum && $pphSum->report_status === 'Sudah Lapor';
-                            $bupotRep = $bupotSum && $bupotSum->report_status === 'Sudah Lapor';
-                            $pphBadanRep = $pphBadanSum && $pphBadanSum->report_status === 'Sudah Lapor';
-
-                            $monthIsReported = $ppnRep && $pphRep && $bupotRep && $pphBadanRep;
-                            @endphp
-                            <a href="{{ route('filament.admin.resources.tax-reports.view', $monthReport) }}"
+                            @if($firstMonthReport)
+                            <a href="{{ route('filament.admin.resources.tax-reports.view', $firstMonthReport) }}"
                                 wire:navigate
-                                class="group relative flex flex-col items-center justify-center overflow-hidden rounded-md md:rounded-lg border-2 px-2 py-2 md:px-2 md:py-3 transition-all duration-200 flex-shrink-0 w-16 md:w-auto {{ $isCurrent ? 'border-blue-500 bg-blue-50 shadow-sm dark:border-blue-400 dark:bg-blue-900/20' : 'border-gray-200 bg-white hover:border-blue-300 hover:bg-blue-50/50 hover:shadow-sm dark:border-gray-700 dark:bg-gray-800/50 dark:hover:border-blue-600 dark:hover:bg-blue-900/10' }}">
-
-                                {{-- Ripple effect on hover --}}
-                                <div
-                                    class="absolute inset-0 scale-0 rounded-lg bg-blue-400/10 transition-transform duration-300 group-hover:scale-100">
-                                </div>
-
-                                {{-- Reporting Status Indicator --}}
-                                <div class="absolute left-0.5 top-0.5 md:left-1 md:top-1 z-10">
-                                    @if($monthIsReported)
-                                    <div class="flex h-3 w-3 md:h-4 md:w-4 items-center justify-center rounded-full bg-green-500 shadow-sm"
-                                        title="Sudah Lapor">
-                                        <x-filament::icon icon="heroicon-m-check"
-                                            class="h-1.5 w-1.5 md:h-2.5 md:w-2.5 text-white" />
-                                    </div>
-                                    @else
-                                    <div class="flex h-3 w-3 md:h-4 md:w-4 items-center justify-center rounded-full bg-orange-500 shadow-sm"
-                                        title="Belum Lapor">
-                                        <x-filament::icon icon="heroicon-m-exclamation-triangle"
-                                            class="h-1.5 w-1.5 md:h-2.5 md:w-2.5 text-white" />
-                                    </div>
-                                    @endif
-                                </div>
-
-                                {{-- Activity Indicator --}}
-                                @if($hasActivity)
-                                <div class="absolute right-0.5 top-0.5 md:right-1 md:top-1 z-10">
-                                    <span class="flex h-1.5 w-1.5 md:h-2 md:w-2">
-                                        <span
-                                            class="absolute inline-flex h-full w-full animate-ping rounded-full {{ $isCurrent ? 'bg-blue-400' : 'bg-green-400' }} opacity-75"></span>
-                                        <span
-                                            class="relative inline-flex h-1.5 w-1.5 md:h-2 md:w-2 rounded-full {{ $isCurrent ? 'bg-blue-500' : 'bg-green-500' }}"></span>
-                                    </span>
-                                </div>
+                                class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-semibold transition-all duration-200 {{ $isCurrentYear ? 'bg-primary-600 text-white shadow-sm' : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50 dark:bg-gray-800 dark:text-gray-300 dark:border-gray-600 dark:hover:bg-gray-700' }}">
+                                @if($isCurrentYear)
+                                <span class="w-1.5 h-1.5 rounded-full bg-white"></span>
                                 @endif
-
+                                <span>{{ $year }}</span>
                                 <span
-                                    class="relative z-10 text-[9px] md:text-[10px] font-semibold uppercase tracking-wider {{ $isCurrent ? 'text-blue-700 dark:text-blue-300' : 'text-gray-600 dark:text-gray-400' }}">
-                                    {{ substr($monthName, 0, 3) }}
+                                    class="px-1.5 py-0.5 rounded-md text-xs font-semibold {{ $isCurrentYear ? 'bg-primary-700 text-primary-100' : 'bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-400' }}">
+                                    {{ $yearReportCount }}
                                 </span>
-                                <span
-                                    class="relative z-10 mt-0.5 text-xs font-bold {{ $isCurrent ? 'text-blue-900 dark:text-blue-100' : 'text-gray-900 dark:text-white' }}">
-                                    {{ $index + 1 }}
-                                </span>
-
-                                {{-- Tooltip on hover (hidden on mobile touch) --}}
-                                <div class="absolute left-1/2 top-full z-50 mt-2 hidden min-w-[140px] -translate-x-1/2 rounded-lg bg-gray-900 px-3 py-2 text-xs text-white shadow-xl group-hover:block dark:bg-gray-800 md:block"
-                                    x-show="!isMobile">
-                                    <div class="space-y-0.5">
-                                        <div class="flex items-center justify-between gap-3">
-                                            <span class="text-gray-400">PPN:</span>
-                                            <span class="font-semibold">{{ $monthReport->invoices_count ?? 0 }}</span>
-                                        </div>
-                                        <div class="flex items-center justify-between gap-3">
-                                            <span class="text-gray-400">PPh:</span>
-                                            <span class="font-semibold">{{ $monthReport->income_taxs_count ?? 0
-                                                }}</span>
-                                        </div>
-                                        <div class="flex items-center justify-between gap-3">
-                                            <span class="text-gray-400">Bupot:</span>
-                                            <span class="font-semibold">{{ $monthReport->bupots_count ?? 0 }}</span>
-                                        </div>
-                                    </div>
-                                    <div
-                                        class="absolute -top-1 left-1/2 h-2 w-2 -translate-x-1/2 rotate-45 bg-gray-900 dark:bg-gray-800">
-                                    </div>
-                                </div>
                             </a>
                             @else
+                            {{-- Show disabled state if no reports exist for that year --}}
                             <div
-                                class="flex flex-col items-center justify-center rounded-md md:rounded-lg border-2 border-dashed border-gray-200 bg-gray-50 px-2 py-2 md:px-2 md:py-3 opacity-50 dark:border-gray-800 dark:bg-gray-900/20 flex-shrink-0 w-16 md:w-auto">
+                                class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-semibold bg-gray-50 text-gray-400 border border-gray-200 cursor-not-allowed dark:bg-gray-900 dark:text-gray-600 dark:border-gray-800">
+                                <span>{{ $year }}</span>
                                 <span
-                                    class="text-[9px] md:text-[10px] font-semibold uppercase tracking-wider text-gray-400 dark:text-gray-600">
-                                    {{ substr($monthName, 0, 3) }}
-                                </span>
-                                <span class="mt-0.5 text-xs font-bold text-gray-400 dark:text-gray-600">
-                                    {{ $index + 1 }}
+                                    class="px-1.5 py-0.5 rounded-md text-xs font-semibold bg-gray-100 text-gray-400 dark:bg-gray-800 dark:text-gray-600">
+                                    0
                                 </span>
                             </div>
                             @endif
@@ -462,24 +401,164 @@
                         </div>
                     </div>
 
-                    {{-- Legend - Responsive --}}
-                    <div
-                        class="mt-2 md:mt-3 flex flex-wrap items-center justify-center gap-x-3 md:gap-x-6 gap-y-1 md:gap-y-2 text-xs">
-                        <div class="flex items-center gap-1 md:gap-1.5">
-                            <div class="h-2 w-2 rounded-full bg-blue-500"></div>
-                            <span class="text-gray-600 dark:text-gray-400 text-[10px] md:text-xs">Bulan Aktif</span>
+                    {{-- Divider --}}
+                    <div class="border-t border-gray-200 dark:border-gray-700"></div>
+
+                    {{-- Month Navigation --}}
+                    <div>
+                        <h3
+                            class="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-2">
+                            Navigasi Bulan - {{ $currentRecordYear }}
+                        </h3>
+
+                        @php
+                        $months = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August',
+                        'September',
+                        'October', 'November', 'December'];
+
+                        // Get reports for current year
+                        $yearReports = $allReports->get($currentRecordYear, collect())->keyBy('month');
+                        @endphp
+
+                        {{-- Mobile: Horizontal scrollable, Desktop: Grid --}}
+                        <div class="month-scroll overflow-x-auto md:overflow-x-visible">
+                            <div class="flex gap-1.5 md:grid md:grid-cols-12 md:gap-2" style="min-width: max-content;">
+                                @foreach($months as $index => $monthName)
+                                @php
+                                $monthReport = $yearReports->get($monthName);
+                                $hasReport = !is_null($monthReport);
+                                $isCurrent = $monthName === $record->month && $currentRecordYear == ($record->year ??
+                                $record->created_at->year);
+
+                                if ($hasReport) {
+                                $hasActivity = ($monthReport->invoices_count ?? 0) > 0 ||
+                                ($monthReport->income_taxs_count ?? 0) > 0 ||
+                                ($monthReport->bupots_count ?? 0) > 0;
+
+                                $monthSummaries = $monthReport->taxCalculationSummaries ?? collect();
+                                $ppnSum = $monthSummaries->firstWhere('tax_type', 'ppn');
+                                $pphSum = $monthSummaries->firstWhere('tax_type', 'pph');
+                                $bupotSum = $monthSummaries->firstWhere('tax_type', 'bupot');
+                                $pphBadanSum = $monthSummaries->firstWhere('tax_type', 'pph_badan');
+
+                                $monthIsReported = ($ppnSum && $ppnSum->report_status === 'Sudah Lapor') &&
+                                ($pphSum && $pphSum->report_status === 'Sudah Lapor') &&
+                                ($bupotSum && $bupotSum->report_status === 'Sudah Lapor') &&
+                                ($pphBadanSum && $pphBadanSum->report_status === 'Sudah Lapor');
+                                } else {
+                                $hasActivity = false;
+                                $monthIsReported = false;
+                                }
+                                @endphp
+
+                                @if($hasReport)
+                                <a href="{{ route('filament.admin.resources.tax-reports.view', $monthReport) }}"
+                                    wire:navigate
+                                    class="group relative flex flex-col items-center justify-center overflow-hidden rounded-md md:rounded-lg border-2 px-2 py-2 md:px-2 md:py-3 transition-all duration-200 flex-shrink-0 w-16 md:w-auto {{ $isCurrent ? 'border-blue-500 bg-blue-50 shadow-sm dark:border-blue-400 dark:bg-blue-900/20' : 'border-gray-200 bg-white hover:border-blue-300 hover:bg-blue-50/50 hover:shadow-sm dark:border-gray-700 dark:bg-gray-800/50 dark:hover:border-blue-600 dark:hover:bg-blue-900/10' }}">
+
+                                    {{-- Ripple effect on hover --}}
+                                    <div
+                                        class="absolute inset-0 scale-0 rounded-lg bg-blue-400/10 transition-transform duration-300 group-hover:scale-100">
+                                    </div>
+
+                                    {{-- Reporting Status Indicator --}}
+                                    <div class="absolute left-0.5 top-0.5 md:left-1 md:top-1 z-10">
+                                        @if($monthIsReported)
+                                        <div class="flex h-3 w-3 md:h-4 md:w-4 items-center justify-center rounded-full bg-green-500 shadow-sm"
+                                            title="Sudah Lapor">
+                                            <x-filament::icon icon="heroicon-m-check"
+                                                class="h-1.5 w-1.5 md:h-2.5 md:w-2.5 text-white" />
+                                        </div>
+                                        @else
+                                        <div class="flex h-3 w-3 md:h-4 md:w-4 items-center justify-center rounded-full bg-orange-500 shadow-sm"
+                                            title="Belum Lapor">
+                                            <x-filament::icon icon="heroicon-m-exclamation-triangle"
+                                                class="h-1.5 w-1.5 md:h-2.5 md:w-2.5 text-white" />
+                                        </div>
+                                        @endif
+                                    </div>
+
+                                    {{-- Activity Indicator --}}
+                                    @if($hasActivity)
+                                    <div class="absolute right-0.5 top-0.5 md:right-1 md:top-1 z-10">
+                                        <span class="flex h-1.5 w-1.5 md:h-2 md:w-2">
+                                            <span
+                                                class="absolute inline-flex h-full w-full animate-ping rounded-full {{ $isCurrent ? 'bg-blue-400' : 'bg-green-400' }} opacity-75"></span>
+                                            <span
+                                                class="relative inline-flex h-1.5 w-1.5 md:h-2 md:w-2 rounded-full {{ $isCurrent ? 'bg-blue-500' : 'bg-green-500' }}"></span>
+                                        </span>
+                                    </div>
+                                    @endif
+
+                                    <span
+                                        class="relative z-10 text-[9px] md:text-[10px] font-semibold uppercase tracking-wider {{ $isCurrent ? 'text-blue-700 dark:text-blue-300' : 'text-gray-600 dark:text-gray-400' }}">
+                                        {{ substr($monthName, 0, 3) }}
+                                    </span>
+                                    <span
+                                        class="relative z-10 mt-0.5 text-xs font-bold {{ $isCurrent ? 'text-blue-900 dark:text-blue-100' : 'text-gray-900 dark:text-white' }}">
+                                        {{ $index + 1 }}
+                                    </span>
+
+                                    {{-- Tooltip on hover --}}
+                                    <div class="absolute left-1/2 top-full z-50 mt-2 hidden min-w-[140px] -translate-x-1/2 rounded-lg bg-gray-900 px-3 py-2 text-xs text-white shadow-xl group-hover:block dark:bg-gray-800 md:block"
+                                        x-show="!isMobile">
+                                        <div class="space-y-0.5">
+                                            <div class="flex items-center justify-between gap-3">
+                                                <span class="text-gray-400">PPN:</span>
+                                                <span class="font-semibold">{{ $monthReport->invoices_count ?? 0
+                                                    }}</span>
+                                            </div>
+                                            <div class="flex items-center justify-between gap-3">
+                                                <span class="text-gray-400">PPh:</span>
+                                                <span class="font-semibold">{{ $monthReport->income_taxs_count ?? 0
+                                                    }}</span>
+                                            </div>
+                                            <div class="flex items-center justify-between gap-3">
+                                                <span class="text-gray-400">Bupot:</span>
+                                                <span class="font-semibold">{{ $monthReport->bupots_count ?? 0 }}</span>
+                                            </div>
+                                        </div>
+                                        <div
+                                            class="absolute -top-1 left-1/2 h-2 w-2 -translate-x-1/2 rotate-45 bg-gray-900 dark:bg-gray-800">
+                                        </div>
+                                    </div>
+                                </a>
+                                @else
+                                <div
+                                    class="flex flex-col items-center justify-center rounded-md md:rounded-lg border-2 border-dashed border-gray-200 bg-gray-50 px-2 py-2 md:px-2 md:py-3 opacity-50 dark:border-gray-800 dark:bg-gray-900/20 flex-shrink-0 w-16 md:w-auto">
+                                    <span
+                                        class="text-[9px] md:text-[10px] font-semibold uppercase tracking-wider text-gray-400 dark:text-gray-600">
+                                        {{ substr($monthName, 0, 3) }}
+                                    </span>
+                                    <span class="mt-0.5 text-xs font-bold text-gray-400 dark:text-gray-600">
+                                        {{ $index + 1 }}
+                                    </span>
+                                </div>
+                                @endif
+                                @endforeach
+                            </div>
                         </div>
-                        <div class="flex items-center gap-1 md:gap-1.5">
-                            <div class="h-2 w-2 rounded-full bg-green-500"></div>
-                            <span class="text-gray-600 dark:text-gray-400 text-[10px] md:text-xs">Sudah Lapor</span>
-                        </div>
-                        <div class="flex items-center gap-1 md:gap-1.5">
-                            <div class="h-2 w-2 rounded-full bg-orange-500"></div>
-                            <span class="text-gray-600 dark:text-gray-400 text-[10px] md:text-xs">Belum Lapor</span>
-                        </div>
-                        <div class="flex items-center gap-1 md:gap-1.5">
-                            <div class="h-2 w-2 rounded-full border-2 border-dashed border-gray-300"></div>
-                            <span class="text-gray-600 dark:text-gray-400 text-[10px] md:text-xs">Belum Ada Data</span>
+
+                        {{-- Legend - Responsive --}}
+                        <div
+                            class="mt-2 md:mt-3 flex flex-wrap items-center justify-center gap-x-3 md:gap-x-6 gap-y-1 md:gap-y-2 text-xs">
+                            <div class="flex items-center gap-1 md:gap-1.5">
+                                <div class="h-2 w-2 rounded-full bg-blue-500"></div>
+                                <span class="text-gray-600 dark:text-gray-400 text-[10px] md:text-xs">Bulan Aktif</span>
+                            </div>
+                            <div class="flex items-center gap-1 md:gap-1.5">
+                                <div class="h-2 w-2 rounded-full bg-green-500"></div>
+                                <span class="text-gray-600 dark:text-gray-400 text-[10px] md:text-xs">Sudah Lapor</span>
+                            </div>
+                            <div class="flex items-center gap-1 md:gap-1.5">
+                                <div class="h-2 w-2 rounded-full bg-orange-500"></div>
+                                <span class="text-gray-600 dark:text-gray-400 text-[10px] md:text-xs">Belum Lapor</span>
+                            </div>
+                            <div class="flex items-center gap-1 md:gap-1.5">
+                                <div class="h-2 w-2 rounded-full border-2 border-dashed border-gray-300"></div>
+                                <span class="text-gray-600 dark:text-gray-400 text-[10px] md:text-xs">Belum Ada
+                                    Data</span>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -488,8 +567,7 @@
 
         {{-- Tax Type Navigation Tabs - Responsive Redesign --}}
         <div class="mb-3 md:mb-4">
-            <div
-                class="overflow-hidden">
+            <div class="overflow-hidden">
                 <div class="p-2 md:p-3">
                     <div class="grid grid-cols-2 md:grid-cols-4 gap-2 md:gap-3">
                         {{-- PPN Tab --}}
