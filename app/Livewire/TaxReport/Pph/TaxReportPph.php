@@ -210,12 +210,12 @@ class TaxReportPph extends Component
         ]);
     }
 
-    
+
     /**
      * Render the component
      */
     public function render()
     {
-        return view('livewire.tax-report.Pph.tax-report-pph');
+        return view('livewire.tax-report.pph.tax-report-pph');
     }
 }
