@@ -42,7 +42,8 @@ class CreateTaxReport extends CreateRecord
                                     ->where(function ($q) {
                                         $q->where('ppn_contract', true)
                                           ->orWhere('pph_contract', true)
-                                          ->orWhere('bupot_contract', true);
+                                          ->orWhere('bupot_contract', true)
+                                          ->orWhere('pph_badan_contract', true);
                                     })
                             )
                             ->searchable()
@@ -52,7 +53,7 @@ class CreateTaxReport extends CreateRecord
                                 $set('months', []);
                                 $set('month', null);
                             })
-                            ->helperText('Hanya menampilkan klien aktif dengan kontrak PPN, PPH, atau Bupot')
+                            ->helperText('Hanya menampilkan klien aktif dengan kontrak PPN, PPH, Bupot, atau PPh Badan')
                             ->createOptionForm([
                                 TextInput::make('name')
                                     ->label('Nama')
@@ -77,6 +78,23 @@ class CreateTaxReport extends CreateRecord
                                     ])
                                     ->default('Active'),
                                 ]),
+
+                        // Year selection - moved to top for better UX
+                        Select::make('year')
+                            ->label('Tahun')
+                            ->options(function () {
+                                $currentYear = date('Y');
+                                $years = [];
+                                for ($i = $currentYear - 2; $i <= $currentYear + 1; $i++) {
+                                    $years[$i] = $i;
+                                }
+                                return $years;
+                            })
+                            ->default(date('Y'))
+                            ->required()
+                            ->native(false)
+                            ->reactive()
+                            ->helperText('Tahun untuk laporan pajak'),
 
                         Toggle::make('create_multiple')
                             ->label('Buat Multiple Bulan')
@@ -138,23 +156,6 @@ class CreateTaxReport extends CreateRecord
                             ->helperText('Anda bisa memilih beberapa bulan untuk membuat laporan pajak sekaligus')
                             ->reactive(),
 
-                        // Year selection for better organization
-                        Select::make('year')
-                            ->label('Tahun')
-                            ->options(function () {
-                                $currentYear = date('Y');
-                                $years = [];
-                                for ($i = $currentYear - 2; $i <= $currentYear + 1; $i++) {
-                                    $years[$i] = $i;
-                                }
-                                return $years;
-                            })
-                            ->default(date('Y'))
-                            ->required()
-                            ->native(false)
-                            ->helperText('Tahun untuk laporan pajak (untuk organisasi yang lebih baik)')
-                            ->reactive(),
-
                         // Show preview using blade template
                         Forms\Components\Placeholder::make('tax_report_preview')
                             ->label('')
@@ -168,14 +169,14 @@ class CreateTaxReport extends CreateRecord
                                 $client = $clientId ? \App\Models\Client::find($clientId) : null;
                                 $clientName = $client ? $client->name : 'Unknown Client';
                                 
-                                // Check existing reports
+                                // Check existing reports using the year column
                                 $existingReports = [];
                                 $newMonths = $filteredMonths;
                                 
                                 if ($clientId && !empty($filteredMonths)) {
                                     $existingReports = TaxReport::where('client_id', $clientId)
+                                        ->where('year', $year)
                                         ->whereIn('month', $filteredMonths)
-                                        ->whereYear('created_at', $year)
                                         ->pluck('month')
                                         ->toArray();
                                     
@@ -215,10 +216,10 @@ class CreateTaxReport extends CreateRecord
 
     protected function createSingleTaxReport(int $clientId, string $month, int $year): Model
     {
-        // Check if already exists
+        // Check if already exists using year column
         $existing = TaxReport::where('client_id', $clientId)
             ->where('month', $month)
-            ->whereYear('created_at', $year)
+            ->where('year', $year)
             ->first();
 
         if ($existing) {
@@ -233,9 +234,8 @@ class CreateTaxReport extends CreateRecord
         $taxReport = TaxReport::create([
             'client_id' => $clientId,
             'month' => $month,
+            'year' => $year,
             'created_by' => auth()->id(),
-            'created_at' => now()->setYear($year),
-            'updated_at' => now(),
         ]);
 
         Notification::make()
@@ -255,10 +255,10 @@ class CreateTaxReport extends CreateRecord
             throw new \Exception('Tidak ada bulan yang valid dipilih');
         }
 
-        // Check existing reports
+        // Check existing reports using year column
         $existingReports = TaxReport::where('client_id', $clientId)
+            ->where('year', $year)
             ->whereIn('month', $filteredMonths)
-            ->whereYear('created_at', $year)
             ->pluck('month')
             ->toArray();
 
@@ -273,24 +273,22 @@ class CreateTaxReport extends CreateRecord
             
             // Return the first existing report
             return TaxReport::where('client_id', $clientId)
+                ->where('year', $year)
                 ->whereIn('month', $existingReports)
-                ->whereYear('created_at', $year)
                 ->first();
         }
 
         $createdReports = [];
         $userId = auth()->id();
-        $now = now();
 
         // Use transaction for data integrity
-        DB::transaction(function () use ($clientId, $newMonths, $year, $userId, $now, &$createdReports) {
+        DB::transaction(function () use ($clientId, $newMonths, $year, $userId, &$createdReports) {
             foreach ($newMonths as $month) {
                 $createdReports[] = TaxReport::create([
                     'client_id' => $clientId,
                     'month' => $month,
+                    'year' => $year,
                     'created_by' => $userId,
-                    'created_at' => $now->copy()->setYear($year),
-                    'updated_at' => $now,
                 ]);
             }
         });
@@ -298,7 +296,7 @@ class CreateTaxReport extends CreateRecord
         $createdCount = count($createdReports);
         $skippedCount = count($existingReports);
         
-        $message = "Berhasil membuat {$createdCount} laporan pajak";
+        $message = "Berhasil membuat {$createdCount} laporan pajak untuk tahun {$year}";
         if ($skippedCount > 0) {
             $message .= " ({$skippedCount} sudah ada dan dilewati)";
         }

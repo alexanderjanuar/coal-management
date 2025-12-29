@@ -428,8 +428,9 @@ class TaxCalculationSummary extends Model
      */
     protected function calculatePph($taxReport): array
     {
-        // TODO: Implement berdasarkan IncomeTax model
-        $pajakTerutang = $taxReport->incomeTaxs()->sum('amount');
+
+        // ✅ NEW - Use 'pajak_penghasilan' column (as per IncomeTax model)
+        $pajakTerutang = $taxReport->incomeTaxs()->sum('pajak_penghasilan');
         $pajakDipotong = 0; // Jika ada withholding
         
         $selisih = $pajakTerutang - $pajakDipotong;
@@ -472,7 +473,7 @@ class TaxCalculationSummary extends Model
     protected function calculateBupot($taxReport): array
     {
         // TODO: Implement berdasarkan Bupot model
-        $pajakTerutang = $taxReport->bupots()->sum('jumlah_pph');
+        $pajakTerutang = $taxReport->bupots()->sum('bupot_amount');
         $pajakDipotong = 0;
         
         $selisih = $pajakTerutang - $pajakDipotong;
