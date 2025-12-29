@@ -210,6 +210,7 @@ class TaxReportPph extends Component
         ]);
     }
 
+    
     /**
      * Render the component
      */
