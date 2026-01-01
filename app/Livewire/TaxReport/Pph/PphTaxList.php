@@ -24,6 +24,9 @@ use Filament\Tables\Filters\SelectFilter;
 use PhpOffice\PhpSpreadsheet\IOFactory;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\DB;
+use App\Services\FileManagementService;
+use Maatwebsite\Excel\Facades\Excel;
+use App\Exports\TaxReport\PPh\PphTaxListExport;
 
 class PphTaxList extends Component implements HasForms, HasTable
 {
@@ -143,40 +146,50 @@ class PphTaxList extends Component implements HasForms, HasTable
                     ->multiple(),
             ])
             ->headerActions([
-                Action::make('import_excel')
-                    ->label('Import Excel')
-                    ->icon('heroicon-o-arrow-down-tray')
-                    ->color('success')
-                    ->form([
-                        FileUpload::make('file')
-                            ->label('File Excel')
-                            ->required()
-                            ->acceptedFileTypes([
-                                'application/vnd.ms-excel',
-                                'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-                                'application/vnd.ms-excel.sheet.macroEnabled.12',
-                            ])
-                            ->maxSize(10240) // 10MB
-                            ->helperText('Upload file Excel (.xlsx atau .xls) dengan format yang sesuai. Maksimal 10MB.')
-                            ->disk('local')
-                            ->directory('temp-imports')
-                            ->visibility('private'),
-                    ])
-                    ->modalHeading('Import Data Bukti Potong PPh')
-                    ->modalDescription('Upload file Excel yang berisi data bukti potong PPh dari DJP. File harus mengikuti format template yang telah ditentukan.')
-                    ->modalSubmitActionLabel('Import Sekarang')
-                    ->modalWidth('md')
-                    ->action(function (array $data): void {
-                        try {
-                            $this->importExcelFile($data['file']);
-                        } catch (\Exception $e) {
-                            Notification::make()
-                                ->title('Import Gagal')
-                                ->body('Error: ' . $e->getMessage())
-                                ->danger()
-                                ->send();
-                        }
-                    }),
+                    Action::make('import_excel')
+                        ->label('Import Excel')
+                        ->icon('heroicon-o-arrow-down-tray')
+                        ->color('success')
+                        ->form([
+                            FileUpload::make('file')
+                                ->label('File Excel')
+                                ->required()
+                                ->acceptedFileTypes([
+                                    'application/vnd.ms-excel',
+                                    'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+                                    'application/vnd.ms-excel.sheet.macroEnabled.12',
+                                ])
+                                ->maxSize(10240) // 10MB
+                                ->helperText(new \Illuminate\Support\HtmlString('
+                                    Upload file Excel (.xlsx atau .xls) dengan format yang sesuai. Maksimal 10MB.<br>
+                                    <a href="' . route('download.pph.example') . '" 
+                                    class="inline-flex items-center gap-1 text-sm font-medium text-primary-600 hover:text-primary-700 dark:text-primary-400 dark:hover:text-primary-300 mt-2"
+                                    download>
+                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                                        </svg>
+                                        Download Contoh Format Excel
+                                    </a>
+                                '))
+                                ->disk('local')
+                                ->directory('temp-imports')
+                                ->visibility('private'),
+                        ])
+                        ->modalHeading('Import Data Bukti Potong PPh')
+                        ->modalDescription('Upload file Excel yang berisi data bukti potong PPh dari DJP. File harus mengikuti format template yang telah ditentukan.')
+                        ->modalSubmitActionLabel('Import Sekarang')
+                        ->modalWidth('2xl') // Wider modal
+                        ->action(function (array $data): void {
+                            try {
+                                $this->importExcelFile($data['file']);
+                            } catch (\Exception $e) {
+                                Notification::make()
+                                    ->title('Import Gagal')
+                                    ->body('Error: ' . $e->getMessage())
+                                    ->danger()
+                                    ->send();
+                            }
+                        }),
                 
                 Action::make('download_template')
                     ->label('Download Template')
@@ -197,19 +210,13 @@ class PphTaxList extends Component implements HasForms, HasTable
                     })
                     ->visible(fn () => file_exists(storage_path('app/templates/income_tax_template.xlsx'))),
                 
-                Action::make('refresh_statistics')
-                    ->label('Refresh Statistik')
-                    ->icon('heroicon-o-arrow-path')
-                    ->color('gray')
-                    ->action(function () {
-                        $this->calculateStatistics();
-                        
-                        Notification::make()
-                            ->title('Statistik Diperbarui')
-                            ->body('Data statistik telah di-refresh.')
-                            ->success()
-                            ->send();
-                    }),
+                Action::make('export_excel')
+                    ->label('Export Excel')
+                    ->icon('heroicon-o-arrow-up-tray')
+                    ->color('primary')
+                    ->action(fn () => $this->exportToExcel())
+                    ->visible(fn () => IncomeTax::where('tax_report_id', $this->taxReportId)->count() > 0),
+
             ])
             ->actions([
                 Action::make('edit')
@@ -346,6 +353,7 @@ class PphTaxList extends Component implements HasForms, HasTable
             
             $successCount = 0;
             $errorCount = 0;
+            $updateCount = 0; // Track updates
             $errors = [];
             
             // Start from row 2 (skip header)
@@ -379,9 +387,13 @@ class PphTaxList extends Component implements HasForms, HasTable
                     // Try to find or create employee
                     $employeeId = $this->findOrCreateEmployeeId($rowData['npwp'], $rowData['nama']);
                     
+                    // Check if record already exists
+                    $existingRecord = IncomeTax::where('tax_report_id', $this->taxReportId)
+                        ->where('nomor_pemotongan', $rowData['nomor_pemotongan'])
+                        ->first();
+                    
                     // Create or update record
-                    // Note: employee_id can be null for manual entries without matching employee
-                    IncomeTax::updateOrCreate(
+                    $record = IncomeTax::updateOrCreate(
                         [
                             'tax_report_id' => $this->taxReportId,
                             'nomor_pemotongan' => $rowData['nomor_pemotongan'],
@@ -405,7 +417,11 @@ class PphTaxList extends Component implements HasForms, HasTable
                         ]
                     );
                     
-                    $successCount++;
+                    if ($existingRecord) {
+                        $updateCount++;
+                    } else {
+                        $successCount++;
+                    }
                     
                 } catch (\Exception $e) {
                     $errorCount++;
@@ -415,17 +431,17 @@ class PphTaxList extends Component implements HasForms, HasTable
             
             DB::commit();
             
-            // Delete temporary file
-            Storage::disk('local')->delete($filePath);
+            // Save the imported file to permanent location
+            $this->saveImportedFile($filePath);
             
             // Recalculate statistics
             $this->calculateStatistics();
             
-            // Show notification
+            // Show notification with update info
             if ($errorCount > 0) {
                 Notification::make()
                     ->title('Import Selesai dengan Peringatan')
-                    ->body("Berhasil: {$successCount} baris | Gagal: {$errorCount} baris")
+                    ->body("Baru: {$successCount} | Diupdate: {$updateCount} | Gagal: {$errorCount}")
                     ->warning()
                     ->send();
                     
@@ -439,9 +455,14 @@ class PphTaxList extends Component implements HasForms, HasTable
                     }
                 }
             } else {
+                $message = "Import berhasil! Baru: {$successCount} data";
+                if ($updateCount > 0) {
+                    $message .= ", Diupdate: {$updateCount} data";
+                }
+                
                 Notification::make()
                     ->title('Import Berhasil!')
-                    ->body("{$successCount} data bukti potong berhasil diimpor")
+                    ->body($message)
                     ->success()
                     ->send();
             }
@@ -455,6 +476,46 @@ class PphTaxList extends Component implements HasForms, HasTable
             }
             
             throw $e;
+        }
+    }
+
+    /**
+     * Save imported Excel file to permanent storage
+     */
+    protected function saveImportedFile(string $tempFilePath): void
+    {
+        try {
+            // Generate the permanent directory path
+            $permanentPath = \App\Services\FileManagementService::generatePphImportDirectoryPath(
+                $this->taxReport,
+                'PPH 21'
+            );
+            
+            // Generate filename with timestamp
+            $timestamp = now()->format('Y-m-d_His');
+            $fileName = "Import_PPh21_{$timestamp}.xlsx";
+            
+            // Full path for the file
+            $fullPath = "{$permanentPath}/{$fileName}";
+            
+            // Get the file content from temp storage
+            $fileContent = Storage::disk('local')->get($tempFilePath);
+            
+            // Save to permanent location (public disk)
+            Storage::disk('public')->put($fullPath, $fileContent);
+            
+            // Delete temporary file
+            Storage::disk('local')->delete($tempFilePath);
+            
+            \Log::info("Import file saved to: {$fullPath}");
+            
+        } catch (\Exception $e) {
+            \Log::error("Failed to save import file: " . $e->getMessage());
+            
+            // Still delete temp file even if save fails
+            if (Storage::disk('local')->exists($tempFilePath)) {
+                Storage::disk('local')->delete($tempFilePath);
+            }
         }
     }
 
@@ -574,6 +635,8 @@ class PphTaxList extends Component implements HasForms, HasTable
         return $npwp;
     }
 
+    
+
     private function formatMasaPajak(?string $masaPajak): string
     {
         if (!$masaPajak) return '-';
@@ -593,6 +656,66 @@ class PphTaxList extends Component implements HasForms, HasTable
             return ($monthNames[$month] ?? $month) . ' ' . $year;
         } catch (\Exception $e) {
             return $masaPajak;
+        }
+    }
+
+    protected function exportToExcel()
+    {
+        try {
+            $incomeTaxes = IncomeTax::where('tax_report_id', $this->taxReportId)->count();
+            
+            if ($incomeTaxes === 0) {
+                Notification::make()
+                    ->title('Tidak Ada Data')
+                    ->body('Tidak ada data PPh untuk diekspor')
+                    ->warning()
+                    ->send();
+                return;
+            }
+            
+            // Generate directory path using FileManagementService
+            $directoryPath = FileManagementService::generatePphImportDirectoryPath(
+                $this->taxReport,
+                'PPH 21'
+            );
+            
+            // Generate filename
+            $monthName = FileManagementService::convertToIndonesianMonth($this->taxReport->month);
+            preg_match('/(\d{4})/', $this->taxReport->month, $matches);
+            $year = $matches[1] ?? date('Y');
+            $clientName = \Illuminate\Support\Str::slug($this->taxReport->client->name);
+            $timestamp = now()->format('Y-m-d_His');
+            
+            $filename = "Rekapan_PPh_{$clientName}_{$monthName}_{$year}_{$timestamp}.xlsx";
+            $fullPath = "{$directoryPath}/{$filename}";
+            
+            // Create the export
+            $export = new PphTaxListExport($this->taxReportId);
+            
+            // Save to storage (public disk)
+            Excel::store($export, $fullPath, 'public');
+            
+            // Also download for user
+            $downloadResponse = Excel::download($export, $filename);
+            
+            // Show success notification
+            Notification::make()
+                ->title('Export Berhasil!')
+                ->body("File disimpan di: {$directoryPath}")
+                ->success()
+                ->duration(5000)
+                ->send();
+            
+            return $downloadResponse;
+            
+        } catch (\Exception $e) {
+            Notification::make()
+                ->title('Export Gagal')
+                ->body('Error: ' . $e->getMessage())
+                ->danger()
+                ->send();
+                
+            \Log::error('PPh Export Error: ' . $e->getMessage());
         }
     }
 

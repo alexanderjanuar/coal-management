@@ -3,17 +3,19 @@
 namespace App\Services;
 
 use Illuminate\Support\Str;
+use Carbon\Carbon;
 
 class FileManagementService
 {
     /**
-     * Generate dynamic directory path for file uploads
+     * Generate dynamic directory path for invoice file uploads
      */
-    public static function generateInvoiceDirectoryPath($taxReport): string
+    public static function generateInvoiceDirectoryPath($taxReport, string $invoiceType = null): string
     {
         // Default values
         $clientName = 'unknown-client';
         $monthName = 'unknown-month';
+        $currentYear = date('Y');
         
         if ($taxReport && $taxReport->client) {
             // Clean client name for folder structure
@@ -21,9 +23,40 @@ class FileManagementService
             
             // Convert month from tax report to Indonesian month name
             $monthName = self::convertToIndonesianMonth($taxReport->month);
+            
+            // Extract year from tax report if available
+            if ($taxReport->month && preg_match('/(\d{4})/', $taxReport->month, $matches)) {
+                $currentYear = $matches[1];
+            }
         }
         
-        return "clients/{$clientName}/SPT/{$monthName}/Invoice";
+        // Determine the transaction type folder (Penjualan/Pembelian)
+        $transactionFolder = self::getTransactionFolder($invoiceType);
+        
+        // Determine the invoice type folder (Faktur Keluaran/Faktur Masukan)
+        $invoiceFolder = self::getInvoiceFolder($invoiceType);
+        
+        return "clients/{$clientName}/Kegiatan Perusahaan/{$currentYear}/SPT MASA/{$monthName}/TRANSAKSI/{$transactionFolder}/{$invoiceFolder}";
+    }
+
+    /**
+     * Get transaction folder based on invoice type
+     */
+    private static function getTransactionFolder(?string $invoiceType): string
+    {
+        if (!$invoiceType) {
+            return 'Unknown';
+        }
+        
+        return $invoiceType === 'Faktur Keluaran' ? 'Penjualan' : 'Pembelian';
+    }
+
+    /**
+     * Get invoice folder based on invoice type
+     */
+    private static function getInvoiceFolder(?string $invoiceType): string
+    {
+        return $invoiceType ?? 'Unknown';
     }
 
     /**
@@ -49,6 +82,57 @@ class FileManagementService
         $extension = pathinfo($originalFileName, PATHINFO_EXTENSION);
         
         return "Bukti-Setor-{$invoiceType}-{$cleanInvoiceNumber}.{$extension}";
+    }
+
+    /**
+     * Generate surat penagihan filename
+     */
+    public static function generateSuratPenagihanFileName(string $invoiceType, string $invoiceNumber, string $originalFileName): string
+    {
+        $cleanInvoiceNumber = Str::slug($invoiceNumber);
+        $extension = pathinfo($originalFileName, PATHINFO_EXTENSION);
+        
+        return "Surat-Penagihan-{$invoiceType}-{$cleanInvoiceNumber}.{$extension}";
+    }
+
+    /**
+     * Generate full bukti setor directory path
+     */
+    public static function generateBuktiSetorDirectoryPath($taxReport, string $invoiceType = null): string
+    {
+        $basePath = self::generateInvoiceDirectoryPath($taxReport, $invoiceType);
+        return $basePath . '/Bukti Setor';
+    }
+
+    /**
+     * Generate full surat penagihan directory path
+     * Surat Penagihan is at the same level as Faktur Keluaran/Faktur Masukan
+     */
+    public static function generateSuratPenagihanDirectoryPath($taxReport, string $invoiceType = null): string
+    {
+        // Default values
+        $clientName = 'unknown-client';
+        $monthName = 'unknown-month';
+        $currentYear = date('Y');
+        
+        if ($taxReport && $taxReport->client) {
+            // Clean client name for folder structure
+            $clientName = Str::slug($taxReport->client->name);
+            
+            // Convert month from tax report to Indonesian month name
+            $monthName = self::convertToIndonesianMonth($taxReport->month);
+            
+            // Extract year from tax report if available
+            if ($taxReport->month && preg_match('/(\d{4})/', $taxReport->month, $matches)) {
+                $currentYear = $matches[1];
+            }
+        }
+        
+        // Determine the transaction type folder (Penjualan/Pembelian)
+        $transactionFolder = self::getTransactionFolder($invoiceType);
+        
+        // Surat Penagihan is at the same level as Faktur Keluaran/Faktur Masukan
+        return "clients/{$clientName}/Kegiatan Perusahaan/{$currentYear}/SPT MASA/{$monthName}/{$transactionFolder}/Surat Penagihan";
     }
 
     /**
@@ -83,6 +167,32 @@ class FileManagementService
     }
 
     /**
+     * Generate directory path for PPh import/export files
+     */
+    public static function generatePphImportDirectoryPath($taxReport, string $jenisPajak = 'PPH 21'): string
+    {
+        // Default values
+        $clientName = 'unknown-client';
+        $monthName = 'unknown-month';
+        $currentYear = date('Y');
+        
+        if ($taxReport && $taxReport->client) {
+            // Clean client name for folder structure
+            $clientName = Str::slug($taxReport->client->name);
+            
+            // Convert month from tax report to Indonesian month name
+            $monthName = self::convertToIndonesianMonth($taxReport->month);
+            
+            // Extract year from tax report if available
+            if ($taxReport->month && preg_match('/(\d{4})/', $taxReport->month, $matches)) {
+                $currentYear = $matches[1];
+            }
+        }
+        
+        return "clients/{$clientName}/Kegiatan Perusahaan/{$currentYear}/SPT MASA/{$monthName}/{$jenisPajak}/PELAPORAN {$jenisPajak}";
+    }
+
+    /**
      * Get accepted file types for invoices
      */
     public static function getAcceptedFileTypes(): array
@@ -102,14 +212,5 @@ class FileManagementService
     public static function getMaxFileSize(): int
     {
         return 10240; // 10MB
-    }
-
-    /**
-     * Generate full bukti setor directory path
-     */
-    public static function generateBuktiSetorDirectoryPath($taxReport): string
-    {
-        $basePath = self::generateInvoiceDirectoryPath($taxReport);
-        return $basePath . '/Bukti-Setor';
     }
 }

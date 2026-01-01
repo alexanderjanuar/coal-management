@@ -52,7 +52,8 @@ class InvoiceTable extends Component implements HasForms, HasTable
      */
     private function generateDirectoryPath($get): string
     {
-        return FileManagementService::generateInvoiceDirectoryPath($this->taxReport);
+        $invoiceType = $get('type');
+        return FileManagementService::generateInvoiceDirectoryPath($this->taxReport, $invoiceType);
     }
 
     /**
@@ -422,7 +423,10 @@ class InvoiceTable extends Component implements HasForms, HasTable
                                             ->downloadable()
                                             ->disk('public')
                                             ->directory(function () use ($record) {
-                                                return FileManagementService::generateBuktiSetorDirectoryPath($record->taxReport);
+                                                return FileManagementService::generateBuktiSetorDirectoryPath(
+                                                    $record->taxReport, 
+                                                    $record->type
+                                                );
                                             })
                                             ->getUploadedFileNameForStorageUsing(function (TemporaryUploadedFile $file) use ($record): string {
                                                 return FileManagementService::generateBuktiSetorFileName(
@@ -447,6 +451,52 @@ class InvoiceTable extends Component implements HasForms, HasTable
                                 ->send();
                         })
                         ->modalWidth('2xl'),
+                    
+                        Tables\Actions\Action::make('upload_surat_penagihan')
+                        ->label('Upload Surat Penagihan')
+                        ->icon('heroicon-o-document-text')
+                        ->color('warning')
+                        ->visible(fn ($record) => $record && empty($record->surat_penagihan))
+                        ->form(function ($record) {
+                            return [
+                                Section::make('Upload Surat Penagihan')
+                                    ->description('Upload dokumen surat penagihan untuk faktur ini')
+                                    ->schema([
+                                        FileUpload::make('surat_penagihan')
+                                            ->label('Surat Penagihan')
+                                            ->required()
+                                            ->openable()
+                                            ->downloadable()
+                                            ->disk('public')
+                                            ->directory(function () use ($record) {
+                                                return FileManagementService::generateSuratPenagihanDirectoryPath(
+                                                    $record->taxReport, 
+                                                    $record->type
+                                                );
+                                            })
+                                            ->getUploadedFileNameForStorageUsing(function (TemporaryUploadedFile $file) use ($record): string {
+                                                return FileManagementService::generateSuratPenagihanFileName(
+                                                    $record->type, 
+                                                    $record->invoice_number, 
+                                                    $file->getClientOriginalName()
+                                                );
+                                            })
+                                            ->acceptedFileTypes(FileManagementService::getAcceptedFileTypes())
+                                            ->helperText('Unggah dokumen surat penagihan (PDF atau gambar)')
+                                            ->columnSpanFull(),
+                                    ])
+                            ];
+                        })
+                        ->action(function ($record, array $data) {
+                            $record->update(['surat_penagihan' => $data['surat_penagihan']]);
+                            
+                            Notification::make()
+                                ->title('Surat Penagihan Berhasil Diupload')
+                                ->body('Surat penagihan untuk faktur ' . $record->invoice_number . ' berhasil diupload.')
+                                ->success()
+                                ->send();
+                        })
+                        ->modalWidth('2xl'),
 
                     Tables\Actions\Action::make('view_bukti_setor')
                         ->label('Lihat Bukti Setor')
@@ -456,6 +506,15 @@ class InvoiceTable extends Component implements HasForms, HasTable
                         ->url(fn ($record) => asset('storage/' . $record->bukti_setor))
                         ->openUrlInNewTab()
                         ->tooltip('Lihat bukti setor pajak'),
+                    
+                    Tables\Actions\Action::make('view_surat_penagihan')
+                        ->label('Lihat Surat Penagihan')
+                        ->icon('heroicon-o-document-text')
+                        ->color('warning')
+                        ->visible(fn ($record) => $record && !empty($record->surat_penagihan))
+                        ->url(fn ($record) => asset('storage/' . $record->surat_penagihan))
+                        ->openUrlInNewTab()
+                        ->tooltip('Lihat surat penagihan'),
 
                     Tables\Actions\Action::make('download')
                         ->label('Unduh Berkas')

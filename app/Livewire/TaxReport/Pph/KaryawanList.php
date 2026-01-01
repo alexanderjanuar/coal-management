@@ -4,6 +4,11 @@ namespace App\Livewire\TaxReport\Pph;
 
 use App\Models\Employee;
 use App\Models\Client;
+use App\Models\TaxReport;
+use App\Services\FileManagementService;
+use Maatwebsite\Excel\Facades\Excel;
+use App\Exports\TaxReport\Pph\KaryawanListExport;
+use Illuminate\Support\Facades\Storage;
 use Filament\Forms\Concerns\InteractsWithForms;
 use Filament\Forms\Contracts\HasForms;
 use Filament\Tables\Concerns\InteractsWithTable;
@@ -27,6 +32,7 @@ class KaryawanList extends Component implements HasForms, HasTable
 
     public $clientId;
     public $client;
+    public $taxReportId;
     
     // Statistics
     public $totalKaryawan = 0;
@@ -34,9 +40,10 @@ class KaryawanList extends Component implements HasForms, HasTable
     public $inactiveKaryawan = 0;
     public $totalGaji = 0;
 
-    public function mount($clientId)
+    public function mount($clientId, $taxReportId = null)
     {
         $this->clientId = $clientId;
+        $this->taxReportId = $taxReportId;
         $this->client = Client::find($clientId);
         $this->calculateStatistics();
     }
@@ -146,6 +153,13 @@ class KaryawanList extends Component implements HasForms, HasTable
                     ->multiple(),
             ])
             ->headerActions([
+                Action::make('export_excel')
+                    ->label('Export Excel')
+                    ->icon('heroicon-o-arrow-down-tray')
+                    ->color('primary')
+                    ->action(fn () => $this->exportToExcel())
+                    ->visible(fn () => Employee::where('client_id', $this->clientId)->count() > 0),
+                
                 Action::make('create')
                     ->label('Tambah Karyawan')
                     ->icon('heroicon-o-plus')
@@ -354,16 +368,6 @@ class KaryawanList extends Component implements HasForms, HasTable
                             ->send();
                     }),
                 
-                // TODO: Uncomment when Employee resource view is created
-                // Action::make('view_income_taxes')
-                //     ->label('Lihat PPh')
-                //     ->icon('heroicon-o-document-text')
-                //     ->color('info')
-                //     ->url(fn (Employee $record): string => 
-                //         route('filament.admin.resources.employees.view', $record)
-                //     )
-                //     ->visible(fn (Employee $record) => $record->incomeTaxes()->count() > 0),
-                
                 Action::make('delete')
                     ->icon('heroicon-o-trash')
                     ->color('danger')
@@ -451,6 +455,96 @@ class KaryawanList extends Component implements HasForms, HasTable
             ->poll('30s');
     }
 
+    /**
+     * Export employee data to Excel and save to DATA MENTAH folder
+     */
+    protected function exportToExcel()
+    {
+        try {
+            $employeeCount = Employee::where('client_id', $this->clientId)->count();
+            
+            if ($employeeCount === 0) {
+                Notification::make()
+                    ->title('Tidak Ada Data')
+                    ->body('Tidak ada data karyawan untuk diekspor')
+                    ->warning()
+                    ->send();
+                return;
+            }
+            
+            // Get tax report info to build path
+            $taxReport = null;
+            if ($this->taxReportId) {
+                $taxReport = TaxReport::find($this->taxReportId);
+            }
+            
+            // Generate directory path
+            if ($taxReport) {
+                $directoryPath = $this->generateDataMentahPath($taxReport);
+            } else {
+                // Fallback if no tax report (use current date)
+                $clientName = \Illuminate\Support\Str::slug($this->client->name);
+                $currentYear = date('Y');
+                $currentMonth = FileManagementService::convertToIndonesianMonth(date('m'));
+                $directoryPath = "clients/{$clientName}/Kegiatan Perusahaan/{$currentYear}/SPT MASA/{$currentMonth}/PPH 21/DATA MENTAH";
+            }
+            
+            // Fixed filename (will overwrite existing file)
+            $filename = "Data_Karyawan.xlsx";
+            $fullPath = "{$directoryPath}/{$filename}";
+            
+            // Create the export
+            $export = new KaryawanListExport($this->clientId, $this->client->name);
+            
+            // Delete existing file if it exists (to ensure overwrite)
+            if (Storage::disk('public')->exists($fullPath)) {
+                Storage::disk('public')->delete($fullPath);
+            }
+            
+            // Save to storage (public disk) - this will overwrite
+            Excel::store($export, $fullPath, 'public');
+            
+            // Also download for user
+            $downloadResponse = Excel::download($export, $filename);
+            
+            // Show success notification
+            Notification::make()
+                ->title('Export Berhasil!')
+                ->body("File disimpan di: {$directoryPath}")
+                ->success()
+                ->duration(5000)
+                ->send();
+            
+            return $downloadResponse;
+            
+        } catch (\Exception $e) {
+            Notification::make()
+                ->title('Export Gagal')
+                ->body('Error: ' . $e->getMessage())
+                ->danger()
+                ->send();
+                
+            \Log::error('Karyawan Export Error: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * Generate DATA MENTAH directory path
+     */
+    protected function generateDataMentahPath($taxReport): string
+    {
+        $clientName = \Illuminate\Support\Str::slug($taxReport->client->name);
+        $monthName = FileManagementService::convertToIndonesianMonth($taxReport->month);
+        
+        preg_match('/(\d{4})/', $taxReport->month, $matches);
+        $year = $matches[1] ?? date('Y');
+        
+        return "clients/{$clientName}/Kegiatan Perusahaan/{$year}/SPT MASA/{$monthName}/PPH 21/DATA MENTAH";
+    }
+
+    /**
+     * Calculate employee statistics
+     */
     public function calculateStatistics(): void
     {
         $employees = Employee::where('client_id', $this->clientId)->get();
@@ -461,6 +555,9 @@ class KaryawanList extends Component implements HasForms, HasTable
         $this->totalGaji = $employees->where('status', 'active')->sum('salary');
     }
 
+    /**
+     * Format NPWP for display
+     */
     private function formatNpwp(?string $npwp): string
     {
         if (!$npwp) return '-';
@@ -480,6 +577,9 @@ class KaryawanList extends Component implements HasForms, HasTable
         return $npwp;
     }
 
+    /**
+     * Render the component
+     */
     public function render()
     {
         return view('livewire.tax-report.pph.karyawan-list');

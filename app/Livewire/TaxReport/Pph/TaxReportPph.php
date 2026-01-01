@@ -5,6 +5,8 @@ namespace App\Livewire\TaxReport\Pph;
 use App\Models\IncomeTax;
 use App\Models\TaxReport;
 use Livewire\Component;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Cache;
 
 class TaxReportPph extends Component
 {
@@ -12,7 +14,7 @@ class TaxReportPph extends Component
     public $taxReportId;
     public $taxReport;
     
-    // PPh calculations
+    // PPh calculations - cached for performance
     public $pph21Total = 0;
     public $pph21Count = 0;
     public $pph21Bruto = 0;
@@ -28,17 +30,15 @@ class TaxReportPph extends Component
     public $totalPph = 0;
     public $totalBuktiPotong = 0;
     
-    // Kompensasi data
-    public $kompensasiDiterima = 0;
-    public $kompensasiTersedia = 0;
-    public $kompensasiTerpakai = 0;
-    
     // Notes functionality
     public $newNote = '';
     public $existingNotes = [];
     
     // Listeners for real-time updates
-    protected $listeners = ['refreshPphCalculations' => 'calculatePph'];
+    protected $listeners = [
+        'refreshPphCalculations' => 'calculatePph',
+        'pphDataUpdated' => 'calculatePph',
+    ];
     
     /**
      * Mount the component with tax report ID
@@ -52,23 +52,23 @@ class TaxReportPph extends Component
         
         // Calculate PPh totals
         $this->calculatePph();
-        
-        // Load notes if needed
-        // $this->loadNotes();
     }
     
     /**
-     * Load tax report data
+     * Load tax report data with minimal queries
      */
     protected function loadTaxReportData()
     {
         if ($this->taxReportId) {
-            $this->taxReport = TaxReport::with('client')->find($this->taxReportId);
+            $this->taxReport = TaxReport::with('client:id,name')
+                ->select('id', 'client_id', 'month')
+                ->find($this->taxReportId);
         }
     }
     
     /**
      * Calculate PPh totals from income_taxes table
+     * Optimized with single query using CASE statements
      */
     public function calculatePph()
     {
@@ -76,63 +76,62 @@ class TaxReportPph extends Component
             return;
         }
         
-        // Get all income taxes for this tax report
-        $incomeTaxes = IncomeTax::where('tax_report_id', $this->taxReportId)->get();
+        // Use cache to avoid repeated calculations (5 minutes cache)
+        $cacheKey = "pph_calculations_{$this->taxReportId}";
         
-        // PPh 21 (Pasal 21)
-        $pph21Records = $incomeTaxes->where('jenis_pajak', 'Pasal 21');
-        $this->pph21Total = $pph21Records->sum('pajak_penghasilan');
-        $this->pph21Count = $pph21Records->count();
-        $this->pph21Bruto = $pph21Records->sum('dasar_pengenaan_pajak');
+        $calculations = Cache::remember($cacheKey, 300, function () {
+            // Single optimized query using aggregations and CASE statements
+            return DB::table('income_taxes')
+                ->where('tax_report_id', $this->taxReportId)
+                ->select([
+                    // PPh 21
+                    DB::raw('SUM(CASE WHEN jenis_pajak = "Pasal 21" THEN pajak_penghasilan ELSE 0 END) as pph21_total'),
+                    DB::raw('COUNT(CASE WHEN jenis_pajak = "Pasal 21" THEN 1 END) as pph21_count'),
+                    DB::raw('SUM(CASE WHEN jenis_pajak = "Pasal 21" THEN dasar_pengenaan_pajak ELSE 0 END) as pph21_bruto'),
+                    
+                    // PPh 23
+                    DB::raw('SUM(CASE WHEN jenis_pajak = "Pasal 23" THEN pajak_penghasilan ELSE 0 END) as pph23_total'),
+                    DB::raw('COUNT(CASE WHEN jenis_pajak = "Pasal 23" THEN 1 END) as pph23_count'),
+                    DB::raw('SUM(CASE WHEN jenis_pajak = "Pasal 23" THEN dasar_pengenaan_pajak ELSE 0 END) as pph23_bruto'),
+                    
+                    // PPh 4(2)
+                    DB::raw('SUM(CASE WHEN jenis_pajak IN ("Pasal 4(2)", "Pasal 4 ayat 2") THEN pajak_penghasilan ELSE 0 END) as pph42_total'),
+                    DB::raw('COUNT(CASE WHEN jenis_pajak IN ("Pasal 4(2)", "Pasal 4 ayat 2") THEN 1 END) as pph42_count'),
+                    DB::raw('SUM(CASE WHEN jenis_pajak IN ("Pasal 4(2)", "Pasal 4 ayat 2") THEN dasar_pengenaan_pajak ELSE 0 END) as pph42_bruto'),
+                    
+                    // Totals
+                    DB::raw('SUM(pajak_penghasilan) as total_pph'),
+                    DB::raw('COUNT(*) as total_bukti_potong')
+                ])
+                ->first();
+        });
         
-        // PPh 23 (Pasal 23)
-        $pph23Records = $incomeTaxes->where('jenis_pajak', 'Pasal 23');
-        $this->pph23Total = $pph23Records->sum('pajak_penghasilan');
-        $this->pph23Count = $pph23Records->count();
-        $this->pph23Bruto = $pph23Records->sum('dasar_pengenaan_pajak');
+        // Assign to component properties
+        $this->pph21Total = $calculations->pph21_total ?? 0;
+        $this->pph21Count = $calculations->pph21_count ?? 0;
+        $this->pph21Bruto = $calculations->pph21_bruto ?? 0;
         
-        // PPh 4(2) (Pasal 4(2) or Pasal 4 ayat 2)
-        $pph42Records = $incomeTaxes->whereIn('jenis_pajak', ['Pasal 4(2)', 'Pasal 4 ayat 2']);
-        $this->pph42Total = $pph42Records->sum('pajak_penghasilan');
-        $this->pph42Count = $pph42Records->count();
-        $this->pph42Bruto = $pph42Records->sum('dasar_pengenaan_pajak');
+        $this->pph23Total = $calculations->pph23_total ?? 0;
+        $this->pph23Count = $calculations->pph23_count ?? 0;
+        $this->pph23Bruto = $calculations->pph23_bruto ?? 0;
         
-        // Totals
-        $this->totalPph = $incomeTaxes->sum('pajak_penghasilan');
-        $this->totalBuktiPotong = $incomeTaxes->count();
+        $this->pph42Total = $calculations->pph42_total ?? 0;
+        $this->pph42Count = $calculations->pph42_count ?? 0;
+        $this->pph42Bruto = $calculations->pph42_bruto ?? 0;
         
-        // Load kompensasi data from tax_calculation_summaries
-        $this->loadKompensasiData();
-    }
-    
-    /**
-     * Load kompensasi data from tax_calculation_summaries
-     */
-    protected function loadKompensasiData()
-    {
-        if (!$this->taxReport) {
-            return;
-        }
-        
-        // Get PPh summary from tax_calculation_summaries
-        $pphSummary = $this->taxReport->taxCalculationSummaries()
-            ->where('tax_type', 'pph')
-            ->first();
-        
-        if ($pphSummary) {
-            $this->kompensasiDiterima = $pphSummary->kompensasi_diterima ?? 0;
-            $this->kompensasiTersedia = $pphSummary->kompensasi_tersedia ?? 0;
-            $this->kompensasiTerpakai = $pphSummary->kompensasi_terpakai ?? 0;
-        }
+        $this->totalPph = $calculations->total_pph ?? 0;
+        $this->totalBuktiPotong = $calculations->total_bukti_potong ?? 0;
     }
     
     /**
      * Load notes from tax report
      */
-    protected function loadNotes()
+    public function loadNotes()
     {
         if ($this->taxReport && $this->taxReport->notes) {
             $this->existingNotes = json_decode($this->taxReport->notes, true) ?? [];
+        } else {
+            $this->existingNotes = [];
         }
     }
     
@@ -151,10 +150,12 @@ class TaxReportPph extends Component
         
         if ($this->taxReport) {
             $notes = json_decode($this->taxReport->notes, true) ?? [];
+            
             $notes[] = [
                 'content' => $this->newNote,
                 'created_at' => now()->toDateTimeString(),
-                'created_by' => auth()->user()->name,
+                'created_by' => auth()->id(),
+                'created_by_name' => auth()->user()->name,
             ];
             
             $this->taxReport->update([
@@ -165,8 +166,8 @@ class TaxReportPph extends Component
             $this->newNote = '';
             
             $this->dispatch('notify', [
-                'message' => 'Catatan berhasil disimpan',
-                'type' => 'success'
+                'type' => 'success',
+                'message' => 'Catatan berhasil disimpan'
             ]);
         }
     }
@@ -176,46 +177,69 @@ class TaxReportPph extends Component
      */
     public function deleteNote($index)
     {
-        if ($this->taxReport) {
-            $notes = json_decode($this->taxReport->notes, true) ?? [];
+        if ($this->taxReport && isset($this->existingNotes[$index])) {
+            $notes = $this->existingNotes;
+            unset($notes[$index]);
+            $notes = array_values($notes); // Re-index array
             
-            if (isset($notes[$index])) {
-                unset($notes[$index]);
-                $notes = array_values($notes); // Re-index array
-                
-                $this->taxReport->update([
-                    'notes' => json_encode($notes)
-                ]);
-                
-                $this->existingNotes = $notes;
-                
-                $this->dispatch('notify', [
-                    'message' => 'Catatan berhasil dihapus',
-                    'type' => 'success'
-                ]);
-            }
+            $this->taxReport->update([
+                'notes' => json_encode($notes)
+            ]);
+            
+            $this->existingNotes = $notes;
+            
+            $this->dispatch('notify', [
+                'type' => 'success',
+                'message' => 'Catatan berhasil dihapus'
+            ]);
         }
     }
     
     /**
-     * Refresh all calculations
+     * Refresh all calculations and clear cache
      */
     public function refreshCalculations()
     {
+        // Clear cache
+        Cache::forget("pph_calculations_{$this->taxReportId}");
+        
+        // Recalculate
         $this->calculatePph();
         
         $this->dispatch('notify', [
-            'message' => 'Kalkulasi berhasil diperbarui',
-            'type' => 'success'
+            'type' => 'success',
+            'message' => 'Kalkulasi berhasil diperbarui'
         ]);
     }
-
+    
+    /**
+     * Get formatted period name
+     */
+    public function getPeriodNameProperty()
+    {
+        if (!$this->taxReport) {
+            return '-';
+        }
+        
+        return \Carbon\Carbon::parse($this->taxReport->month . '-01')->format('F Y');
+    }
+    
+    /**
+     * Get client name
+     */
+    public function getClientNameProperty()
+    {
+        return $this->taxReport->client->name ?? 'Unknown Client';
+    }
 
     /**
      * Render the component
      */
     public function render()
     {
+        // Load notes when rendering catatan tab
+        $this->loadNotes();
+        
         return view('livewire.tax-report.pph.tax-report-pph');
     }
 }
