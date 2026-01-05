@@ -31,7 +31,7 @@ class InvoiceAIService
             // Pass client name to prompt
             $prompt = $this->getInvoiceExtractionPrompt($clientName);
 
-            $result = Gemini::generativeModel(model: 'gemini-2.0-flash')
+            $result = Gemini::generativeModel(model: 'gemini-2.5-flash')
                 ->withGenerationConfig(
                     generationConfig: new GenerationConfig(
                         responseMimeType: ResponseMimeType::APPLICATION_JSON,
