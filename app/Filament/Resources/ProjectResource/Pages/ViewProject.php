@@ -345,21 +345,21 @@ class ViewProject extends ViewRecord
             }
         }
         
-        // Conditions for showing complete button
-        $canComplete = $requirementsMet && $this->record->status !== 'completed';
+        // Check if project is already completed
+        $isCompleted = $this->record->status === 'completed';
 
         return [
             Actions\Action::make('completeProject')
-                ->label('Complete Project')
-                ->icon('heroicon-o-check-circle')
-                ->color('success')
-                ->tooltip($tooltipMessage)
-                ->disabled(!$requirementsMet)
+                ->label($isCompleted ? 'Update Deliverables' : 'Complete Project')
+                ->icon($isCompleted ? 'heroicon-o-arrow-up-tray' : 'heroicon-o-check-circle')
+                ->color($isCompleted ? 'warning' : 'success')
+                ->tooltip($isCompleted ? 'Add more files or update completion notes' : $tooltipMessage)
+                ->disabled(!$isCompleted && !$requirementsMet)
                 ->requiresConfirmation()
-                ->modalHeading('Complete Project')
-                ->modalDescription('Upload deliverable files and add completion notes for this project.')
-                ->modalSubmitActionLabel('Complete Project')
-                ->visible(!$this->isProjectLocked())
+                ->modalHeading($isCompleted ? 'Update Deliverables' : 'Complete Project')
+                ->modalDescription($isCompleted ? 'Add more deliverable files or update completion notes for this project.' : 'Upload deliverable files and add completion notes for this project.')
+                ->modalSubmitActionLabel($isCompleted ? 'Update Deliverables' : 'Complete Project')
+                ->visible(!$clientInactive)
                 ->form([    
                     FileUpload::make('deliverable_files')
                         ->label('Deliverable Files')
@@ -370,7 +370,7 @@ class ViewProject extends ViewRecord
                             return "clients/{$clientName}/{$projectName}/deliverables";
                         })
                         ->maxSize(10240) // 10MB
-                        ->helperText('Upload files to be delivered to the client (Max 10MB per file)')
+                        ->helperText($isCompleted ? 'Upload additional files to be delivered to the client (Max 10MB per file)' : 'Upload files to be delivered to the client (Max 10MB per file)')
                         ->preserveFilenames()
                         ->acceptedFileTypes(['application/pdf', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', 'application/vnd.ms-excel', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', 'image/*', 'application/zip'])
                         ->downloadable()
@@ -381,12 +381,16 @@ class ViewProject extends ViewRecord
                         ->label('Completion Notes')
                         ->placeholder('Describe the results and deliverables of this project...')
                         ->rows(5)
-                        ->helperText('Add notes about the completed work, results, and any important information for the client')
-                        ->maxLength(1000),
+                        ->helperText($isCompleted ? 'Update notes about the completed work, results, and any important information for the client' : 'Add notes about the completed work, results, and any important information for the client')
+                        ->maxLength(1000)
+                        ->default(fn() => $this->record->result_notes),
                 ])
-                ->action(function(array $data) {
-                    // Process uploaded files and create structured data
-                    $deliverableFiles = [];
+                ->action(function(array $data) use ($isCompleted) {
+                    // Get existing deliverable files
+                    $existingFiles = $this->record->deliverable_files ?? [];
+                    
+                    // Process newly uploaded files and create structured data
+                    $newDeliverableFiles = [];
                     
                     if (!empty($data['deliverable_files'])) {
                         $fileNames = $data['deliverable_file_names'] ?? [];
@@ -396,7 +400,7 @@ class ViewProject extends ViewRecord
                             $fileSize = \Storage::disk('public')->size($filePath);
                             $mimeType = \Storage::disk('public')->mimeType($filePath);
                             
-                            $deliverableFiles[] = [
+                            $newDeliverableFiles[] = [
                                 'name' => $fileName,
                                 'path' => $filePath,
                                 'size' => $fileSize,
@@ -406,44 +410,62 @@ class ViewProject extends ViewRecord
                         }
                     }
                     
+                    // Merge existing and new files
+                    $allDeliverableFiles = array_merge($existingFiles, $newDeliverableFiles);
+                    
                     // Update project with deliverables and notes
                     $this->record->update([
-                        'deliverable_files' => $deliverableFiles,
-                        'result_notes' => $data['result_notes'] ?? null,
+                        'deliverable_files' => $allDeliverableFiles,
+                        'result_notes' => $data['result_notes'] ?? $this->record->result_notes,
                         'status' => 'completed',
                     ]);
                     
-                    // Mark all steps as completed
-                    foreach ($this->record->steps as $step) {
-                        $step->status = 'completed';
-                        $step->save();
-                        
-                        // Mark all tasks as completed
-                        foreach ($step->tasks as $task) {
-                            if ($task->status !== 'completed') {
-                                $task->status = 'completed';
-                                $task->save();
+                    // Only mark all steps/tasks/documents as completed if project wasn't already completed
+                    if (!$isCompleted) {
+                        // Mark all steps as completed
+                        foreach ($this->record->steps as $step) {
+                            $step->status = 'completed';
+                            $step->save();
+                            
+                            // Mark all tasks as completed
+                            foreach ($step->tasks as $task) {
+                                if ($task->status !== 'completed') {
+                                    $task->status = 'completed';
+                                    $task->save();
+                                }
                             }
-                        }
-                        
-                        // Mark all documents as approved/completed
-                        foreach ($step->requiredDocuments as $document) {
-                            if (!in_array($document->status, ['approved', 'approved_without_document'])) {
-                                $document->status = 'approved';
-                                $document->save();
+                            
+                            // Mark all documents as approved/completed
+                            foreach ($step->requiredDocuments as $document) {
+                                if (!in_array($document->status, ['approved', 'approved_without_document'])) {
+                                    $document->status = 'approved';
+                                    $document->save();
+                                }
                             }
                         }
                     }
 
                     // Create record in activity log
-                    $activityMessage = "Project marked as completed and locked. All steps, tasks, and documents were finalized.";
-                    
-                    if (!empty($deliverableFiles)) {
-                        $activityMessage .= " " . count($deliverableFiles) . " deliverable file(s) uploaded.";
-                    }
-                    
-                    if (!empty($data['result_notes'])) {
-                        $activityMessage .= " Completion notes added.";
+                    if ($isCompleted) {
+                        $activityMessage = "Project deliverables updated.";
+                        
+                        if (!empty($newDeliverableFiles)) {
+                            $activityMessage .= " " . count($newDeliverableFiles) . " additional deliverable file(s) uploaded.";
+                        }
+                        
+                        if ($data['result_notes'] !== $this->record->getOriginal('result_notes')) {
+                            $activityMessage .= " Completion notes updated.";
+                        }
+                    } else {
+                        $activityMessage = "Project marked as completed and locked. All steps, tasks, and documents were finalized.";
+                        
+                        if (!empty($newDeliverableFiles)) {
+                            $activityMessage .= " " . count($newDeliverableFiles) . " deliverable file(s) uploaded.";
+                        }
+                        
+                        if (!empty($data['result_notes'])) {
+                            $activityMessage .= " Completion notes added.";
+                        }
                     }
                     
                     Comment::create([
@@ -454,8 +476,8 @@ class ViewProject extends ViewRecord
                     ]);
 
                     Notification::make()
-                        ->title('Project completed successfully')
-                        ->body('The project has been marked as completed with deliverables and notes.')
+                        ->title($isCompleted ? 'Deliverables updated successfully' : 'Project completed successfully')
+                        ->body($isCompleted ? 'The project deliverables have been updated.' : 'The project has been marked as completed with deliverables and notes.')
                         ->success()
                         ->send();
                 }),

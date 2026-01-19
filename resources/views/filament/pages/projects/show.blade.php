@@ -185,7 +185,6 @@
                 </div>
 
                 <!-- Project Info -->
-                <!-- Project Info -->
                 <div class="flex-1 min-w-0">
                     <div class="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
                         <div class="text-center sm:text-left">
@@ -259,8 +258,8 @@
                                                 title="{{ $member->user->name }}">
 
                                             <div class="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-2 py-1 bg-gray-900 dark:bg-gray-700 text-white text-xs rounded-lg 
-                                opacity-0 invisible group-hover/tooltip:opacity-100 group-hover/tooltip:visible transition-all duration-200 min-w-max z-[999]
-                                shadow-lg">
+                                                opacity-0 invisible group-hover/tooltip:opacity-100 group-hover/tooltip:visible transition-all duration-200 min-w-max z-[999]
+                                                shadow-lg">
                                                 <span>{{ $member->user->name }}</span>
                                                 <div
                                                     class="absolute -bottom-1 left-1/2 -translate-x-1/2 w-2 h-2 bg-gray-900 dark:bg-gray-700 rotate-45">
@@ -282,8 +281,8 @@
                                             </div>
 
                                             <div class="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-2 py-1 bg-gray-900 dark:bg-gray-700 text-white text-xs rounded-lg
-                                opacity-0 invisible group-hover/tooltip:opacity-100 group-hover/tooltip:visible transition-all duration-200 whitespace-nowrap z-50
-                                shadow-lg">
+                                                opacity-0 invisible group-hover/tooltip:opacity-100 group-hover/tooltip:visible transition-all duration-200 whitespace-nowrap z-50
+                                                shadow-lg">
                                                 {{ $nonDirectorCount - 4 }} more team members
                                                 <div
                                                     class="absolute -bottom-1 left-1/2 -translate-x-1/2 w-2 h-2 bg-gray-900 dark:bg-gray-700 rotate-45">
@@ -322,11 +321,11 @@
 
                             <!-- Status Badge -->
                             <x-filament::badge :color="match($record->status) {
-            'completed' => 'success',
-            'in_progress' => 'warning',
-            'on_hold' => 'danger',
-            default => 'gray',
-        }">
+                                    'completed' => 'success',
+                                    'in_progress' => 'warning',
+                                    'on_hold' => 'danger',
+                                    default => 'gray',
+                                }">
                                 {{ ucwords(str_replace('_', ' ', $record->status)) }}
                             </x-filament::badge>
                         </div>

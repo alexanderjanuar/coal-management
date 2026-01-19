@@ -117,7 +117,7 @@
     {{-- Stats Cards - Responsive Grid --}}
     <div class="grid gap-3 sm:gap-4 md:gap-5 grid-cols-2 lg:grid-cols-4">
         {{-- Active Projects Card --}}
-        <div class="group relative overflow-hidden rounded-xl sm:rounded-2xl border border-gray-200/60 bg-white p-4 sm:p-6 shadow-sm transition-all duration-300 hover:shadow-lg hover:-translate-y-1 dark:border-gray-700/60 dark:bg-gray-800"
+        <div class="group relative overflow-hidden rounded-xl sm:rounded-2xl border border-gray-200/60 bg-white p-4 sm:p-6 shadow-sm transition-all duration-300 hover:shadow-lg hover:-translate-y-1 dark:border-gray-700/60 dark:bg-gray-900"
             x-show="mounted" x-transition:enter="transition ease-out duration-400 delay-100"
             x-transition:enter-start="opacity-0 transform translate-y-6"
             x-transition:enter-end="opacity-100 transform translate-y-0">
@@ -153,7 +153,7 @@
         </div>
 
         {{-- Completed Projects Card --}}
-        <div class="group relative overflow-hidden rounded-xl sm:rounded-2xl border border-gray-200/60 bg-white p-4 sm:p-6 shadow-sm transition-all duration-300 hover:shadow-lg hover:-translate-y-1 dark:border-gray-700/60 dark:bg-gray-800"
+        <div class="group relative overflow-hidden rounded-xl sm:rounded-2xl border border-gray-200/60 bg-white p-4 sm:p-6 shadow-sm transition-all duration-300 hover:shadow-lg hover:-translate-y-1 dark:border-gray-700/60 dark:bg-gray-900"
             x-show="mounted" x-transition:enter="transition ease-out duration-400 delay-150"
             x-transition:enter-start="opacity-0 transform translate-y-6"
             x-transition:enter-end="opacity-100 transform translate-y-0">
@@ -191,7 +191,7 @@
         </div>
 
         {{-- Tax Reports Card --}}
-        <div class="group relative overflow-hidden rounded-xl sm:rounded-2xl border border-gray-200/60 bg-white p-4 sm:p-6 shadow-sm transition-all duration-300 hover:shadow-lg hover:-translate-y-1 dark:border-gray-700/60 dark:bg-gray-800"
+        <div class="group relative overflow-hidden rounded-xl sm:rounded-2xl border border-gray-200/60 bg-white p-4 sm:p-6 shadow-sm transition-all duration-300 hover:shadow-lg hover:-translate-y-1 dark:border-gray-700/60 dark:bg-gray-900"
             x-show="mounted" x-transition:enter="transition ease-out duration-400 delay-200"
             x-transition:enter-start="opacity-0 transform translate-y-6"
             x-transition:enter-end="opacity-100 transform translate-y-0">
@@ -227,7 +227,7 @@
         </div>
 
         {{-- Documents Card --}}
-        <div class="group relative overflow-hidden rounded-xl sm:rounded-2xl border border-gray-200/60 bg-white p-4 sm:p-6 shadow-sm transition-all duration-300 hover:shadow-lg hover:-translate-y-1 dark:border-gray-700/60 dark:bg-gray-800"
+        <div class="group relative overflow-hidden rounded-xl sm:rounded-2xl border border-gray-200/60 bg-white p-4 sm:p-6 shadow-sm transition-all duration-300 hover:shadow-lg hover:-translate-y-1 dark:border-gray-700/60 dark:bg-gray-900"
             x-show="mounted" x-transition:enter="transition ease-out duration-400 delay-250"
             x-transition:enter-start="opacity-0 transform translate-y-6"
             x-transition:enter-end="opacity-100 transform translate-y-0">
