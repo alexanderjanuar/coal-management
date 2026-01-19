@@ -393,12 +393,14 @@ class ProjectResource extends Resource
                 }
 
                 // For other users, optimize by using a join instead of a subquery
-                return $baseQuery->join('user_clients', function ($join) use ($user) {
-                    $join->on('projects.client_id', '=', 'user_clients.client_id')
-                         ->where('user_clients.user_id', $user->id);
-                })
-                ->select('projects.*') 
-                ->distinct(); 
+                // Use groupBy to avoid duplicates and explicitly prefix table names
+                return $baseQuery
+                    ->join('user_clients', function ($join) use ($user) {
+                        $join->on('projects.client_id', '=', 'user_clients.client_id')
+                             ->where('user_clients.user_id', $user->id);
+                    })
+                    ->select('projects.*')
+                    ->groupBy('projects.id'); // Use groupBy instead of distinct for better performance
             })
             ->columns([
                 Tables\Columns\TextColumn::make('index')
@@ -592,7 +594,15 @@ class ProjectResource extends Resource
                             ->pluck('name', 'id');
                     })
                     ->searchable()
-                    ->preload(),
+                    ->preload()
+                    ->query(function (Builder $query, array $data): Builder {
+                        if (empty($data['value'])) {
+                            return $query;
+                        }
+                        
+                        // Explicitly use projects.client_id to avoid ambiguity
+                        return $query->where('projects.client_id', $data['value']);
+                    }),
                     
                 DateRangeFilter::make('due_date'),
             ])
