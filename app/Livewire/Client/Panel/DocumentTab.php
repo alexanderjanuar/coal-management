@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Livewire\Client;
+namespace App\Livewire\Client\Panel;
 
 use App\Models\Client;
 use App\Models\UserClient;
@@ -523,6 +523,6 @@ class DocumentTab extends Component implements HasForms
 
     public function render()
     {
-        return view('livewire.client.document-tab');
+        return view('livewire.client.panel.document-tab');
     }
 }

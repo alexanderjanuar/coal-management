@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Livewire\Client;
+namespace App\Livewire\Client\Panel;
 
 use Livewire\Component;
 use App\Models\Project;
@@ -117,6 +117,6 @@ class ProyekTab extends Component
 
     public function render()
     {
-        return view('livewire.client.proyek-tab');
+        return view('livewire.client.panel.proyek-tab');
     }
 }

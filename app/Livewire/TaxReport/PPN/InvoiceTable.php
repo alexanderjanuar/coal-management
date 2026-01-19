@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Livewire\TaxReport\PPN;
+namespace App\Livewire\TaxReport\Ppn;
 
 use App\Models\Invoice;
 use App\Models\TaxReport;
@@ -746,6 +746,6 @@ class InvoiceTable extends Component implements HasForms, HasTable
 
     public function render()
     {
-        return view('livewire.tax-report.PPN.invoice-table');
+        return view('livewire.tax-report.ppn.invoice-table');
     }
 }

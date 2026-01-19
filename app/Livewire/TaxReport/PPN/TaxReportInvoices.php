@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Livewire\TaxReport\PPN;
+namespace App\Livewire\TaxReport\Ppn;
 
 use App\Models\TaxReport;
 use App\Models\Invoice;
@@ -474,6 +474,6 @@ class TaxReportInvoices extends Component
      */
     public function render()
     {
-        return view('livewire.tax-report.PPN.tax-report-invoices');
+        return view('livewire.tax-report.ppn.tax-report-invoices');
     }
 }

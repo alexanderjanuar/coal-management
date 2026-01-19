@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Livewire\Client\TaxReport;
+namespace App\Livewire\Client\Panel\TaxReport;
 
 use App\Models\TaxReport;
 use App\Models\Invoice;
@@ -396,6 +396,6 @@ class TaxReportInvoices extends Component
      */
     public function render()
     {
-        return view('livewire.client.tax-report.tax-report-invoices');
+        return view('livewire.client.panel.tax-report.tax-report-invoices');
     }
 }

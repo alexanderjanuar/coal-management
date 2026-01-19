@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Livewire\TaxReport\PPN;
+namespace App\Livewire\TaxReport\Ppn;
 
 use Livewire\Component;
 use App\Models\TaxReport;
@@ -170,7 +170,7 @@ class YearlySummary extends Component
 
     public function render()
     {
-        return view('livewire.tax-report.PPN.yearly-summary', [
+        return view('livewire.tax-report.ppn.yearly-summary', [
             'timelineData' => $this->timelineData,
         ]);
     }

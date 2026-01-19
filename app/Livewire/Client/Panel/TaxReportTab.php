@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Livewire\Client;
+namespace App\Livewire\Client\Panel;
 
 use App\Models\Client;
 use App\Models\UserClient;
@@ -160,6 +160,6 @@ class TaxReportTab extends Component
 
     public function render()
     {
-        return view('livewire.client.tax-report-tab');
+        return view('livewire.client.panel.tax-report-tab');
     }
 }

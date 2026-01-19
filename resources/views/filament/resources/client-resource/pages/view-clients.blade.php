@@ -23,13 +23,13 @@
             @switch($activeTab)
             @case('identitas')
             <div x-data x-init="$el.style.opacity = 0; setTimeout(() => $el.style.opacity = 1, 10)" class="">
-                @livewire('client.components.identitas-tab', ['client' => $record])
+                @livewire('client.management.identitas-tab', ['client' => $record])
             </div>
             @break
 
             @case('perpajakan')
             <div x-data x-init="$el.style.opacity = 0; setTimeout(() => $el.style.opacity = 1, 10)" class="">
-                @livewire('client.components.perpajakan-tab', ['client' => $record])
+                @livewire('client.management.perpajakan-tab', ['client' => $record])
             </div>
             @break
 
@@ -43,39 +43,39 @@
 
             @case('dokumen')
             <div x-data x-init="$el.style.opacity = 0; setTimeout(() => $el.style.opacity = 1, 10)"
-                @livewire('client.components.dokumen-tab', ['client'=> $record])
+                @livewire('client.management.dokumen-tab', ['client'=> $record])
             </div>
             @break
 
             @case('komunikasi')
             <div x-data x-init="$el.style.opacity = 0; setTimeout(() => $el.style.opacity = 1, 10)" class="">
-                @livewire('client.components.komunikasi-tab', ['client' => $record])
+                @livewire('client.management.komunikasi-tab', ['client' => $record])
             </div>
             @break
 
             @case('compliance')
             <div x-data x-init="$el.style.opacity = 0; setTimeout(() => $el.style.opacity = 1, 10)" class="">
-                @livewire('client.components.compliance-tab', ['client' => $record], key('compliance-tab-'.$record->id))
+                @livewire('client.management.compliance-tab', ['client' => $record], key('compliance-tab-'.$record->id))
             </div>
             @break
 
             @case('karyawan')
             <div x-data x-init="$el.style.opacity = 0; setTimeout(() => $el.style.opacity = 1, 10)"
                 class="">
-                @livewire('client.components.karyawan-tab', ['client' => $record], key('karyawan-tab-'.$record->id))
+                @livewire('client.management.karyawan-tab', ['client' => $record], key('karyawan-tab-'.$record->id))
             </div>
             @break
 
             @case('tim')
             <div x-data x-init="$el.style.opacity = 0; setTimeout(() => $el.style.opacity = 1, 10)" class="">
-                @livewire('client.components.tim-tab', ['client' => $record], key('tim-tab-'.$record->id))
+                @livewire('client.management.tim-tab', ['client' => $record], key('tim-tab-'.$record->id))
             </div>
             @break
 
             @case('projek')
             <div x-data x-init="$el.style.opacity = 0; setTimeout(() => $el.style.opacity = 1, 10)"
                 class="">
-                @livewire('client.components.projek-tab', ['client' => $record], key('projek-tab-'.$record->id))
+                @livewire('client.management.projek-tab', ['client' => $record], key('projek-tab-'.$record->id))
             </div>
             @break
             @endswitch

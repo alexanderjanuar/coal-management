@@ -1,0 +1,10 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(tree:*)",
+      "Bash(grep:*)",
+      "Bash(php artisan:*)",
+      "Bash(composer dump-autoload:*)"
+    ]
+  }
+}

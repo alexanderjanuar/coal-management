@@ -63,6 +63,7 @@ class ClientPanelProvider extends PanelProvider
                 DisableBladeIconComponents::class,
                 DispatchServingFilamentEvent::class,
             ])
+            ->topNavigation()
             ->plugins([
                 FilamentInactivityGuardPlugin::make(),
                 FilamentUserActivityPlugin::make(),
@@ -75,6 +76,8 @@ class ClientPanelProvider extends PanelProvider
                 FilamentErrorPagesPlugin::make(),
                
             ])
+            ->brandLogo(asset('images/Logo/OnlyLogo.png'))
+            ->brandLogoHeight('3rem')
             ->viteTheme('resources/css/filament/admin/theme.css')
             ->authMiddleware([
                 RedirectToProperPanelMiddleware::class,

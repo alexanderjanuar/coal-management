@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Livewire;
+namespace App\Livewire\Projects\Components;
 
 use Livewire\Component;
 use App\Models\Project;
@@ -174,7 +174,7 @@ class ProjectDetailUser extends Component
 
     public function render()
     {
-        return view('livewire.project-detail.project-detail-user', [
+        return view('livewire.projects.components.project-detail-user', [
             'users' => $this->users,
             'availableUsers' => $this->availableUsers
         ]);

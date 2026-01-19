@@ -105,7 +105,7 @@
                 x-transition:leave="transition ease-in duration-200"
                 x-transition:leave-start="opacity-100 transform translate-y-0"
                 x-transition:leave-end="opacity-0 transform -translate-y-4">
-                @livewire('client.overview-tab')
+                @livewire('client.panel.overview-tab')
             </div>
 
             {{-- Projects Tab Content --}}
@@ -115,7 +115,7 @@
                 x-transition:leave="transition ease-in duration-200"
                 x-transition:leave-start="opacity-100 transform translate-y-0"
                 x-transition:leave-end="opacity-0 transform -translate-y-4">
-                @livewire('client.proyek-tab')
+                @livewire('client.panel.proyek-tab')
             </div>
 
             {{-- Documents Tab Content --}}
@@ -125,7 +125,7 @@
                 x-transition:leave="transition ease-in duration-200"
                 x-transition:leave-start="opacity-100 transform translate-y-0"
                 x-transition:leave-end="opacity-0 transform -translate-y-4">
-                @livewire('client.document-tab')
+                @livewire('client.panel.document-tab')
             </div>
 
             {{-- Tax Reports Tab Content --}}
@@ -135,7 +135,7 @@
                 x-transition:leave="transition ease-in duration-200"
                 x-transition:leave-start="opacity-100 transform translate-y-0"
                 x-transition:leave-end="opacity-0 transform -translate-y-4">
-                @livewire('client.tax-report-tab')
+                @livewire('client.panel.tax-report-tab')
             </div>
 
             {{-- Loading Overlay --}}

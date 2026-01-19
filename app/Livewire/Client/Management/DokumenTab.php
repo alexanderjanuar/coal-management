@@ -1,7 +1,7 @@
 <?php
-// App/Livewire/Client/Components/DokumenTab.php
+// App/Livewire/Client/Management/DokumenTab.php
 
-namespace App\Livewire\Client\Components;
+namespace App\Livewire\Client\Management;
 
 use App\Models\Client;
 use App\Models\ClientDocument;
@@ -710,6 +710,6 @@ class DokumenTab extends Component implements HasForms
 
     public function render()
     {
-        return view('livewire.client.components.dokumen-tab');
+        return view('livewire.client.management.dokumen-tab');
     }
 }

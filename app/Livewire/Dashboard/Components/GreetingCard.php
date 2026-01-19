@@ -412,7 +412,7 @@ class GreetingCard extends Component
     {
         $dashboardStats = $this->getDashboardStats();
         
-        return view('livewire.dashboard.component.greeting-card', [
+        return view('livewire.dashboard.components.greeting-card', [
             'dashboardStats' => $dashboardStats,
             'greeting' => $this->getGreeting(),
             'firstName' => $this->getFirstName(),

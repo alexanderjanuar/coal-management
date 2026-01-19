@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Livewire\Client\Components;
+namespace App\Livewire\Client\Management;
 
 use App\Models\Client;
 use App\Models\Employee;
@@ -312,6 +312,6 @@ class KaryawanTab extends Component implements HasForms
 
     public function render()
     {
-        return view('livewire.client.components.karyawan-tab');
+        return view('livewire.client.management.karyawan-tab');
     }
 }

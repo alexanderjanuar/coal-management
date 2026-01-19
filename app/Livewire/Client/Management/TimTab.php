@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Livewire\Client\Components;
+namespace App\Livewire\Client\Management;
 
 use App\Models\Client;
 use App\Models\Project;
@@ -350,6 +350,6 @@ class TimTab extends Component implements HasForms
         // Auto load data saat render pertama kali
         $this->loadData();
         
-        return view('livewire.client.components.tim-tab');
+        return view('livewire.client.management.tim-tab');
     }
 }

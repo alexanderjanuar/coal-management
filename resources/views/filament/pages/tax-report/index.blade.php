@@ -805,7 +805,7 @@
             <div x-show="activeTab === 'invoices'" x-transition:enter="transition ease-out duration-200"
                 x-transition:enter-start="opacity-0 transform translate-y-2"
                 x-transition:enter-end="opacity-100 transform translate-y-0" style="display: none;">
-                @livewire('tax-report.PPN.tax-report-invoices', ['taxReportId' => $record->id])
+                @livewire('tax-report.ppn.tax-report-invoices', ['taxReportId' => $record->id])
             </div>
 
             {{-- PPh Content --}}

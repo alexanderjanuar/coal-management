@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Livewire;
+namespace App\Livewire\Projects\Components;
 
 use Livewire\Component;
 use App\Models\Comment;
@@ -174,7 +174,7 @@ class ProjectDetailComments extends Component implements HasForms
 
     public function render()
     {
-        return view('livewire.project-detail.project-detail-comments', [
+        return view('livewire.projects.components.project-detail-comments', [
             'comments' => $this->task->comments()
                 ->with(['user', 'replies.user'])
                 ->whereNull('parent_id')

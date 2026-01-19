@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Livewire\Client\Components;
+namespace App\Livewire\Client\Management;
 
 use Livewire\Component;
 use App\Models\Client;
@@ -169,6 +169,6 @@ class IdentitasTab extends Component
 
     public function render()
     {
-        return view('livewire.client.components.identitas-tab');
+        return view('livewire.client.management.identitas-tab');
     }
 }
