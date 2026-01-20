@@ -437,7 +437,7 @@ class DocumentTab extends Component implements HasForms
                 // Clear cache
                 $this->clearClientCache($this->currentClient->id);
 
-                // Send notifications to other client users
+                // Send notifications to other client users AND management
                 $this->sendDocumentUploadNotification($this->currentClient, $originalName);
 
                 $this->closeUploadModal();
@@ -607,25 +607,15 @@ class DocumentTab extends Component implements HasForms
         $this->dispatch('close-modal', id: 'preview-document-modal');
     }
 
+    /**
+     * ENHANCED: Send notifications to clients AND management users
+     */
     protected function sendDocumentUploadNotification(Client $client, string $filename)
     {
         try {
-            // Get all users linked to this client who have 'client' role (except current user)
-            $clientUsers = \App\Models\User::whereHas('userClients', function ($query) use ($client) {
-                $query->where('client_id', $client->id);
-            })
-            ->whereHas('roles', function ($query) {
-                $query->where('name', 'client');
-            })
-            ->where('id', '!=', auth()->id())
-            ->get();
-
-            if ($clientUsers->isEmpty()) {
-                return;
-            }
-
             $uploaderName = auth()->user()->name;
             $clientName = $client->name;
+            $currentUserId = auth()->id();
 
             // Determine document type for better message
             $docType = 'dokumen';
@@ -639,31 +629,199 @@ class DocumentTab extends Component implements HasForms
                 $docType = 'dokumen tambahan';
             }
 
-            // Send notification to each client user
-            foreach ($clientUsers as $user) {
-                Notification::make()
-                    ->title('📄 Dokumen Baru Diupload')
-                    ->body("{$uploaderName} telah mengupload {$docType} untuk {$clientName}: {$filename}")
-                    ->icon('heroicon-o-document-arrow-up')
-                    ->color('info')
-                    ->actions([
-                        \Filament\Notifications\Actions\Action::make('view')
-                            ->label('👁️ Lihat Dokumen')
-                            ->url(route('filament.client.pages.document-page'))
-                            ->button()
-                            ->color('primary')
-                            ->markAsRead(),
-                        \Filament\Notifications\Actions\Action::make('dismiss')
-                            ->label('Tutup')
-                            ->color('gray')
-                            ->markAsRead(),
-                    ])
-                    ->sendToDatabase($user);
+            // 1️⃣ NOTIFY OTHER CLIENT USERS (existing functionality)
+            $clientUsers = \App\Models\User::whereHas('userClients', function ($query) use ($client) {
+                $query->where('client_id', $client->id);
+            })
+            ->whereHas('roles', function ($query) {
+                $query->where('name', 'client');
+            })
+            ->where('id', '!=', $currentUserId)
+            ->get();
+
+            // 2️⃣ NOTIFY MANAGEMENT USERS (NEW!)
+            // Get all users who have access to this client but are NOT client role
+            $managementUsers = \App\Models\User::whereHas('userClients', function ($query) use ($client) {
+                $query->where('client_id', $client->id);
+            })
+            ->whereHas('roles', function ($query) {
+                $query->whereIn('name', ['project-manager', 'direktur', 'super-admin', 'verificator', 'staff']);
+            })
+            ->where('id', '!=', $currentUserId)
+            ->where('status', 'active')
+            ->get();
+
+            // 3️⃣ NOTIFY CLIENT PIC (if assigned and not already in the list)
+            $picUsers = collect([]);
+            if ($client->pic_id && $client->pic_id !== $currentUserId) {
+                $pic = \App\Models\User::find($client->pic_id);
+                if ($pic && $pic->status === 'active') {
+                    $picUsers->push($pic);
+                }
             }
 
+            // 4️⃣ NOTIFY ACCOUNT REPRESENTATIVE (if assigned and not already in the list)
+            $arUsers = collect([]);
+            if ($client->ar_id && $client->ar_id !== $currentUserId) {
+                $ar = \App\Models\User::find($client->ar_id);
+                if ($ar && $ar->status === 'active') {
+                    $arUsers->push($ar);
+                }
+            }
+
+            // Merge all recipients and remove duplicates
+            $allRecipients = $clientUsers
+                ->merge($managementUsers)
+                ->merge($picUsers)
+                ->merge($arUsers)
+                ->unique('id');
+
+            // 🔍 DEBUG: Log recipient information
+            \Log::info('Document Upload Notification Recipients', [
+                'client_id' => $client->id,
+                'client_name' => $clientName,
+                'uploader' => $uploaderName,
+                'uploader_id' => $currentUserId,
+                'document' => $filename,
+                'doc_type' => $docType,
+                'total_recipients' => $allRecipients->count(),
+                'client_users' => $clientUsers->count(),
+                'management_users' => $managementUsers->count(),
+                'pic_users' => $picUsers->count(),
+                'ar_users' => $arUsers->count(),
+                'recipient_ids' => $allRecipients->pluck('id')->toArray(),
+                'recipient_names' => $allRecipients->pluck('name')->toArray(),
+            ]);
+
+            if ($allRecipients->isEmpty()) {
+                \Log::warning('No recipients found for document upload notification', [
+                    'client_id' => $client->id,
+                    'uploader_id' => $currentUserId,
+                ]);
+                return;
+            }
+
+            // Send notification to each recipient
+            foreach ($allRecipients as $user) {
+                // Customize message based on user role
+                $isManagement = $user->hasAnyRole(['project-manager', 'direktur', 'super-admin', 'verificator', 'staff']);
+                
+                // Format document type with emoji
+                $docTypeEmoji = match(true) {
+                    str_contains(strtolower($docType), 'legal') => '⚖️',
+                    str_contains(strtolower($docType), 'persyaratan') => '📋',
+                    str_contains(strtolower($docType), 'tambahan') => '➕',
+                    default => '📄'
+                };
+                
+                if ($isManagement) {
+                    // Management notification
+                    $title = 'Dokumen Baru dari Client';
+                    $body = sprintf(
+                        "<div style='font-family: system-ui, -apple-system, sans-serif; color: #1f2937; line-height: 1.6;'>
+                            <div style='margin-bottom: 12px; color: #374151;'>
+                                Client mengupload dokumen baru
+                            </div>
+                            <div style='background: #f8fafc; border-left: 3px solid #3b82f6; padding: 14px; margin: 12px 0; border-radius: 4px;'>
+                                <table style='width: 100%%; border-collapse: collapse;'>
+                                    <tr>
+                                        <td style='padding: 5px 0; color: #64748b; width: 100px; font-size: 13px;'>Client</td>
+                                        <td style='padding: 5px 0; color: #0f172a; font-weight: 500;'>%s</td>
+                                    </tr>
+                                    <tr>
+                                        <td style='padding: 5px 0; color: #64748b; font-size: 13px;'>Uploader</td>
+                                        <td style='padding: 5px 0; color: #334155;'>%s</td>
+                                    </tr>
+                                    <tr>
+                                        <td style='padding: 5px 0; color: #64748b; font-size: 13px;'>Jenis</td>
+                                        <td style='padding: 5px 0; color: #475569;'>%s %s</td>
+                                    </tr>
+                                    <tr>
+                                        <td style='padding: 5px 0; color: #64748b; font-size: 13px;'>File</td>
+                                        <td style='padding: 5px 0; color: #475569; font-family: Consolas, Monaco, monospace; font-size: 13px;'>%s</td>
+                                    </tr>
+                                </table>
+                            </div>
+                            <div style='color: #94a3b8; font-size: 12px; margin-top: 10px;'>
+                                %s
+                            </div>
+                        </div>",
+                        $clientName,
+                        $uploaderName,
+                        $docTypeEmoji,
+                        $docType,
+                        $filename,
+                        now()->format('d M Y • H:i')
+                    );
+                } else {
+                    // Client notification
+                    $title = 'Dokumen Baru Diupload';
+                    $body = sprintf(
+                        "<div style='font-family: system-ui, -apple-system, sans-serif; color: #1f2937; line-height: 1.6;'>
+                            <div style='margin-bottom: 12px; color: #374151;'>
+                                <strong style='color: #111827;'>%s</strong> mengupload dokumen baru
+                            </div>
+                            <div style='background: #f8fafc; border-left: 3px solid #3b82f6; padding: 14px; margin: 12px 0; border-radius: 4px;'>
+                                <table style='width: 100%%; border-collapse: collapse;'>
+                                    <tr>
+                                        <td style='padding: 5px 0; color: #64748b; width: 100px; font-size: 13px;'>Client</td>
+                                        <td style='padding: 5px 0; color: #0f172a; font-weight: 500;'>%s</td>
+                                    </tr>
+                                    <tr>
+                                        <td style='padding: 5px 0; color: #64748b; font-size: 13px;'>Dokumen</td>
+                                        <td style='padding: 5px 0; color: #334155;'>%s %s</td>
+                                    </tr>
+                                    <tr>
+                                        <td style='padding: 5px 0; color: #64748b; font-size: 13px;'>File</td>
+                                        <td style='padding: 5px 0; color: #475569; font-family: Consolas, Monaco, monospace; font-size: 13px;'>%s</td>
+                                    </tr>
+                                </table>
+                            </div>
+                            <div style='color: #94a3b8; font-size: 12px; margin-top: 10px;'>
+                                %s
+                            </div>
+                        </div>",
+                        $uploaderName,
+                        $clientName,
+                        $docTypeEmoji,
+                        $docType,
+                        $filename,
+                        now()->format('d M Y • H:i')
+                    );
+                }
+
+                Notification::make()
+                    ->title($title)
+                    ->body($body)
+                    ->icon('heroicon-o-document-arrow-up')
+                    ->iconColor('primary')
+                    ->sendToDatabase($user)
+                    ->broadcast($user);
+                
+                // 🔍 DEBUG: Log each notification sent
+                \Log::debug('Notification sent to user', [
+                    'recipient_id' => $user->id,
+                    'recipient_name' => $user->name,
+                    'recipient_email' => $user->email,
+                    'recipient_roles' => $user->roles->pluck('name')->toArray(),
+                    'is_management' => $isManagement,
+                ]);
+            }
+
+            // 🔍 DEBUG: Final success log
+            \Log::info('Document upload notifications sent successfully', [
+                'total_sent' => $allRecipients->count(),
+                'client_id' => $client->id,
+            ]);
+
         } catch (\Exception $e) {
-            // Log error but don't interrupt the upload process
-            \Log::error('Failed to send document upload notification: ' . $e->getMessage());
+            // Enhanced error logging
+            \Log::error('Failed to send document upload notification', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+                'client_id' => $client->id ?? null,
+                'uploader_id' => auth()->id() ?? null,
+            ]);
         }
     }
 

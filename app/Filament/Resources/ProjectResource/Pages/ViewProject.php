@@ -4,6 +4,8 @@ namespace App\Filament\Resources\ProjectResource\Pages;
 
 use App\Filament\Resources\ProjectResource;
 use Filament\Actions;
+use Filament\Forms\Components\Placeholder;
+use Filament\Forms\Components\Section;
 use Filament\Resources\Pages\ViewRecord;
 use Filament\Forms\Components\RichEditor;
 use Filament\Forms\Components\Textarea;
@@ -359,22 +361,101 @@ class ViewProject extends ViewRecord
                 ->modalHeading($isCompleted ? 'Update Deliverables' : 'Complete Project')
                 ->modalDescription($isCompleted ? 'Add more deliverable files or update completion notes for this project.' : 'Upload deliverable files and add completion notes for this project.')
                 ->modalSubmitActionLabel($isCompleted ? 'Update Deliverables' : 'Complete Project')
+                ->modalWidth('3xl')
                 ->visible(!$clientInactive)
-                ->form([    
+                ->fillForm(function () use ($isCompleted) {
+                    if (!$isCompleted) {
+                        return [
+                            'result_notes' => $this->record->result_notes,
+                        ];
+                    }
+                    
+                    // For completed projects, show existing files
+                    $existingFiles = $this->record->deliverable_files ?? [];
+                    
+                    return [
+                        'existing_files' => $existingFiles,
+                        'result_notes' => $this->record->result_notes,
+                    ];
+                })
+                ->form([
+                    // Show existing files section only if project is completed and has files
+                    Section::make('Existing Deliverable Files')
+                        ->description('Current deliverable files - click to download or remove')
+                        ->schema([
+                            Placeholder::make('existing_files_list')
+                                ->label('')
+                                ->content(function () use ($isCompleted) {
+                                    if (!$isCompleted || empty($this->record->deliverable_files)) {
+                                        return new \Illuminate\Support\HtmlString('<p class="text-sm text-gray-500">No existing files</p>');
+                                    }
+                                    
+                                    $files = $this->record->deliverable_files;
+                                    $html = '<div class="space-y-2">';
+                                    
+                                    foreach ($files as $index => $file) {
+                                        $fileName = $file['name'] ?? basename($file['path'] ?? '');
+                                        $fileSize = isset($file['size']) ? number_format($file['size'] / 1024, 2) . ' KB' : 'Unknown size';
+                                        $uploadedAt = isset($file['uploaded_at']) ? \Carbon\Carbon::parse($file['uploaded_at'])->format('M d, Y H:i') : 'Unknown date';
+                                        $fileUrl = \Storage::disk('public')->url($file['path']);
+                                        
+                                        $html .= '
+                                            <div class="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
+                                                <div class="flex items-center gap-3 flex-1 min-w-0">
+                                                    <svg class="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                                    </svg>
+                                                    <div class="flex-1 min-w-0">
+                                                        <p class="text-sm font-medium text-gray-900 dark:text-gray-100 truncate">' . e($fileName) . '</p>
+                                                        <p class="text-xs text-gray-500 dark:text-gray-400">' . $fileSize . ' • Uploaded ' . $uploadedAt . '</p>
+                                                    </div>
+                                                </div>
+                                                <div class="flex items-center gap-2">
+                                                    <a href="' . $fileUrl . '" 
+                                                       download
+                                                       class="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-medium text-blue-700 bg-blue-50 rounded-md hover:bg-blue-100 dark:bg-blue-900 dark:text-blue-300 dark:hover:bg-blue-800">
+                                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                                                        </svg>
+                                                        Download
+                                                    </a>
+                                                    <button type="button"
+                                                            wire:click="removeDeliverableFile(' . $index . ')"
+                                                            class="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-medium text-red-700 bg-red-50 rounded-md hover:bg-red-100 dark:bg-red-900 dark:text-red-300 dark:hover:bg-red-800">
+                                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                                        </svg>
+                                                        Remove
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        ';
+                                    }
+                                    
+                                    $html .= '</div>';
+                                    
+                                    return new \Illuminate\Support\HtmlString($html);
+                                }),
+                        ])
+                        ->visible(fn() => $isCompleted && !empty($this->record->deliverable_files))
+                        ->collapsible(),
+                    
                     FileUpload::make('deliverable_files')
-                        ->label('Deliverable Files')
+                        ->label($isCompleted ? 'Add New Files' : 'Deliverable Files')
                         ->multiple()
                         ->directory(function () {
                             $clientName = \Illuminate\Support\Str::slug($this->record->client->name);
-                            $projectName = \Illuminate\Support\Str::slug($this->record->name);
-                            return "clients/{$clientName}/{$projectName}/deliverables";
+                            $projectName = strtoupper(\Illuminate\Support\Str::slug($this->record->name));
+                            return "clients/{$clientName}/KEGIATAN PERUSAHAAN/{$projectName}/deliverables";
                         })
                         ->maxSize(10240) // 10MB
-                        ->helperText($isCompleted ? 'Upload additional files to be delivered to the client (Max 10MB per file)' : 'Upload files to be delivered to the client (Max 10MB per file)')
+                        ->maxFiles(10) // Allow up to 10 files at once
+                        ->helperText($isCompleted ? 'Upload additional files to be delivered to the client (Max 10MB per file, up to 10 files)' : 'Upload files to be delivered to the client (Max 10MB per file, up to 10 files)')
                         ->preserveFilenames()
                         ->acceptedFileTypes(['application/pdf', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', 'application/vnd.ms-excel', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', 'image/*', 'application/zip'])
                         ->downloadable()
                         ->openable()
+                        ->reorderable()
                         ->storeFileNamesIn('deliverable_file_names'),
                     
                     Textarea::make('result_notes')
@@ -557,5 +638,67 @@ class ViewProject extends ViewRecord
         $this->updateRequiredDocumentStatuses();
         $this->updateProjectStepStatus();
         $this->updateProjectStatus();
+    }
+
+    /**
+     * Remove a deliverable file from the project
+     */
+    public function removeDeliverableFile(int $index): void
+    {
+        if ($this->isClientInactive()) {
+            Notification::make()
+                ->title('Client is inactive')
+                ->body('This client is inactive and its projects are locked from modifications.')
+                ->warning()
+                ->send();
+            return;
+        }
+
+        $deliverableFiles = $this->record->deliverable_files ?? [];
+        
+        if (!isset($deliverableFiles[$index])) {
+            Notification::make()
+                ->title('File not found')
+                ->body('The file you are trying to remove does not exist.')
+                ->warning()
+                ->send();
+            return;
+        }
+
+        $fileToRemove = $deliverableFiles[$index];
+        $fileName = $fileToRemove['name'] ?? basename($fileToRemove['path'] ?? 'Unknown file');
+        
+        // Delete the actual file from storage
+        if (isset($fileToRemove['path']) && \Storage::disk('public')->exists($fileToRemove['path'])) {
+            \Storage::disk('public')->delete($fileToRemove['path']);
+        }
+        
+        // Remove from array
+        unset($deliverableFiles[$index]);
+        
+        // Re-index array to avoid gaps
+        $deliverableFiles = array_values($deliverableFiles);
+        
+        // Update the record
+        $this->record->update([
+            'deliverable_files' => $deliverableFiles
+        ]);
+
+        // Log the activity
+        Comment::create([
+            'user_id' => auth()->id(),
+            'commentable_id' => $this->record->id,
+            'commentable_type' => get_class($this->record),
+            'content' => "Deliverable file '{$fileName}' was removed from the project."
+        ]);
+
+        Notification::make()
+            ->title('File removed successfully')
+            ->body("The file '{$fileName}' has been removed from deliverables.")
+            ->success()
+            ->send();
+
+        // Refresh the component to show updated file list
+        $this->record->refresh();
     }
 }

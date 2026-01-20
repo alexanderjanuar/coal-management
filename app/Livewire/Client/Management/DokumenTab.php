@@ -269,7 +269,7 @@ class DokumenTab extends Component implements HasForms
         try {
             // If creating a requirement (template)
             if ($this->isRequirementMode) {
-                ClientDocumentRequirement::create([
+                $requirement = ClientDocumentRequirement::create([
                     'client_id' => $this->client->id,
                     'created_by' => auth()->id(),
                     'name' => $data['documentName'],
@@ -280,12 +280,15 @@ class DokumenTab extends Component implements HasForms
                     'status' => 'pending',
                 ]);
                 
+                // Send notification to client users about new requirement
+                $this->sendRequirementCreatedNotification($this->client, $requirement);
+                
                 $this->closeUploadModal();
                 $this->loadData();
                 
                 Notification::make()
                     ->title('Berhasil!')
-                    ->body('Persyaratan dokumen berhasil ditambahkan!')
+                    ->body('Persyaratan dokumen berhasil ditambahkan dan notifikasi telah dikirim ke client!')
                     ->success()
                     ->duration(3000)
                     ->send();
@@ -353,7 +356,7 @@ class DokumenTab extends Component implements HasForms
                 
                 Notification::make()
                     ->title('Berhasil!')
-                    ->body('Dokumen berhasil diupload!')
+                    ->body('Dokumen berhasil diupload dan notifikasi telah dikirim ke client!')
                     ->success()
                     ->duration(3000)
                     ->send();
@@ -396,23 +399,60 @@ class DokumenTab extends Component implements HasForms
     public function submitReview()
     {
         if (!$this->documentToReview) {
+            \Log::error('submitReview: No document to review');
+            Notification::make()
+                ->title('Error!')
+                ->body('Dokumen tidak ditemukan')
+                ->danger()
+                ->send();
             return;
         }
 
+        \Log::info('submitReview called', [
+            'document_id' => $this->documentToReview->id,
+            'document_filename' => $this->documentToReview->original_filename,
+            'action' => $this->reviewAction,
+            'client_id' => $this->documentToReview->client_id,
+            'reviewer_id' => auth()->id(),
+            'has_notes' => !empty($this->reviewNotes),
+        ]);
+
         try {
             if ($this->reviewAction === 'approve') {
-                $this->documentToReview->approve($this->reviewNotes);
+                \Log::info('Approving document', [
+                    'document_id' => $this->documentToReview->id,
+                ]);
+                
+                // Update document status
+                $this->documentToReview->update([
+                    'status' => 'valid',
+                    'admin_notes' => $this->reviewNotes,
+                    'reviewed_by' => auth()->id(),
+                    'reviewed_at' => now(),
+                ]);
+                
+                \Log::info('Document status updated to valid', [
+                    'document_id' => $this->documentToReview->id,
+                    'new_status' => $this->documentToReview->fresh()->status,
+                ]);
                 
                 // Send notification to client users
+                \Log::info('About to send approval notification');
                 $this->sendDocumentReviewNotification($this->documentToReview, 'approved', $this->reviewNotes);
+                \Log::info('Approval notification method completed');
                 
                 Notification::make()
                     ->title('Berhasil!')
-                    ->body('Dokumen telah disetujui')
+                    ->body('Dokumen telah disetujui dan notifikasi telah dikirim ke client!')
                     ->success()
                     ->send();
+                    
             } elseif ($this->reviewAction === 'reject') {
                 if (empty($this->reviewNotes)) {
+                    \Log::warning('Rejection attempted without notes', [
+                        'document_id' => $this->documentToReview->id,
+                    ]);
+                    
                     Notification::make()
                         ->title('Error!')
                         ->body('Alasan penolakan harus diisi')
@@ -421,14 +461,31 @@ class DokumenTab extends Component implements HasForms
                     return;
                 }
                 
-                $this->documentToReview->reject($this->reviewNotes);
+                \Log::info('Rejecting document', [
+                    'document_id' => $this->documentToReview->id,
+                    'reason' => $this->reviewNotes,
+                ]);
+                
+                // Update document status
+                $this->documentToReview->update([
+                    'status' => 'rejected',
+                    'admin_notes' => $this->reviewNotes,
+                    'reviewed_by' => auth()->id(),
+                    'reviewed_at' => now(),
+                ]);
+                
+                \Log::info('Document status updated to rejected', [
+                    'document_id' => $this->documentToReview->id,
+                ]);
                 
                 // Send notification to client users
+                \Log::info('About to send rejection notification');
                 $this->sendDocumentReviewNotification($this->documentToReview, 'rejected', $this->reviewNotes);
+                \Log::info('Rejection notification method completed');
                 
                 Notification::make()
                     ->title('Dokumen Ditolak')
-                    ->body('Dokumen telah ditolak')
+                    ->body('Dokumen telah ditolak dan notifikasi telah dikirim ke client!')
                     ->warning()
                     ->send();
             }
@@ -437,6 +494,13 @@ class DokumenTab extends Component implements HasForms
             $this->loadData();
 
         } catch (\Exception $e) {
+            \Log::error('submitReview failed', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+                'document_id' => $this->documentToReview->id ?? null,
+                'action' => $this->reviewAction ?? null,
+            ]);
+            
             Notification::make()
                 ->title('Error!')
                 ->body('Gagal memproses review: ' . $e->getMessage())
@@ -588,47 +652,95 @@ class DokumenTab extends Component implements HasForms
             ->get();
 
             if ($clientUsers->isEmpty()) {
+                \Log::warning('No client users found for admin upload notification', [
+                    'client_id' => $client->id,
+                    'uploader_id' => auth()->id(),
+                ]);
                 return;
             }
 
             $adminName = auth()->user()->name;
             $clientName = $client->name;
 
-            // Determine document type
+            // Determine document type with emoji
             $docType = 'dokumen';
+            $docTypeEmoji = '📄';
+            
             if ($this->selectedRequirementId) {
                 $requirement = ClientDocumentRequirement::find($this->selectedRequirementId);
                 $docType = $requirement ? $requirement->name : 'dokumen persyaratan';
+                $docTypeEmoji = '📋';
             } elseif ($this->selectedSopId) {
                 $sopDoc = SopLegalDocument::find($this->selectedSopId);
                 $docType = $sopDoc ? $sopDoc->name : 'dokumen legal';
+                $docTypeEmoji = '⚖️';
             } elseif ($this->isAdditionalDocument) {
                 $docType = 'dokumen tambahan';
+                $docTypeEmoji = '➕';
             }
 
             foreach ($clientUsers as $user) {
+                $body = sprintf(
+                    "<div style='font-family: system-ui, -apple-system, sans-serif; color: #1f2937; line-height: 1.6;'>
+                        <div style='margin-bottom: 12px; color: #374151;'>
+                            <strong style='color: #111827;'>%s</strong> menambahkan dokumen baru
+                        </div>
+                        <div style='background: #f8fafc; border-left: 3px solid #3b82f6; padding: 14px; margin: 12px 0; border-radius: 4px;'>
+                            <table style='width: 100%%; border-collapse: collapse;'>
+                                <tr>
+                                    <td style='padding: 5px 0; color: #64748b; width: 100px; font-size: 13px;'>Client</td>
+                                    <td style='padding: 5px 0; color: #0f172a; font-weight: 500;'>%s</td>
+                                </tr>
+                                <tr>
+                                    <td style='padding: 5px 0; color: #64748b; font-size: 13px;'>Jenis</td>
+                                    <td style='padding: 5px 0; color: #334155;'>%s %s</td>
+                                </tr>
+                                <tr>
+                                    <td style='padding: 5px 0; color: #64748b; font-size: 13px;'>File</td>
+                                    <td style='padding: 5px 0; color: #475569; font-family: Consolas, Monaco, monospace; font-size: 13px;'>%s</td>
+                                </tr>
+                            </table>
+                        </div>
+                        <div style='color: #94a3b8; font-size: 12px; margin-top: 10px;'>
+                            %s
+                        </div>
+                    </div>",
+                    $adminName,
+                    $clientName,
+                    $docTypeEmoji,
+                    $docType,
+                    $filename,
+                    now()->format('d M Y • H:i')
+                );
+
                 Notification::make()
-                    ->title('📄 Dokumen Baru dari Admin')
-                    ->body("Admin {$adminName} telah mengupload {$docType} untuk {$clientName}: {$filename}")
-                    ->icon('heroicon-o-shield-check')
-                    ->color('success')
-                    ->actions([
-                        \Filament\Notifications\Actions\Action::make('view')
-                            ->label('👁️ Lihat Dokumen')
-                            ->url(route('filament.client.pages.document-page'))
-                            ->button()
-                            ->color('success')
-                            ->markAsRead(),
-                        \Filament\Notifications\Actions\Action::make('dismiss')
-                            ->label('Tutup')
-                            ->color('gray')
-                            ->markAsRead(),
-                    ])
-                    ->sendToDatabase($user);
+                    ->title('Dokumen Baru dari Admin')
+                    ->body($body)
+                    ->icon('heroicon-o-document-plus')
+                    ->iconColor('primary')
+                    ->sendToDatabase($user)
+                    ->broadcast($user);
+                    
+                \Log::debug('Admin upload notification sent', [
+                    'recipient_id' => $user->id,
+                    'recipient_name' => $user->name,
+                    'client_id' => $client->id,
+                    'filename' => $filename,
+                ]);
             }
+            
+            \Log::info('Admin upload notifications sent successfully', [
+                'total_sent' => $clientUsers->count(),
+                'client_id' => $client->id,
+                'admin_id' => auth()->id(),
+            ]);
 
         } catch (\Exception $e) {
-            \Log::error('Failed to send admin upload notification: ' . $e->getMessage());
+            \Log::error('Failed to send admin upload notification', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+                'client_id' => $client->id ?? null,
+            ]);
         }
     }
 
@@ -645,6 +757,10 @@ class DokumenTab extends Component implements HasForms
             ->get();
 
             if ($clientUsers->isEmpty()) {
+                \Log::warning('No client users found for review notification', [
+                    'document_id' => $document->id,
+                    'client_id' => $document->client_id,
+                ]);
                 return;
             }
 
@@ -654,51 +770,227 @@ class DokumenTab extends Component implements HasForms
 
             if ($action === 'approved') {
                 foreach ($clientUsers as $user) {
+                    $body = sprintf(
+                        "<div style='font-family: system-ui, -apple-system, sans-serif; color: #1f2937; line-height: 1.6;'>
+                            <div style='margin-bottom: 12px; color: #374151;'>
+                                Dokumen Anda telah <strong style='color: #059669;'>disetujui</strong>
+                            </div>
+                            <div style='background: #f0fdf4; border-left: 3px solid #10b981; padding: 14px; margin: 12px 0; border-radius: 4px;'>
+                                <table style='width: 100%%; border-collapse: collapse;'>
+                                    <tr>
+                                        <td style='padding: 5px 0; color: #064e3b; width: 100px; font-size: 13px;'>Client</td>
+                                        <td style='padding: 5px 0; color: #065f46; font-weight: 500;'>%s</td>
+                                    </tr>
+                                    <tr>
+                                        <td style='padding: 5px 0; color: #064e3b; font-size: 13px;'>Dokumen</td>
+                                        <td style='padding: 5px 0; color: #047857; font-family: Consolas, Monaco, monospace; font-size: 13px;'>%s</td>
+                                    </tr>
+                                    <tr>
+                                        <td style='padding: 5px 0; color: #064e3b; font-size: 13px;'>Reviewer</td>
+                                        <td style='padding: 5px 0; color: #065f46;'>%s</td>
+                                    </tr>
+                                    %s
+                                </table>
+                            </div>
+                            <div style='background: #d1fae5; padding: 8px 12px; border-radius: 4px; margin: 10px 0;'>
+                                <span style='color: #065f46; font-size: 13px; font-weight: 500;'>✓ Status: Valid</span>
+                            </div>
+                            <div style='color: #94a3b8; font-size: 12px; margin-top: 10px;'>
+                                %s
+                            </div>
+                        </div>",
+                        $clientName,
+                        $filename,
+                        $reviewerName,
+                        $notes ? "<tr><td style='padding: 5px 0; color: #064e3b; font-size: 13px;'>Catatan</td><td style='padding: 5px 0; color: #065f46;'>{$notes}</td></tr>" : '',
+                        now()->format('d M Y • H:i')
+                    );
+
                     Notification::make()
-                        ->title('✅ Dokumen Disetujui')
-                        ->body("Dokumen '{$filename}' untuk {$clientName} telah disetujui oleh {$reviewerName}." . ($notes ? " Catatan: {$notes}" : ''))
+                        ->title('Dokumen Disetujui')
+                        ->body($body)
                         ->icon('heroicon-o-check-circle')
-                        ->color('success')
-                        ->actions([
-                            \Filament\Notifications\Actions\Action::make('view')
-                                ->label('👁️ Lihat Dokumen')
-                                ->url(route('filament.client.pages.document-page'))
-                                ->button()
-                                ->color('success')
-                                ->markAsRead(),
-                            \Filament\Notifications\Actions\Action::make('dismiss')
-                                ->label('Tutup')
-                                ->color('gray')
-                                ->markAsRead(),
-                        ])
-                        ->sendToDatabase($user);
+                        ->iconColor('success')
+                        ->sendToDatabase($user)
+                        ->broadcast($user);
+                    
+                    \Log::debug('Document approval notification sent', [
+                        'recipient_id' => $user->id,
+                        'document_id' => $document->id,
+                    ]);
                 }
             } elseif ($action === 'rejected') {
                 foreach ($clientUsers as $user) {
+                    $body = sprintf(
+                        "<div style='font-family: system-ui, -apple-system, sans-serif; color: #1f2937; line-height: 1.6;'>
+                            <div style='margin-bottom: 12px; color: #374151;'>
+                                Dokumen perlu <strong style='color: #dc2626;'>diperbaiki</strong>
+                            </div>
+                            <div style='background: #fef2f2; border-left: 3px solid #ef4444; padding: 14px; margin: 12px 0; border-radius: 4px;'>
+                                <table style='width: 100%%; border-collapse: collapse;'>
+                                    <tr>
+                                        <td style='padding: 5px 0; color: #7f1d1d; width: 100px; font-size: 13px;'>Client</td>
+                                        <td style='padding: 5px 0; color: #991b1b; font-weight: 500;'>%s</td>
+                                    </tr>
+                                    <tr>
+                                        <td style='padding: 5px 0; color: #7f1d1d; font-size: 13px;'>Dokumen</td>
+                                        <td style='padding: 5px 0; color: #b91c1c; font-family: Consolas, Monaco, monospace; font-size: 13px;'>%s</td>
+                                    </tr>
+                                    <tr>
+                                        <td style='padding: 5px 0; color: #7f1d1d; font-size: 13px;'>Reviewer</td>
+                                        <td style='padding: 5px 0; color: #991b1b;'>%s</td>
+                                    </tr>
+                                </table>
+                            </div>
+                            <div style='background: #fee2e2; padding: 10px 12px; border-radius: 4px; margin: 10px 0;'>
+                                <div style='color: #7f1d1d; font-size: 12px; margin-bottom: 4px; font-weight: 500;'>Alasan:</div>
+                                <div style='color: #991b1b; font-size: 13px; line-height: 1.5;'>%s</div>
+                            </div>
+                            <div style='color: #94a3b8; font-size: 12px; margin-top: 10px;'>
+                                %s
+                            </div>
+                        </div>",
+                        $clientName,
+                        $filename,
+                        $reviewerName,
+                        $notes ?? 'Tidak ada catatan',
+                        now()->format('d M Y • H:i')
+                    );
+
                     Notification::make()
-                        ->title('❌ Dokumen Ditolak')
-                        ->body("Dokumen '{$filename}' untuk {$clientName} telah ditolak oleh {$reviewerName}. Alasan: {$notes}")
+                        ->title('Dokumen Ditolak')
+                        ->body($body)
                         ->icon('heroicon-o-x-circle')
-                        ->color('danger')
-                        ->persistent()
-                        ->actions([
-                            \Filament\Notifications\Actions\Action::make('reupload')
-                                ->label('📤 Upload Ulang')
-                                ->url(route('filament.client.pages.document-page'))
-                                ->button()
-                                ->color('danger')
-                                ->markAsRead(),
-                            \Filament\Notifications\Actions\Action::make('dismiss')
-                                ->label('Tutup')
-                                ->color('gray')
-                                ->markAsRead(),
-                        ])
-                        ->sendToDatabase($user);
+                        ->iconColor('danger')
+                        ->sendToDatabase($user)
+                        ->broadcast($user);
+                    
+                    \Log::debug('Document rejection notification sent', [
+                        'recipient_id' => $user->id,
+                        'document_id' => $document->id,
+                        'reason' => $notes,
+                    ]);
                 }
             }
 
+            \Log::info('Document review notifications sent successfully', [
+                'total_sent' => $clientUsers->count(),
+                'action' => $action,
+                'document_id' => $document->id,
+            ]);
+
         } catch (\Exception $e) {
-            \Log::error('Failed to send document review notification: ' . $e->getMessage());
+            \Log::error('Failed to send document review notification', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+                'document_id' => $document->id ?? null,
+                'action' => $action ?? null,
+            ]);
+        }
+    }
+
+    /**
+     * Send notification when a new requirement is created
+     */
+    protected function sendRequirementCreatedNotification(Client $client, ClientDocumentRequirement $requirement)
+    {
+        try {
+            // Get all users linked to this client who have 'client' role
+            $clientUsers = \App\Models\User::whereHas('userClients', function ($query) use ($client) {
+                $query->where('client_id', $client->id);
+            })
+            ->whereHas('roles', function ($query) {
+                $query->where('name', 'client');
+            })
+            ->get();
+
+            if ($clientUsers->isEmpty()) {
+                \Log::warning('No client users found for requirement notification', [
+                    'client_id' => $client->id,
+                    'requirement_id' => $requirement->id,
+                ]);
+                return;
+            }
+
+            $adminName = auth()->user()->name;
+            $clientName = $client->name;
+            
+            // Category emoji
+            $categoryEmoji = match($requirement->category) {
+                'legal' => '⚖️',
+                'financial' => '💰',
+                'operational' => '⚙️',
+                'compliance' => '✅',
+                default => '📋'
+            };
+
+            foreach ($clientUsers as $user) {
+                $body = sprintf(
+                    "<div style='font-family: system-ui, -apple-system, sans-serif; color: #1f2937; line-height: 1.6;'>
+                        <div style='margin-bottom: 12px; color: #374151;'>
+                            <strong style='color: #111827;'>%s</strong> meminta dokumen tambahan
+                        </div>
+                        <div style='background: #fffbeb; border-left: 3px solid #f59e0b; padding: 14px; margin: 12px 0; border-radius: 4px;'>
+                            <table style='width: 100%%; border-collapse: collapse;'>
+                                <tr>
+                                    <td style='padding: 5px 0; color: #78350f; width: 120px; font-size: 13px;'>Client</td>
+                                    <td style='padding: 5px 0; color: #92400e; font-weight: 500;'>%s</td>
+                                </tr>
+                                <tr>
+                                    <td style='padding: 5px 0; color: #78350f; font-size: 13px;'>Dokumen</td>
+                                    <td style='padding: 5px 0; color: #b45309;'><strong>%s</strong> %s</td>
+                                </tr>
+                                <tr>
+                                    <td style='padding: 5px 0; color: #78350f; font-size: 13px;'>Kategori</td>
+                                    <td style='padding: 5px 0; color: #92400e;'>%s %s</td>
+                                </tr>
+                                %s
+                                %s
+                            </table>
+                        </div>
+                        %s
+                        <div style='color: #94a3b8; font-size: 12px; margin-top: 10px;'>
+                            %s
+                        </div>
+                    </div>",
+                    $adminName,
+                    $clientName,
+                    $requirement->is_required ? '⚠' : '',
+                    $requirement->name,
+                    $categoryEmoji,
+                    ucfirst($requirement->category),
+                    $requirement->description ? "<tr><td style='padding: 5px 0; color: #78350f; font-size: 13px;'>Keterangan</td><td style='padding: 5px 0; color: #92400e;'>{$requirement->description}</td></tr>" : '',
+                    $requirement->due_date ? "<tr><td style='padding: 5px 0; color: #78350f; font-size: 13px;'>Tenggat</td><td style='padding: 5px 0; color: #dc2626; font-weight: 500;'>{$requirement->due_date->format('d M Y')}</td></tr>" : '',
+                    $requirement->is_required ? "<div style='background: #fef3c7; padding: 7px 12px; border-radius: 4px; margin: 10px 0;'><span style='color: #78350f; font-size: 12px; font-weight: 500;'>⚠ Dokumen Wajib</span></div>" : '',
+                    now()->format('d M Y • H:i')
+                );
+
+                Notification::make()
+                    ->title('Persyaratan Dokumen Baru')
+                    ->body($body)
+                    ->icon('heroicon-o-document-plus')
+                    ->iconColor('warning')
+                    ->sendToDatabase($user)
+                    ->broadcast($user);
+                
+                \Log::debug('Requirement created notification sent', [
+                    'recipient_id' => $user->id,
+                    'requirement_id' => $requirement->id,
+                ]);
+            }
+
+            \Log::info('Requirement created notifications sent successfully', [
+                'total_sent' => $clientUsers->count(),
+                'requirement_id' => $requirement->id,
+                'client_id' => $client->id,
+            ]);
+
+        } catch (\Exception $e) {
+            \Log::error('Failed to send requirement created notification', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+                'requirement_id' => $requirement->id ?? null,
+            ]);
         }
     }
 
