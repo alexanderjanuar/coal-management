@@ -388,6 +388,120 @@ class DokumenTab extends Component implements HasForms
         $this->dispatch('open-modal', id: 'review-document-modal');
     }
 
+    /**
+     * Quick approve from preview modal
+     */
+    public function quickApprove($documentId)
+    {
+        try {
+            $document = ClientDocument::findOrFail($documentId);
+            
+            // Validate document is in correct status
+            if ($document->status !== 'pending_review') {
+                Notification::make()
+                    ->title('Error!')
+                    ->body('Dokumen tidak dalam status pending review')
+                    ->danger()
+                    ->send();
+                return;
+            }
+
+            // Update document status
+            $document->status = 'valid';
+            $document->reviewed_by = auth()->id();
+            $document->reviewed_at = now();
+            $document->admin_notes = $this->reviewNotes ?: null;
+            $document->save();
+
+            // Close preview modal
+            $this->closePreviewModal();
+
+            // Send notification to client
+            $this->sendDocumentReviewNotification($document, 'approved', $this->reviewNotes);
+
+            // Reset review notes
+            $this->reviewNotes = '';
+
+            // Reload data
+            $this->loadData();
+
+            Notification::make()
+                ->title('Berhasil!')
+                ->body('Dokumen telah disetujui')
+                ->success()
+                ->send();
+
+        } catch (\Exception $e) {
+            Notification::make()
+                ->title('Error!')
+                ->body('Gagal menyetujui dokumen: ' . $e->getMessage())
+                ->danger()
+                ->send();
+        }
+    }
+
+    /**
+     * Quick reject from preview modal
+     */
+    public function quickReject($documentId)
+    {
+        try {
+            $document = ClientDocument::findOrFail($documentId);
+            
+            // Validate document is in correct status
+            if ($document->status !== 'pending_review') {
+                Notification::make()
+                    ->title('Error!')
+                    ->body('Dokumen tidak dalam status pending review')
+                    ->danger()
+                    ->send();
+                return;
+            }
+
+            // Validate rejection notes
+            if (empty($this->reviewNotes)) {
+                Notification::make()
+                    ->title('Error!')
+                    ->body('Alasan penolakan wajib diisi')
+                    ->danger()
+                    ->send();
+                return;
+            }
+
+            // Update document status
+            $document->status = 'rejected';
+            $document->reviewed_by = auth()->id();
+            $document->reviewed_at = now();
+            $document->admin_notes = $this->reviewNotes;
+            $document->save();
+
+            // Close preview modal
+            $this->closePreviewModal();
+
+            // Send notification to client
+            $this->sendDocumentReviewNotification($document, 'rejected', $this->reviewNotes);
+
+            // Reset review notes
+            $this->reviewNotes = '';
+
+            // Reload data
+            $this->loadData();
+
+            Notification::make()
+                ->title('Berhasil!')
+                ->body('Dokumen telah ditolak')
+                ->success()
+                ->send();
+
+        } catch (\Exception $e) {
+            Notification::make()
+                ->title('Error!')
+                ->body('Gagal menolak dokumen: ' . $e->getMessage())
+                ->danger()
+                ->send();
+        }
+    }
+
     public function closeReviewModal()
     {
         $this->documentToReview = null;
@@ -681,27 +795,16 @@ class DokumenTab extends Component implements HasForms
 
             foreach ($clientUsers as $user) {
                 $body = sprintf(
-                    "<div style='font-family: system-ui, -apple-system, sans-serif; color: #1f2937; line-height: 1.6;'>
-                        <div style='margin-bottom: 12px; color: #374151;'>
-                            <strong style='color: #111827;'>%s</strong> menambahkan dokumen baru
+                    "<div style='color: #374151; line-height: 1.6;'>
+                        <div style='margin-bottom: 12px;'>
+                            <strong>%s</strong> menambahkan dokumen baru
                         </div>
-                        <div style='background: #f8fafc; border-left: 3px solid #3b82f6; padding: 14px; margin: 12px 0; border-radius: 4px;'>
-                            <table style='width: 100%%; border-collapse: collapse;'>
-                                <tr>
-                                    <td style='padding: 5px 0; color: #64748b; width: 100px; font-size: 13px;'>Client</td>
-                                    <td style='padding: 5px 0; color: #0f172a; font-weight: 500;'>%s</td>
-                                </tr>
-                                <tr>
-                                    <td style='padding: 5px 0; color: #64748b; font-size: 13px;'>Jenis</td>
-                                    <td style='padding: 5px 0; color: #334155;'>%s %s</td>
-                                </tr>
-                                <tr>
-                                    <td style='padding: 5px 0; color: #64748b; font-size: 13px;'>File</td>
-                                    <td style='padding: 5px 0; color: #475569; font-family: Consolas, Monaco, monospace; font-size: 13px;'>%s</td>
-                                </tr>
-                            </table>
+                        <div style='margin: 12px 0; color: #6b7280; font-size: 14px;'>
+                            <div style='margin-bottom: 6px;'>Client: %s</div>
+                            <div style='margin-bottom: 6px;'>Jenis: %s %s</div>
+                            <div>File: %s</div>
                         </div>
-                        <div style='color: #94a3b8; font-size: 12px; margin-top: 10px;'>
+                        <div style='color: #9ca3af; font-size: 12px; margin-top: 12px;'>
                             %s
                         </div>
                     </div>",
@@ -771,38 +874,27 @@ class DokumenTab extends Component implements HasForms
             if ($action === 'approved') {
                 foreach ($clientUsers as $user) {
                     $body = sprintf(
-                        "<div style='font-family: system-ui, -apple-system, sans-serif; color: #1f2937; line-height: 1.6;'>
-                            <div style='margin-bottom: 12px; color: #374151;'>
+                        "<div style='color: #374151; line-height: 1.6;'>
+                            <div style='margin-bottom: 12px;'>
                                 Dokumen Anda telah <strong style='color: #059669;'>disetujui</strong>
                             </div>
-                            <div style='background: #f0fdf4; border-left: 3px solid #10b981; padding: 14px; margin: 12px 0; border-radius: 4px;'>
-                                <table style='width: 100%%; border-collapse: collapse;'>
-                                    <tr>
-                                        <td style='padding: 5px 0; color: #064e3b; width: 100px; font-size: 13px;'>Client</td>
-                                        <td style='padding: 5px 0; color: #065f46; font-weight: 500;'>%s</td>
-                                    </tr>
-                                    <tr>
-                                        <td style='padding: 5px 0; color: #064e3b; font-size: 13px;'>Dokumen</td>
-                                        <td style='padding: 5px 0; color: #047857; font-family: Consolas, Monaco, monospace; font-size: 13px;'>%s</td>
-                                    </tr>
-                                    <tr>
-                                        <td style='padding: 5px 0; color: #064e3b; font-size: 13px;'>Reviewer</td>
-                                        <td style='padding: 5px 0; color: #065f46;'>%s</td>
-                                    </tr>
-                                    %s
-                                </table>
+                            <div style='margin: 12px 0; color: #6b7280; font-size: 14px;'>
+                                <div style='margin-bottom: 6px;'>Client: %s</div>
+                                <div style='margin-bottom: 6px;'>Dokumen: %s</div>
+                                <div style='margin-bottom: 6px;'>Reviewer: %s</div>
+                                %s
                             </div>
-                            <div style='background: #d1fae5; padding: 8px 12px; border-radius: 4px; margin: 10px 0;'>
-                                <span style='color: #065f46; font-size: 13px; font-weight: 500;'>✓ Status: Valid</span>
+                            <div style='margin: 10px 0; padding: 8px; color: #065f46; font-size: 13px;'>
+                                ✓ Status: Valid
                             </div>
-                            <div style='color: #94a3b8; font-size: 12px; margin-top: 10px;'>
+                            <div style='color: #9ca3af; font-size: 12px; margin-top: 12px;'>
                                 %s
                             </div>
                         </div>",
                         $clientName,
                         $filename,
                         $reviewerName,
-                        $notes ? "<tr><td style='padding: 5px 0; color: #064e3b; font-size: 13px;'>Catatan</td><td style='padding: 5px 0; color: #065f46;'>{$notes}</td></tr>" : '',
+                        $notes ? "<div>Catatan: {$notes}</div>" : '',
                         now()->format('d M Y • H:i')
                     );
 
@@ -822,31 +914,20 @@ class DokumenTab extends Component implements HasForms
             } elseif ($action === 'rejected') {
                 foreach ($clientUsers as $user) {
                     $body = sprintf(
-                        "<div style='font-family: system-ui, -apple-system, sans-serif; color: #1f2937; line-height: 1.6;'>
-                            <div style='margin-bottom: 12px; color: #374151;'>
+                        "<div style='color: #374151; line-height: 1.6;'>
+                            <div style='margin-bottom: 12px;'>
                                 Dokumen perlu <strong style='color: #dc2626;'>diperbaiki</strong>
                             </div>
-                            <div style='background: #fef2f2; border-left: 3px solid #ef4444; padding: 14px; margin: 12px 0; border-radius: 4px;'>
-                                <table style='width: 100%%; border-collapse: collapse;'>
-                                    <tr>
-                                        <td style='padding: 5px 0; color: #7f1d1d; width: 100px; font-size: 13px;'>Client</td>
-                                        <td style='padding: 5px 0; color: #991b1b; font-weight: 500;'>%s</td>
-                                    </tr>
-                                    <tr>
-                                        <td style='padding: 5px 0; color: #7f1d1d; font-size: 13px;'>Dokumen</td>
-                                        <td style='padding: 5px 0; color: #b91c1c; font-family: Consolas, Monaco, monospace; font-size: 13px;'>%s</td>
-                                    </tr>
-                                    <tr>
-                                        <td style='padding: 5px 0; color: #7f1d1d; font-size: 13px;'>Reviewer</td>
-                                        <td style='padding: 5px 0; color: #991b1b;'>%s</td>
-                                    </tr>
-                                </table>
+                            <div style='margin: 12px 0; color: #6b7280; font-size: 14px;'>
+                                <div style='margin-bottom: 6px;'>Client: %s</div>
+                                <div style='margin-bottom: 6px;'>Dokumen: %s</div>
+                                <div style='margin-bottom: 6px;'>Reviewer: %s</div>
                             </div>
-                            <div style='background: #fee2e2; padding: 10px 12px; border-radius: 4px; margin: 10px 0;'>
-                                <div style='color: #7f1d1d; font-size: 12px; margin-bottom: 4px; font-weight: 500;'>Alasan:</div>
-                                <div style='color: #991b1b; font-size: 13px; line-height: 1.5;'>%s</div>
+                            <div style='margin: 10px 0; padding: 10px; color: #991b1b; font-size: 13px;'>
+                                <div style='margin-bottom: 4px; font-weight: 500;'>Alasan:</div>
+                                <div>%s</div>
                             </div>
-                            <div style='color: #94a3b8; font-size: 12px; margin-top: 10px;'>
+                            <div style='color: #9ca3af; font-size: 12px; margin-top: 12px;'>
                                 %s
                             </div>
                         </div>",
@@ -926,30 +1007,19 @@ class DokumenTab extends Component implements HasForms
 
             foreach ($clientUsers as $user) {
                 $body = sprintf(
-                    "<div style='font-family: system-ui, -apple-system, sans-serif; color: #1f2937; line-height: 1.6;'>
-                        <div style='margin-bottom: 12px; color: #374151;'>
-                            <strong style='color: #111827;'>%s</strong> meminta dokumen tambahan
+                    "<div style='color: #374151; line-height: 1.6;'>
+                        <div style='margin-bottom: 12px;'>
+                            <strong>%s</strong> meminta dokumen tambahan
                         </div>
-                        <div style='background: #fffbeb; border-left: 3px solid #f59e0b; padding: 14px; margin: 12px 0; border-radius: 4px;'>
-                            <table style='width: 100%%; border-collapse: collapse;'>
-                                <tr>
-                                    <td style='padding: 5px 0; color: #78350f; width: 120px; font-size: 13px;'>Client</td>
-                                    <td style='padding: 5px 0; color: #92400e; font-weight: 500;'>%s</td>
-                                </tr>
-                                <tr>
-                                    <td style='padding: 5px 0; color: #78350f; font-size: 13px;'>Dokumen</td>
-                                    <td style='padding: 5px 0; color: #b45309;'><strong>%s</strong> %s</td>
-                                </tr>
-                                <tr>
-                                    <td style='padding: 5px 0; color: #78350f; font-size: 13px;'>Kategori</td>
-                                    <td style='padding: 5px 0; color: #92400e;'>%s %s</td>
-                                </tr>
-                                %s
-                                %s
-                            </table>
+                        <div style='margin: 12px 0; color: #6b7280; font-size: 14px;'>
+                            <div style='margin-bottom: 6px;'>Client: %s</div>
+                            <div style='margin-bottom: 6px;'>Dokumen: %s <strong>%s</strong></div>
+                            <div style='margin-bottom: 6px;'>Kategori: %s %s</div>
+                            %s
+                            %s
                         </div>
                         %s
-                        <div style='color: #94a3b8; font-size: 12px; margin-top: 10px;'>
+                        <div style='color: #9ca3af; font-size: 12px; margin-top: 12px;'>
                             %s
                         </div>
                     </div>",
@@ -959,9 +1029,9 @@ class DokumenTab extends Component implements HasForms
                     $requirement->name,
                     $categoryEmoji,
                     ucfirst($requirement->category),
-                    $requirement->description ? "<tr><td style='padding: 5px 0; color: #78350f; font-size: 13px;'>Keterangan</td><td style='padding: 5px 0; color: #92400e;'>{$requirement->description}</td></tr>" : '',
-                    $requirement->due_date ? "<tr><td style='padding: 5px 0; color: #78350f; font-size: 13px;'>Tenggat</td><td style='padding: 5px 0; color: #dc2626; font-weight: 500;'>{$requirement->due_date->format('d M Y')}</td></tr>" : '',
-                    $requirement->is_required ? "<div style='background: #fef3c7; padding: 7px 12px; border-radius: 4px; margin: 10px 0;'><span style='color: #78350f; font-size: 12px; font-weight: 500;'>⚠ Dokumen Wajib</span></div>" : '',
+                    $requirement->description ? "<div style='margin-bottom: 6px;'>Keterangan: {$requirement->description}</div>" : '',
+                    $requirement->due_date ? "<div style='margin-bottom: 6px;'>Tenggat: <strong style='color: #dc2626;'>{$requirement->due_date->format('d M Y')}</strong></div>" : '',
+                    $requirement->is_required ? "<div style='margin: 10px 0; padding: 7px; color: #78350f; font-size: 12px;'>⚠ Dokumen Wajib</div>" : '',
                     now()->format('d M Y • H:i')
                 );
 
@@ -970,6 +1040,10 @@ class DokumenTab extends Component implements HasForms
                     ->body($body)
                     ->icon('heroicon-o-document-plus')
                     ->iconColor('warning')
+                    ->actions([
+                        \Filament\Notifications\Actions\Action::make('Mark As Read')
+                            ->markAsRead(),
+                    ])
                     ->sendToDatabase($user)
                     ->broadcast($user);
                 

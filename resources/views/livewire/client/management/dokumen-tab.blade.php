@@ -183,16 +183,10 @@
                             <div class="flex items-center justify-end gap-2">
                                 @if($item['is_uploaded'] && $item['uploaded_document'])
                                 @php $doc = $item['uploaded_document']; @endphp
-                                <x-filament::icon-button icon="heroicon-o-eye" color="gray" size="sm" tooltip="Preview"
+                                <x-filament::icon-button icon="heroicon-o-eye" color="gray" size="sm" tooltip="Preview & Review"
                                     wire:click="previewDocuments({{ $doc->id }})" />
                                 <x-filament::icon-button icon="heroicon-o-arrow-down-tray" size="sm" color="info"
                                     tooltip="Download" wire:click="downloadDocument({{ $doc->id }})" />
-                                @if($doc->status === 'pending_review')
-                                <x-filament::icon-button icon="heroicon-o-check-circle" color="success" size="sm"
-                                    tooltip="Setujui" wire:click="openReviewModal({{ $doc->id }}, 'approve')" />
-                                <x-filament::icon-button icon="heroicon-o-x-circle" color="danger" size="sm"
-                                    tooltip="Tolak" wire:click="openReviewModal({{ $doc->id }}, 'reject')" />
-                                @endif
                                 <x-filament::icon-button icon="heroicon-o-trash" color="danger" size="sm"
                                     tooltip="Hapus" wire:click="deleteDocumentConfirm({{ $doc->id }})" />
                                 <div class="w-px h-6 bg-gray-300 dark:bg-gray-600 mx-1"></div>
@@ -337,7 +331,7 @@
                                     {{ $docStatusBadge['text'] }}
                                 </span>
                                 <x-filament::icon-button icon="heroicon-o-eye" color="gray" size="sm"
-                                    tooltip="Lihat File" wire:click="previewDocuments({{ $latestDoc->id }})" />
+                                    tooltip="Preview & Review" wire:click="previewDocuments({{ $latestDoc->id }})" />
                             </div>
                             @if($latestDoc->admin_notes)
                             <div
@@ -355,17 +349,6 @@
                         </td>
                         <td class="px-6 py-4 whitespace-nowrap text-right text-sm">
                             <div class="flex items-center justify-end gap-2">
-                                @php $latestDoc = $requirement->getLatestDocument(); @endphp
-
-                                @if($latestDoc && $latestDoc->status === 'pending_review')
-                                {{-- Review buttons for pending documents --}}
-                                <x-filament::icon-button icon="heroicon-o-check-circle" color="success" size="sm"
-                                    tooltip="Setujui" wire:click="openReviewModal({{ $latestDoc->id }}, 'approve')" />
-                                <x-filament::icon-button icon="heroicon-o-x-circle" color="danger" size="sm"
-                                    tooltip="Tolak" wire:click="openReviewModal({{ $latestDoc->id }}, 'reject')" />
-                                <div class="w-px h-6 bg-gray-300 dark:bg-gray-600"></div>
-                                @endif
-
                                 @if($requirement->status === 'pending')
                                 <x-filament::button wire:click="openUploadModal(null, false, {{ $requirement->id }})"
                                     size="sm" icon="heroicon-o-arrow-up-tray">
@@ -489,16 +472,10 @@
                         </td>
                         <td class="px-6 py-4 whitespace-nowrap text-right text-sm">
                             <div class="flex items-center justify-end gap-2">
-                                <x-filament::icon-button icon="heroicon-o-eye" color="gray" size="sm" tooltip="Preview"
+                                <x-filament::icon-button icon="heroicon-o-eye" color="gray" size="sm" tooltip="Preview & Review"
                                     wire:click="previewDocuments({{ $doc->id }})" />
                                 <x-filament::icon-button icon="heroicon-o-arrow-down-tray" color="info" size="sm"
                                     tooltip="Download" wire:click="downloadDocument({{ $doc->id }})" />
-                                @if($doc->status === 'pending_review')
-                                <x-filament::icon-button icon="heroicon-o-check-circle" color="success" size="sm"
-                                    tooltip="Setujui" wire:click="openReviewModal({{ $doc->id }}, 'approve')" />
-                                <x-filament::icon-button icon="heroicon-o-x-circle" color="danger" size="sm"
-                                    tooltip="Tolak" wire:click="openReviewModal({{ $doc->id }}, 'reject')" />
-                                @endif
                                 <x-filament::icon-button icon="heroicon-o-trash" color="danger" size="sm"
                                     tooltip="Hapus" wire:click="deleteDocumentConfirm({{ $doc->id }})" />
                             </div>
@@ -564,81 +541,6 @@
         </form>
     </x-filament::modal>
 
-    <!-- Review Modal -->
-    <x-filament::modal id="review-document-modal" width="2xl">
-        <x-slot name="heading">
-            <div class="flex items-center gap-3">
-                @if($reviewAction === 'approve')
-                <div class="bg-success-100 dark:bg-success-900/30 p-2 rounded-lg">
-                    <x-heroicon-o-check-circle class="w-6 h-6 text-success-600 dark:text-success-400" />
-                </div>
-                <span class="text-lg font-semibold">Setujui Dokumen</span>
-                @else
-                <div class="bg-danger-100 dark:bg-danger-900/30 p-2 rounded-lg">
-                    <x-heroicon-o-x-circle class="w-6 h-6 text-danger-600 dark:text-danger-400" />
-                </div>
-                <span class="text-lg font-semibold">Tolak Dokumen</span>
-                @endif
-            </div>
-        </x-slot>
-
-        @if($documentToReview)
-        <div class="space-y-4">
-            <div class="bg-gray-50 dark:bg-gray-900/50 rounded-lg p-4">
-                <dl class="space-y-2">
-                    <div>
-                        <dt class="text-sm font-medium text-gray-500 dark:text-gray-400">Nama File</dt>
-                        <dd class="mt-1 text-sm text-gray-900 dark:text-white">{{ $documentToReview->original_filename
-                            }}</dd>
-                    </div>
-                    <div>
-                        <dt class="text-sm font-medium text-gray-500 dark:text-gray-400">Diupload Oleh</dt>
-                        <dd class="mt-1 text-sm text-gray-900 dark:text-white">
-                            {{ $documentToReview->user->name ?? '-' }}
-                            <span class="text-gray-400">• {{ $documentToReview->created_at->format('d M Y, H:i')
-                                }}</span>
-                        </dd>
-                    </div>
-                </dl>
-            </div>
-
-            <div>
-                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                    {{ $reviewAction === 'approve' ? 'Catatan (Opsional)' : 'Alasan Penolakan *' }}
-                </label>
-                <textarea wire:model="reviewNotes" rows="4"
-                    class="block w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-white shadow-sm focus:border-primary-500 focus:ring-primary-500"
-                    placeholder="{{ $reviewAction === 'approve' ? 'Tambahkan catatan jika diperlukan...' : 'Jelaskan alasan penolakan dokumen ini...' }}"
-                    {{ $reviewAction==='reject' ? 'required' : '' }}></textarea>
-            </div>
-
-            @if($reviewAction === 'approve')
-            <div
-                class="bg-success-50 dark:bg-success-900/20 border border-success-200 dark:border-success-800 rounded-lg p-3">
-                <p class="text-sm text-success-700 dark:text-success-400">Dokumen akan disetujui dan statusnya akan
-                    berubah menjadi "Valid"</p>
-            </div>
-            @else
-            <div
-                class="bg-danger-50 dark:bg-danger-900/20 border border-danger-200 dark:border-danger-800 rounded-lg p-3">
-                <p class="text-sm text-danger-700 dark:text-danger-400">Dokumen akan ditolak dan client harus mengupload
-                    ulang</p>
-            </div>
-            @endif
-        </div>
-        @endif
-
-        <x-slot name="footerActions">
-            <x-filament::button color="gray" wire:click="closeReviewModal">Batal</x-filament::button>
-            <x-filament::button color="{{ $reviewAction === 'approve' ? 'success' : 'danger' }}"
-                wire:click="submitReview" wire:loading.attr="disabled">
-                <span wire:loading.remove wire:target="submitReview">{{ $reviewAction === 'approve' ? 'Setujui' :
-                    'Tolak' }}</span>
-                <span wire:loading wire:target="submitReview">Memproses...</span>
-            </x-filament::button>
-        </x-slot>
-    </x-filament::modal>
-
     <!-- Delete Confirmation Modal -->
     <x-filament::modal id="confirm-delete-modal" width="md">
         <x-slot name="heading">Konfirmasi Hapus</x-slot>
@@ -652,19 +554,20 @@
         </x-slot>
     </x-filament::modal>
 
-    <!-- Preview Modal -->
-    <x-filament::modal id="preview-document-modal" width="4xl">
+    <!-- Combined Preview & Review Modal -->
+    <x-filament::modal id="preview-document-modal" width="5xl">
         <x-slot name="heading">
             <div class="flex items-center gap-3">
                 <div class="bg-primary-100 dark:bg-primary-900/30 p-2 rounded-lg">
                     <x-heroicon-o-document-text class="w-6 h-6 text-primary-600 dark:text-primary-400" />
                 </div>
-                <span class="text-lg font-semibold">Preview Dokumen</span>
+                <span class="text-lg font-semibold">Preview & Review Dokumen</span>
             </div>
         </x-slot>
 
         @if($previewDocument)
         <div class="space-y-4">
+            <!-- Document Information -->
             <div class="bg-gray-50 dark:bg-gray-900/50 rounded-lg p-4">
                 <dl class="grid grid-cols-2 gap-4">
                     <div>
@@ -686,6 +589,17 @@
                         <dt class="text-sm font-medium text-gray-500 dark:text-gray-400">Tanggal Upload</dt>
                         <dd class="mt-1 text-sm text-gray-900 dark:text-white">{{
                             $previewDocument->created_at->format('d M Y, H:i') }}</dd>
+                    </div>
+                    <div>
+                        <dt class="text-sm font-medium text-gray-500 dark:text-gray-400">Status</dt>
+                        <dd class="mt-1">
+                            @php $statusBadge = $previewDocument->status_badge; @endphp
+                            <span
+                                class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg shadow-sm {{ $statusBadge['class'] }}">
+                                <x-dynamic-component :component="$statusBadge['icon']" class="w-3.5 h-3.5" />
+                                {{ $statusBadge['text'] }}
+                            </span>
+                        </dd>
                     </div>
                     @if($previewDocument->expired_at)
                     <div>
@@ -717,6 +631,34 @@
                 @endif
             </div>
 
+            <!-- Review Section - Only show if document is pending_review -->
+            @if($previewDocument->status === 'pending_review')
+            <div class="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg p-4">
+                <h4 class="text-sm font-medium text-amber-900 dark:text-amber-300 mb-3">Review Dokumen</h4>
+                <div class="space-y-3">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                            Catatan Review (Opsional untuk Setujui, Wajib untuk Tolak)
+                        </label>
+                        <textarea wire:model="reviewNotes" rows="3"
+                            class="block w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-white shadow-sm focus:border-primary-500 focus:ring-primary-500"
+                            placeholder="Tambahkan catatan review..."></textarea>
+                    </div>
+                    <div class="flex gap-2">
+                        <x-filament::button color="success" wire:click="quickApprove({{ $previewDocument->id }})"
+                            icon="heroicon-o-check-circle" size="sm">
+                            Setujui
+                        </x-filament::button>
+                        <x-filament::button color="danger" wire:click="quickReject({{ $previewDocument->id }})"
+                            icon="heroicon-o-x-circle" size="sm">
+                            Tolak
+                        </x-filament::button>
+                    </div>
+                </div>
+            </div>
+            @endif
+
+            <!-- Document Preview -->
             @if($previewDocument->file_path)
             <div class="border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden">
                 @php
