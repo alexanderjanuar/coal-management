@@ -160,7 +160,7 @@ class OverviewTab extends Component
                     ->whereNotNull('file_path')
                     ->select([
                         'id', 'client_id', 'user_id', 'sop_legal_document_id',
-                        'file_path', 'original_filename', 'status', 'expired_at', 'created_at'
+                        'file_path', 'original_filename', 'status', 'expired_at', 'created_at', 'admin_notes'
                     ])
                     ->with([
                         'user:id,name',
@@ -213,7 +213,7 @@ class OverviewTab extends Component
                     ->whereNotNull('file_path')
                     ->select([
                         'id', 'sop_legal_document_id', 'file_path', 
-                        'original_filename', 'status', 'user_id', 'updated_at'
+                        'original_filename', 'status', 'user_id', 'updated_at', 'admin_notes'
                     ])
                     ->with(['user:id,name'])
                     ->get()
@@ -238,6 +238,7 @@ class OverviewTab extends Component
                         'uploaded_by' => $clientDoc?->user,
                         'status' => $clientDoc?->status ?? 'required',
                         'due_date' => null,
+                        'admin_notes' => $clientDoc?->admin_notes,
                     ];
                 });
             }
@@ -284,7 +285,7 @@ class OverviewTab extends Component
                         ->whereNotNull('file_path')
                         ->select([
                             'id', 'requirement_id', 'file_path', 
-                            'original_filename', 'status', 'user_id', 'updated_at'
+                            'original_filename', 'status', 'user_id', 'updated_at', 'admin_notes'
                         ])
                         ->with(['user:id,name'])
                         ->get()
@@ -314,6 +315,7 @@ class OverviewTab extends Component
                         'status' => $isUploaded ? ($clientDoc->status ?? 'pending_review') : 'required',
                         'due_date' => $req->due_date,
                         'requirement_status' => $req->status, // pending, fulfilled, waived
+                        'admin_notes' => $clientDoc?->admin_notes,
                     ];
                 });
             }
@@ -331,6 +333,17 @@ class OverviewTab extends Component
         
         // Merge both collections
         return $sopChecklist->concat($requirements);
+    }
+    
+    /**
+     * Get rejected documents that need re-upload
+     */
+    public function getRejectedDocumentsProperty(): Collection
+    {
+        return $this->allDocumentsChecklist->filter(function ($doc) {
+            // Document is rejected
+            return $doc['is_uploaded'] && $doc['status'] === 'rejected';
+        })->values();
     }
     
     /**
@@ -542,6 +555,7 @@ class OverviewTab extends Component
             'additionalRequirements' => $this->additionalRequirements,
             'allDocumentsChecklist' => $this->allDocumentsChecklist,
             'pendingDocuments' => $this->pendingDocuments,
+            'rejectedDocuments' => $this->rejectedDocuments,
             'latestTaxReport' => $this->latestTaxReport,
             'projectStats' => $this->projectStats,
             'taxReportStats' => $this->taxReportStats,

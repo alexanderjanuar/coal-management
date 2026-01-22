@@ -269,104 +269,185 @@
     </div>
 
     {{-- Required Documents Alert Section - Responsive --}}
-    @if($pendingDocuments->count() > 0)
-    <div class="relative overflow-hidden rounded-xl sm:rounded-2xl border-2 border-amber-300 bg-gradient-to-br from-amber-50 via-amber-50/50 to-orange-50 p-4 sm:p-6 shadow-md dark:border-amber-600/50 dark:from-amber-950/30 dark:via-amber-900/20 dark:to-orange-950/20"
-        x-show="mounted" x-transition:enter="transition ease-out duration-500 delay-300"
-        x-transition:enter-start="opacity-0 transform scale-95"
-        x-transition:enter-end="opacity-100 transform scale-100">
-        {{-- Animated Background Pattern --}}
-        <div class="absolute inset-0 opacity-10">
-            <div class="absolute inset-0"
-                style="background-image: repeating-linear-gradient(45deg, transparent, transparent 10px, currentColor 10px, currentColor 11px);">
-            </div>
-        </div>
-        <div class="relative">
-            <div class="flex flex-col sm:flex-row items-start gap-3 sm:gap-4">
-                <div class="flex-shrink-0">
-                    <div
-                        class="flex h-12 w-12 sm:h-14 sm:w-14 items-center justify-center rounded-xl sm:rounded-2xl bg-gradient-to-br from-amber-500 to-orange-500 shadow-lg shadow-amber-500/30">
-                        <x-heroicon-o-arrow-up-tray class="h-6 w-6 sm:h-7 sm:w-7 text-white" />
-                    </div>
-                </div>
-                <div class="flex-1 min-w-0">
-                    <div class="flex flex-wrap items-center gap-2 sm:gap-3">
-                        <h3 class="text-lg sm:text-xl font-bold text-amber-900 dark:text-amber-100">
-                            Dokumen Perlu Diupload
-                        </h3>
-                        <span
-                            class="inline-flex items-center justify-center rounded-full bg-amber-500 px-2.5 py-0.5 sm:px-3 sm:py-1 text-xs sm:text-sm font-bold text-white shadow-sm">
-                            {{ $pendingDocuments->count() }}
-                        </span>
-                    </div>
-                    <p class="mt-1 sm:mt-1.5 text-xs sm:text-sm text-amber-700 dark:text-amber-300">
-                        Anda memiliki dokumen yang perlu segera diupload untuk melengkapi persyaratan
-                    </p>
+    {{-- Document Alert Sections - Side by Side - Responsive --}}
+    <div class="grid gap-4 sm:gap-6 {{ $rejectedDocuments->count() > 0 ? 'lg:grid-cols-2' : 'grid-cols-1' }}">
+        {{-- Pending Documents Alert Section (Yellow/Amber) --}}
+        @if($pendingDocuments->count() > 0)
+        <div class="relative overflow-hidden rounded-xl sm:rounded-2xl border-2 border-amber-300 bg-gradient-to-br from-amber-50 via-amber-50/50 to-orange-50 p-4 sm:p-6 shadow-md dark:border-amber-600/50 dark:from-amber-950/30 dark:via-amber-900/20 dark:to-orange-950/20"
+            x-show="mounted" x-transition:enter="transition ease-out duration-500 delay-300"
+            x-transition:enter-start="opacity-0 transform scale-95"
+            x-transition:enter-end="opacity-100 transform scale-100">
+            {{-- Animated Background Pattern --}}
+            <div class="absolute inset-0 opacity-10">
+                <div class="absolute inset-0"
+                    style="background-image: repeating-linear-gradient(45deg, transparent, transparent 10px, currentColor 10px, currentColor 11px);">
                 </div>
             </div>
-
-            <div class="mt-4 sm:mt-5 grid gap-2 sm:gap-3 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
-                @foreach($pendingDocuments->take(6) as $doc)
-                <div
-                    class="group flex items-center gap-2 sm:gap-3 rounded-lg sm:rounded-xl bg-white/80 p-3 sm:p-4 shadow-sm ring-1 ring-amber-200/60 transition-all duration-200 hover:bg-white hover:shadow-md hover:ring-amber-300 dark:bg-gray-800/80 dark:ring-amber-700/40 dark:hover:bg-gray-800 dark:hover:ring-amber-600">
-                    <div class="flex h-8 w-8 sm:h-10 sm:w-10 flex-shrink-0 items-center justify-center rounded-lg sm:rounded-xl 
-                        {{ $doc['type'] === 'requirement' 
-                            ? 'bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-400' 
-                            : 'bg-amber-100 text-amber-600 dark:bg-amber-900/30 dark:text-amber-400' 
-                        }}">
-                        @if($doc['type'] === 'requirement')
-                        <x-heroicon-o-exclamation-triangle class="h-4 w-4 sm:h-5 sm:w-5" />
-                        @else
-                        <x-heroicon-o-document-plus class="h-4 w-4 sm:h-5 sm:w-5" />
-                        @endif
+            <div class="relative">
+                <div class="flex flex-col sm:flex-row items-start gap-3 sm:gap-4">
+                    <div class="flex-shrink-0">
+                        <div
+                            class="flex h-12 w-12 sm:h-14 sm:w-14 items-center justify-center rounded-xl sm:rounded-2xl bg-gradient-to-br from-amber-500 to-orange-500 shadow-lg shadow-amber-500/30">
+                            <x-heroicon-o-arrow-up-tray class="h-6 w-6 sm:h-7 sm:w-7 text-white" />
+                        </div>
                     </div>
                     <div class="flex-1 min-w-0">
-                        <p class="truncate text-xs sm:text-sm font-semibold text-gray-900 dark:text-gray-100">
-                            {{ $doc['name'] }}
-                        </p>
-                        <div class="mt-0.5 flex flex-wrap items-center gap-1 sm:gap-2">
-                            @if($doc['type'] === 'requirement')
-                            <span class="text-[10px] sm:text-xs font-medium text-red-600 dark:text-red-400">
-                                Diminta Admin
-                            </span>
-                            @else
-                            <span class="text-[10px] sm:text-xs text-amber-600 dark:text-amber-400">
-                                {{ $doc['category'] ?? 'Dokumen Legal' }}
-                            </span>
-                            @endif
-
-                            @if($doc['is_required'])
+                        <div class="flex flex-wrap items-center gap-2 sm:gap-3">
+                            <h3 class="text-lg sm:text-xl font-bold text-amber-900 dark:text-amber-100">
+                                Dokumen Perlu Diupload
+                            </h3>
                             <span
-                                class="rounded bg-amber-100 px-1 sm:px-1.5 py-0.5 text-[9px] sm:text-[10px] font-bold text-amber-700 dark:bg-amber-900/50 dark:text-amber-400">
-                                WAJIB
+                                class="inline-flex items-center justify-center rounded-full bg-amber-500 px-2.5 py-0.5 sm:px-3 sm:py-1 text-xs sm:text-sm font-bold text-white shadow-sm">
+                                {{ $pendingDocuments->count() }}
                             </span>
+                        </div>
+                        <p class="mt-1 sm:mt-1.5 text-xs sm:text-sm text-amber-700 dark:text-amber-300">
+                            Anda memiliki dokumen yang perlu segera diupload untuk melengkapi persyaratan
+                        </p>
+                    </div>
+                </div>
+
+                <div class="mt-4 sm:mt-5 grid gap-2 sm:gap-3 grid-cols-1">
+                    @foreach($pendingDocuments->take(6) as $doc)
+                    <div
+                        class="group flex items-center gap-2 sm:gap-3 rounded-lg sm:rounded-xl bg-white/80 p-3 sm:p-4 shadow-sm ring-1 ring-amber-200/60 transition-all duration-200 hover:bg-white hover:shadow-md hover:ring-amber-300 dark:bg-gray-800/80 dark:ring-amber-700/40 dark:hover:bg-gray-800 dark:hover:ring-amber-600">
+                        <div class="flex h-8 w-8 sm:h-10 sm:w-10 flex-shrink-0 items-center justify-center rounded-lg sm:rounded-xl 
+                            {{ $doc['type'] === 'requirement' 
+                                ? 'bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-400' 
+                                : 'bg-amber-100 text-amber-600 dark:bg-amber-900/30 dark:text-amber-400' 
+                            }}">
+                            @if($doc['type'] === 'requirement')
+                            <x-heroicon-o-exclamation-triangle class="h-4 w-4 sm:h-5 sm:w-5" />
+                            @else
+                            <x-heroicon-o-document-plus class="h-4 w-4 sm:h-5 sm:w-5" />
                             @endif
                         </div>
+                        <div class="flex-1 min-w-0">
+                            <p class="truncate text-xs sm:text-sm font-semibold text-gray-900 dark:text-gray-100">
+                                {{ $doc['name'] }}
+                            </p>
+                            <div class="mt-0.5 flex flex-wrap items-center gap-1 sm:gap-2">
+                                @if($doc['type'] === 'requirement')
+                                <span class="text-[10px] sm:text-xs font-medium text-red-600 dark:text-red-400">
+                                    Diminta Admin
+                                </span>
+                                @else
+                                <span class="text-[10px] sm:text-xs text-amber-600 dark:text-amber-400">
+                                    {{ $doc['category'] ?? 'Dokumen Legal' }}
+                                </span>
+                                @endif
 
-                        @if($doc['due_date'])
-                        <p class="mt-1 flex items-center gap-0.5 sm:gap-1 text-[10px] sm:text-[11px] 
-                            {{ \Carbon\Carbon::parse($doc['due_date'])->isPast() 
-                                ? 'font-semibold text-red-600 dark:text-red-400' 
-                                : 'text-gray-500 dark:text-gray-400' 
-                            }}">
-                            <x-heroicon-o-clock class="h-3 w-3" />
-                            Tenggat: {{ \Carbon\Carbon::parse($doc['due_date'])->format('d M Y') }}
-                            @if(\Carbon\Carbon::parse($doc['due_date'])->isPast())
-                            <span
-                                class="ml-0.5 sm:ml-1 rounded bg-red-100 px-1 text-[9px] sm:text-[10px] font-bold text-red-700 dark:bg-red-900/50 dark:text-red-400">
-                                TERLAMBAT
-                            </span>
+                                @if($doc['is_required'])
+                                <span
+                                    class="rounded bg-amber-100 px-1 sm:px-1.5 py-0.5 text-[9px] sm:text-[10px] font-bold text-amber-700 dark:bg-amber-900/50 dark:text-amber-400">
+                                    WAJIB
+                                </span>
+                                @endif
+                            </div>
+
+                            @if($doc['due_date'])
+                            <p class="mt-1 flex items-center gap-0.5 sm:gap-1 text-[10px] sm:text-[11px] 
+                                {{ \Carbon\Carbon::parse($doc['due_date'])->isPast() 
+                                    ? 'font-semibold text-red-600 dark:text-red-400' 
+                                    : 'text-gray-500 dark:text-gray-400' 
+                                }}">
+                                <x-heroicon-o-clock class="h-3 w-3" />
+                                Tenggat: {{ \Carbon\Carbon::parse($doc['due_date'])->format('d M Y') }}
+                                @if(\Carbon\Carbon::parse($doc['due_date'])->isPast())
+                                <span
+                                    class="ml-0.5 sm:ml-1 rounded bg-red-100 px-1 text-[9px] sm:text-[10px] font-bold text-red-700 dark:bg-red-900/50 dark:text-red-400">
+                                    TERLAMBAT
+                                </span>
+                                @endif
+                            </p>
                             @endif
-                        </p>
-                        @endif
+                        </div>
+                        <x-heroicon-o-chevron-right
+                            class="h-3 w-3 sm:h-4 sm:w-4 flex-shrink-0 text-amber-400 transition-transform duration-200 group-hover:translate-x-1 dark:text-amber-500" />
                     </div>
-                    <x-heroicon-o-chevron-right
-                        class="h-3 w-3 sm:h-4 sm:w-4 flex-shrink-0 text-amber-400 transition-transform duration-200 group-hover:translate-x-1 dark:text-amber-500" />
+                    @endforeach
                 </div>
-                @endforeach
             </div>
         </div>
+        @endif
+
+        {{-- Rejected Documents Section (Red) --}}
+        @if($rejectedDocuments->count() > 0)
+        <div class="relative overflow-hidden rounded-xl sm:rounded-2xl border-2 border-red-300 bg-gradient-to-br from-red-50 via-red-50/50 to-rose-50 p-4 sm:p-6 shadow-md dark:border-red-600/50 dark:from-red-950/30 dark:via-red-900/20 dark:to-rose-950/20"
+            x-show="mounted" x-transition:enter="transition ease-out duration-500 delay-350"
+            x-transition:enter-start="opacity-0 transform scale-95"
+            x-transition:enter-end="opacity-100 transform scale-100">
+            {{-- Animated Background Pattern --}}
+            <div class="absolute inset-0 opacity-10">
+                <div class="absolute inset-0"
+                    style="background-image: repeating-linear-gradient(45deg, transparent, transparent 10px, currentColor 10px, currentColor 11px);">
+                </div>
+            </div>
+            <div class="relative">
+                <div class="flex flex-col sm:flex-row items-start gap-3 sm:gap-4">
+                    <div class="flex-shrink-0">
+                        <div
+                            class="flex h-12 w-12 sm:h-14 sm:w-14 items-center justify-center rounded-xl sm:rounded-2xl bg-gradient-to-br from-red-500 to-rose-500 shadow-lg shadow-red-500/30">
+                            <x-heroicon-o-x-circle class="h-6 w-6 sm:h-7 sm:w-7 text-white" />
+                        </div>
+                    </div>
+                    <div class="flex-1 min-w-0">
+                        <div class="flex flex-wrap items-center gap-2 sm:gap-3">
+                            <h3 class="text-lg sm:text-xl font-bold text-red-900 dark:text-red-100">
+                                Dokumen Ditolak
+                            </h3>
+                            <span
+                                class="inline-flex items-center justify-center rounded-full bg-red-500 px-2.5 py-0.5 sm:px-3 sm:py-1 text-xs sm:text-sm font-bold text-white shadow-sm">
+                                {{ $rejectedDocuments->count() }}
+                            </span>
+                        </div>
+                        <p class="mt-1 sm:mt-1.5 text-xs sm:text-sm text-red-700 dark:text-red-300">
+                            Dokumen berikut ditolak dan perlu diupload ulang dengan perbaikan
+                        </p>
+                    </div>
+                </div>
+
+                <div class="mt-4 sm:mt-5 grid gap-2 sm:gap-3 grid-cols-1">
+                    @foreach($rejectedDocuments->take(6) as $doc)
+                    <div
+                        class="group flex items-center gap-2 sm:gap-3 rounded-lg sm:rounded-xl bg-white/80 p-3 sm:p-4 shadow-sm ring-1 ring-red-200/60 transition-all duration-200 hover:bg-white hover:shadow-md hover:ring-red-300 dark:bg-gray-800/80 dark:ring-red-700/40 dark:hover:bg-gray-800 dark:hover:ring-red-600">
+                        <div
+                            class="flex h-8 w-8 sm:h-10 sm:w-10 flex-shrink-0 items-center justify-center rounded-lg sm:rounded-xl bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-400">
+                            <x-heroicon-o-arrow-path class="h-4 w-4 sm:h-5 sm:w-5" />
+                        </div>
+                        <div class="flex-1 min-w-0">
+                            <p class="truncate text-xs sm:text-sm font-semibold text-gray-900 dark:text-gray-100">
+                                {{ $doc['name'] }}
+                            </p>
+                            <div class="mt-0.5 flex flex-wrap items-center gap-1 sm:gap-2">
+                                <span class="text-[10px] sm:text-xs font-medium text-red-600 dark:text-red-400">
+                                    {{ $doc['type'] === 'requirement' ? 'Persyaratan' : 'Dokumen Legal' }}
+                                </span>
+
+                                @if($doc['is_required'])
+                                <span
+                                    class="rounded bg-red-100 px-1 sm:px-1.5 py-0.5 text-[9px] sm:text-[10px] font-bold text-red-700 dark:bg-red-900/50 dark:text-red-400">
+                                    WAJIB
+                                </span>
+                                @endif
+                            </div>
+
+                            @if($doc['admin_notes'])
+                            <p class="mt-1 truncate text-[10px] sm:text-[11px] text-red-600 dark:text-red-400">
+                                <x-heroicon-o-chat-bubble-left-ellipsis class="inline h-3 w-3 mr-0.5" />
+                                Alasan: {{ Str::limit($doc['admin_notes'], 40) }}
+                            </p>
+                            @endif
+                        </div>
+                        <x-heroicon-o-chevron-right
+                            class="h-3 w-3 sm:h-4 sm:w-4 flex-shrink-0 text-red-400 transition-transform duration-200 group-hover:translate-x-1 dark:text-red-500" />
+                    </div>
+                    @endforeach
+                </div>
+            </div>
+        </div>
+        @endif
     </div>
-    @endif
 
     {{-- Two Column Layout - Responsive --}}
     <div class="grid gap-4 sm:gap-6 lg:grid-cols-2">
