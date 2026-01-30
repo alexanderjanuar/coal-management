@@ -98,58 +98,9 @@
     {{-- Stats Overview --}}
     @livewire('dashboard.widget.project-stats-overview')
 
-    {{-- Widget Grid Section --}}
-    <div class="mt-6 space-y-6">
-        {{-- First Row: 3 Widgets --}}
-        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 lg:gap-6">
-            {{-- Widget Slot 1 - User Projects (Livewire) --}}
-            <div class="widget-placeholder">
-                @livewire('dashboard.widgets.user-projects-widget')
-            </div>
-
-            {{-- Widget Slot 2 - Daily Tasks (Livewire) --}}
-            <div class="widget-placeholder">
-                @livewire('dashboard.widgets.daily-tasks-widget')
-            </div>
-
-            {{-- Widget Slot 3 - Team Activity (Livewire) --}}
-            <div class="widget-placeholder">
-                @livewire('dashboard.widgets.team-activity-widget')
-            </div>
-        </div>
-
-        {{-- Second Row: 3 Widgets --}}
-        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 lg:gap-6">
-            {{-- Widget Slot 4 --}}
-            <div class="widget-placeholder">
-                @if(isset($widget_row_2_col_1))
-                {!! $widget_row_2_col_1 !!}
-                @else
-                <x-dashboard.widget-placeholder title="Widget 2-1" description="Place your fourth widget here"
-                    icon="heroicon-o-calendar" />
-                @endif
-            </div>
-
-            {{-- Widget Slot 5 --}}
-            <div class="widget-placeholder">
-                @if(isset($widget_row_2_col_2))
-                {!! $widget_row_2_col_2 !!}
-                @else
-                <x-dashboard.widget-placeholder title="Widget 2-2" description="Place your fifth widget here"
-                    icon="heroicon-o-bell" />
-                @endif
-            </div>
-
-            {{-- Widget Slot 6 --}}
-            <div class="widget-placeholder">
-                @if(isset($widget_row_2_col_3))
-                {!! $widget_row_2_col_3 !!}
-                @else
-                <x-dashboard.widget-placeholder title="Widget 2-3" description="Place your sixth widget here"
-                    icon="heroicon-o-cog-6-tooth" />
-                @endif
-            </div>
-        </div>
+    {{-- Project Command Center --}}
+    <div class="mt-6">
+        @livewire('dashboard.widgets.project-command-center')
     </div>
 
 </x-filament-panels::page>
