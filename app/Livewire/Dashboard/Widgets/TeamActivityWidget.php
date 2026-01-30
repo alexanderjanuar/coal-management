@@ -17,7 +17,7 @@ class TeamActivityWidget extends Component
     /**
      * Get users based on role hierarchy
      * Director: sees all managers and staff
-     * Manager: sees their staff
+     * Manager: sees all staff
      * Staff: sees only themselves
      */
     #[Computed]
@@ -35,29 +35,14 @@ class TeamActivityWidget extends Component
             ->get();
         }
         
-        // Manager can see their staff
+        // Manager can see all staff
         if ($currentUser->hasRole('manager')) {
-            // Get staff members assigned to manager's projects
-            $staffIds = Project::where('pic_id', $currentUser->id)
-                ->orWhereHas('userProject', function($q) use ($currentUser) {
-                    $q->where('user_id', $currentUser->id)
-                      ->where('role', 'manager');
-                })
-                ->with('userProject.user')
-                ->get()
-                ->pluck('userProject')
-                ->flatten()
-                ->pluck('user')
-                ->unique('id')
-                ->pluck('id');
-
-            return User::whereIn('id', $staffIds)
-                ->whereHas('roles', function($query) {
-                    $query->where('name', 'staff');
-                })
-                ->with(['roles'])
-                ->orderBy('name')
-                ->get();
+            return User::whereHas('roles', function($query) {
+                $query->where('name', 'staff');
+            })
+            ->with(['roles'])
+            ->orderBy('name')
+            ->get();
         }
         
         // Staff only sees themselves

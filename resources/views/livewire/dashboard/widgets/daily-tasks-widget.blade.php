@@ -5,7 +5,7 @@
     class="fi-wi-stats-overview-stat relative rounded-xl bg-white shadow-sm ring-1 ring-gray-950/5 dark:bg-gray-900 dark:ring-white/10 hover:shadow-md transition-all duration-200 flex flex-col h-full">
 
     {{-- Fixed Header Section --}}
-    <div class="shrink-0 p-6 pb-4">
+    <div class="shrink-0 p-4 sm:p-6 pb-3 sm:pb-4">
         {{-- Header --}}
         <div class="flex items-center justify-between mb-4">
             <div class="flex items-center gap-x-3">
@@ -165,15 +165,15 @@
     </div>
 
     {{-- Scrollable Content --}}
-    <div class="widget-content-wrapper px-6">
+    <div class="flex-1 overflow-y-auto px-4 sm:px-6">
         {{-- Tasks List --}}
         @if(count($tasks) > 0)
-        <div class="space-y-2">
+        <div class="space-y-2 pb-4">
             <div class="flex items-center justify-between mb-2">
                 <p class="text-xs font-medium text-gray-500 dark:text-gray-400">
                     Daftar Tugas
                 </p>
-                <a href="{{ route('filament.admin.resources.daily-tasks.index') }}"
+                <a href=""
                     class="text-xs text-success-600 hover:text-success-700 dark:text-success-400 font-medium">
                     Lihat semua
                 </a>
@@ -187,10 +187,11 @@
             $isHighPriority = in_array($task['priority'], ['urgent', 'high']);
             @endphp
 
-            <div class="flex items-center gap-x-3 p-3 rounded-lg transition-all duration-200
-                        @if($isInProgress) bg-primary-50 dark:bg-primary-500/10 border border-primary-200 dark:border-primary-500/20 shadow-sm
-                        @elseif($isDraft) bg-warning-50 dark:bg-warning-500/10 border border-warning-200 dark:border-warning-500/20
-                        @else bg-gray-50 dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-750
+            <div class="flex items-center gap-x-3 p-3 rounded-lg transition-all duration-200 bg-gray-50 dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-750
+                        @if($isInProgress) border-l-4 border-l-primary-500
+                        @elseif($isDraft) border-l-4 border-l-warning-500
+                        @elseif($isCompleted) border-l-4 border-l-success-500
+                        @else border-l-4 border-l-gray-300 dark:border-l-gray-600
                         @endif">
 
                 {{-- Status Indicator --}}
@@ -227,20 +228,14 @@
                 <div class="flex-1 min-w-0">
                     <div class="flex items-start gap-x-2">
                         <div class="flex-1 min-w-0">
-                            <p class="text-sm font-medium 
-                                        @if($isInProgress) text-primary-900 dark:text-primary-100
-                                        @elseif($isDraft) text-warning-900 dark:text-warning-100
-                                        @elseif($isCompleted) text-gray-500 dark:text-gray-400 line-through
+                            <p class="text-sm font-medium truncate
+                                        @if($isCompleted) text-gray-500 dark:text-gray-400 line-through
                                         @else text-gray-900 dark:text-white
-                                        @endif truncate">
+                                        @endif">
                                 {{ $task['title'] ?? 'Tugas Tanpa Nama' }}
                             </p>
                             @if($task['project'])
-                            <p class="text-xs 
-                                            @if($isInProgress) text-primary-600 dark:text-primary-400
-                                            @elseif($isDraft) text-warning-600 dark:text-warning-400
-                                            @else text-gray-500 dark:text-gray-400
-                                            @endif truncate">
+                            <p class="text-xs text-gray-500 dark:text-gray-400 truncate">
                                 {{ $task['project']['name'] }}
                             </p>
                             @endif
@@ -302,10 +297,10 @@
 
     {{-- Fixed Footer --}}
     @if(count($tasks) > 0)
-    <div class="shrink-0 p-6 pt-4">
+    <div class="shrink-0 p-4 sm:p-6 pt-3 sm:pt-4">
         <div class="border-t border-gray-200 dark:border-gray-700 pt-4">
-            <div class="flex items-center justify-between">
-                <div class="flex items-center gap-x-3 text-xs">
+            <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+                <div class="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs">
                     <div class="flex items-center gap-x-1">
                         <div class="w-2 h-2 rounded-full bg-primary-500"></div>
                         <span class="text-gray-500 dark:text-gray-400">Berjalan</span>
@@ -319,7 +314,7 @@
                         <span class="text-gray-500 dark:text-gray-400">Selesai</span>
                     </div>
                 </div>
-                <a href="{{ route('filament.admin.resources.daily-tasks.index') }}"
+                <a href=""
                     class="text-xs text-success-600 hover:text-success-700 dark:text-success-400 font-medium inline-flex items-center gap-x-1">
                     Kelola tugas
                     <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">

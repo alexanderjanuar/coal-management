@@ -5,7 +5,7 @@
     class="fi-wi-stats-overview-stat relative rounded-xl bg-white shadow-sm ring-1 ring-gray-950/5 dark:bg-gray-900 dark:ring-white/10 hover:shadow-md transition-all duration-200 flex flex-col h-full">
 
     {{-- Fixed Header --}}
-    <div class="p-6 pb-4 shrink-0">
+    <div class="p-4 sm:p-6 pb-3 sm:pb-4 shrink-0">
         {{-- Header --}}
         <div class="flex items-center justify-between mb-4">
             <div class="flex items-center gap-x-3">
@@ -36,18 +36,20 @@
         {{-- Role Stats Grid --}}
         <div class="grid grid-cols-2 gap-3 mb-4">
             {{-- PIC Projects --}}
-            <div class="p-3 rounded-lg bg-blue-50 dark:bg-blue-500/10 border border-blue-100 dark:border-blue-500/20">
+            <div
+                class="p-3 rounded-lg bg-primary-50 dark:bg-primary-500/10 border border-primary-100 dark:border-primary-500/20">
                 <div class="flex items-center justify-between">
                     <div>
-                        <p class="text-xs font-medium text-blue-600 dark:text-blue-400">
+                        <p class="text-xs font-medium text-primary-600 dark:text-primary-400">
                             Sebagai PIC
                         </p>
-                        <p class="text-2xl font-bold text-blue-700 dark:text-blue-300 mt-1">
+                        <p class="text-2xl font-bold text-primary-700 dark:text-primary-300 mt-1">
                             {{ $stats['pic_count'] }}
                         </p>
                     </div>
-                    <div class="w-8 h-8 rounded-full bg-blue-100 dark:bg-blue-500/20 flex items-center justify-center">
-                        <svg class="w-4 h-4 text-blue-600 dark:text-blue-400" fill="none" stroke="currentColor"
+                    <div
+                        class="w-8 h-8 rounded-full bg-primary-100 dark:bg-primary-500/20 flex items-center justify-center">
+                        <svg class="w-4 h-4 text-primary-600 dark:text-primary-400" fill="none" stroke="currentColor"
                             viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                 d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z" />
@@ -108,7 +110,6 @@
                         Melewati batas waktu - perlu perhatian segera
                     </p>
                 </div>
-                {{-- Close Button --}}
                 <button @click="showOverdueAlert = false"
                     class="shrink-0 text-danger-400 hover:text-danger-600 dark:text-danger-500 dark:hover:text-danger-400 transition-colors"
                     title="Tutup">
@@ -147,7 +148,6 @@
                         Mendekati batas waktu
                     </p>
                 </div>
-                {{-- Close Button --}}
                 <button @click="showDueSoonAlert = false"
                     class="shrink-0 text-warning-400 hover:text-warning-600 dark:text-warning-500 dark:hover:text-warning-400 transition-colors"
                     title="Tutup">
@@ -160,10 +160,13 @@
             @endif
         </div>
         @endif
+    </div>
 
+    {{-- Scrollable Content --}}
+    <div class="flex-1 overflow-y-auto px-4 sm:px-6">
         {{-- Recent Projects List --}}
         @if(count($projects) > 0)
-        <div class="space-y-2">
+        <div class="space-y-2 pb-4">
             <div class="flex items-center justify-between mb-2">
                 <p class="text-xs font-medium text-gray-500 dark:text-gray-400">
                     Proyek Terbaru
@@ -187,10 +190,10 @@
                     {{-- Role Badge --}}
                     <div class="shrink-0">
                         @if($project['is_pic'])
-                        <div class="w-6 h-6 rounded bg-blue-100 dark:bg-blue-500/20 flex items-center justify-center"
+                        <div class="w-6 h-6 rounded bg-primary-100 dark:bg-primary-500/20 flex items-center justify-center"
                             title="Anda adalah PIC">
-                            <svg class="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" fill="none" stroke="currentColor"
-                                viewBox="0 0 24 24">
+                            <svg class="w-3.5 h-3.5 text-primary-600 dark:text-primary-400" fill="none"
+                                stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                     d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z" />
                             </svg>
@@ -217,7 +220,7 @@
                         </p>
                     </div>
 
-                    {{-- Deadline Status (Right Column) --}}
+                    {{-- Deadline Status --}}
                     <div class="shrink-0">
                         @if($dueDate)
                         @if($isOverdue)
@@ -231,7 +234,7 @@
                                 </svg>
                                 <span
                                     class="text-xs font-semibold text-danger-700 dark:text-danger-400 whitespace-nowrap">
-                                    Terlambat {{ $daysUntilDue }} hari
+                                    Terlambat {{ $daysUntilDue }}h
                                 </span>
                             </div>
                             <span class="text-xs text-gray-400 dark:text-gray-500">
@@ -249,7 +252,7 @@
                                 </svg>
                                 <span
                                     class="text-xs font-semibold text-warning-700 dark:text-warning-400 whitespace-nowrap">
-                                    {{ $daysUntilDue }} hari lagi
+                                    {{ $daysUntilDue }}h lagi
                                 </span>
                             </div>
                             <span class="text-xs text-gray-400 dark:text-gray-500">
@@ -258,16 +261,9 @@
                         </div>
                         @else
                         <div class="flex flex-col items-end gap-y-1">
-                            <div class="flex items-center gap-x-1 px-2 py-1 rounded bg-gray-100 dark:bg-gray-700">
-                                <svg class="w-3 h-3 text-gray-500 dark:text-gray-400" fill="none" stroke="currentColor"
-                                    viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                        d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                                </svg>
-                                <span class="text-xs text-gray-600 dark:text-gray-400 whitespace-nowrap">
-                                    {{ $dueDate->format('d M Y') }}
-                                </span>
-                            </div>
+                            <span class="text-xs text-gray-600 dark:text-gray-400">
+                                {{ $dueDate->format('d M Y') }}
+                            </span>
                             @if($dueDate->isFuture())
                             <span class="text-xs text-gray-400 dark:text-gray-500">
                                 {{ $daysUntilDue }} hari lagi
@@ -296,22 +292,22 @@
             </p>
         </div>
         @endif
+    </div>
 
-        {{-- Footer --}}
-        @if(count($projects) > 0)
-        <div class="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700">
-            <div class="flex items-center justify-between">
-                <div class="text-xs text-gray-500 dark:text-gray-400">
+    {{-- Fixed Footer --}}
+    @if(count($projects) > 0)
+    <div class="shrink-0 p-4 sm:p-6 pt-3 sm:pt-4">
+        <div class="border-t border-gray-200 dark:border-gray-700 pt-4">
+            <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+                <div class="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs">
                     <span class="inline-flex items-center gap-x-1">
-                        <svg class="w-3 h-3 text-blue-600 dark:text-blue-400" fill="none" stroke="currentColor"
-                            viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z" />
-                        </svg>
-                        Lencana PIC
+                        <div class="w-2 h-2 rounded-full bg-primary-500"></div>
+                        <span class="text-gray-500 dark:text-gray-400">PIC</span>
                     </span>
-                    <span class="mx-1">•</span>
-                    Menampilkan {{ min(count($projects), 3) }} dari {{ count($projects) }}
+                    <span class="text-gray-300 dark:text-gray-600">•</span>
+                    <span class="text-gray-500 dark:text-gray-400">
+                        Menampilkan {{ min(count($projects), 3) }} dari {{ count($projects) }}
+                    </span>
                 </div>
                 <a href="{{ route('filament.admin.resources.projects.index') }}"
                     class="text-xs text-primary-600 hover:text-primary-700 dark:text-primary-400 font-medium inline-flex items-center gap-x-1">
@@ -322,6 +318,6 @@
                 </a>
             </div>
         </div>
-        @endif
     </div>
+    @endif
 </div>
