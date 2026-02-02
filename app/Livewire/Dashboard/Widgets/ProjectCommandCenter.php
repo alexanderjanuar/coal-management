@@ -173,77 +173,6 @@ class ProjectCommandCenter extends Component
     }
 
     /**
-     * Today's tasks with assignment and project context
-     */
-    #[Computed]
-    public function todayTasks()
-    {
-        $user = auth()->user();
-        $today = today();
-
-        return DailyTask::with(['project:id,name', 'assignedUsers:id,name,avatar_url'])
-            ->select(['id', 'title', 'project_id', 'status', 'priority', 'task_date', 'start_task_date', 'created_by'])
-            ->where(function ($q) use ($user) {
-                $q->where('created_by', $user->id)
-                    ->orWhereHas('assignedUsers', function ($sub) use ($user) {
-                        $sub->where('user_id', $user->id);
-                    });
-            })
-            ->where(function ($dateQ) use ($today) {
-                $dateQ->where(function ($q) use ($today) {
-                    $q->where('start_task_date', '<=', $today)
-                      ->where('task_date', '>=', $today);
-                })->orWhere(function ($q) use ($today) {
-                    $q->where('task_date', $today)
-                      ->whereNull('start_task_date');
-                });
-            })
-            ->orderByRaw("
-                CASE
-                    WHEN status = 'in_progress' THEN 0
-                    WHEN status = 'pending' THEN 1
-                    WHEN status = 'draft' THEN 2
-                    WHEN status = 'completed' THEN 3
-                    ELSE 4
-                END
-            ")
-            ->limit(8)
-            ->get()
-            ->map(function ($task) {
-                $assignees = $task->assignedUsers->map(fn ($u) => [
-                    'name' => $u->name,
-                    'avatar_url' => $u->avatar_url,
-                    'initials' => strtoupper(substr($u->name, 0, 1)),
-                ])->values();
-
-                return [
-                    'id' => $task->id,
-                    'title' => $task->title,
-                    'project' => $task->project?->name,
-                    'status' => $task->status,
-                    'priority' => $task->priority,
-                    'assignees' => $assignees,
-                ];
-            });
-    }
-
-    /**
-     * Task statistics for the summary bar
-     */
-    #[Computed]
-    public function taskStats()
-    {
-        $tasks = $this->todayTasks;
-
-        return [
-            'total' => $tasks->count(),
-            'completed' => $tasks->where('status', 'completed')->count(),
-            'in_progress' => $tasks->where('status', 'in_progress')->count(),
-            'pending' => $tasks->whereIn('status', ['pending', 'draft'])->count(),
-        ];
-    }
-
-    /**
      * Team workload: per-member task counts and active projects
      */
     #[Computed]
@@ -366,15 +295,10 @@ class ProjectCommandCenter extends Component
                     <div class="flex-1 h-20 bg-gray-100 dark:bg-gray-800 rounded-xl"></div>
                     <div class="flex-1 h-20 bg-gray-100 dark:bg-gray-800 rounded-xl"></div>
                 </div>
-                <div class="grid grid-cols-3 gap-6">
+                <div class="grid grid-cols-2 gap-6">
                     <div class="space-y-3">
                         <div class="h-24 bg-gray-100 dark:bg-gray-800 rounded-xl"></div>
                         <div class="h-24 bg-gray-100 dark:bg-gray-800 rounded-xl"></div>
-                    </div>
-                    <div class="space-y-3">
-                        <div class="h-16 bg-gray-100 dark:bg-gray-800 rounded-xl"></div>
-                        <div class="h-16 bg-gray-100 dark:bg-gray-800 rounded-xl"></div>
-                        <div class="h-16 bg-gray-100 dark:bg-gray-800 rounded-xl"></div>
                     </div>
                     <div class="space-y-3">
                         <div class="h-16 bg-gray-100 dark:bg-gray-800 rounded-xl"></div>
@@ -391,8 +315,6 @@ class ProjectCommandCenter extends Component
         return view('livewire.dashboard.widgets.project-command-center', [
             'pipeline' => $this->pipeline,
             'projects' => $this->activeProjects,
-            'tasks' => $this->todayTasks,
-            'taskStats' => $this->taskStats,
             'workload' => $this->teamWorkload,
             'deadlines' => $this->upcomingDeadlines,
             'availableYears' => $this->availableYears,

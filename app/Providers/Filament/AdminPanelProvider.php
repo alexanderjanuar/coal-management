@@ -7,7 +7,7 @@ use App\Filament\Pages\DailyTask\DailyTaskList;
 use App\Filament\Pages\DailyTask\DailyTaskDashboard;
 use App\Filament\Pages\TaxChat;
 use App\Filament\Pages\ClientCommunication\Index;
-
+use Filament\FontProviders\GoogleFontProvider;
 // use App\Filament\Resources\TaxReportResource\Pages\TaxReportDashboard;
 use App\Http\Middleware\RedirectToProperPanelMiddleware;
 use Filament\Http\Middleware\Authenticate;
@@ -128,6 +128,7 @@ class AdminPanelProvider extends PanelProvider
             ->brandLogo(asset('images/Logo/OnlyLogo.png'))
             ->brandLogoHeight('3rem')
             ->viteTheme('resources/css/filament/admin/theme.css')
+            ->font('Plus Jakarta Sans', provider: GoogleFontProvider::class)
             ->authMiddleware([
                 // RedirectToProperPanelMiddleware::class,
                 Authenticate::class,

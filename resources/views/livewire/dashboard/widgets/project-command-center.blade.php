@@ -2,7 +2,7 @@
         tab: @entangle('activeTab'),
         showDeadlineAlert: true
     }"
-    class="rounded-2xl bg-white dark:bg-gray-950 border border-gray-200/80 dark:border-gray-800/80 shadow-sm hover:shadow-md transition-shadow duration-300">
+    class="rounded-2xl bg-white dark:bg-gray-950 border border-gray-200/80 dark:border-gray-800/80 shadow-sm hover:shadow-md transition-shadow duration-300 h-full flex flex-col">
 
     {{-- ═══════════════════════════════════════════════════════════════
          HEADER
@@ -151,9 +151,9 @@
     {{-- ═══════════════════════════════════════════════════════════════
          TAB: OVERVIEW
     ═══════════════════════════════════════════════════════════════ --}}
-    <div x-show="tab === 'overview'" x-transition:enter="transition ease-out duration-200" x-transition:enter-start="opacity-0" x-transition:enter-end="opacity-100">
+    <div x-show="tab === 'overview'" x-transition:enter="transition ease-out duration-200" x-transition:enter-start="opacity-0" x-transition:enter-end="opacity-100" class="flex-1">
         <div class="px-6 sm:px-8 pb-6 sm:pb-8">
-            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
 
                 {{-- ─── COLUMN 1: Active Projects ─── --}}
                 <div class="lg:col-span-1">
@@ -262,104 +262,7 @@
                     @endif
                 </div>
 
-                {{-- ─── COLUMN 2: Today's Tasks ─── --}}
-                <div class="lg:col-span-1">
-                    <div class="flex items-center justify-between mb-3">
-                        <h3 class="text-xs font-semibold uppercase tracking-widest text-gray-400 dark:text-gray-600">
-                            Tugas Hari Ini
-                        </h3>
-                        <div class="flex items-center gap-1.5 text-xs tabular-nums">
-                            <span class="text-gray-900 dark:text-gray-100 font-semibold">{{ $taskStats['completed'] }}</span>
-                            <span class="text-gray-300 dark:text-gray-700">/</span>
-                            <span class="text-gray-400 dark:text-gray-600">{{ $taskStats['total'] }}</span>
-                        </div>
-                    </div>
-
-                    {{-- Task completion mini-bar --}}
-                    @if($taskStats['total'] > 0)
-                    <div class="mb-3">
-                        <div class="w-full h-1 bg-gray-100 dark:bg-gray-800 rounded-full overflow-hidden">
-                            @php $completionPct = $taskStats['total'] > 0 ? round(($taskStats['completed'] / $taskStats['total']) * 100) : 0; @endphp
-                            <div class="h-full bg-primary-500 dark:bg-primary-400 rounded-full transition-all duration-500" style="width: {{ $completionPct }}%"></div>
-                        </div>
-                    </div>
-                    @endif
-
-                    @if($tasks->count() > 0)
-                    <div class="space-y-1 max-h-[400px] overflow-y-auto pr-1">
-                        @foreach($tasks as $task)
-                        @php
-                            $isCompleted = $task['status'] === 'completed';
-                            $isInProgress = $task['status'] === 'in_progress';
-                        @endphp
-                        <div class="flex items-start gap-3 p-3 rounded-xl transition-all duration-200 hover:bg-gray-50 dark:hover:bg-gray-900/80 group
-                            {{ $isCompleted ? 'opacity-50' : '' }}">
-                            {{-- Status checkbox --}}
-                            <div class="shrink-0 mt-0.5">
-                                @if($isCompleted)
-                                <div class="w-4.5 h-4.5 rounded-md bg-primary-500 dark:bg-primary-400 flex items-center justify-center">
-                                    <svg class="w-3 h-3 text-white dark:text-primary-950" fill="none" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" d="m4.5 12.75 6 6 9-13.5"/>
-                                    </svg>
-                                </div>
-                                @elseif($isInProgress)
-                                <div class="w-4.5 h-4.5 rounded-md border-2 border-primary-500 dark:border-primary-400 flex items-center justify-center">
-                                    <div class="w-1.5 h-1.5 rounded-sm bg-primary-500 dark:bg-primary-400 animate-pulse"></div>
-                                </div>
-                                @else
-                                <div class="w-4.5 h-4.5 rounded-md border-2 border-gray-300 dark:border-gray-700"></div>
-                                @endif
-                            </div>
-
-                            {{-- Task content --}}
-                            <div class="flex-1 min-w-0">
-                                <p class="text-sm text-gray-800 dark:text-gray-200 truncate {{ $isCompleted ? 'line-through text-gray-400 dark:text-gray-600' : '' }}">
-                                    {{ $task['title'] }}
-                                </p>
-                                <div class="flex items-center gap-2 mt-1">
-                                    @if($task['project'])
-                                    <span class="text-[11px] text-gray-400 dark:text-gray-600 truncate">{{ $task['project'] }}</span>
-                                    @endif
-                                    @if($task['priority'] === 'urgent' || $task['priority'] === 'high')
-                                    <span class="w-1 h-1 rounded-full {{ $task['priority'] === 'urgent' ? 'bg-gray-900 dark:bg-gray-100' : 'bg-gray-400 dark:bg-gray-500' }}"></span>
-                                    <span class="text-[10px] font-medium uppercase tracking-wider {{ $task['priority'] === 'urgent' ? 'text-gray-700 dark:text-gray-300' : 'text-gray-400 dark:text-gray-500' }}">
-                                        {{ $task['priority'] === 'urgent' ? 'Urgent' : 'High' }}
-                                    </span>
-                                    @endif
-                                </div>
-                            </div>
-
-                            {{-- Assignees --}}
-                            @if($task['assignees']->count() > 0)
-                            <div class="shrink-0 flex items-center -space-x-1">
-                                @foreach($task['assignees']->take(2) as $assignee)
-                                    @if($assignee['avatar_url'])
-                                    <img src="{{ $assignee['avatar_url'] }}" alt="{{ $assignee['name'] }}"
-                                        class="w-5 h-5 rounded-full border border-white dark:border-gray-950 object-cover" title="{{ $assignee['name'] }}">
-                                    @else
-                                    <div class="w-5 h-5 rounded-full border border-white dark:border-gray-950 bg-gray-200 dark:bg-gray-700 flex items-center justify-center" title="{{ $assignee['name'] }}">
-                                        <span class="text-[9px] font-semibold text-gray-500 dark:text-gray-400">{{ $assignee['initials'] }}</span>
-                                    </div>
-                                    @endif
-                                @endforeach
-                            </div>
-                            @endif
-                        </div>
-                        @endforeach
-                    </div>
-                    @else
-                    <div class="flex flex-col items-center justify-center py-12 text-center">
-                        <div class="w-10 h-10 rounded-xl bg-gray-100 dark:bg-gray-800 flex items-center justify-center mb-3">
-                            <svg class="w-5 h-5 text-gray-300 dark:text-gray-700" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75 11.25 15 15 9.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"/>
-                            </svg>
-                        </div>
-                        <p class="text-xs text-gray-400 dark:text-gray-600">Tidak ada tugas hari ini</p>
-                    </div>
-                    @endif
-                </div>
-
-                {{-- ─── COLUMN 3: Deadlines ─── --}}
+                {{-- ─── COLUMN 2: Deadlines ─── --}}
                 <div class="lg:col-span-1">
                     <div class="flex items-center justify-between mb-3">
                         <h3 class="text-xs font-semibold uppercase tracking-widest text-gray-400 dark:text-gray-600">
@@ -434,7 +337,7 @@
     {{-- ═══════════════════════════════════════════════════════════════
          TAB: TEAM WORKLOAD
     ═══════════════════════════════════════════════════════════════ --}}
-    <div x-show="tab === 'team'" x-transition:enter="transition ease-out duration-200" x-transition:enter-start="opacity-0" x-transition:enter-end="opacity-100" x-cloak>
+    <div x-show="tab === 'team'" x-transition:enter="transition ease-out duration-200" x-transition:enter-start="opacity-0" x-transition:enter-end="opacity-100" x-cloak class="flex-1">
         <div class="px-6 sm:px-8 pb-6 sm:pb-8">
             <div class="flex items-center justify-between mb-4">
                 <h3 class="text-xs font-semibold uppercase tracking-widest text-gray-400 dark:text-gray-600">
@@ -535,7 +438,7 @@
     {{-- ═══════════════════════════════════════════════════════════════
          FOOTER
     ═══════════════════════════════════════════════════════════════ --}}
-    <div class="px-6 sm:px-8 py-4 border-t border-gray-100 dark:border-gray-800/80">
+    <div class="px-6 sm:px-8 py-4 border-t border-gray-100 dark:border-gray-800/80 mt-auto">
         <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
             <div class="flex items-center gap-4 text-[11px] text-gray-400 dark:text-gray-600">
                 <span class="flex items-center gap-1.5">

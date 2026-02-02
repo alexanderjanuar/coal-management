@@ -98,9 +98,24 @@
     {{-- Stats Overview --}}
     @livewire('dashboard.widget.project-stats-overview')
 
-    {{-- Project Command Center --}}
-    <div class="mt-6">
-        @livewire('dashboard.widgets.project-command-center')
+    {{-- Project Command Center + Daily Tasks --}}
+    <div class="mt-6 grid grid-cols-1 lg:grid-cols-3 gap-6 items-stretch">
+        <div class="lg:col-span-2 h-full">
+            @livewire('dashboard.widgets.project-command-center')
+        </div>
+        <div class="lg:col-span-1 h-full">
+            @livewire('dashboard.widgets.daily-task-widget')
+        </div>
+    </div>
+
+    {{-- Charts --}}
+    <div class="mt-6 grid grid-cols-1 lg:grid-cols-3 gap-6 items-stretch">
+        <div class="lg:col-span-2">
+            @livewire('dashboard.widgets.project-monthly-chart')
+        </div>
+        <div class="lg:col-span-1">
+            @livewire('dashboard.widgets.task-weekly-chart')
+        </div>
     </div>
 
 </x-filament-panels::page>
