@@ -3,18 +3,17 @@
 namespace App\Livewire\Dashboard\Widgets;
 
 use App\Models\DailyTask;
+use Filament\Widgets\ChartWidget;
 use Illuminate\Support\Carbon;
-use Leandrocfe\FilamentApexCharts\Widgets\ApexChartWidget;
 
-class TaskWeeklyChart extends ApexChartWidget
+class TaskWeeklyChart extends ChartWidget
 {
-    protected static ?string $chartId = 'taskWeeklyChart';
     protected static ?string $heading = 'Aktivitas Tugas Mingguan';
-    protected static ?string $subheading = 'Penyelesaian tugas 7 hari terakhir';
+    protected static ?int $sort = 2;
+    
+    protected static ?string $maxHeight = '350px';
 
-    protected static ?int $contentHeight = 280;
-
-    protected function getOptions(): array
+    protected function getData(): array
     {
         $user = auth()->user();
         $categories = [];
@@ -48,107 +47,87 @@ class TaskWeeklyChart extends ApexChartWidget
         }
 
         return [
-            'chart' => [
-                'type' => 'bar',
-                'height' => 280,
-                'stacked' => true,
-                'toolbar' => ['show' => false],
-                'background' => 'transparent',
-                'animations' => [
-                    'enabled' => true,
-                    'speed' => 400,
-                ],
-                'fontFamily' => 'inherit',
-            ],
-            'series' => [
+            'datasets' => [
                 [
-                    'name' => 'Selesai',
+                    'label' => 'Selesai',
                     'data' => $completedSeries,
+                    'backgroundColor' => 'rgba(6, 182, 212, 0.85)', // cyan
+                    'borderColor' => 'rgb(6, 182, 212)',
+                    'borderWidth' => 2,
                 ],
                 [
-                    'name' => 'Belum',
+                    'label' => 'Belum',
                     'data' => $remainingSeries,
+                    'backgroundColor' => 'rgba(229, 231, 235, 0.85)', // gray
+                    'borderColor' => 'rgb(229, 231, 235)',
+                    'borderWidth' => 2,
                 ],
             ],
-            'colors' => ['#06b6d4', '#e5e7eb'],
-            'plotOptions' => [
-                'bar' => [
-                    'borderRadius' => 4,
-                    'borderRadiusApplication' => 'end',
-                    'columnWidth' => '55%',
-                ],
-            ],
-            'grid' => [
-                'show' => true,
-                'borderColor' => '#e5e7eb',
-                'strokeDashArray' => 4,
-                'padding' => ['left' => 8, 'right' => 8],
-            ],
-            'xaxis' => [
-                'categories' => $categories,
-                'labels' => [
-                    'style' => [
-                        'fontFamily' => 'inherit',
-                        'fontSize' => '11px',
-                        'fontWeight' => 500,
-                        'cssClass' => 'text-gray-500 dark:text-gray-400',
-                    ],
-                ],
-                'axisBorder' => ['show' => false],
-                'axisTicks' => ['show' => false],
-            ],
-            'yaxis' => [
-                'labels' => [
-                    'style' => [
-                        'fontFamily' => 'inherit',
-                        'fontSize' => '11px',
-                        'cssClass' => 'text-gray-500 dark:text-gray-400',
-                    ],
-                    'formatter' => 'function (val) { return Math.round(val) }',
-                ],
-                'min' => 0,
-                'forceNiceScale' => true,
-            ],
-            'tooltip' => [
-                'enabled' => true,
-                'theme' => 'dark',
-                'shared' => true,
-                'intersect' => false,
+            'labels' => $categories,
+        ];
+    }
+
+    protected function getType(): string
+    {
+        return 'bar';
+    }
+
+    protected function getOptions(): array
+    {
+        return [
+            'responsive' => true,
+            'scales' => [
                 'y' => [
-                    'formatter' => 'function (val) { return val + " tugas" }',
+                    'beginAtZero' => true,
+                    'stacked' => true,
+                    'ticks' => [
+                        'stepSize' => 2,
+                        'precision' => 0,
+                        'font' => [
+                            'size' => 11,
+                        ],
+                    ],
+                    'grid' => [
+                        'display' => true,
+                        'color' => 'rgba(0, 0, 0, 0.03)',
+                        'drawBorder' => false,
+                    ],
                 ],
-            ],
-            'legend' => [
-                'show' => true,
-                'position' => 'top',
-                'horizontalAlign' => 'right',
-                'fontFamily' => 'inherit',
-                'fontSize' => '12px',
-                'markers' => [
-                    'size' => 4,
-                    'shape' => 'circle',
-                ],
-                'itemMargin' => ['horizontal' => 12],
-            ],
-            'dataLabels' => ['enabled' => false],
-            'states' => [
-                'hover' => [
-                    'filter' => [
-                        'type' => 'darken',
-                        'value' => 0.9,
+                'x' => [
+                    'stacked' => true,
+                    'grid' => [
+                        'display' => false,
+                    ],
+                    'ticks' => [
+                        'font' => [
+                            'size' => 11,
+                        ],
                     ],
                 ],
             ],
-            'noData' => [
-                'text' => 'Belum ada data tugas',
-                'align' => 'center',
-                'verticalAlign' => 'middle',
-                'style' => [
-                    'fontSize' => '14px',
-                    'fontFamily' => 'inherit',
+            'animation' => [
+                'duration' => 800,
+                'animateRotate' => true,
+                'animateScale' => true,
+            ],
+            'plugins' => [
+                'legend' => [
+                    'display' => true,
+                    'position' => 'top',
+                    'labels' => [
+                        'font' => [
+                            'size' => 11,
+                        ],
+                        'padding' => 15,
+                    ],
                 ],
             ],
         ];
+    }
+
+    public function getDescription(): ?string
+    {
+        return 'Penyelesaian tugas 7 hari terakhir';
     }
 
     public function getPollingInterval(): ?string

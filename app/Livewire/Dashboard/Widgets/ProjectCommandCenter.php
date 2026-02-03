@@ -74,12 +74,11 @@ class ProjectCommandCenter extends Component
     #[Computed]
     public function pipeline()
     {
+        // Simplified to 3 stages: Draft, Berjalan, Selesai
         $stages = [
-            'draft'       => ['label' => 'Draft', 'count' => 0],
-            'analysis'    => ['label' => 'Analisis', 'count' => 0],
-            'in_progress' => ['label' => 'Berjalan', 'count' => 0],
-            'review'      => ['label' => 'Review', 'count' => 0],
-            'completed'   => ['label' => 'Selesai', 'count' => 0],
+            'draft'       => ['label' => 'Draft', 'count' => 0, 'color' => 'gray'],
+            'in_progress' => ['label' => 'Berjalan', 'count' => 0, 'color' => 'blue'],
+            'completed'   => ['label' => 'Selesai', 'count' => 0, 'color' => 'green'],
         ];
 
         $counts = $this->baseProjectQuery()
@@ -88,7 +87,10 @@ class ProjectCommandCenter extends Component
             ->pluck('total', 'status');
 
         foreach ($counts as $status => $total) {
-            if (isset($stages[$status])) {
+            // Map analysis, review, on_hold to in_progress (Berjalan)
+            if (in_array($status, ['analysis', 'review', 'on_hold'])) {
+                $stages['in_progress']['count'] += $total;
+            } elseif (isset($stages[$status])) {
                 $stages[$status]['count'] = $total;
             }
         }

@@ -3,18 +3,18 @@
 namespace App\Livewire\Dashboard\Widgets;
 
 use App\Models\Project;
+use App\Models\User;
+use Filament\Widgets\ChartWidget;
 use Illuminate\Support\Facades\DB;
-use Leandrocfe\FilamentApexCharts\Widgets\ApexChartWidget;
 
-class ProjectMonthlyChart extends ApexChartWidget
+class ProjectMonthlyChart extends ChartWidget
 {
-    protected static ?string $chartId = 'projectPicStatusChart';
     protected static ?string $heading = 'Status Proyek per PIC';
-    protected static ?string $subheading = 'Distribusi status proyek berdasarkan penanggung jawab';
-
+    protected static ?int $sort = 2;
+    
+    protected static ?string $maxHeight = '350px';
+    
     public ?string $filter = 'active';
-
-    protected static ?int $contentHeight = 280;
 
     protected function getFilters(): ?array
     {
@@ -46,7 +46,7 @@ class ProjectMonthlyChart extends ApexChartWidget
         return $query;
     }
 
-    protected function getOptions(): array
+    protected function getData(): array
     {
         $query = $this->baseProjectQuery()
             ->whereNotNull('pic_id')
@@ -66,44 +66,57 @@ class ProjectMonthlyChart extends ApexChartWidget
             ->orderBy('users.name')
             ->get();
 
-        // Collect unique PIC names and build series
+        // Collect unique PIC names
         $picNames = $data->pluck('pic_name')->unique()->values()->toArray();
 
-        $statusConfig = [
-            'draft'       => ['label' => 'Draft',    'color' => '#94a3b8'],
-            'analysis'    => ['label' => 'Analisis',  'color' => '#06b6d4'],
-            'in_progress' => ['label' => 'Berjalan',  'color' => '#3b82f6'],
-            'review'      => ['label' => 'Review',    'color' => '#f59e0b'],
-            'completed'   => ['label' => 'Selesai',   'color' => '#22c55e'],
-            'canceled'    => ['label' => 'Dibatalkan', 'color' => '#ef4444'],
+        // Map all statuses to 3 categories
+        $statusMapping = [
+            'draft' => 'draft',
+            'analysis' => 'in_progress',
+            'in_progress' => 'in_progress',
+            'review' => 'in_progress',
+            'on_hold' => 'in_progress',
+            'completed' => 'completed',
+            'canceled' => 'completed',
         ];
 
-        // Filter out statuses with 0 total across all PICs
-        $activeStatuses = $data->pluck('status')->unique()->values()->toArray();
+        // Build data arrays for each status
+        $draftData = [];
+        $inProgressData = [];
+        $completedData = [];
 
-        $series = [];
-        $colors = [];
+        foreach ($picNames as $pic) {
+            $draftCount = 0;
+            $inProgressCount = 0;
+            $completedCount = 0;
 
-        foreach ($statusConfig as $status => $config) {
-            if (!in_array($status, $activeStatuses)) {
-                continue;
+            foreach ($data->where('pic_name', $pic) as $row) {
+                $mapped = $statusMapping[$row->status] ?? 'in_progress';
+                
+                if ($mapped === 'draft') {
+                    $draftCount += $row->count;
+                } elseif ($mapped === 'in_progress') {
+                    $inProgressCount += $row->count;
+                } elseif ($mapped === 'completed') {
+                    $completedCount += $row->count;
+                }
             }
 
-            $seriesData = [];
-            foreach ($picNames as $pic) {
-                $row = $data->where('pic_name', $pic)->where('status', $status)->first();
-                $seriesData[] = $row ? $row->count : 0;
-            }
+            $draftData[] = $draftCount;
+            $inProgressData[] = $inProgressCount;
+            $completedData[] = $completedCount;
+        }
 
-            $series[] = [
-                'name' => $config['label'],
-                'data' => $seriesData,
-            ];
-            $colors[] = $config['color'];
+        // Handle empty data case
+        if (empty($picNames)) {
+            $picNames = ['Tidak ada data'];
+            $draftData = [0];
+            $inProgressData = [0];
+            $completedData = [0];
         }
 
         // Truncate long PIC names for x-axis
-        $categories = array_map(function ($name) {
+        $labels = array_map(function ($name) {
             $parts = explode(' ', $name);
             return count($parts) > 1
                 ? $parts[0] . ' ' . substr($parts[1], 0, 1) . '.'
@@ -111,94 +124,104 @@ class ProjectMonthlyChart extends ApexChartWidget
         }, $picNames);
 
         return [
-            'chart' => [
-                'type' => 'bar',
-                'height' => 280,
-                'stacked' => false,
-                'toolbar' => ['show' => false],
-                'background' => 'transparent',
-                'animations' => [
-                    'enabled' => true,
-                    'speed' => 400,
+            'datasets' => [
+                [
+                    'label' => 'Draft',
+                    'data' => $draftData,
+                    'backgroundColor' => 'rgba(148, 163, 184, 0.85)', // gray
+                    'borderColor' => 'rgb(148, 163, 184)',
+                    'borderWidth' => 2,
                 ],
-                'fontFamily' => 'inherit',
-            ],
-            'series' => $series,
-            'colors' => $colors,
-            'plotOptions' => [
-                'bar' => [
-                    'horizontal' => false,
-                    'borderRadius' => 3,
-                    'borderRadiusApplication' => 'end',
-                    'columnWidth' => count($picNames) <= 3 ? '45%' : '70%',
-                    'dataLabels' => ['position' => 'top'],
+                [
+                    'label' => 'Berjalan',
+                    'data' => $inProgressData,
+                    'backgroundColor' => 'rgba(59, 130, 246, 0.85)', // blue
+                    'borderColor' => 'rgb(59, 130, 246)',
+                    'borderWidth' => 2,
+                ],
+                [
+                    'label' => 'Selesai',
+                    'data' => $completedData,
+                    'backgroundColor' => 'rgba(34, 197, 94, 0.85)', // green
+                    'borderColor' => 'rgb(34, 197, 94)',
+                    'borderWidth' => 2,
                 ],
             ],
-            'grid' => [
-                'show' => true,
-                'borderColor' => '#e5e7eb',
-                'strokeDashArray' => 4,
-                'padding' => ['left' => 4, 'right' => 4],
-            ],
-            'xaxis' => [
-                'categories' => $categories,
-                'labels' => [
-                    'style' => [
-                        'fontFamily' => 'inherit',
-                        'fontSize' => '11px',
-                        'fontWeight' => 500,
-                        'cssClass' => 'text-gray-500 dark:text-gray-400',
-                    ],
-                    'rotate' => count($picNames) > 6 ? -45 : 0,
-                    'trim' => true,
-                ],
-                'axisBorder' => ['show' => false],
-                'axisTicks' => ['show' => false],
-            ],
-            'yaxis' => [
-                'labels' => [
-                    'style' => [
-                        'fontFamily' => 'inherit',
-                        'fontSize' => '11px',
-                        'cssClass' => 'text-gray-500 dark:text-gray-400',
-                    ],
-                    'formatter' => 'function (val) { return Math.round(val) }',
-                ],
-                'min' => 0,
-                'forceNiceScale' => true,
-            ],
-            'tooltip' => [
-                'enabled' => true,
-                'theme' => 'dark',
-                'shared' => true,
-                'intersect' => false,
+            'labels' => $labels,
+        ];
+    }
+
+    protected function getType(): string
+    {
+        return 'bar';
+    }
+
+    protected function getOptions(): array
+    {
+        return [
+            'responsive' => true,
+            'scales' => [
                 'y' => [
-                    'formatter' => 'function (val) { return val + " proyek" }',
+                    'beginAtZero' => true,
+                    'stacked' => false,
+                    'ticks' => [
+                        'stepSize' => 2,
+                        'precision' => 0,
+                        'font' => [
+                            'size' => 11,
+                        ],
+                    ],
+                    'grid' => [
+                        'display' => true,
+                        'color' => 'rgba(0, 0, 0, 0.03)',
+                        'drawBorder' => false,
+                    ],
+                ],
+                'x' => [
+                    'stacked' => false,
+                    'grid' => [
+                        'display' => false,
+                    ],
+                    'ticks' => [
+                        'maxRotation' => 45,
+                        'minRotation' => 0,
+                        'font' => [
+                            'size' => 10,
+                        ],
+                    ],
                 ],
             ],
-            'legend' => [
-                'show' => true,
-                'position' => 'top',
-                'horizontalAlign' => 'right',
-                'fontFamily' => 'inherit',
-                'fontSize' => '11px',
-                'markers' => [
-                    'size' => 4,
-                    'shape' => 'circle',
-                ],
-                'itemMargin' => ['horizontal' => 8],
+            'animation' => [
+                'duration' => 800,
+                'animateRotate' => true,
+                'animateScale' => true,
             ],
-            'dataLabels' => ['enabled' => false],
-            'noData' => [
-                'text' => 'Belum ada data proyek',
-                'align' => 'center',
-                'verticalAlign' => 'middle',
-                'style' => [
-                    'fontSize' => '14px',
-                    'fontFamily' => 'inherit',
+            'plugins' => [
+                'legend' => [
+                    'display' => true,
+                    'position' => 'top',
+                    'labels' => [
+                        'font' => [
+                            'size' => 11,
+                        ],
+                        'padding' => 15,
+                    ],
                 ],
             ],
         ];
+    }
+
+    public function getDescription(): ?string
+    {
+        $query = $this->baseProjectQuery();
+        
+        if ($this->filter === 'active') {
+            $totalProjects = $query->whereNotIn('status', ['completed', 'canceled'])->count();
+            return "Total {$totalProjects} proyek aktif";
+        }
+
+        $totalProjects = $query->count();
+        return "Total {$totalProjects} proyek";
     }
 
     public function getPollingInterval(): ?string

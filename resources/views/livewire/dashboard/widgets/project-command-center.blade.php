@@ -77,26 +77,37 @@
             @php
                 $stageKeys = array_keys($pipeline['stages']);
                 $lastKey = end($stageKeys);
+                $stageColors = [
+                    'draft' => ['bg' => 'bg-gray-500', 'text' => 'text-gray-600 dark:text-gray-400', 'light' => 'bg-gray-100 dark:bg-gray-800'],
+                    'in_progress' => ['bg' => 'bg-blue-500', 'text' => 'text-blue-600 dark:text-blue-400', 'light' => 'bg-blue-50 dark:bg-blue-900/20'],
+                    'completed' => ['bg' => 'bg-emerald-500', 'text' => 'text-emerald-600 dark:text-emerald-400', 'light' => 'bg-emerald-50 dark:bg-emerald-900/20'],
+                ];
             @endphp
             @foreach($pipeline['stages'] as $key => $stage)
                 @php
                     $isActive = $stage['count'] > 0;
                     $pct = $pipeline['total'] > 0 ? round(($stage['count'] / $pipeline['total']) * 100) : 0;
+                    $colors = $stageColors[$key] ?? $stageColors['draft'];
                 @endphp
                 <div class="flex-1 relative group text-center py-4 px-2 transition-colors duration-200
                     {{ $isActive ? 'bg-white dark:bg-gray-900' : '' }}
                     {{ $key !== $lastKey ? 'border-r border-gray-200 dark:border-gray-800' : '' }}">
 
-                    <p class="text-2xl font-bold tabular-nums tracking-tight {{ $isActive ? 'text-gray-900 dark:text-gray-100' : 'text-gray-300 dark:text-gray-700' }}">
+                    {{-- Color indicator dot --}}
+                    @if($isActive)
+                    <div class="absolute top-2 left-1/2 -translate-x-1/2 w-2 h-2 rounded-full {{ $colors['bg'] }}"></div>
+                    @endif
+
+                    <p class="text-2xl font-bold tabular-nums tracking-tight mt-1 {{ $isActive ? $colors['text'] : 'text-gray-300 dark:text-gray-700' }}">
                         {{ $stage['count'] }}
                     </p>
                     <p class="text-[10px] uppercase tracking-widest font-medium mt-1 {{ $isActive ? 'text-gray-500 dark:text-gray-400' : 'text-gray-300 dark:text-gray-700' }}">
                         {{ $stage['label'] }}
                     </p>
 
-                    {{-- Subtle underline bar --}}
+                    {{-- Subtle underline bar with status color --}}
                     @if($isActive)
-                    <div class="absolute bottom-0 left-1/2 -translate-x-1/2 h-0.5 rounded-full bg-primary-500 dark:bg-primary-400 transition-all duration-300" style="width: {{ max($pct, 20) }}%"></div>
+                    <div class="absolute bottom-0 left-1/2 -translate-x-1/2 h-1 rounded-full {{ $colors['bg'] }} transition-all duration-300" style="width: {{ max($pct, 30) }}%"></div>
                     @endif
 
                     {{-- Connector arrow --}}
@@ -170,8 +181,17 @@
                     @if($projects->count() > 0)
                     <div class="space-y-2 max-h-[420px] overflow-y-auto pr-1">
                         @foreach($projects as $project)
+                        @php
+                            // Determine status color for the card
+                            $statusColors = match($project['status']) {
+                                'draft' => ['border' => 'border-l-gray-400', 'bg' => 'hover:bg-gray-50/80 dark:hover:bg-gray-900', 'dot' => 'bg-gray-400'],
+                                'analysis', 'in_progress', 'review', 'on_hold' => ['border' => 'border-l-blue-500', 'bg' => 'hover:bg-blue-50/30 dark:hover:bg-blue-900/10', 'dot' => 'bg-blue-500'],
+                                'completed' => ['border' => 'border-l-emerald-500', 'bg' => 'hover:bg-emerald-50/30 dark:hover:bg-emerald-900/10', 'dot' => 'bg-emerald-500'],
+                                default => ['border' => 'border-l-gray-300', 'bg' => 'hover:bg-gray-50/80 dark:hover:bg-gray-900', 'dot' => 'bg-gray-300'],
+                            };
+                        @endphp
                         <a href="{{ route('filament.admin.resources.projects.view', $project['id']) }}"
-                           class="block group p-4 rounded-xl border border-gray-100 dark:border-gray-800/80 hover:border-gray-300 dark:hover:border-gray-700 bg-white dark:bg-gray-900/50 hover:bg-gray-50/80 dark:hover:bg-gray-900 transition-all duration-200">
+                           class="block group p-4 rounded-xl border border-l-4 {{ $statusColors['border'] }} border-gray-100 dark:border-gray-800/80 hover:border-gray-300 dark:hover:border-gray-700 bg-white dark:bg-gray-900/50 {{ $statusColors['bg'] }} transition-all duration-200">
                             {{-- Project header --}}
                             <div class="flex items-start justify-between mb-3">
                                 <div class="flex-1 min-w-0 mr-3">
@@ -234,14 +254,21 @@
 
                                 <div class="flex items-center gap-2">
                                     @if($project['priority'] === 'urgent')
-                                    <span class="w-1.5 h-1.5 rounded-full bg-gray-900 dark:bg-gray-100" title="Urgent"></span>
+                                    <span class="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse" title="Urgent"></span>
                                     @endif
-                                    <span class="text-[10px] uppercase tracking-wider font-medium text-gray-400 dark:text-gray-600">
+                                    {{-- Status badge with color --}}
+                                    <span class="inline-flex items-center gap-1.5 text-[10px] uppercase tracking-wider font-medium px-2 py-0.5 rounded-full
+                                        {{ match($project['status']) {
+                                            'draft' => 'bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400',
+                                            'analysis', 'in_progress', 'review', 'on_hold' => 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400',
+                                            'completed' => 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400',
+                                            default => 'text-gray-400 dark:text-gray-600',
+                                        } }}">
+                                        <span class="w-1.5 h-1.5 rounded-full {{ $statusColors['dot'] }}"></span>
                                         {{ match($project['status']) {
                                             'draft' => 'Draft',
-                                            'analysis' => 'Analisis',
-                                            'in_progress' => 'Berjalan',
-                                            'review' => 'Review',
+                                            'analysis', 'in_progress', 'review', 'on_hold' => 'Berjalan',
+                                            'completed' => 'Selesai',
                                             default => ucfirst($project['status']),
                                         } }}
                                     </span>
