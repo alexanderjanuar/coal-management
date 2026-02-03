@@ -142,19 +142,36 @@
         {{-- Unified Documents Table - Responsive Design --}}
         <div
             class="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm dark:border-gray-700 dark:bg-gray-900">
-            {{-- Header --}}
+            {{-- Header with Prominent Add Button --}}
             <div
                 class="border-b border-gray-200 bg-gray-50 px-4 py-3 sm:px-6 sm:py-4 dark:border-gray-700 dark:bg-gray-800">
                 <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                    <div>
-                        <h4 class="text-sm sm:text-base font-semibold text-gray-900 dark:text-white">Semua Dokumen</h4>
-                        <p class="mt-0.5 sm:mt-1 text-xs sm:text-sm text-gray-500 dark:text-gray-400">Kelola dokumen
-                            legal, persyaratan, dan tambahan
-                        </p>
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <h4 class="text-sm sm:text-base font-semibold text-gray-900 dark:text-white">Semua Dokumen</h4>
+                            <p class="mt-0.5 sm:mt-1 text-xs sm:text-sm text-gray-500 dark:text-gray-400">Kelola dokumen
+                                legal, persyaratan, dan tambahan
+                            </p>
+                        </div>
+                        {{-- Add Button - Mobile (shown inline with title on mobile) --}}
+                        <button type="button"
+                            wire:click="openUploadModal({{ $currentClient->id }}, null, true)"
+                            class="sm:hidden inline-flex items-center gap-1.5 rounded-lg bg-gradient-to-r from-emerald-600 to-emerald-700 px-3 py-2 text-xs font-semibold text-white shadow-md shadow-emerald-500/25 transition-all hover:from-emerald-700 hover:to-emerald-800 active:scale-95">
+                            <x-heroicon-o-plus class="h-4 w-4" />
+                            <span>Tambah</span>
+                        </button>
                     </div>
+                    {{-- Add Button - Desktop (prominent, right-aligned) --}}
+                    <button type="button"
+                        wire:click="openUploadModal({{ $currentClient->id }}, null, true)"
+                        class="hidden sm:inline-flex items-center gap-2 rounded-lg bg-gradient-to-r from-emerald-600 to-emerald-700 px-4 py-2.5 text-sm font-semibold text-white shadow-lg shadow-emerald-500/30 transition-all duration-200 hover:from-emerald-700 hover:to-emerald-800 hover:shadow-emerald-500/40 hover:scale-[1.02] focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2 dark:from-emerald-500 dark:to-emerald-600">
+                        <x-heroicon-o-document-plus class="h-5 w-5" />
+                        <span>Tambah Dokumen</span>
+                    </button>
+                </div>
 
-                    {{-- Search & Filter - Mobile Optimized --}}
-                    <div class="flex flex-col gap-2 sm:flex-row sm:items-center">
+                {{-- Search & Filter Row --}}
+                <div class="mt-3 flex flex-col gap-2 sm:flex-row sm:items-center">
                         {{-- Search Input --}}
                         <div class="relative flex-1 sm:flex-initial">
                             <input type="text" wire:model.live.debounce.300ms="searchQuery"
@@ -197,7 +214,6 @@
                             @endif
                         </div>
                     </div>
-                </div>
 
                 {{-- Active Filters Display --}}
                 @if($searchQuery || $statusFilter !== 'all')
@@ -501,26 +517,29 @@
                         @endforeach
                         @endif
 
-                        {{-- SECTION 3: Additional Documents --}}
-                        <tr class="bg-gradient-to-r from-gray-50 to-transparent dark:from-gray-700/30">
-                            <td colspan="5" class="px-6 py-3">
-                                <div class="flex items-center gap-2">
-                                    <div class="h-1 w-1 rounded-full bg-gray-500"></div>
-                                    <span
-                                        class="text-xs font-bold uppercase tracking-wider text-gray-700 dark:text-gray-300">Dokumen
-                                        Tambahan Lainnya</span>
-                                    <div
-                                        class="h-px flex-1 bg-gradient-to-r from-gray-200 to-transparent dark:from-gray-700">
+                        {{-- SECTION 3: Additional Documents with Prominent Add Button --}}
+                        <tr class="bg-gradient-to-r from-emerald-50 to-transparent dark:from-emerald-900/10">
+                            <td colspan="5" class="px-6 py-4">
+                                <div class="flex items-center justify-between">
+                                    <div class="flex items-center gap-2">
+                                        <div class="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse"></div>
+                                        <span
+                                            class="text-xs font-bold uppercase tracking-wider text-emerald-900 dark:text-emerald-300">Dokumen
+                                            Tambahan Lainnya</span>
+                                        <div
+                                            class="h-px flex-1 bg-gradient-to-r from-emerald-200 to-transparent dark:from-emerald-800">
+                                        </div>
+                                        <span
+                                            class="rounded-full bg-emerald-100 px-2.5 py-0.5 text-xs font-bold text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400">
+                                            {{ $this->filteredAdditionalDocs->count() }}
+                                        </span>
                                     </div>
-                                    <span
-                                        class="rounded-full bg-gray-100 px-2.5 py-0.5 text-xs font-bold text-gray-700 dark:bg-gray-700 dark:text-gray-300">
-                                        {{ $this->filteredAdditionalDocs->count() }}
-                                    </span>
-                                    <x-filament::button size="xs"
+                                    <button type="button"
                                         wire:click="openUploadModal({{ $currentClient->id }}, null, true)"
-                                        icon="heroicon-o-plus">
-                                        Tambah
-                                    </x-filament::button>
+                                        class="group inline-flex items-center gap-2 rounded-lg bg-gradient-to-r from-emerald-600 to-emerald-700 px-4 py-2 text-sm font-semibold text-white shadow-lg shadow-emerald-500/30 transition-all duration-200 hover:from-emerald-700 hover:to-emerald-800 hover:shadow-emerald-500/40 hover:scale-105 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2 dark:from-emerald-500 dark:to-emerald-600 dark:shadow-emerald-400/20">
+                                        <x-heroicon-o-plus class="h-4 w-4 transition-transform group-hover:rotate-90" />
+                                        <span>Tambah Dokumen</span>
+                                    </button>
                                 </div>
                             </td>
                         </tr>
@@ -528,8 +547,8 @@
                         <tr class="group transition-colors hover:bg-gray-50 dark:hover:bg-gray-700/50">
                             <td class="px-6 py-4">
                                 <div class="flex items-start gap-3">
-                                    <div class="mt-1 rounded-lg bg-gray-100 p-2 dark:bg-gray-700">
-                                        <x-heroicon-o-document class="h-4 w-4 text-gray-500 dark:text-gray-400" />
+                                    <div class="mt-1 rounded-lg bg-emerald-100 p-2 dark:bg-emerald-900/30">
+                                        <x-heroicon-o-document class="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
                                     </div>
                                     <div class="min-w-0 flex-1">
                                         <p class="text-sm font-medium text-gray-900 dark:text-white">{{
@@ -585,13 +604,20 @@
                         </tr>
                         @empty
                         <tr>
-                            <td colspan="5" class="px-6 py-8 text-center">
-                                <div class="inline-flex flex-col items-center">
-                                    <div class="rounded-full bg-gray-100 p-3 dark:bg-gray-700">
-                                        <x-heroicon-o-document class="h-6 w-6 text-gray-400" />
+                            <td colspan="5" class="px-6 py-8">
+                                {{-- Empty State with Prominent Add CTA --}}
+                                <div class="flex flex-col items-center justify-center py-4">
+                                    <div class="rounded-full bg-emerald-100 p-4 dark:bg-emerald-900/30">
+                                        <x-heroicon-o-document-plus class="h-8 w-8 text-emerald-600 dark:text-emerald-400" />
                                     </div>
-                                    <p class="mt-3 text-sm font-medium text-gray-500 dark:text-gray-400">Belum ada
-                                        dokumen tambahan</p>
+                                    <p class="mt-4 text-sm font-medium text-gray-900 dark:text-white">Belum ada dokumen tambahan</p>
+                                    <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">Upload dokumen pendukung yang mungkin diperlukan</p>
+                                    <button type="button"
+                                        wire:click="openUploadModal({{ $currentClient->id }}, null, true)"
+                                        class="mt-4 group inline-flex items-center gap-2 rounded-lg border-2 border-dashed border-emerald-300 bg-emerald-50 px-6 py-3 text-sm font-semibold text-emerald-700 transition-all duration-200 hover:border-emerald-500 hover:bg-emerald-100 hover:text-emerald-800 dark:border-emerald-600 dark:bg-emerald-900/20 dark:text-emerald-400 dark:hover:border-emerald-400 dark:hover:bg-emerald-900/40">
+                                        <x-heroicon-o-plus class="h-5 w-5 transition-transform group-hover:rotate-90" />
+                                        <span>Upload Dokumen Pertama</span>
+                                    </button>
                                 </div>
                             </td>
                         </tr>
@@ -749,33 +775,38 @@
                 </div>
                 @endif
 
-                {{-- Additional Documents --}}
-                <div class="p-4">
-                    <div class="mb-3 flex items-center justify-between gap-2">
-                        <div class="flex items-center gap-2">
-                            <div class="h-1 w-1 rounded-full bg-gray-500"></div>
-                            <span class="text-xs font-bold uppercase tracking-wider text-gray-700 dark:text-gray-300">
-                                Dokumen Tambahan
-                            </span>
-                            <span
-                                class="rounded-full bg-gray-100 px-2 py-0.5 text-xs font-bold text-gray-700 dark:bg-gray-700 dark:text-gray-300">
-                                {{ $this->filteredAdditionalDocs->count() }}
-                            </span>
+                {{-- Additional Documents - Mobile --}}
+                <div class="p-4 bg-gradient-to-b from-emerald-50/50 to-transparent dark:from-emerald-900/10">
+                    <div class="mb-4 flex flex-col gap-3">
+                        <div class="flex items-center justify-between gap-2">
+                            <div class="flex items-center gap-2">
+                                <div class="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse"></div>
+                                <span class="text-xs font-bold uppercase tracking-wider text-emerald-900 dark:text-emerald-300">
+                                    Dokumen Tambahan
+                                </span>
+                                <span
+                                    class="rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-bold text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400">
+                                    {{ $this->filteredAdditionalDocs->count() }}
+                                </span>
+                            </div>
                         </div>
-                        <x-filament::button size="xs" wire:click="openUploadModal({{ $currentClient->id }}, null, true)"
-                            icon="heroicon-o-plus">
-                            Tambah
-                        </x-filament::button>
+                        {{-- Prominent Add Button for Mobile --}}
+                        <button type="button"
+                            wire:click="openUploadModal({{ $currentClient->id }}, null, true)"
+                            class="w-full group inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-emerald-600 to-emerald-700 px-4 py-3 text-sm font-semibold text-white shadow-lg shadow-emerald-500/30 transition-all duration-200 hover:from-emerald-700 hover:to-emerald-800 active:scale-[0.98] dark:from-emerald-500 dark:to-emerald-600">
+                            <x-heroicon-o-plus class="h-5 w-5 transition-transform group-hover:rotate-90" />
+                            <span>Tambah Dokumen Baru</span>
+                        </button>
                     </div>
 
                     @if($this->filteredAdditionalDocs->isNotEmpty())
                     <div class="space-y-3">
                         @foreach($this->filteredAdditionalDocs as $doc)
                         <div
-                            class="rounded-lg border border-gray-200 bg-white p-3 dark:border-gray-600 dark:bg-gray-750">
+                            class="rounded-lg border border-emerald-200 bg-white p-3 dark:border-emerald-800 dark:bg-gray-750">
                             <div class="flex items-start gap-3">
-                                <div class="rounded-lg bg-gray-100 p-2 dark:bg-gray-700">
-                                    <x-heroicon-o-document class="h-4 w-4 text-gray-500 dark:text-gray-400" />
+                                <div class="rounded-lg bg-emerald-100 p-2 dark:bg-emerald-900/30">
+                                    <x-heroicon-o-document class="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
                                 </div>
                                 <div class="min-w-0 flex-1">
                                     <p class="text-sm font-medium text-gray-900 dark:text-white">{{ $doc->description ??
@@ -805,13 +836,14 @@
                         @endforeach
                     </div>
                     @else
-                    <div class="py-8 text-center">
-                        <div class="inline-flex flex-col items-center">
-                            <div class="rounded-full bg-gray-100 p-3 dark:bg-gray-700">
-                                <x-heroicon-o-document class="h-6 w-6 text-gray-400" />
+                    {{-- Empty State with Prominent Add CTA --}}
+                    <div class="rounded-xl border-2 border-dashed border-emerald-200 bg-emerald-50/50 py-8 dark:border-emerald-800 dark:bg-emerald-900/10">
+                        <div class="flex flex-col items-center justify-center text-center px-4">
+                            <div class="rounded-full bg-emerald-100 p-4 dark:bg-emerald-900/30">
+                                <x-heroicon-o-document-plus class="h-8 w-8 text-emerald-600 dark:text-emerald-400" />
                             </div>
-                            <p class="mt-3 text-sm font-medium text-gray-500 dark:text-gray-400">Belum ada dokumen
-                                tambahan</p>
+                            <p class="mt-4 text-sm font-medium text-gray-900 dark:text-white">Belum ada dokumen tambahan</p>
+                            <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">Upload dokumen pendukung yang mungkin diperlukan</p>
                         </div>
                     </div>
                     @endif
