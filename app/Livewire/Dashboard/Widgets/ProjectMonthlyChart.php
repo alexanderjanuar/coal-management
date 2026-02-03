@@ -3,25 +3,24 @@
 namespace App\Livewire\Dashboard\Widgets;
 
 use App\Models\Project;
-use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Leandrocfe\FilamentApexCharts\Widgets\ApexChartWidget;
 
 class ProjectMonthlyChart extends ApexChartWidget
 {
-    protected static ?string $chartId = 'projectMonthlyChart';
-    protected static ?string $heading = 'Tren Proyek Bulanan';
-    protected static ?string $subheading = 'Proyek dibuat vs diselesaikan per bulan';
+    protected static ?string $chartId = 'projectPicStatusChart';
+    protected static ?string $heading = 'Status Proyek per PIC';
+    protected static ?string $subheading = 'Distribusi status proyek berdasarkan penanggung jawab';
 
-    public ?string $filter = '6_months';
+    public ?string $filter = 'active';
 
     protected static ?int $contentHeight = 280;
 
     protected function getFilters(): ?array
     {
         return [
-            '6_months' => '6 Bulan Terakhir',
-            'year' => 'Tahun Ini',
+            'active' => 'Proyek Aktif',
+            'all' => 'Semua Proyek',
         ];
     }
 
@@ -49,102 +48,97 @@ class ProjectMonthlyChart extends ApexChartWidget
 
     protected function getOptions(): array
     {
-        if ($this->filter === 'year') {
-            $startDate = Carbon::now()->startOfYear();
-        } else {
-            $startDate = Carbon::now()->subMonths(5)->startOfMonth();
-        }
-        $endDate = Carbon::now()->endOfMonth();
-
-        // Created projects per month
-        $created = (clone $this->baseProjectQuery())
+        $query = $this->baseProjectQuery()
+            ->whereNotNull('pic_id')
+            ->join('users', 'projects.pic_id', '=', 'users.id')
             ->select(
-                DB::raw("DATE_FORMAT(created_at, '%Y-%m') as month"),
+                'users.name as pic_name',
+                'projects.status',
                 DB::raw('COUNT(*) as count')
-            )
-            ->where('created_at', '>=', $startDate)
-            ->where('created_at', '<=', $endDate)
-            ->groupBy('month')
-            ->orderBy('month')
-            ->pluck('count', 'month');
+            );
 
-        // Completed projects per month
-        $completed = (clone $this->baseProjectQuery())
-            ->select(
-                DB::raw("DATE_FORMAT(updated_at, '%Y-%m') as month"),
-                DB::raw('COUNT(*) as count')
-            )
-            ->where('status', 'completed')
-            ->where('updated_at', '>=', $startDate)
-            ->where('updated_at', '<=', $endDate)
-            ->groupBy('month')
-            ->orderBy('month')
-            ->pluck('count', 'month');
-
-        // Build categories and series for each month in range
-        $categories = [];
-        $createdSeries = [];
-        $completedSeries = [];
-
-        $current = $startDate->copy()->startOfMonth();
-        while ($current <= $endDate) {
-            $key = $current->format('Y-m');
-            $categories[] = $current->locale('id')->translatedFormat('M Y');
-            $createdSeries[] = $created[$key] ?? 0;
-            $completedSeries[] = $completed[$key] ?? 0;
-            $current->addMonth();
+        if ($this->filter === 'active') {
+            $query->whereNotIn('projects.status', ['completed', 'canceled']);
         }
+
+        $data = $query
+            ->groupBy('users.name', 'projects.status')
+            ->orderBy('users.name')
+            ->get();
+
+        // Collect unique PIC names and build series
+        $picNames = $data->pluck('pic_name')->unique()->values()->toArray();
+
+        $statusConfig = [
+            'draft'       => ['label' => 'Draft',    'color' => '#94a3b8'],
+            'analysis'    => ['label' => 'Analisis',  'color' => '#06b6d4'],
+            'in_progress' => ['label' => 'Berjalan',  'color' => '#3b82f6'],
+            'review'      => ['label' => 'Review',    'color' => '#f59e0b'],
+            'completed'   => ['label' => 'Selesai',   'color' => '#22c55e'],
+            'canceled'    => ['label' => 'Dibatalkan', 'color' => '#ef4444'],
+        ];
+
+        // Filter out statuses with 0 total across all PICs
+        $activeStatuses = $data->pluck('status')->unique()->values()->toArray();
+
+        $series = [];
+        $colors = [];
+
+        foreach ($statusConfig as $status => $config) {
+            if (!in_array($status, $activeStatuses)) {
+                continue;
+            }
+
+            $seriesData = [];
+            foreach ($picNames as $pic) {
+                $row = $data->where('pic_name', $pic)->where('status', $status)->first();
+                $seriesData[] = $row ? $row->count : 0;
+            }
+
+            $series[] = [
+                'name' => $config['label'],
+                'data' => $seriesData,
+            ];
+            $colors[] = $config['color'];
+        }
+
+        // Truncate long PIC names for x-axis
+        $categories = array_map(function ($name) {
+            $parts = explode(' ', $name);
+            return count($parts) > 1
+                ? $parts[0] . ' ' . substr($parts[1], 0, 1) . '.'
+                : $name;
+        }, $picNames);
 
         return [
             'chart' => [
-                'type' => 'area',
+                'type' => 'bar',
                 'height' => 280,
+                'stacked' => false,
                 'toolbar' => ['show' => false],
-                'zoom' => ['enabled' => false],
                 'background' => 'transparent',
                 'animations' => [
                     'enabled' => true,
-                    'speed' => 500,
+                    'speed' => 400,
                 ],
                 'fontFamily' => 'inherit',
             ],
-            'series' => [
-                [
-                    'name' => 'Dibuat',
-                    'data' => $createdSeries,
+            'series' => $series,
+            'colors' => $colors,
+            'plotOptions' => [
+                'bar' => [
+                    'horizontal' => false,
+                    'borderRadius' => 3,
+                    'borderRadiusApplication' => 'end',
+                    'columnWidth' => count($picNames) <= 3 ? '45%' : '70%',
+                    'dataLabels' => ['position' => 'top'],
                 ],
-                [
-                    'name' => 'Selesai',
-                    'data' => $completedSeries,
-                ],
-            ],
-            'colors' => ['#06b6d4', '#6b7280'],
-            'stroke' => [
-                'curve' => 'smooth',
-                'width' => [2.5, 2.5],
-                'lineCap' => 'round',
-            ],
-            'fill' => [
-                'type' => 'gradient',
-                'gradient' => [
-                    'shade' => 'light',
-                    'type' => 'vertical',
-                    'shadeIntensity' => 0.3,
-                    'opacityFrom' => 0.45,
-                    'opacityTo' => 0.05,
-                    'stops' => [0, 90, 100],
-                ],
-            ],
-            'markers' => [
-                'size' => 4,
-                'strokeWidth' => 0,
-                'hover' => ['size' => 6],
             ],
             'grid' => [
                 'show' => true,
                 'borderColor' => '#e5e7eb',
                 'strokeDashArray' => 4,
-                'padding' => ['left' => 8, 'right' => 8],
+                'padding' => ['left' => 4, 'right' => 4],
             ],
             'xaxis' => [
                 'categories' => $categories,
@@ -155,17 +149,11 @@ class ProjectMonthlyChart extends ApexChartWidget
                         'fontWeight' => 500,
                         'cssClass' => 'text-gray-500 dark:text-gray-400',
                     ],
+                    'rotate' => count($picNames) > 6 ? -45 : 0,
+                    'trim' => true,
                 ],
                 'axisBorder' => ['show' => false],
                 'axisTicks' => ['show' => false],
-                'crosshairs' => [
-                    'show' => true,
-                    'stroke' => [
-                        'color' => '#06b6d4',
-                        'width' => 1,
-                        'dashArray' => 3,
-                    ],
-                ],
             ],
             'yaxis' => [
                 'labels' => [
@@ -193,12 +181,12 @@ class ProjectMonthlyChart extends ApexChartWidget
                 'position' => 'top',
                 'horizontalAlign' => 'right',
                 'fontFamily' => 'inherit',
-                'fontSize' => '12px',
+                'fontSize' => '11px',
                 'markers' => [
                     'size' => 4,
                     'shape' => 'circle',
                 ],
-                'itemMargin' => ['horizontal' => 12],
+                'itemMargin' => ['horizontal' => 8],
             ],
             'dataLabels' => ['enabled' => false],
             'noData' => [

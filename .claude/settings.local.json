@@ -4,7 +4,9 @@
       "Bash(tree:*)",
       "Bash(grep:*)",
       "Bash(php artisan:*)",
-      "Bash(composer dump-autoload:*)"
+      "Bash(composer dump-autoload:*)",
+      "Bash(find:*)",
+      "Bash(php -r:*)"
     ]
   }
 }

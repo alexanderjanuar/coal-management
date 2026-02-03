@@ -45,6 +45,8 @@ use Illuminate\Contracts\Support\Htmlable;
 use Filament\Notifications\Notification;
 use Illuminate\Database\Eloquent\Model;
 use Swis\Filament\Activitylog\Tables\Actions\ActivitylogAction;
+use App\Exports\ProjectMultiSheetExport;
+use Maatwebsite\Excel\Facades\Excel;
 
 class ProjectResource extends Resource
 {
@@ -475,6 +477,19 @@ class ProjectResource extends Resource
                         };
                     }),
 
+                // SOP Name
+                Tables\Columns\TextColumn::make('sop.name')
+                    ->label('SOP')
+                    ->badge()
+                    ->color(fn(string $state): string => match ($state) {
+                        'Lapor SPT Tahunan Nihil' => 'gray',
+                        default => 'gray',
+                    })
+                    ->searchable()
+                    ->sortable()
+                    ->placeholder('No SOP')
+                    ->toggleable(),
+
                 // Progress Bar
                 ProgressBar::make('bar')
                     ->label('Progress')
@@ -635,8 +650,13 @@ class ProjectResource extends Resource
                 'client.name',
                 'pic.name', // Add PIC grouping option
             ])
-            // Add styling to rows based on document status
+            // Add styling to rows based on document status and SOP
             ->recordClasses(function (Project $record) {
+                // Check if SOP is "Lapor SPT Tahunan Nihil" - show greyish
+                if ($record->sop && $record->sop->name === 'Lapor SPT Tahunan Nihil') {
+                    return 'bg-gray-200/60 dark:bg-gray-700/40 hover:bg-gray-300/60 dark:hover:bg-gray-600/40 opacity-75';
+                }
+                
                 // Check for submitted documents with 'uploaded' status
                 $hasUploadedDocs = \DB::table('submitted_documents')
                     ->join('required_documents', 'submitted_documents.required_document_id', '=', 'required_documents.id')
@@ -757,6 +777,147 @@ class ProjectResource extends Resource
                         ->modalHeading('Assign PIC ke Multiple Projects')
                         ->modalDescription('Pilih Person in Charge yang akan ditugaskan ke semua proyek yang dipilih.')
                         ->modalSubmitActionLabel('Assign PIC'),
+                    Tables\Actions\BulkAction::make('ubah_sop')
+                        ->label('Ubah SOP')
+                        ->icon('heroicon-o-arrow-path-rounded-square')
+                        ->color('warning')
+                        ->form([
+                            Select::make('sop_id')
+                                ->label('Pilih SOP Baru')
+                                ->options(Sop::query()->pluck('name', 'id'))
+                                ->searchable()
+                                ->required()
+                                ->native(false)
+                                ->helperText('Pilih SOP yang akan diterapkan ke proyek yang dipilih.'),
+                        ])
+                        ->requiresConfirmation()
+                        ->modalHeading('Ubah SOP Proyek')
+                        ->modalDescription('⚠️ PERINGATAN: Tindakan ini akan menghapus semua langkah, tugas, dan dokumen yang ada pada proyek yang dipilih dan menggantinya dengan template dari SOP baru. Jika ada progress yang sudah berjalan, progress tersebut akan direset ke 0. Tindakan ini tidak dapat dibatalkan!')
+                        ->modalSubmitActionLabel('Ubah SOP')
+                        ->deselectRecordsAfterCompletion()
+                        ->action(function (Collection $records, array $data): void {
+                            $updatedCount = 0;
+                            $projectsWithProgress = [];
+                            
+                            // Find the selected SOP
+                            $targetSop = Sop::with(['steps.tasks', 'steps.requiredDocuments'])
+                                ->find($data['sop_id']);
+                            
+                            if (!$targetSop) {
+                                Notification::make()
+                                    ->title('SOP Tidak Ditemukan')
+                                    ->body('SOP yang dipilih tidak ditemukan di sistem.')
+                                    ->danger()
+                                    ->send();
+                                return;
+                            }
+                            
+                            \DB::transaction(function () use ($records, $targetSop, &$updatedCount, &$projectsWithProgress) {
+                                foreach ($records as $project) {
+                                    // Check if project has any progress
+                                    $hasProgress = $project->steps()->whereHas('tasks', function ($q) {
+                                        $q->where('status', 'completed');
+                                    })->exists() || $project->steps()->whereHas('requiredDocuments', function ($q) {
+                                        $q->whereIn('status', ['approved', 'uploaded', 'pending_review']);
+                                    })->exists();
+                                    
+                                    if ($hasProgress) {
+                                        $projectsWithProgress[] = $project->name;
+                                    }
+                                    
+                                    // Update SOP
+                                    $project->update([
+                                        'sop_id' => $targetSop->id,
+                                    ]);
+                                    
+                                    // Delete existing steps (cascades to tasks and documents)
+                                    $project->steps()->delete();
+                                    
+                                    // Copy steps from the target SOP
+                                    foreach ($targetSop->steps as $sopStep) {
+                                        $projectStep = $project->steps()->create([
+                                            'name' => $sopStep->name,
+                                            'description' => $sopStep->description,
+                                            'order' => $sopStep->order,
+                                            'status' => 'pending',
+                                        ]);
+                                        
+                                        // Copy tasks from SOP step
+                                        foreach ($sopStep->tasks as $sopTask) {
+                                            $projectStep->tasks()->create([
+                                                'title' => $sopTask->title,
+                                                'description' => $sopTask->description,
+                                                'status' => 'pending',
+                                            ]);
+                                        }
+                                        
+                                        // Copy required documents from SOP step
+                                        foreach ($sopStep->requiredDocuments as $sopDoc) {
+                                            $projectStep->requiredDocuments()->create([
+                                                'name' => $sopDoc->name,
+                                                'description' => $sopDoc->description,
+                                                'is_required' => $sopDoc->is_required ?? true,
+                                                'status' => 'draft',
+                                            ]);
+                                        }
+                                    }
+                                    
+                                    $updatedCount++;
+                                }
+                            });
+                            
+                            if ($updatedCount > 0) {
+                                $message = "Berhasil mengubah SOP untuk {$updatedCount} proyek ke '{$targetSop->name}'.";
+                                
+                                if (!empty($projectsWithProgress)) {
+                                    $message .= " Progress pada " . count($projectsWithProgress) . " proyek telah direset.";
+                                }
+                                
+                                Notification::make()
+                                    ->title('SOP Berhasil Diubah')
+                                    ->body($message)
+                                    ->success()
+                                    ->send();
+                            } else {
+                                Notification::make()
+                                    ->title('Tidak Ada Proyek yang Diperbarui')
+                                    ->body('Tidak ada proyek yang berhasil diubah.')
+                                    ->warning()
+                                    ->send();
+                            }
+                        }),
+                    Tables\Actions\BulkAction::make('export_projects')
+                        ->label('Ekspor Proyek')
+                        ->icon('heroicon-o-arrow-down-tray')
+                        ->color('success')
+                        ->deselectRecordsAfterCompletion()
+                        ->form([
+                            Select::make('group_by')
+                                ->label('Kelompokkan Sheet Berdasarkan')
+                                ->options([
+                                    'none' => 'Tanpa Pengelompokan (1 Sheet)',
+                                    'pic' => 'PIC (Person In Charge)',
+                                    'status' => 'Status Proyek',
+                                    'priority' => 'Prioritas',
+                                    'sop' => 'SOP',
+                                    'client' => 'Klien',
+                                    'type' => 'Tipe Proyek',
+                                ])
+                                ->default('none')
+                                ->native(false)
+                                ->helperText('Pilih cara pengelompokan proyek menjadi sheet terpisah dalam file Excel.'),
+                        ])
+                        ->modalHeading('Ekspor Proyek')
+                        ->modalDescription('Pilih opsi pengelompokan untuk ekspor data proyek.')
+                        ->modalSubmitActionLabel('Ekspor')
+                        ->modalIcon('heroicon-o-arrow-down-tray')
+                        ->action(function (Collection $records, array $data) {
+                            $selectedIds = $records->pluck('id')->toArray();
+                            $groupBy = $data['group_by'] ?? 'none';
+                            $fileName = 'proyek-' . now()->format('Y-m-d-His') . '.xlsx';
+                            
+                            return Excel::download(new ProjectMultiSheetExport($selectedIds, $groupBy), $fileName);
+                        }),
                     Tables\Actions\DeleteBulkAction::make(),
                 ]),
             ]);

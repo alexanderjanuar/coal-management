@@ -11,30 +11,53 @@
                 </div>
                 <div>
                     <h2 class="text-sm font-semibold text-gray-900 dark:text-gray-100 tracking-tight">
-                        Tugas Hari Ini
+                        {{ match($period) {
+                            'today' => 'Tugas Hari Ini',
+                            'week' => 'Tugas Minggu Ini',
+                            'month' => 'Tugas Bulan Ini',
+                            default => 'Tugas',
+                        } }}
                     </h2>
                     <p class="text-[11px] text-gray-500 dark:text-gray-500 mt-0.5">
-                        {{ now()->locale('id')->translatedFormat('l, d M') }}
+                        @if($period === 'today')
+                            {{ now()->locale('id')->translatedFormat('l, d M') }}
+                        @elseif($period === 'week')
+                            {{ now()->startOfWeek()->locale('id')->translatedFormat('d M') }} — {{ now()->endOfWeek()->locale('id')->translatedFormat('d M') }}
+                        @else
+                            {{ now()->locale('id')->translatedFormat('F Y') }}
+                        @endif
                     </p>
                 </div>
             </div>
 
-            <div class="flex items-center gap-2">
-                {{-- Stats badge --}}
-                <div class="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-gray-50 dark:bg-gray-900 border border-gray-100 dark:border-gray-800">
-                    <span class="text-xs font-semibold tabular-nums text-gray-900 dark:text-gray-100">{{ $taskStats['completed'] }}</span>
-                    <span class="text-xs text-gray-300 dark:text-gray-700">/</span>
-                    <span class="text-xs tabular-nums text-gray-400 dark:text-gray-600">{{ $taskStats['total'] }}</span>
-                </div>
+            {{-- Refresh --}}
+            <button wire:click="$refresh"
+                class="w-7 h-7 rounded-lg border border-gray-200 dark:border-gray-800 flex items-center justify-center text-gray-400 hover:text-primary-600 dark:hover:text-primary-400 hover:border-primary-200 dark:hover:border-primary-800 transition-all"
+                title="Muat Ulang">
+                <svg class="w-3 h-3" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0 3.181 3.183a8.25 8.25 0 0 0 13.803-3.7M4.031 9.865a8.25 8.25 0 0 1 13.803-3.7l3.181 3.182"/>
+                </svg>
+            </button>
+        </div>
 
-                {{-- Refresh --}}
-                <button wire:click="$refresh"
-                    class="w-7 h-7 rounded-lg border border-gray-200 dark:border-gray-800 flex items-center justify-center text-gray-400 hover:text-primary-600 dark:hover:text-primary-400 hover:border-primary-200 dark:hover:border-primary-800 transition-all"
-                    title="Muat Ulang">
-                    <svg class="w-3 h-3" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0 3.181 3.183a8.25 8.25 0 0 0 13.803-3.7M4.031 9.865a8.25 8.25 0 0 1 13.803-3.7l3.181 3.182"/>
-                    </svg>
+        {{-- Period Filter + Stats --}}
+        <div class="flex items-center justify-between mb-4">
+            <div class="inline-flex rounded-lg border border-gray-200 dark:border-gray-800 p-0.5 bg-gray-50 dark:bg-gray-900">
+                @foreach(['today' => 'Hari', 'week' => 'Minggu', 'month' => 'Bulan'] as $key => $label)
+                <button wire:click="$set('period', '{{ $key }}')"
+                    class="px-2.5 py-1 text-[11px] font-medium rounded-md transition-all duration-200
+                    {{ $period === $key
+                        ? 'bg-white dark:bg-gray-800 text-primary-600 dark:text-primary-400 shadow-sm border border-gray-200 dark:border-gray-700'
+                        : 'text-gray-500 dark:text-gray-500 hover:text-gray-700 dark:hover:text-gray-300' }}">
+                    {{ $label }}
                 </button>
+                @endforeach
+            </div>
+
+            <div class="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-gray-50 dark:bg-gray-900 border border-gray-100 dark:border-gray-800">
+                <span class="text-xs font-semibold tabular-nums text-gray-900 dark:text-gray-100">{{ $taskStats['completed'] }}</span>
+                <span class="text-xs text-gray-300 dark:text-gray-700">/</span>
+                <span class="text-xs tabular-nums text-gray-400 dark:text-gray-600">{{ $taskStats['total'] }}</span>
             </div>
         </div>
 
@@ -97,6 +120,12 @@
                         {{ $task['title'] }}
                     </p>
                     <div class="flex items-center gap-2 mt-1">
+                        @if($period !== 'today' && $task['task_date'])
+                        <span class="text-[10px] font-medium tabular-nums text-gray-400 dark:text-gray-600">
+                            {{ \Carbon\Carbon::parse($task['task_date'])->locale('id')->translatedFormat('d M') }}
+                        </span>
+                        <span class="text-gray-200 dark:text-gray-800">&middot;</span>
+                        @endif
                         @if($task['project'])
                         <span class="text-[11px] text-gray-400 dark:text-gray-600 truncate">{{ $task['project'] }}</span>
                         @endif
@@ -134,7 +163,9 @@
                     <path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75 11.25 15 15 9.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"/>
                 </svg>
             </div>
-            <p class="text-xs text-gray-400 dark:text-gray-600">Tidak ada tugas hari ini</p>
+            <p class="text-xs text-gray-400 dark:text-gray-600">
+                Tidak ada tugas {{ match($period) { 'today' => 'hari ini', 'week' => 'minggu ini', 'month' => 'bulan ini', default => '' } }}
+            </p>
         </div>
         @endif
     </div>
