@@ -19,8 +19,13 @@ use Livewire\Attributes\On;
 
 class Dashboard extends BaseDashboard
 {
+
     protected static ?string $navigationIcon = 'heroicon-o-computer-desktop';
+
     protected static string $view = 'filament.pages.dashboard.index';
+    
+    protected ?string $heading = '';
+
 
     public $previewingDocument = null;
     public $previewUrl = null;
@@ -34,6 +39,7 @@ class Dashboard extends BaseDashboard
     public $modalType = '';
     public $currentStatus = '';
     public $currentCount = 0;
+
 
     /**
      * Get dashboard statistics for welcome card

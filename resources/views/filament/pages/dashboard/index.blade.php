@@ -95,8 +95,13 @@
         }
     </style>
 
+    {{-- Greeting Card --}}
+    @livewire('dashboard.widgets.greeting-card')
+
     {{-- Stats Overview --}}
-    @livewire('dashboard.widget.project-stats-overview')
+    <div class="mt-6">
+        @livewire('dashboard.widget.project-stats-overview')
+    </div>
 
     {{-- Project Command Center + Daily Tasks --}}
     <div class="mt-6 grid grid-cols-1 lg:grid-cols-3 gap-6 items-stretch">
@@ -108,14 +113,9 @@
         </div>
     </div>
 
-    {{-- Charts --}}
-    <div class="mt-6 grid grid-cols-1 lg:grid-cols-3 gap-6 items-stretch">
-        <div class="lg:col-span-2">
-            @livewire('dashboard.widgets.project-monthly-chart')
-        </div>
-        <div class="lg:col-span-1">
-            @livewire('dashboard.widgets.task-weekly-chart')
-        </div>
+    {{-- Recent Activity Feed - Full Width --}}
+    <div class="mt-6">
+        @livewire('dashboard.widgets.recent-activity-feed')
     </div>
 
 </x-filament-panels::page>
