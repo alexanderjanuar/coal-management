@@ -50,7 +50,7 @@ class DailyTaskFilterComponent extends Component implements HasForms
             'department' => [],
             'position' => [],
             'group_by' => 'status',
-            'view_mode' => 'list',
+            'view_mode' => 'kanban',
             'sort_by' => 'task_date',
             'sort_direction' => 'desc',
         ], $initialFilters);
@@ -331,11 +331,11 @@ class DailyTaskFilterComponent extends Component implements HasForms
             'department' => [],
             'position' => [],
             'group_by' => 'status',
-            'view_mode' => 'list',
+            'view_mode' => 'kanban',
             'sort_by' => 'task_date',
             'sort_direction' => 'desc',
         ];
-        
+
         $this->filterForm->fill($this->filterData);
         $this->emitFiltersChanged();
     }

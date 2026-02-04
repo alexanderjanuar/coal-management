@@ -461,7 +461,7 @@
                                         <p
                                             class="text-xs text-gray-500 dark:text-gray-400 truncate flex items-center gap-1">
                                             <x-heroicon-o-building-office class="w-3 h-3" />
-                                            {{ $this->getClientOptions()[$selectedClientId] }}
+                                            {{ $this->getClientOptions()[$selectedClientId] ?? 'Client' }}
                                         </p>
                                     </div>
                                     @if($task->project_id == $projectId)
