@@ -1,5 +1,5 @@
 {{-- resources/views/components/daily-task/partials/kanban-task-card.blade.php --}}
-{{-- Professional Project Management Style --}}
+{{-- Compact Professional Project Management Style --}}
 @props(['task'])
 
 @php
@@ -20,32 +20,32 @@
     $subtaskProgress = $totalSubtasks > 0 ? ($completedSubtasks / $totalSubtasks) * 100 : 0;
 @endphp
 
-<div class="kanban-task-card group relative bg-white dark:bg-gray-900 rounded-lg
-            border border-l-4 {{ $priority['border'] }} border-gray-200 dark:border-gray-800
-            shadow-sm hover:shadow-md dark:shadow-gray-950/20
-            transition-all duration-200 cursor-pointer overflow-hidden"
+<div class="kanban-task-card group relative bg-white dark:bg-gray-900 rounded-md
+            border border-l-[3px] {{ $priority['border'] }} border-gray-200 dark:border-gray-800
+            shadow-sm hover:shadow dark:shadow-gray-950/20
+            transition-all duration-150 cursor-pointer overflow-hidden"
      wire:click="openTaskDetail({{ $task->id }})">
 
     {{-- Card Content --}}
-    <div class="p-3 space-y-2.5">
+    <div class="p-2 space-y-1.5">
 
         {{-- Header: Priority Badge + Task ID --}}
         <div class="flex items-center justify-between">
-            <span class="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold uppercase tracking-wider {{ $priority['badge'] }}">
+            <span class="inline-flex items-center px-1 py-0.5 rounded text-[9px] font-semibold uppercase tracking-wide {{ $priority['badge'] }}">
                 {{ $priority['label'] }}
             </span>
-            <span class="text-[10px] font-mono text-gray-400 dark:text-gray-600">#{{ $task->id }}</span>
+            <span class="text-[9px] font-mono text-gray-400 dark:text-gray-600">#{{ $task->id }}</span>
         </div>
 
         {{-- Task Title --}}
-        <h4 class="text-sm font-medium text-gray-900 dark:text-gray-100 leading-snug line-clamp-2
+        <h4 class="text-xs font-medium text-gray-900 dark:text-gray-100 leading-tight line-clamp-2
                    group-hover:text-gray-700 dark:group-hover:text-gray-200 transition-colors">
             {{ $task->title }}
         </h4>
 
         {{-- Description Preview --}}
         @if($task->description)
-        <p class="text-xs text-gray-500 dark:text-gray-500 line-clamp-2 leading-relaxed">
+        <p class="text-[10px] text-gray-500 dark:text-gray-500 line-clamp-1 leading-snug">
             {{ $task->description }}
         </p>
         @endif
@@ -54,10 +54,10 @@
         <div class="flex flex-wrap gap-1">
             {{-- Project/Client Tag --}}
             @if($task->project)
-            <span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-medium
+            <span class="inline-flex items-center gap-0.5 px-1 py-0.5 rounded text-[9px] font-medium
                         bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400
-                        border border-gray-200 dark:border-gray-700 max-w-[140px]">
-                <svg class="w-2.5 h-2.5 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                        border border-gray-200 dark:border-gray-700 max-w-[100px]">
+                <svg class="w-2 h-2 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" d="M2.25 12.75V12A2.25 2.25 0 014.5 9.75h15A2.25 2.25 0 0121.75 12v.75m-8.69-6.44l-2.12-2.12a1.5 1.5 0 00-1.061-.44H4.5A2.25 2.25 0 002.25 6v12a2.25 2.25 0 002.25 2.25h15A2.25 2.25 0 0021.75 18V9a2.25 2.25 0 00-2.25-2.25h-5.379a1.5 1.5 0 01-1.06-.44z"/>
                 </svg>
                 <span class="truncate">{{ $task->project->client?->name ?? $task->project->name }}</span>
@@ -66,19 +66,19 @@
 
             {{-- Due Date Tag --}}
             @if($task->task_date)
-            <span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-medium
+            <span class="inline-flex items-center gap-0.5 px-1 py-0.5 rounded text-[9px] font-medium
                         {{ $isOverdue
                             ? 'bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-400 border border-red-200 dark:border-red-800'
                             : ($isToday
                                 ? 'bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-400 border border-amber-200 dark:border-amber-800'
                                 : 'bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400 border border-gray-200 dark:border-gray-700') }}">
-                <svg class="w-2.5 h-2.5 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                <svg class="w-2 h-2 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 012.25-2.25h13.5A2.25 2.25 0 0121 7.5v11.25m-18 0A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75m-18 0v-7.5A2.25 2.25 0 015.25 9h13.5A2.25 2.25 0 0121 11.25v7.5"/>
                 </svg>
                 @if($isToday)
                     Today
                 @elseif($isTomorrow)
-                    Tomorrow
+                    Tmrw
                 @elseif($isOverdue)
                     Overdue
                 @else
@@ -90,22 +90,19 @@
 
         {{-- Subtasks Progress --}}
         @if($totalSubtasks > 0)
-        <div class="space-y-1">
-            <div class="flex items-center justify-between">
-                <span class="text-[10px] font-medium text-gray-500 dark:text-gray-500">Subtasks</span>
-                <span class="text-[10px] font-semibold text-gray-700 dark:text-gray-300">{{ $completedSubtasks }}/{{ $totalSubtasks }}</span>
-            </div>
-            <div class="h-1 bg-gray-200 dark:bg-gray-800 rounded-full overflow-hidden">
+        <div class="flex items-center gap-2">
+            <div class="flex-1 h-1 bg-gray-200 dark:bg-gray-800 rounded-full overflow-hidden">
                 <div class="h-full rounded-full transition-all duration-300
                             {{ $subtaskProgress >= 100 ? 'bg-green-500' : 'bg-blue-500' }}"
                      style="width: {{ $subtaskProgress }}%"></div>
             </div>
+            <span class="text-[9px] font-medium text-gray-500 dark:text-gray-500">{{ $completedSubtasks }}/{{ $totalSubtasks }}</span>
         </div>
         @endif
     </div>
 
     {{-- Card Footer --}}
-    <div class="px-3 py-2 border-t border-gray-100 dark:border-gray-800 bg-gray-50/50 dark:bg-gray-900/50
+    <div class="px-2 py-1.5 border-t border-gray-100 dark:border-gray-800 bg-gray-50/50 dark:bg-gray-900/50
                 flex items-center justify-between">
 
         {{-- Assignees --}}

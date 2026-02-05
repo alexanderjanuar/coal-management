@@ -130,7 +130,7 @@ class AdminPanelProvider extends PanelProvider
             ->viteTheme('resources/css/filament/admin/theme.css')
             ->font('Plus Jakarta Sans', provider: GoogleFontProvider::class)
             ->authMiddleware([
-                // RedirectToProperPanelMiddleware::class,
+                RedirectToProperPanelMiddleware::class,
                 Authenticate::class,
             ]);
     }

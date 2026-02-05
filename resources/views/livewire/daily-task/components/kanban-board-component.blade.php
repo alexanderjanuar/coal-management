@@ -144,47 +144,8 @@
     {{-- Main Content --}}
     <div x-show="!isLoading" x-cloak>
 
-        {{-- Board Header --}}
-        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-5">
-            {{-- Quick Stats --}}
-            <div class="flex items-center gap-2 flex-wrap">
-                @foreach($columns as $status => $config)
-                @php $stats = $this->getColumnStats($status); @endphp
-                <div class="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-medium
-                            bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300
-                            border border-gray-200 dark:border-gray-700">
-                    <span class="w-2 h-2 rounded-full bg-{{ $config['color'] }}-500"></span>
-                    <span class="hidden sm:inline">{{ $config['title'] }}</span>
-                    <span class="font-bold text-gray-900 dark:text-gray-100">{{ $stats['total'] }}</span>
-                </div>
-                @endforeach
-            </div>
-
-            {{-- Actions --}}
-            <div class="flex items-center gap-2">
-                <button wire:click="toggleCompletedTasks"
-                        class="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-medium transition-all
-                        {{ $showCompletedTasks
-                            ? 'bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900'
-                            : 'bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700' }}">
-                    <x-dynamic-component
-                        :component="$showCompletedTasks ? 'heroicon-o-eye' : 'heroicon-o-eye-slash'"
-                        class="w-3.5 h-3.5" />
-                    <span>{{ $showCompletedTasks ? 'Hide' : 'Show' }} Done</span>
-                </button>
-
-                <button wire:click="$refresh"
-                        class="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-medium
-                               bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300
-                               hover:bg-gray-200 dark:hover:bg-gray-700 transition-all">
-                    <x-heroicon-o-arrow-path class="w-3.5 h-3.5" wire:loading.class="animate-spin" />
-                    <span class="hidden sm:inline">Refresh</span>
-                </button>
-            </div>
-        </div>
-
         {{-- Kanban Columns --}}
-        <div class="kanban-board flex flex-col lg:flex-row lg:items-start gap-4 pb-4">
+        <div class="kanban-board flex flex-col lg:flex-row lg:items-start gap-3 pb-4">
             @foreach($columns as $status => $config)
             @php
                 $tasks = $kanbanTasks->get($status, collect());
@@ -196,7 +157,7 @@
 
             {{-- Column --}}
             <div wire:key="column-{{ $status }}-{{ json_encode($currentFilters) }}"
-                 class="kanban-column flex-1 min-w-[300px] lg:min-w-[320px] flex flex-col rounded-xl
+                 class="kanban-column flex-1 min-w-[280px] lg:min-w-[320px] flex flex-col rounded-xl
                         bg-gray-50/80 dark:bg-gray-900/50 border border-gray-200 dark:border-gray-800
                         overflow-hidden"
                  data-status="{{ $status }}">
@@ -251,9 +212,10 @@
                 </div>
 
                 {{-- Column Content (Scrollable) --}}
-                <div class="column-content flex-1 overflow-y-auto p-3 space-y-2
-                            {{ $tasks->count() === 0 ? 'min-h-[200px]' : '' }}
-                            {{ $tasks->count() > 3 ? 'max-h-[600px]' : '' }}"
+                <div class="column-content custom-scrollbar flex-1 overflow-y-auto p-2 space-y-1.5
+                            {{ $tasks->count() === 0 ? 'min-h-[150px]' : '' }}
+                            {{ $tasks->count() > 3 ? 'max-h-[500px]' : '' }}"
+                     style="scrollbar-width: thin; scrollbar-color: rgba(156,163,175,0.4) transparent;"
                      data-status="{{ $status }}"
                      x-ref="column_{{ $status }}">
 
@@ -377,7 +339,7 @@
     {{-- Sortable.js --}}
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
 
-    @push('styles')
+    {{-- Inline styles for immediate application --}}
     <style>
         /* Container */
         .kanban-container { width: 100%; max-width: 100%; }
@@ -395,11 +357,107 @@
             .kanban-column { flex: 1; min-width: 280px; }
         }
 
-        /* Scrollbar */
-        .column-content::-webkit-scrollbar { width: 4px; }
-        .column-content::-webkit-scrollbar-track { background: transparent; }
-        .column-content::-webkit-scrollbar-thumb { background: rgba(156,163,175,0.3); border-radius: 2px; }
-        .column-content::-webkit-scrollbar-thumb:hover { background: rgba(156,163,175,0.5); }
+        /* ============================================
+           SCROLLBAR - Slim & Minimal Design
+           ============================================ */
+        
+        /* Target all scrollable elements in kanban */
+        .custom-scrollbar,
+        .column-content,
+        .kanban-column,
+        .kanban-column * {
+            scrollbar-width: thin !important;
+            scrollbar-color: rgba(156,163,175,0.4) transparent !important;
+        }
+        
+        /* Webkit Scrollbar - Width (Ultra Slim) */
+        .custom-scrollbar::-webkit-scrollbar,
+        .column-content::-webkit-scrollbar,
+        .kanban-column::-webkit-scrollbar,
+        .kanban-column *::-webkit-scrollbar { 
+            width: 3px !important;
+            height: 3px !important;
+        }
+        
+        /* Webkit Scrollbar - Track */
+        .custom-scrollbar::-webkit-scrollbar-track,
+        .column-content::-webkit-scrollbar-track,
+        .kanban-column::-webkit-scrollbar-track,
+        .kanban-column *::-webkit-scrollbar-track { 
+            background: transparent !important;
+            border-radius: 3px !important;
+        }
+        
+        /* Webkit Scrollbar - Thumb (Default) */
+        .custom-scrollbar::-webkit-scrollbar-thumb,
+        .column-content::-webkit-scrollbar-thumb,
+        .kanban-column::-webkit-scrollbar-thumb,
+        .kanban-column *::-webkit-scrollbar-thumb { 
+            background: rgba(156,163,175,0.5) !important;
+            border-radius: 3px !important;
+        }
+        
+        /* Webkit Scrollbar - Thumb Hover */
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover,
+        .column-content::-webkit-scrollbar-thumb:hover,
+        .kanban-column::-webkit-scrollbar-thumb:hover,
+        .kanban-column *::-webkit-scrollbar-thumb:hover { 
+            background: rgba(107,114,128,0.7) !important;
+        }
+        
+        /* Webkit Scrollbar - Thumb Active */
+        .custom-scrollbar::-webkit-scrollbar-thumb:active,
+        .column-content::-webkit-scrollbar-thumb:active,
+        .kanban-column::-webkit-scrollbar-thumb:active,
+        .kanban-column *::-webkit-scrollbar-thumb:active { 
+            background: rgba(75,85,99,0.8) !important;
+        }
+        
+        /* Webkit Scrollbar - Corner */
+        .custom-scrollbar::-webkit-scrollbar-corner,
+        .column-content::-webkit-scrollbar-corner,
+        .kanban-column::-webkit-scrollbar-corner,
+        .kanban-column *::-webkit-scrollbar-corner {
+            background: transparent !important;
+        }
+        
+        /* ============================================
+           DARK MODE SCROLLBAR
+           ============================================ */
+        .dark .custom-scrollbar,
+        .dark .column-content,
+        .dark .kanban-column,
+        .dark .kanban-column * {
+            scrollbar-color: rgba(75,85,99,0.5) transparent !important;
+        }
+        
+        .dark .custom-scrollbar::-webkit-scrollbar-track,
+        .dark .column-content::-webkit-scrollbar-track,
+        .dark .kanban-column::-webkit-scrollbar-track,
+        .dark .kanban-column *::-webkit-scrollbar-track { 
+            background: transparent !important;
+        }
+        
+        .dark .custom-scrollbar::-webkit-scrollbar-thumb,
+        .dark .column-content::-webkit-scrollbar-thumb,
+        .dark .kanban-column::-webkit-scrollbar-thumb,
+        .dark .kanban-column *::-webkit-scrollbar-thumb { 
+            background: rgba(75,85,99,0.5) !important;
+        }
+        
+        .dark .custom-scrollbar::-webkit-scrollbar-thumb:hover,
+        .dark .column-content::-webkit-scrollbar-thumb:hover,
+        .dark .kanban-column::-webkit-scrollbar-thumb:hover,
+        .dark .kanban-column *::-webkit-scrollbar-thumb:hover { 
+            background: rgba(107,114,128,0.6) !important;
+        }
+        
+        .dark .custom-scrollbar::-webkit-scrollbar-thumb:active,
+        .dark .column-content::-webkit-scrollbar-thumb:active,
+        .dark .kanban-column::-webkit-scrollbar-thumb:active,
+        .dark .kanban-column *::-webkit-scrollbar-thumb:active { 
+            background: rgba(156,163,175,0.6) !important;
+        }
 
         /* Drag Ghost */
         .kanban-ghost {
@@ -444,5 +502,4 @@
         }
         .animate-in { animation: fade-in 0.2s ease-out; }
     </style>
-    @endpush
 </div>
