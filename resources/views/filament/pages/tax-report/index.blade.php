@@ -682,7 +682,12 @@
                             </div>
                         </button>
 
-                        {{-- Bupot Tab --}}
+                        {{-- Bupot Tab - Conditional based on client contract --}}
+                        @php
+                        $hasBupotContract = $client->bupot_contract ?? false;
+                        @endphp
+                        
+                        @if($hasBupotContract)
                         <button @click="activeTab = 'bupot'"
                             :class="activeTab === 'bupot' 
                                     ? 'border-orange-500 bg-gradient-to-br from-orange-50 to-orange-100 shadow-lg shadow-orange-500/20 dark:border-orange-400 dark:from-orange-900/30 dark:to-orange-900/10' 
@@ -738,8 +743,62 @@
                                 <div class="h-1 w-16 rounded-full bg-orange-600 shadow-lg"></div>
                             </div>
                         </button>
+                        @else
+                        {{-- Disabled Bupot Tab - Contract not active --}}
+                        <div 
+                            x-data="{ showTooltip: false }"
+                            @mouseenter="showTooltip = true"
+                            @mouseleave="showTooltip = false"
+                            class="group relative flex flex-row md:flex-col items-center gap-3 rounded-lg md:rounded-xl border-2 border-dashed border-gray-300 bg-gray-50 px-3 py-3 md:px-4 md:py-4 opacity-60 cursor-not-allowed dark:border-gray-600 dark:bg-gray-800/30">
 
-                        {{-- ✅ NEW: PPh Badan Tab --}}
+                            {{-- Lock icon badge --}}
+                            <div class="absolute -right-1 -top-1 md:-right-2 md:-top-2 z-10">
+                                <div class="flex h-6 w-6 md:h-8 md:w-8 items-center justify-center rounded-full bg-gray-400 shadow-lg ring-2 ring-white dark:ring-gray-900">
+                                    <x-filament::icon icon="heroicon-m-lock-closed" class="h-4 w-4 md:h-5 md:w-5 text-white" />
+                                </div>
+                            </div>
+
+                            {{-- Icon --}}
+                            <div class="flex h-10 w-10 md:h-12 md:w-12 items-center justify-center rounded-lg md:rounded-xl bg-gray-200 dark:bg-gray-700 flex-shrink-0">
+                                <x-filament::icon icon="heroicon-o-receipt-percent" class="h-5 w-5 md:h-6 md:w-6 text-gray-400 dark:text-gray-500" />
+                            </div>
+
+                            {{-- Label & Count --}}
+                            <div class="flex-1 text-left md:text-center">
+                                <p class="text-sm font-bold text-gray-500 dark:text-gray-400">
+                                    <span class="md:hidden">Bupot</span>
+                                    <span class="hidden md:inline">PPh Unifikasi</span>
+                                </p>
+                                <p class="mt-0.5 text-xs font-medium text-gray-400 dark:text-gray-500">0 Bupot</p>
+                                <p class="mt-1 text-[10px] font-semibold text-gray-400 dark:text-gray-500">
+                                    🔒 Tidak Aktif
+                                </p>
+                            </div>
+
+                            {{-- Tooltip --}}
+                            <div 
+                                x-show="showTooltip"
+                                x-transition:enter="transition ease-out duration-200"
+                                x-transition:enter-start="opacity-0 translate-y-1"
+                                x-transition:enter-end="opacity-100 translate-y-0"
+                                x-transition:leave="transition ease-in duration-150"
+                                x-transition:leave-start="opacity-100 translate-y-0"
+                                x-transition:leave-end="opacity-0 translate-y-1"
+                                class="absolute bottom-full left-1/2 z-50 mb-2 w-56 -translate-x-1/2 rounded-lg bg-gray-900 px-3 py-2 text-center text-xs text-white shadow-xl dark:bg-gray-700"
+                            >
+                                <p class="font-medium">Fitur PPh Unifikasi tidak tersedia</p>
+                                <p class="mt-1 text-gray-300 dark:text-gray-400">Kontrak PPh Unifikasi (Bupot) untuk klien ini belum aktif.</p>
+                                <div class="absolute -bottom-1 left-1/2 h-2 w-2 -translate-x-1/2 rotate-45 bg-gray-900 dark:bg-gray-700"></div>
+                            </div>
+                        </div>
+                        @endif
+
+                        {{-- PPh Badan Tab - Conditional based on client contract --}}
+                        @php
+                        $hasPphBadanContract = $client->pph_badan_contract ?? false;
+                        @endphp
+                        
+                        @if($hasPphBadanContract)
                         <button @click="activeTab = 'pph_badan'"
                             :class="activeTab === 'pph_badan' 
                                     ? 'border-indigo-500 bg-gradient-to-br from-indigo-50 to-indigo-100 shadow-lg shadow-indigo-500/20 dark:border-indigo-400 dark:from-indigo-900/30 dark:to-indigo-900/10' 
@@ -794,6 +853,54 @@
                                 <div class="h-1 w-16 rounded-full bg-indigo-600 shadow-lg"></div>
                             </div>
                         </button>
+                        @else
+                        {{-- Disabled PPh Badan Tab - Contract not active --}}
+                        <div 
+                            x-data="{ showTooltip: false }"
+                            @mouseenter="showTooltip = true"
+                            @mouseleave="showTooltip = false"
+                            class="group relative flex flex-row md:flex-col items-center gap-3 rounded-lg md:rounded-xl border-2 border-dashed border-gray-300 bg-gray-50 px-3 py-3 md:px-4 md:py-4 opacity-60 cursor-not-allowed dark:border-gray-600 dark:bg-gray-800/30">
+
+                            {{-- Lock icon badge --}}
+                            <div class="absolute -right-1 -top-1 md:-right-2 md:-top-2 z-10">
+                                <div class="flex h-6 w-6 md:h-8 md:w-8 items-center justify-center rounded-full bg-gray-400 shadow-lg ring-2 ring-white dark:ring-gray-900">
+                                    <x-filament::icon icon="heroicon-m-lock-closed" class="h-4 w-4 md:h-5 md:w-5 text-white" />
+                                </div>
+                            </div>
+
+                            {{-- Icon --}}
+                            <div class="flex h-10 w-10 md:h-12 md:w-12 items-center justify-center rounded-lg md:rounded-xl bg-gray-200 dark:bg-gray-700 flex-shrink-0">
+                                <x-filament::icon icon="heroicon-o-building-office" class="h-5 w-5 md:h-6 md:w-6 text-gray-400 dark:text-gray-500" />
+                            </div>
+
+                            {{-- Label & Count --}}
+                            <div class="flex-1 text-left md:text-center">
+                                <p class="text-sm font-bold text-gray-500 dark:text-gray-400">
+                                    PPh Badan
+                                </p>
+                                <p class="mt-0.5 text-xs font-medium text-gray-400 dark:text-gray-500">0 Transaksi</p>
+                                <p class="mt-1 text-[10px] font-semibold text-gray-400 dark:text-gray-500">
+                                    🔒 Tidak Aktif
+                                </p>
+                            </div>
+
+                            {{-- Tooltip --}}
+                            <div 
+                                x-show="showTooltip"
+                                x-transition:enter="transition ease-out duration-200"
+                                x-transition:enter-start="opacity-0 translate-y-1"
+                                x-transition:enter-end="opacity-100 translate-y-0"
+                                x-transition:leave="transition ease-in duration-150"
+                                x-transition:leave-start="opacity-100 translate-y-0"
+                                x-transition:leave-end="opacity-0 translate-y-1"
+                                class="absolute bottom-full left-1/2 z-50 mb-2 w-56 -translate-x-1/2 rounded-lg bg-gray-900 px-3 py-2 text-center text-xs text-white shadow-xl dark:bg-gray-700"
+                            >
+                                <p class="font-medium">Fitur PPh Badan tidak tersedia</p>
+                                <p class="mt-1 text-gray-300 dark:text-gray-400">Kontrak PPh Badan untuk klien ini belum aktif.</p>
+                                <div class="absolute -bottom-1 left-1/2 h-2 w-2 -translate-x-1/2 rotate-45 bg-gray-900 dark:bg-gray-700"></div>
+                            </div>
+                        </div>
+                        @endif
                     </div>
                 </div>
             </div>

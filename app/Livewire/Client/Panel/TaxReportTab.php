@@ -13,6 +13,7 @@ class TaxReportTab extends Component
     public $clients = [];
     public $selectedClient = null;
     public $selectedMonth = null;
+    public $selectedYear = null;
     
     public $currentClient = null;
     public $currentTaxReport = null;
@@ -24,11 +25,13 @@ class TaxReportTab extends Component
         // Auto-select first client and current/latest month
         if ($this->clients->isNotEmpty()) {
             $this->selectedClient = $this->clients->first()->id;
+            $this->selectedYear = now()->format('Y'); // Default to current year
             $this->loadClientData($this->selectedClient);
             
             // Try to select current month or latest available month
             if ($this->currentTaxReport) {
                 $this->selectedMonth = $this->currentTaxReport->month;
+                $this->selectedYear = $this->currentTaxReport->created_at->format('Y');
             }
         }
     }
@@ -72,6 +75,46 @@ class TaxReportTab extends Component
         }
     }
 
+    public function selectYear($year)
+    {
+        $this->selectedYear = $year;
+        
+        // Reload data for the selected year
+        if ($this->selectedMonth) {
+            $this->loadMonthData($this->selectedMonth);
+        } else {
+            $this->loadClientData($this->selectedClient);
+        }
+        
+        // Emit event to child components to refresh their data
+        if ($this->currentTaxReport) {
+            $this->dispatch('taxReportChanged', $this->currentTaxReport->id);
+        }
+    }
+
+    /**
+     * Get available years for the current client
+     */
+    public function getAvailableYearsProperty()
+    {
+        if (!$this->currentClient) {
+            return collect([now()->format('Y')]);
+        }
+        
+        $years = TaxReport::where('client_id', $this->currentClient->id)
+            ->selectRaw('YEAR(created_at) as year')
+            ->distinct()
+            ->orderBy('year', 'desc')
+            ->pluck('year');
+        
+        // If no years found, return current year
+        if ($years->isEmpty()) {
+            return collect([now()->format('Y')]);
+        }
+        
+        return $years;
+    }
+
     public function loadClientData($clientId)
     {
         $this->currentClient = Client::find($clientId);
@@ -105,10 +148,8 @@ class TaxReportTab extends Component
             return;
         }
 
-        // Get tax report for selected month and client
-        $currentYear = $this->currentTaxReport 
-            ? $this->currentTaxReport->created_at->format('Y') 
-            : now()->format('Y');
+        // Use selected year or current year
+        $currentYear = $this->selectedYear ?? now()->format('Y');
 
         $this->currentTaxReport = TaxReport::where('client_id', $this->currentClient->id)
             ->where('month', $month)

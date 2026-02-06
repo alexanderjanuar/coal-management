@@ -176,129 +176,175 @@
 
         {{-- 12-Month Navigation --}}
         <div
-            class="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm dark:border-gray-700 dark:bg-gray-800">
-            <div class="p-3 md:p-4">
-                @php
-                $months = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September',
-                'October', 'November', 'December'];
-                $currentYear = $currentTaxReport->created_at->format('Y');
+            class="overflow-hidden rounded-lg md:rounded-xl bg-white shadow-sm ring-1 ring-gray-900/5 dark:bg-gray-900 dark:ring-white/10">
+            <div class="p-2 md:p-3 space-y-3">
+                {{-- Year Navigation --}}
+                <div class="flex items-center justify-between gap-2">
+                    <h3 class="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                        Navigasi Tahun
+                    </h3>
 
-                $yearReports = \App\Models\TaxReport::where('client_id', $currentClient->id)
-                ->whereYear('created_at', $currentYear)
-                ->with(['taxCalculationSummaries' => function($query) {
-                $query->select('id', 'tax_report_id', 'tax_type', 'report_status');
-                }])
-                ->withCount(['invoices', 'incomeTaxs', 'bupots'])
-                ->select('id', 'client_id', 'month', 'created_at')
-                ->get()
-                ->keyBy('month');
-                @endphp
+                    @php
+                    $availableYears = $this->availableYears;
+                    @endphp
 
-                <div class="overflow-x-auto">
-                    <div class="flex gap-2 md:grid md:grid-cols-12 md:gap-2" style="min-width: max-content;">
-                        @foreach($months as $index => $monthName)
+                    <div class="flex items-center gap-1">
+                        @foreach($availableYears as $year)
                         @php
-                        $monthReport = $yearReports->get($monthName);
-                        $hasReport = !is_null($monthReport);
-                        $isCurrent = $monthName === $currentTaxReport->month;
-
-                        $hasActivity = $hasReport && (
-                        ($monthReport->invoices_count ?? 0) > 0 ||
-                        ($monthReport->income_taxs_count ?? 0) > 0 ||
-                        ($monthReport->bupots_count ?? 0) > 0
-                        );
+                        $yearReportCount = \App\Models\TaxReport::where('client_id', $currentClient->id)
+                            ->whereYear('created_at', $year)
+                            ->count();
+                        $isCurrentYear = $year == $selectedYear;
                         @endphp
 
-                        @if($hasReport)
-                        @php
-                        $monthSummaries = $monthReport->taxCalculationSummaries ?? collect();
-                        $ppnSum = $monthSummaries->firstWhere('tax_type', 'ppn');
-                        $pphSum = $monthSummaries->firstWhere('tax_type', 'pph');
-                        $bupotSum = $monthSummaries->firstWhere('tax_type', 'bupot');
-
-                        $ppnRep = $ppnSum && $ppnSum->report_status === 'Sudah Lapor';
-                        $pphRep = $pphSum && $pphSum->report_status === 'Sudah Lapor';
-                        $bupotRep = $bupotSum && $bupotSum->report_status === 'Sudah Lapor';
-
-                        $monthIsReported = $ppnRep && $pphRep && $bupotRep;
-                        @endphp
-                        <button wire:click="selectMonth('{{ $monthName }}')"
-                            class="group relative flex flex-col items-center justify-center overflow-hidden rounded-lg border-2 px-3 py-3 transition-all duration-200 flex-shrink-0 w-20 md:w-auto {{ $isCurrent ? 'border-primary-500 bg-primary-50 shadow-sm dark:border-primary-400 dark:bg-primary-900/20' : 'border-gray-200 bg-white hover:border-primary-300 hover:bg-primary-50/50 dark:border-gray-700 dark:bg-gray-800/50' }}">
-
-                            {{-- Reporting Status Indicator --}}
-                            <div class="absolute left-1 top-1 z-10">
-                                @if($monthIsReported)
-                                <div
-                                    class="flex h-4 w-4 items-center justify-center rounded-full bg-green-500 shadow-sm">
-                                    <x-heroicon-m-check class="h-2.5 w-2.5 text-white" />
-                                </div>
-                                @else
-                                <div
-                                    class="flex h-4 w-4 items-center justify-center rounded-full bg-orange-500 shadow-sm">
-                                    <x-heroicon-m-exclamation-triangle class="h-2.5 w-2.5 text-white" />
-                                </div>
-                                @endif
-                            </div>
-
-                            {{-- Activity Indicator --}}
-                            @if($hasActivity)
-                            <div class="absolute right-1 top-1 z-10">
-                                <span class="flex h-2 w-2">
-                                    <span
-                                        class="absolute inline-flex h-full w-full animate-ping rounded-full {{ $isCurrent ? 'bg-primary-400' : 'bg-green-400' }} opacity-75"></span>
-                                    <span
-                                        class="relative inline-flex h-2 w-2 rounded-full {{ $isCurrent ? 'bg-primary-500' : 'bg-green-500' }}"></span>
-                                </span>
-                            </div>
+                        <button 
+                            wire:click="selectYear('{{ $year }}')"
+                            class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-semibold transition-all duration-200 {{ $isCurrentYear ? 'bg-primary-600 text-white shadow-sm' : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50 dark:bg-gray-800 dark:text-gray-300 dark:border-gray-600 dark:hover:bg-gray-700' }}">
+                            @if($isCurrentYear)
+                            <span class="w-1.5 h-1.5 rounded-full bg-white"></span>
                             @endif
-
-                            <span
-                                class="relative z-10 text-[10px] font-semibold uppercase tracking-wider {{ $isCurrent ? 'text-primary-700 dark:text-primary-300' : 'text-gray-600 dark:text-gray-400' }}">
-                                {{ substr($monthName, 0, 3) }}
-                            </span>
-                            <span
-                                class="relative z-10 mt-0.5 text-sm font-bold {{ $isCurrent ? 'text-primary-900 dark:text-primary-100' : 'text-gray-900 dark:text-white' }}">
-                                {{ $index + 1 }}
+                            <span>{{ $year }}</span>
+                            <span class="px-1.5 py-0.5 rounded-md text-xs font-semibold {{ $isCurrentYear ? 'bg-primary-700 text-primary-100' : 'bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-400' }}">
+                                {{ $yearReportCount }}
                             </span>
                         </button>
-                        @else
-                        <div
-                            class="flex flex-col items-center justify-center rounded-lg border-2 border-dashed border-gray-200 bg-gray-50 px-3 py-3 opacity-50 dark:border-gray-800 dark:bg-gray-900/20 flex-shrink-0 w-20 md:w-auto">
-                            <span class="text-[10px] font-semibold uppercase tracking-wider text-gray-400">
-                                {{ substr($monthName, 0, 3) }}
-                            </span>
-                            <span class="mt-0.5 text-sm font-bold text-gray-400">
-                                {{ $index + 1 }}
-                            </span>
-                        </div>
-                        @endif
                         @endforeach
                     </div>
                 </div>
 
-                {{-- Legend --}}
-                <div class="mt-3 flex flex-wrap items-center justify-center gap-x-4 gap-y-2 text-xs">
-                    <div class="flex items-center gap-1.5">
-                        <div class="h-2 w-2 rounded-full bg-primary-500"></div>
-                        <span class="text-gray-600 dark:text-gray-400">Bulan Aktif</span>
+                {{-- Divider --}}
+                <div class="border-t border-gray-200 dark:border-gray-700"></div>
+
+                {{-- Month Navigation --}}
+                <div>
+                    <h3 class="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-2">
+                        Navigasi Bulan - {{ $selectedYear ?? now()->format('Y') }}
+                    </h3>
+
+                    @php
+                    $months = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September',
+                    'October', 'November', 'December'];
+                    $currentYear = $selectedYear ?? now()->format('Y');
+
+                    $yearReports = \App\Models\TaxReport::where('client_id', $currentClient->id)
+                    ->whereYear('created_at', $currentYear)
+                    ->with(['taxCalculationSummaries' => function($query) {
+                    $query->select('id', 'tax_report_id', 'tax_type', 'report_status');
+                    }])
+                    ->withCount(['invoices', 'incomeTaxs', 'bupots'])
+                    ->select('id', 'client_id', 'month', 'created_at')
+                    ->get()
+                    ->keyBy('month');
+                    @endphp
+
+                    {{-- Mobile: Horizontal scrollable, Desktop: Grid --}}
+                    <div class="overflow-x-auto">
+                        <div class="flex gap-1.5 md:grid md:grid-cols-12 md:gap-2" style="min-width: max-content;">
+                            @foreach($months as $index => $monthName)
+                            @php
+                            $monthReport = $yearReports->get($monthName);
+                            $hasReport = !is_null($monthReport);
+                            $isCurrent = $currentTaxReport && $monthName === $currentTaxReport->month;
+
+                            if ($hasReport) {
+                                $hasActivity = ($monthReport->invoices_count ?? 0) > 0 ||
+                                    ($monthReport->income_taxs_count ?? 0) > 0 ||
+                                    ($monthReport->bupots_count ?? 0) > 0;
+
+                                $monthSummaries = $monthReport->taxCalculationSummaries ?? collect();
+                                $ppnSum = $monthSummaries->firstWhere('tax_type', 'ppn');
+                                $pphSum = $monthSummaries->firstWhere('tax_type', 'pph');
+                                $bupotSum = $monthSummaries->firstWhere('tax_type', 'bupot');
+
+                                $monthIsReported = ($ppnSum && $ppnSum->report_status === 'Sudah Lapor') &&
+                                    ($pphSum && $pphSum->report_status === 'Sudah Lapor') &&
+                                    ($bupotSum && $bupotSum->report_status === 'Sudah Lapor');
+                            } else {
+                                $hasActivity = false;
+                                $monthIsReported = false;
+                            }
+                            @endphp
+
+                            @if($hasReport)
+                            <button wire:click="selectMonth('{{ $monthName }}')"
+                                class="group relative flex flex-col items-center justify-center overflow-hidden rounded-md md:rounded-lg border-2 px-2 py-2 md:px-2 md:py-3 transition-all duration-200 flex-shrink-0 w-16 md:w-auto {{ $isCurrent ? 'border-primary-500 bg-primary-50 shadow-sm dark:border-primary-400 dark:bg-primary-900/20' : 'border-gray-200 bg-white hover:border-primary-300 hover:bg-primary-50/50 hover:shadow-sm dark:border-gray-700 dark:bg-gray-800/50 dark:hover:border-primary-600 dark:hover:bg-primary-900/10' }}">
+
+                                {{-- Ripple effect on hover --}}
+                                <div class="absolute inset-0 scale-0 rounded-lg bg-primary-400/10 transition-transform duration-300 group-hover:scale-100"></div>
+
+                                {{-- Reporting Status Indicator --}}
+                                <div class="absolute left-0.5 top-0.5 md:left-1 md:top-1 z-10">
+                                    @if($monthIsReported)
+                                    <div class="flex h-3 w-3 md:h-4 md:w-4 items-center justify-center rounded-full bg-green-500 shadow-sm" title="Sudah Lapor">
+                                        <x-heroicon-m-check class="h-1.5 w-1.5 md:h-2.5 md:w-2.5 text-white" />
+                                    </div>
+                                    @else
+                                    <div class="flex h-3 w-3 md:h-4 md:w-4 items-center justify-center rounded-full bg-orange-500 shadow-sm" title="Belum Lapor">
+                                        <x-heroicon-m-exclamation-triangle class="h-1.5 w-1.5 md:h-2.5 md:w-2.5 text-white" />
+                                    </div>
+                                    @endif
+                                </div>
+
+                                {{-- Activity Indicator --}}
+                                @if($hasActivity)
+                                <div class="absolute right-0.5 top-0.5 md:right-1 md:top-1 z-10">
+                                    <span class="flex h-1.5 w-1.5 md:h-2 md:w-2">
+                                        <span class="absolute inline-flex h-full w-full animate-ping rounded-full {{ $isCurrent ? 'bg-primary-400' : 'bg-green-400' }} opacity-75"></span>
+                                        <span class="relative inline-flex h-1.5 w-1.5 md:h-2 md:w-2 rounded-full {{ $isCurrent ? 'bg-primary-500' : 'bg-green-500' }}"></span>
+                                    </span>
+                                </div>
+                                @endif
+
+                                <span class="relative z-10 text-[9px] md:text-[10px] font-semibold uppercase tracking-wider {{ $isCurrent ? 'text-primary-700 dark:text-primary-300' : 'text-gray-600 dark:text-gray-400' }}">
+                                    {{ substr($monthName, 0, 3) }}
+                                </span>
+                                <span class="relative z-10 mt-0.5 text-xs font-bold {{ $isCurrent ? 'text-primary-900 dark:text-primary-100' : 'text-gray-900 dark:text-white' }}">
+                                    {{ $index + 1 }}
+                                </span>
+                            </button>
+                            @else
+                            <div class="flex flex-col items-center justify-center rounded-md md:rounded-lg border-2 border-dashed border-gray-200 bg-gray-50 px-2 py-2 md:px-2 md:py-3 opacity-50 dark:border-gray-800 dark:bg-gray-900/20 flex-shrink-0 w-16 md:w-auto">
+                                <span class="text-[9px] md:text-[10px] font-semibold uppercase tracking-wider text-gray-400 dark:text-gray-600">
+                                    {{ substr($monthName, 0, 3) }}
+                                </span>
+                                <span class="mt-0.5 text-xs font-bold text-gray-400 dark:text-gray-600">
+                                    {{ $index + 1 }}
+                                </span>
+                            </div>
+                            @endif
+                            @endforeach
+                        </div>
                     </div>
-                    <div class="flex items-center gap-1.5">
-                        <div class="h-2 w-2 rounded-full bg-green-500"></div>
-                        <span class="text-gray-600 dark:text-gray-400">Sudah Lapor</span>
-                    </div>
-                    <div class="flex items-center gap-1.5">
-                        <div class="h-2 w-2 rounded-full bg-orange-500"></div>
-                        <span class="text-gray-600 dark:text-gray-400">Belum Lapor</span>
+
+                    {{-- Legend --}}
+                    <div class="mt-2 md:mt-3 flex flex-wrap items-center justify-center gap-x-3 md:gap-x-6 gap-y-1 md:gap-y-2 text-xs">
+                        <div class="flex items-center gap-1 md:gap-1.5">
+                            <div class="h-2 w-2 rounded-full bg-primary-500"></div>
+                            <span class="text-gray-600 dark:text-gray-400 text-[10px] md:text-xs">Bulan Aktif</span>
+                        </div>
+                        <div class="flex items-center gap-1 md:gap-1.5">
+                            <div class="h-2 w-2 rounded-full bg-green-500"></div>
+                            <span class="text-gray-600 dark:text-gray-400 text-[10px] md:text-xs">Sudah Lapor</span>
+                        </div>
+                        <div class="flex items-center gap-1 md:gap-1.5">
+                            <div class="h-2 w-2 rounded-full bg-orange-500"></div>
+                            <span class="text-gray-600 dark:text-gray-400 text-[10px] md:text-xs">Belum Lapor</span>
+                        </div>
+                        <div class="flex items-center gap-1 md:gap-1.5">
+                            <div class="h-2 w-2 rounded-full border-2 border-dashed border-gray-300"></div>
+                            <span class="text-gray-600 dark:text-gray-400 text-[10px] md:text-xs">Belum Ada Data</span>
+                        </div>
                     </div>
                 </div>
             </div>
         </div>
 
+
         {{-- Tax Type Navigation Tabs --}}
         <div
             class="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm dark:border-gray-700 dark:bg-gray-800">
             <div class="p-3">
-                <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+                <div class="grid grid-cols-1 md:grid-cols-4 gap-3">
                     {{-- PPN Tab --}}
                     <button @click="activeTab = 'invoices'"
                         :class="activeTab === 'invoices' 
@@ -380,7 +426,12 @@
                         </div>
                     </button>
 
-                    {{-- Bupot Tab --}}
+                    {{-- Bupot Tab - Conditional based on client contract --}}
+                    @php
+                    $hasBupotContract = $currentClient->bupot_contract ?? false;
+                    @endphp
+                    
+                    @if($hasBupotContract)
                     <button @click="activeTab = 'bupot'"
                         :class="activeTab === 'bupot' 
                                 ? 'border-orange-500 bg-gradient-to-br from-orange-50 to-orange-100 shadow-lg dark:border-orange-400 dark:from-orange-900/30 dark:to-orange-900/10' 
@@ -419,6 +470,140 @@
                             </p>
                         </div>
                     </button>
+                    @else
+                    {{-- Disabled Bupot Tab - Contract not active --}}
+                    <div 
+                        x-data="{ showTooltip: false }"
+                        @mouseenter="showTooltip = true"
+                        @mouseleave="showTooltip = false"
+                        class="group relative flex flex-row md:flex-col items-center gap-3 rounded-xl border-2 border-dashed border-gray-300 bg-gray-50 px-4 py-3 opacity-60 cursor-not-allowed dark:border-gray-600 dark:bg-gray-800/30">
+
+                        {{-- Lock icon badge --}}
+                        <div class="absolute -right-2 -top-2 z-10">
+                            <div class="flex h-6 w-6 items-center justify-center rounded-full bg-gray-400 shadow-lg ring-2 ring-white dark:ring-gray-900">
+                                <x-heroicon-m-lock-closed class="h-3.5 w-3.5 text-white" />
+                            </div>
+                        </div>
+
+                        <div class="flex h-12 w-12 items-center justify-center rounded-xl bg-gray-200 dark:bg-gray-700 flex-shrink-0">
+                            <x-heroicon-o-receipt-percent class="h-6 w-6 text-gray-400 dark:text-gray-500" />
+                        </div>
+
+                        <div class="flex-1 text-left md:text-center">
+                            <p class="text-sm font-bold text-gray-500 dark:text-gray-400">PPh Unifikasi</p>
+                            <p class="mt-0.5 text-xs text-gray-400 dark:text-gray-500">0 Bupot</p>
+                            <p class="mt-1 text-[10px] font-semibold text-gray-400 dark:text-gray-500">
+                                🔒 Tidak Aktif
+                            </p>
+                        </div>
+
+                        {{-- Tooltip --}}
+                        <div 
+                            x-show="showTooltip"
+                            x-transition:enter="transition ease-out duration-200"
+                            x-transition:enter-start="opacity-0 translate-y-1"
+                            x-transition:enter-end="opacity-100 translate-y-0"
+                            x-transition:leave="transition ease-in duration-150"
+                            x-transition:leave-start="opacity-100 translate-y-0"
+                            x-transition:leave-end="opacity-0 translate-y-1"
+                            class="absolute bottom-full left-1/2 z-50 mb-2 w-56 -translate-x-1/2 rounded-lg bg-gray-900 px-3 py-2 text-center text-xs text-white shadow-xl dark:bg-gray-700"
+                        >
+                            <p class="font-medium">Fitur PPh Unifikasi tidak tersedia</p>
+                            <p class="mt-1 text-gray-300 dark:text-gray-400">Kontrak PPh Unifikasi (Bupot) untuk klien ini belum aktif. Hubungi admin untuk mengaktifkan fitur ini.</p>
+                            <div class="absolute -bottom-1 left-1/2 h-2 w-2 -translate-x-1/2 rotate-45 bg-gray-900 dark:bg-gray-700"></div>
+                        </div>
+                    </div>
+                    @endif
+
+                    {{-- PPh Badan Tab - Conditional based on client contract --}}
+                    @php
+                    $hasPphBadanContract = $currentClient->pph_badan_contract ?? false;
+                    $pphBadanReported = false; // Placeholder - will need proper implementation
+                    @endphp
+                    
+                    @if($hasPphBadanContract)
+                    <button @click="activeTab = 'pph_badan'"
+                        :class="activeTab === 'pph_badan' 
+                                ? 'border-indigo-500 bg-gradient-to-br from-indigo-50 to-indigo-100 shadow-lg dark:border-indigo-400 dark:from-indigo-900/30 dark:to-indigo-900/10' 
+                                : 'border-gray-200 bg-white hover:border-indigo-300 dark:border-gray-700 dark:bg-gray-800/50'"
+                        class="group relative flex flex-row md:flex-col items-center gap-3 rounded-xl border-2 px-4 py-3 transition-all duration-200">
+
+                        <div class="absolute -right-2 -top-2 z-10">
+                            @if($pphBadanReported)
+                            <div
+                                class="flex h-6 w-6 items-center justify-center rounded-full bg-green-500 shadow-lg ring-2 ring-white dark:ring-gray-900">
+                                <x-heroicon-m-check-circle class="h-4 w-4 text-white" />
+                            </div>
+                            @else
+                            <div
+                                class="flex h-6 w-6 items-center justify-center rounded-full bg-orange-500 shadow-lg ring-2 ring-white dark:ring-gray-900">
+                                <x-heroicon-m-exclamation-circle class="h-4 w-4 text-white" />
+                            </div>
+                            @endif
+                        </div>
+
+                        <div :class="activeTab === 'pph_badan' ? 'bg-indigo-600 shadow-lg' : 'bg-gray-100 dark:bg-gray-700'"
+                            class="flex h-12 w-12 items-center justify-center rounded-xl transition-all flex-shrink-0">
+                            <x-heroicon-o-building-office
+                                :class="activeTab === 'pph_badan' ? 'text-white' : 'text-gray-600 dark:text-gray-400'"
+                                class="h-6 w-6" />
+                        </div>
+
+                        <div class="flex-1 text-left md:text-center">
+                            <p :class="activeTab === 'pph_badan' ? 'text-indigo-900 dark:text-indigo-100' : 'text-gray-900 dark:text-white'"
+                                class="text-sm font-bold">PPh Badan</p>
+                            <p :class="activeTab === 'pph_badan' ? 'text-indigo-600 dark:text-indigo-400' : 'text-gray-500 dark:text-gray-400'"
+                                class="mt-0.5 text-xs">0 Transaksi</p>
+                            <p
+                                class="mt-1 text-[10px] font-semibold {{ $pphBadanReported ? 'text-green-600' : 'text-orange-600' }}">
+                                {{ $pphBadanReported ? '✓ Sudah Lapor' : '⚠ Belum Lapor' }}
+                            </p>
+                        </div>
+                    </button>
+                    @else
+                    {{-- Disabled PPh Badan Tab - Contract not active --}}
+                    <div 
+                        x-data="{ showTooltip: false }"
+                        @mouseenter="showTooltip = true"
+                        @mouseleave="showTooltip = false"
+                        class="group relative flex flex-row md:flex-col items-center gap-3 rounded-xl border-2 border-dashed border-gray-300 bg-gray-50 px-4 py-3 opacity-60 cursor-not-allowed dark:border-gray-600 dark:bg-gray-800/30">
+
+                        {{-- Lock icon badge --}}
+                        <div class="absolute -right-2 -top-2 z-10">
+                            <div class="flex h-6 w-6 items-center justify-center rounded-full bg-gray-400 shadow-lg ring-2 ring-white dark:ring-gray-900">
+                                <x-heroicon-m-lock-closed class="h-3.5 w-3.5 text-white" />
+                            </div>
+                        </div>
+
+                        <div class="flex h-12 w-12 items-center justify-center rounded-xl bg-gray-200 dark:bg-gray-700 flex-shrink-0">
+                            <x-heroicon-o-building-office class="h-6 w-6 text-gray-400 dark:text-gray-500" />
+                        </div>
+
+                        <div class="flex-1 text-left md:text-center">
+                            <p class="text-sm font-bold text-gray-500 dark:text-gray-400">PPh Badan</p>
+                            <p class="mt-0.5 text-xs text-gray-400 dark:text-gray-500">0 Transaksi</p>
+                            <p class="mt-1 text-[10px] font-semibold text-gray-400 dark:text-gray-500">
+                                🔒 Tidak Aktif
+                            </p>
+                        </div>
+
+                        {{-- Tooltip --}}
+                        <div 
+                            x-show="showTooltip"
+                            x-transition:enter="transition ease-out duration-200"
+                            x-transition:enter-start="opacity-0 translate-y-1"
+                            x-transition:enter-end="opacity-100 translate-y-0"
+                            x-transition:leave="transition ease-in duration-150"
+                            x-transition:leave-start="opacity-100 translate-y-0"
+                            x-transition:leave-end="opacity-0 translate-y-1"
+                            class="absolute bottom-full left-1/2 z-50 mb-2 w-56 -translate-x-1/2 rounded-lg bg-gray-900 px-3 py-2 text-center text-xs text-white shadow-xl dark:bg-gray-700"
+                        >
+                            <p class="font-medium">Fitur PPh Badan tidak tersedia</p>
+                            <p class="mt-1 text-gray-300 dark:text-gray-400">Kontrak PPh Badan untuk klien ini belum aktif. Hubungi admin untuk mengaktifkan fitur ini.</p>
+                            <div class="absolute -bottom-1 left-1/2 h-2 w-2 -translate-x-1/2 rotate-45 bg-gray-900 dark:bg-gray-700"></div>
+                        </div>
+                    </div>
+                    @endif
                 </div>
             </div>
         </div>
@@ -433,34 +618,19 @@
             </div>
 
             {{-- PPh Content --}}
-            {{-- <div x-show="activeTab === 'pph'" x-transition:enter="transition ease-out duration-200"
+            <div x-show="activeTab === 'pph'" x-transition:enter="transition ease-out duration-200"
                 x-transition:enter-start="opacity-0 transform translate-y-2"
                 x-transition:enter-end="opacity-100 transform translate-y-0" style="display: none;">
-                @livewire('tax-report.components.tax-report-pph', ['taxReportId' => $currentTaxReport->id])
-            </div> --}}
+                @livewire('client.panel.tax-report.tax-report-pph', ['taxReportId' => $currentTaxReport->id])
+            </div>
 
             {{-- Bupot Content --}}
-            {{-- <div x-show="activeTab === 'bupot'" x-transition:enter="transition ease-out duration-200"
+            <div x-show="activeTab === 'bupot'" x-transition:enter="transition ease-out duration-200"
                 x-transition:enter-start="opacity-0 transform translate-y-2"
                 x-transition:enter-end="opacity-100 transform translate-y-0" style="display: none;">
-                @livewire('tax-report.components.tax-report-bupot', ['taxReportId' => $currentTaxReport->id])
-            </div> --}}
+                @livewire('client.panel.tax-report.tax-report-bupot', ['taxReportId' => $currentTaxReport->id])
+            </div>
 
-            {{-- Placeholder for commented content --}}
-            {{-- <div
-                class="rounded-xl border border-gray-200 bg-white p-8 text-center dark:border-gray-700 dark:bg-gray-800">
-                <div class="mx-auto max-w-md">
-                    <div
-                        class="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-gray-100 dark:bg-gray-700">
-                        <x-heroicon-o-document-chart-bar class="h-8 w-8 text-gray-400" />
-                    </div>
-                    <h3 class="text-lg font-semibold text-gray-900 dark:text-white">Konten Segera Hadir</h3>
-                    <p class="mt-2 text-sm text-gray-500 dark:text-gray-400">
-                        Detail laporan pajak untuk {{ $currentTaxReport->month }} {{
-                        $currentTaxReport->created_at->format('Y') }} sedang dalam pengembangan.
-                    </p>
-                </div>
-            </div> --}}
         </div>
 
     </div>
