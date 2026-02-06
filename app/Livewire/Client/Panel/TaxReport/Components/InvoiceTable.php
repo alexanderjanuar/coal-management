@@ -169,28 +169,6 @@ class InvoiceTable extends Component implements HasForms, HasTable
         return $table
             ->query(Invoice::query()->where('tax_report_id', $this->taxReportId))
             ->columns([
-                Tables\Columns\ImageColumn::make('user_avatar')
-                    ->label('Dibuat Oleh')
-                    ->circular()
-                    ->state(function ($record) {
-                        if ($record->created_by) {
-                            $user = \App\Models\User::find($record->created_by);
-                            if ($user && method_exists($user, 'getAvatarUrl')) {
-                                return $user->getAvatarUrl();
-                            }
-                        }
-                        return null;
-                    })
-                    ->defaultImageUrl(asset('images/default-avatar.png'))
-                    ->size(40)
-                    ->tooltip(function ($record): string {
-                        if ($record->created_by) {
-                            $user = \App\Models\User::find($record->created_by);
-                            return $user ? $user->name : 'User #' . $record->created_by;
-                        }
-                        return 'System';
-                    }),
-
                 Tables\Columns\TextColumn::make('invoice_number')
                     ->label('Nomor Faktur')
                     ->searchable()
@@ -359,19 +337,42 @@ class InvoiceTable extends Component implements HasForms, HasTable
             ])
             ->headerActions([
                 Tables\Actions\Action::make('export_all')
-                    ->label('Ekspor Semua ke Excel')
-                    ->icon('heroicon-o-document-arrow-down')
+                    ->label('Ekspor Semua')
+                    ->icon('heroicon-o-arrow-down-tray')
                     ->color('success')
-                    ->action(function () {
+                    ->form([
+                        Forms\Components\Radio::make('format')
+                            ->label('Pilih Format Ekspor')
+                            ->options([
+                                'excel' => 'Excel (.xlsx)',
+                                'pdf' => 'PDF (.pdf)',
+                            ])
+                            ->default('excel')
+                            ->required()
+                            ->inline()
+                            ->descriptions([
+                                'excel' => 'Format Excel untuk analisis dan editing data',
+                                'pdf' => 'Format PDF untuk printing dan archiving',
+                            ]),
+                    ])
+                    ->action(function (array $data) {
                         $monthYear = FileManagementService::convertToIndonesianMonth($this->taxReport->month) . '_' . date('Y');
-                        $filename = 'Faktur_' . $monthYear . '.xlsx';
                         
-                        return \Maatwebsite\Excel\Facades\Excel::download(
-                            new \App\Exports\TaxReportInvoicesExport($this->taxReport),
-                            $filename
-                        );
+                        if ($data['format'] === 'pdf') {
+                            $exporter = new \App\Exports\TaxReport\PPN\TaxReportInvoicesPdfExport($this->taxReport);
+                            return $exporter->download();
+                        } else {
+                            $filename = 'Faktur_' . $monthYear . '.xlsx';
+                            return \Maatwebsite\Excel\Facades\Excel::download(
+                                new \App\Exports\TaxReportInvoicesExport($this->taxReport),
+                                $filename
+                            );
+                        }
                     })
-                    ->tooltip('Ekspor semua faktur ke format Excel'),
+                    ->modalHeading('Ekspor Semua Faktur')
+                    ->modalDescription('Pilih format file yang ingin Anda ekspor')
+                    ->modalSubmitActionLabel('Ekspor')
+                    ->modalWidth('md'),
             ])
             ->actions([
                 Tables\Actions\ViewAction::make()
@@ -440,26 +441,46 @@ class InvoiceTable extends Component implements HasForms, HasTable
             ->bulkActions([
                 Tables\Actions\BulkActionGroup::make([
                     Tables\Actions\BulkAction::make('export_selected')
-                        ->label('Ekspor Terpilih ke Excel')
-                        ->icon('heroicon-o-document-arrow-down')
+                        ->label('Ekspor Terpilih')
+                        ->icon('heroicon-o-arrow-down-tray')
                         ->color('success')
-                        ->action(function (Collection $records) {
+                        ->form([
+                            Forms\Components\Radio::make('format')
+                                ->label('Pilih Format Ekspor')
+                                ->options([
+                                    'excel' => 'Excel (.xlsx)',
+                                    'pdf' => 'PDF (.pdf)',
+                                ])
+                                ->default('excel')
+                                ->required()
+                                ->inline()
+                                ->descriptions([
+                                    'excel' => 'Format Excel untuk analisis dan editing data',
+                                    'pdf' => 'Format PDF untuk printing dan archiving',
+                                ]),
+                        ])
+                        ->action(function (Collection $records, array $data) {
                             $selectedIds = $records->pluck('id')->toArray();
                             $monthYear = FileManagementService::convertToIndonesianMonth($this->taxReport->month) . '_' . date('Y');
-                            $filename = 'Faktur_Terpilih_' . $monthYear . '.xlsx';
                             
-                            return \Maatwebsite\Excel\Facades\Excel::download(
-                                new \App\Exports\TaxReportInvoicesExport($this->taxReport, $selectedIds),
-                                $filename
-                            );
+                            if ($data['format'] === 'pdf') {
+                                $exporter = new \App\Exports\TaxReport\PPN\TaxReportInvoicesPdfExport($this->taxReport, $selectedIds);
+                                return $exporter->download();
+                            } else {
+                                $filename = 'Faktur_Terpilih_' . $monthYear . '.xlsx';
+                                return \Maatwebsite\Excel\Facades\Excel::download(
+                                    new \App\Exports\TaxReportInvoicesExport($this->taxReport, $selectedIds),
+                                    $filename
+                                );
+                            }
                         })
-                        ->requiresConfirmation()
                         ->modalHeading('Ekspor Faktur Terpilih')
                         ->modalDescription(function (Collection $records) {
                             $count = $records->count();
-                            return "Apakah Anda yakin ingin mengekspor {$count} faktur yang terpilih ke Excel?";
+                            return "Anda akan mengekspor {$count} faktur yang terpilih. Pilih format file yang diinginkan.";
                         })
-                        ->modalSubmitActionLabel('Ya, Ekspor')
+                        ->modalSubmitActionLabel('Ekspor')
+                        ->modalWidth('md')
                         ->deselectRecordsAfterCompletion(),
                 ]),
             ])
