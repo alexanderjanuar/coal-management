@@ -151,8 +151,8 @@
             <div x-show="activeTab === 'daftar-pajak'" x-transition:enter="transition ease-out duration-200"
                 x-transition:enter-start="opacity-0 translate-y-4" x-transition:enter-end="opacity-100 translate-y-0"
                 x-cloak>
-                @livewire('tax-report.ppn.invoice-table', ['taxReportId' => $taxReportId], key('invoice-table-' .
-                $taxReportId))
+                <!-- @livewire('tax-report.ppn.invoice-table', ['taxReportId' => $taxReportId], key('invoice-table-' .
+                $taxReportId)) -->
             </div>
 
             {{-- Kalkulasi Tab - Ultra Clean Design with Headers & Tooltips --}}
