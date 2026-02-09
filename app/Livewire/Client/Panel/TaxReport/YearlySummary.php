@@ -1,10 +1,11 @@
 <?php
 
-namespace App\Livewire\TaxReport\Ppn;
+namespace App\Livewire\Client\Panel\TaxReport;
 
 use Livewire\Component;
 use App\Models\TaxReport;
 use App\Models\TaxCalculationSummary;
+use App\Models\UserClient;
 use Carbon\Carbon;
 use App\Exports\TaxReport\PPN\YearlyTaxReportsExport;
 use Maatwebsite\Excel\Facades\Excel;
@@ -23,11 +24,30 @@ class YearlySummary extends Component
         $this->taxReportId = $taxReportId;
         $this->clientId = $clientId;
         
+        // Verify user has access to this client
+        $this->verifyAccess();
+        
         // Get current tax report to determine the month and year
         $currentReport = TaxReport::with('client')->find($taxReportId);
         $this->currentMonth = $currentReport->month;
         $this->currentYear = $currentReport->year ?? $currentReport->created_at->year;
         $this->clientName = $currentReport->client->name;
+    }
+
+    /**
+     * Verify user has access to the client
+     */
+    protected function verifyAccess()
+    {
+        $taxReport = TaxReport::findOrFail($this->taxReportId);
+        
+        $hasAccess = UserClient::where('user_id', auth()->id())
+            ->where('client_id', $taxReport->client_id)
+            ->exists();
+            
+        if (!$hasAccess) {
+            abort(403, 'Anda tidak memiliki akses ke laporan pajak ini.');
+        }
     }
 
     public function getTimelineDataProperty()
@@ -118,9 +138,13 @@ class YearlySummary extends Component
         ];
     }
 
+
     public function exportYearlyReport()
     {
         try {
+            // Verify access again before export
+            $this->verifyAccess();
+            
             // Validate that there are reports to export
             $reportsCount = TaxReport::where('client_id', $this->clientId)
                 ->where('year', $this->currentYear)
@@ -171,6 +195,9 @@ class YearlySummary extends Component
     public function exportYearlyReportPdf()
     {
         try {
+            // Verify access again before export
+            $this->verifyAccess();
+            
             // Validate that there are reports to export
             $reportsCount = TaxReport::where('client_id', $this->clientId)
                 ->where('year', $this->currentYear)
@@ -209,9 +236,10 @@ class YearlySummary extends Component
         }
     }
 
+
     public function render()
     {
-        return view('livewire.tax-report.ppn.yearly-summary', [
+        return view('livewire.client.panel.tax-report.yearly-summary', [
             'timelineData' => $this->timelineData,
         ]);
     }
