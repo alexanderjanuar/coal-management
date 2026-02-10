@@ -93,6 +93,19 @@
                         ::class="{ 'text-primary-600 dark:text-primary-400': activeTab === 'tax-reports' }" />
                     <span>Laporan Pajak</span>
                 </button>
+
+                {{-- Profile Tab --}}
+                <button @click="changeTab('profile')" x-ref="profile" type="button"
+                    class="group relative flex items-center gap-2 whitespace-nowrap px-1 py-4 text-sm font-medium transition-colors duration-200 focus:outline-none"
+                    :class="{
+                        'text-primary-600 dark:text-primary-400 font-semibold': activeTab === 'profile',
+                        'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300': activeTab !== 'profile'
+                    }">
+                    <x-heroicon-o-user-circle
+                        class="h-5 w-5 transition-transform duration-200 group-hover:scale-110"
+                        ::class="{ 'text-primary-600 dark:text-primary-400': activeTab === 'profile' }" />
+                    <span>Profil</span>
+                </button>
             </nav>
         </div>
 
@@ -136,6 +149,16 @@
                 x-transition:leave-start="opacity-100 transform translate-y-0"
                 x-transition:leave-end="opacity-0 transform -translate-y-4">
                 @livewire('client.panel.tax-report-tab')
+            </div>
+
+            {{-- Profile Tab Content --}}
+            <div x-show="activeTab === 'profile'" x-transition:enter="transition ease-out duration-300"
+                x-transition:enter-start="opacity-0 transform translate-y-4"
+                x-transition:enter-end="opacity-100 transform translate-y-0"
+                x-transition:leave="transition ease-in duration-200"
+                x-transition:leave-start="opacity-100 transform translate-y-0"
+                x-transition:leave-end="opacity-0 transform -translate-y-4">
+                @livewire('client.panel.profile-tab')
             </div>
 
             {{-- Loading Overlay --}}
