@@ -55,8 +55,8 @@
 @endphp
 
 {{-- Premium Card Container with Layered Depth --}}
-<div class="kanban-task-card group relative bg-white dark:bg-gray-800/90 backdrop-blur-sm rounded-2xl p-4
-            shadow-sm hover:shadow-xl
+<div class="kanban-task-card group relative bg-white dark:bg-gray-800/90 backdrop-blur-sm rounded-2xl p-5
+            shadow-md hover:shadow-xl
             transition-all duration-300 ease-out cursor-pointer
             border border-gray-100/50 dark:border-gray-700/50
             hover:-translate-y-1.5 hover:scale-[1.01]
@@ -94,7 +94,7 @@
         </div>
 
         {{-- Footer: Avatar, Date & Progress with Refined Spacing --}}
-        <div class="flex items-center justify-between pt-2 border-t border-gray-100/50 dark:border-gray-700/50">
+        <div class="flex items-center justify-between pt-3 border-t border-gray-200 dark:border-gray-600">
             {{-- Avatar & Date Group --}}
             <div class="flex items-center gap-2">
                 @if($assignedUser)
