@@ -36,7 +36,7 @@ class DailyTaskListComponent extends Component
         'department' => [],
         'position' => [],
         'group_by' => 'status',
-        'view_mode' => 'list',
+        'view_mode' => 'kanban',
         'sort_by' => 'task_date',
         'sort_direction' => 'desc',
     ];
@@ -111,7 +111,7 @@ class DailyTaskListComponent extends Component
             'project' => [],
             'assignee' => [auth()->id()],
             'group_by' => 'status',
-            'view_mode' => 'list',
+            'view_mode' => 'kanban',
             'sort_by' => 'priority',
             'sort_direction' => 'desc',
         ];

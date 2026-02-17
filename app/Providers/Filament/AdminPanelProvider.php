@@ -40,6 +40,7 @@ use Leandrocfe\FilamentApexCharts\FilamentApexChartsPlugin;
 use EightCedars\FilamentInactivityGuard\FilamentInactivityGuardPlugin;
 use Edwink\FilamentUserActivity\FilamentUserActivityPlugin;
 use Moataz01\FilamentNotificationSound\FilamentNotificationSoundPlugin;
+use Gboquizosanchez\FilamentLogViewer\FilamentLogViewerPlugin;
 
 class AdminPanelProvider extends PanelProvider
 {

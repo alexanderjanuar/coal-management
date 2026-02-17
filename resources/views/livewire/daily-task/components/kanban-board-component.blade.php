@@ -1,5 +1,5 @@
 {{-- resources/views/livewire/daily-task/components/kanban-board-component.blade.php --}}
-{{-- Professional Project Management Kanban Board --}}
+{{-- Modern Premium Kanban Board Design --}}
 <div x-data="{
     sortables: {},
     isDragging: false,
@@ -60,7 +60,7 @@
 
             this.sortables[status] = new Sortable(column, {
                 group: 'kanban',
-                animation: 150,
+                animation: 200,
                 delay: 50,
                 delayOnTouchOnly: true,
                 touchStartThreshold: 5,
@@ -124,15 +124,15 @@
 
     {{-- Loading Skeleton --}}
     <div x-show="isLoading" x-cloak class="w-full animate-pulse">
-        <div class="flex gap-4 p-4">
+        <div class="flex gap-5 p-6">
             @foreach($columns as $status => $config)
-            <div class="flex-1 min-w-[300px] bg-gray-100 dark:bg-gray-900 rounded-xl p-4 space-y-3">
-                <div class="h-6 bg-gray-200 dark:bg-gray-800 rounded w-24"></div>
-                <div class="space-y-2">
+            <div class="flex-1 min-w-[360px] bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-900 dark:to-gray-800 rounded-2xl p-5 space-y-3 shadow-lg">
+                <div class="h-8 bg-gray-200 dark:bg-gray-700 rounded-lg w-32"></div>
+                <div class="space-y-3">
                     @for($i = 0; $i < 3; $i++)
-                    <div class="bg-white dark:bg-gray-800 rounded-lg p-3 space-y-2">
-                        <div class="h-4 bg-gray-200 dark:bg-gray-700 rounded w-3/4"></div>
-                        <div class="h-3 bg-gray-200 dark:bg-gray-700 rounded w-1/2"></div>
+                    <div class="bg-white dark:bg-gray-800 rounded-xl p-4 space-y-3 shadow">
+                        <div class="h-5 bg-gray-200 dark:bg-gray-700 rounded w-3/4"></div>
+                        <div class="h-4 bg-gray-200 dark:bg-gray-700 rounded w-1/2"></div>
                     </div>
                     @endfor
                 </div>
@@ -141,11 +141,9 @@
         </div>
     </div>
 
-    {{-- Main Content --}}
+    {{-- Main Kanban Board - Responsive --}}
     <div x-show="!isLoading" x-cloak>
-
-        {{-- Kanban Columns --}}
-        <div class="kanban-board flex flex-col lg:flex-row lg:items-start gap-3 pb-4">
+        <div class="kanban-board flex flex-col sm:flex-row sm:items-start gap-4 sm:gap-5 p-3 sm:p-4 lg:p-6 overflow-x-auto">
             @foreach($columns as $status => $config)
             @php
                 $tasks = $kanbanTasks->get($status, collect());
@@ -153,69 +151,80 @@
                 $hasMore = $this->hasMoreTasks($status);
                 $isCreating = isset($creatingInColumn[$status]) && $creatingInColumn[$status];
                 $isLoadingMore = isset($loadingMore[$status]) && $loadingMore[$status];
+                
+                // Premium UI/UX Pro Max Color System
+                $colorScheme = [
+                    'pending' => [
+                        'bg' => 'bg-gradient-to-br from-gray-50/50 to-gray-100/30 dark:from-gray-800/20 dark:to-gray-900/10',
+                        'border' => 'border-gray-200/60 dark:border-gray-700/60',
+                        'dot' => 'bg-gradient-to-br from-gray-400 to-gray-500',
+                        'dotRing' => 'ring-gray-100 dark:ring-gray-800',
+                        'badge' => 'bg-gray-100/80 text-gray-700 dark:bg-gray-800/80 dark:text-gray-300',
+                        'headerGlow' => 'shadow-sm shadow-gray-500/5'
+                    ],
+                    'in_progress' => [
+                        'bg' => 'bg-gradient-to-br from-blue-50/50 to-indigo-50/30 dark:from-blue-900/10 dark:to-indigo-900/5',
+                        'border' => 'border-blue-200/60 dark:border-blue-800/60',
+                        'dot' => 'bg-gradient-to-br from-blue-500 to-indigo-600',
+                        'dotRing' => 'ring-blue-100 dark:ring-blue-900/30',
+                        'badge' => 'bg-blue-100/80 text-blue-700 dark:bg-blue-900/50 dark:text-blue-300',
+                        'headerGlow' => 'shadow-sm shadow-blue-500/10'
+                    ],
+                    'completed' => [
+                        'bg' => 'bg-gradient-to-br from-emerald-50/50 to-green-50/30 dark:from-emerald-900/10 dark:to-green-900/5',
+                        'border' => 'border-emerald-200/60 dark:border-emerald-800/60',
+                        'dot' => 'bg-gradient-to-br from-emerald-500 to-green-600',
+                        'dotRing' => 'ring-emerald-100 dark:ring-emerald-900/30',
+                        'badge' => 'bg-emerald-100/80 text-emerald-700 dark:bg-emerald-900/50 dark:text-emerald-300',
+                        'headerGlow' => 'shadow-sm shadow-emerald-500/10'
+                    ],
+                ];
+                $colors = $colorScheme[$status];
             @endphp
 
-            {{-- Column --}}
-            <div wire:key="column-{{ $status }}-{{ json_encode($currentFilters) }}"
-                 class="kanban-column flex-1 min-w-[280px] lg:min-w-[320px] flex flex-col rounded-xl
-                        bg-gray-50/80 dark:bg-gray-900/50 border border-gray-200 dark:border-gray-800
-                        overflow-hidden"
-                 data-status="{{ $status }}">
-
-                {{-- Column Header --}}
-                <div class="column-header flex-shrink-0 px-4 py-3 border-b border-gray-200 dark:border-gray-800
-                            bg-white dark:bg-gray-900">
-                    <div class="flex items-center justify-between">
-                        <div class="flex items-center gap-2.5">
+            {{-- Column + Add Button Wrapper - Responsive --}}
+            <div class="flex flex-col gap-3 w-full sm:w-[360px]">
+                {{-- Minimal Status Header --}}
+                <div wire:key="column-{{ $status }}-{{ json_encode($currentFilters) }}"
+                     data-status="{{ $status }}">
+                    <div class="flex items-center justify-between mb-3 sm:mb-4 px-1 sm:px-2">
+                        <div class="flex items-center gap-2 sm:gap-3">
                             {{-- Status Dot --}}
-                            <div class="w-2.5 h-2.5 rounded-full bg-{{ $config['color'] }}-500
-                                        ring-4 ring-{{ $config['color'] }}-100 dark:ring-{{ $config['color'] }}-900/30"></div>
-                            {{-- Title --}}
-                            <h3 class="text-sm font-semibold text-gray-900 dark:text-gray-100 uppercase tracking-wide">
+                            <div class="w-2.5 h-2.5 sm:w-3 sm:h-3 rounded-full {{ $colors['dot'] }} shadow-sm"></div>
+                            
+                            {{-- Title - Responsive --}}
+                            <h3 class="text-xs sm:text-sm font-bold text-gray-900 dark:text-gray-100 uppercase tracking-wide">
                                 {{ $config['title'] }}
                             </h3>
-                            {{-- Count Badge --}}
-                            <span class="text-xs font-bold text-gray-500 dark:text-gray-500 tabular-nums">
+                            
+                            {{-- Count Badge - Responsive --}}
+                            <span class="inline-flex items-center justify-center min-w-[24px] sm:min-w-[28px] h-5 sm:h-6 px-1.5 sm:px-2
+                                        rounded-lg text-[10px] sm:text-xs font-bold tabular-nums
+                                        {{ $colors['badge'] }} shadow-sm">
                                 {{ $stats['total'] }}
                             </span>
                         </div>
 
-                        {{-- WIP Limit --}}
+                        {{-- WIP Limit Indicator - Responsive --}}
                         @if($stats['limit'])
-                        <div class="flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-semibold
+                        <div class="flex items-center gap-1.5 sm:gap-2 px-2 sm:px-3 py-1 sm:py-1.5 rounded-lg text-[10px] sm:text-xs font-bold
                                     {{ $stats['isAtLimit']
-                                        ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'
-                                        : 'bg-gray-100 text-gray-500 dark:bg-gray-800 dark:text-gray-500' }}">
-                            <span>{{ $stats['total'] }}/{{ $stats['limit'] }}</span>
+                                        ? 'bg-gradient-to-r from-red-500 to-red-600 text-white shadow-md shadow-red-500/20'
+                                        : 'bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-300 shadow-sm' }}">
+                            <svg class="w-3 sm:w-3.5 h-3 sm:h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
+                            </svg>
+                            <span class="tabular-nums">{{ $stats['total'] }}/{{ $stats['limit'] }}</span>
                         </div>
                         @endif
                     </div>
-
-                    {{-- Alert Stats --}}
-                    @if($stats['urgent'] > 0 || $stats['overdue'] > 0)
-                    <div class="flex items-center gap-2 mt-2">
-                        @if($stats['urgent'] > 0)
-                        <span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-medium
-                                    bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400">
-                            <x-heroicon-s-fire class="w-3 h-3" />
-                            {{ $stats['urgent'] }} urgent
-                        </span>
-                        @endif
-                        @if($stats['overdue'] > 0)
-                        <span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-medium
-                                    bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400">
-                            {{ $stats['overdue'] }} overdue
-                        </span>
-                        @endif
-                    </div>
-                    @endif
                 </div>
 
-                {{-- Column Content (Scrollable) --}}
-                <div class="column-content custom-scrollbar flex-1 overflow-y-auto p-2 space-y-1.5
-                            {{ $tasks->count() === 0 ? 'min-h-[150px]' : '' }}
-                            {{ $tasks->count() > 3 ? 'max-h-[500px]' : '' }}"
-                     style="scrollbar-width: thin; scrollbar-color: rgba(156,163,175,0.4) transparent;"
+                {{-- Task Cards Area - Responsive --}}
+                <div class="column-content custom-scrollbar space-y-2 sm:space-y-3
+                            {{ $tasks->count() === 0 ? 'min-h-[200px] sm:min-h-[240px]' : '' }}
+                            {{ $tasks->count() > 3 ? 'max-h-[calc(100vh-300px)] sm:max-h-[calc(100vh-400px)] overflow-y-auto' : '' }}"
+                     style="scrollbar-width: thin;"
                      data-status="{{ $status }}"
                      x-ref="column_{{ $status }}">
 
@@ -229,108 +238,160 @@
                     </div>
                     @empty
                     @if(!$isCreating)
-                    <div class="flex flex-col items-center justify-center py-12 text-gray-400 dark:text-gray-600">
-                        <div class="w-12 h-12 rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center mb-3">
-                            <x-dynamic-component
-                                :component="'heroicon-o-' . str_replace('heroicon-o-', '', $config['icon'])"
-                                class="w-6 h-6" />
+                    {{-- Premium Empty State --}}
+                    <div class="flex flex-col items-center justify-center py-20 text-gray-400 dark:text-gray-500
+                                animate-in fade-in duration-300">
+                        <div class="relative mb-6">
+                            <div class="w-20 h-20 rounded-2xl bg-gradient-to-br 
+                                        from-gray-100 to-gray-200 dark:from-gray-800 dark:to-gray-700
+                                        flex items-center justify-center shadow-sm
+                                        transition-all duration-300 hover:scale-110 hover:rotate-3">
+                                <x-dynamic-component
+                                    :component="'heroicon-o-' . str_replace('heroicon-o-', '', $config['icon'])"
+                                    class="w-10 h-10 text-gray-400 dark:text-gray-600" />
+                            </div>
+                            <div class="absolute -top-1 -right-1 w-6 h-6 rounded-full 
+                                        bg-gradient-to-br from-blue-500 to-indigo-600 
+                                        flex items-center justify-center
+                                        shadow-lg shadow-blue-500/30
+                                        animate-pulse">
+                                <svg class="w-3.5 h-3.5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"/>
+                                </svg>
+                            </div>
                         </div>
-                        <p class="text-xs font-medium">No tasks</p>
-                        <p class="text-[10px] mt-1">Drag tasks here or add new</p>
+                        <p class="text-sm font-semibold mb-1.5 text-gray-500 dark:text-gray-400">Belum ada tugas</p>
+                        <p class="text-xs text-gray-400 dark:text-gray-600">Seret tugas ke sini atau buat yang baru</p>
                     </div>
                     @endif
                     @endforelse
 
-                    {{-- Load More --}}
+                    {{-- Load More Trigger --}}
                     @if($hasMore)
                     <div class="load-more-trigger" data-load-status="{{ $status }}">
                         @if($isLoadingMore)
-                        <div class="flex items-center justify-center py-3">
-                            <svg class="w-4 h-4 animate-spin text-gray-400" fill="none" viewBox="0 0 24 24">
+                        <div class="flex items-center justify-center py-4">
+                            <svg class="w-5 h-5 animate-spin text-gray-400" fill="none" viewBox="0 0 24 24">
                                 <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
                                 <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                             </svg>
                         </div>
                         @else
                         <button wire:click="loadMoreTasksInColumn('{{ $status }}')"
-                                class="w-full py-2 text-xs font-medium text-gray-500 dark:text-gray-500
-                                       hover:text-gray-700 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800
-                                       rounded-lg transition-colors">
-                            Load more ({{ $stats['total'] - $stats['loaded'] }})
+                                class="w-full py-3 text-xs font-semibold text-gray-500 dark:text-gray-500
+                                       hover:text-gray-700 dark:hover:text-gray-300 
+                                       hover:bg-white/50 dark:hover:bg-gray-900/50
+                                       rounded-xl transition-all duration-200 hover:shadow-md">
+                            Muat {{ $stats['total'] - $stats['loaded'] }} lagi →
                         </button>
                         @endif
                     </div>
                     @endif
 
-                    {{-- Inline Task Creation --}}
-                    @if($isCreating)
-                    <div class="bg-white dark:bg-gray-900 rounded-lg border-2 border-dashed border-gray-300 dark:border-gray-700 p-3 space-y-2">
-                        <input type="text"
-                               wire:model.live="newTaskData.{{ $status }}.title"
-                               placeholder="Task title..."
-                               class="w-full px-3 py-2 text-sm border border-gray-200 dark:border-gray-700 rounded-lg
-                                      bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100
-                                      placeholder-gray-400 dark:placeholder-gray-600
-                                      focus:ring-2 focus:ring-gray-300 dark:focus:ring-gray-600 focus:border-transparent"
-                               autofocus
-                               @keydown.enter="$wire.saveKanbanTask('{{ $status }}')"
-                               @keydown.escape="$wire.cancelKanbanTask('{{ $status }}')">
 
-                        <textarea wire:model.live="newTaskData.{{ $status }}.description"
-                                  placeholder="Description (optional)..."
-                                  rows="2"
-                                  class="w-full px-3 py-2 text-xs border border-gray-200 dark:border-gray-700 rounded-lg
-                                         bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100
-                                         placeholder-gray-400 dark:placeholder-gray-600
-                                         focus:ring-2 focus:ring-gray-300 dark:focus:ring-gray-600 focus:border-transparent
-                                         resize-none"></textarea>
 
-                        <div class="flex items-center justify-between gap-2">
-                            <div class="flex items-center gap-2">
-                                <select wire:model.live="newTaskData.{{ $status }}.priority"
-                                        class="text-xs px-2 py-1 border border-gray-200 dark:border-gray-700 rounded-lg
-                                               bg-white dark:bg-gray-900 text-gray-700 dark:text-gray-300">
-                                    <option value="low">Low</option>
-                                    <option value="normal">Normal</option>
-                                    <option value="high">High</option>
-                                    <option value="urgent">Urgent</option>
-                                </select>
 
-                                <input type="date"
-                                       wire:model.live="newTaskData.{{ $status }}.task_date"
-                                       class="text-xs px-2 py-1 border border-gray-200 dark:border-gray-700 rounded-lg
-                                              bg-white dark:bg-gray-900 text-gray-700 dark:text-gray-300">
-                            </div>
-
-                            <div class="flex items-center gap-1">
-                                <button wire:click="saveKanbanTask('{{ $status }}')"
-                                        class="px-3 py-1 text-xs font-medium bg-gray-900 dark:bg-gray-100
-                                               text-white dark:text-gray-900 rounded-lg hover:opacity-90 transition-opacity">
-                                    Save
-                                </button>
-                                <button wire:click="cancelKanbanTask('{{ $status }}')"
-                                        class="px-3 py-1 text-xs font-medium bg-gray-200 dark:bg-gray-800
-                                               text-gray-700 dark:text-gray-300 rounded-lg hover:opacity-90 transition-opacity">
-                                    Cancel
-                                </button>
-                            </div>
+                    {{-- Task Creation Form with Smooth Animations --}}
+                    <div x-data="{ show: false }"
+                         x-init="$watch('$wire.creatingInColumn.{{ $status }}', value => show = !!value)"
+                         x-show="show"
+                         x-transition:enter="transition ease-out duration-300 transform"
+                         x-transition:enter-start="opacity-0 scale-95 -translate-y-2"
+                         x-transition:enter-end="opacity-100 scale-100 translate-y-0"
+                         x-transition:leave="transition ease-in duration-200 transform"
+                         x-transition:leave-start="opacity-100 scale-100 translate-y-0"
+                         x-transition:leave-end="opacity-0 scale-95 -translate-y-2"
+                         class="relative bg-white dark:bg-gray-800 
+                                rounded-lg sm:rounded-xl lg:rounded-2xl 
+                                border-2 border-gray-300 dark:border-gray-600
+                                shadow-md sm:shadow-lg origin-top">
+                        
+                        <div class="p-3 sm:p-4 lg:p-5"
+                             x-transition:enter="transition ease-out duration-300 delay-75"
+                             x-transition:enter-start="opacity-0"
+                             x-transition:enter-end="opacity-100">
+                            {{-- Filament Form --}}
+                            <form wire:submit="saveKanbanTask('{{ $status }}')" class="space-y-3">
+                                {{ $this->form }}
+                                
+                                {{-- Action Buttons --}}
+                                <div class="grid grid-cols-2 gap-2 pt-2">
+                                    <button type="submit"
+                                            class="w-full px-2.5 sm:px-4 py-1.5 sm:py-2
+                                                   text-xs font-bold
+                                                   bg-blue-600 hover:bg-blue-700
+                                                   text-white rounded-lg
+                                                   transition-all duration-200
+                                                   shadow-sm hover:shadow-md
+                                                   active:scale-95
+                                                   flex items-center justify-center gap-1.5">
+                                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+                                        </svg>
+                                        <span>Simpan</span>
+                                    </button>
+                                    
+                                    <button type="button"
+                                            wire:click="cancelKanbanTask('{{ $status }}')"
+                                            class="w-full px-2.5 sm:px-4 py-1.5 sm:py-2
+                                                   text-xs font-semibold
+                                                   bg-gray-100 dark:bg-gray-700
+                                                   hover:bg-gray-200 dark:hover:bg-gray-600
+                                                   text-gray-700 dark:text-gray-300
+                                                   rounded-lg border-2 border-gray-200 dark:border-gray-600
+                                                   transition-all duration-200
+                                                   active:scale-95
+                                                   flex items-center justify-center gap-1.5">
+                                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                                        </svg>
+                                        <span>Batal</span>
+                                    </button>
+                                </div>
+                            </form>
                         </div>
                     </div>
-                    @endif
+                    
                 </div>
 
-                {{-- Column Footer: Add Task --}}
-                @if(!$isCreating && !$stats['isAtLimit'])
-                <div class="flex-shrink-0 p-3 border-t border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900">
-                    <button wire:click="startCreatingKanbanTask('{{ $status }}')"
-                            class="w-full flex items-center justify-center gap-2 py-2 text-xs font-medium
-                                   text-gray-500 dark:text-gray-500 hover:text-gray-700 dark:hover:text-gray-300
-                                   hover:bg-gray-50 dark:hover:bg-gray-800 rounded-lg transition-colors">
-                        <x-heroicon-o-plus class="w-4 h-4" />
-                        <span>Add Task</span>
-                    </button>
-                </div>
-                @endif
+            {{-- Add Task Button - Below Column - Responsive with Animation --}}
+            @if(!$stats['isAtLimit'])
+            <div x-data="{ showButton: false }"
+                 x-init="$watch('$wire.creatingInColumn.{{ $status }}', value => showButton = !!value)"
+                 x-show="!showButton"
+                 x-transition:enter="transition ease-out duration-200"
+                 x-transition:enter-start="opacity-0 scale-95"
+                 x-transition:enter-end="opacity-100 scale-100"
+                 x-transition:leave="transition ease-in duration-150"
+                 x-transition:leave-start="opacity-100 scale-100"
+                 x-transition:leave-end="opacity-0 scale-95">
+            <button wire:click="startCreatingKanbanTask('{{ $status }}')"
+                    class="w-full rounded-xl sm:rounded-2xl p-3 sm:p-4
+                           border-2 border-dashed 
+                           transition-all duration-200 cursor-pointer
+                           flex items-center justify-center gap-2
+                           group
+                           @if($status === 'pending')
+                               bg-gray-50 dark:bg-gray-900/50 border-gray-300 dark:border-gray-700
+                               text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100
+                               hover:bg-gray-100 dark:hover:bg-gray-800 hover:border-gray-400
+                           @elseif($status === 'in_progress')
+                               bg-blue-50 dark:bg-blue-900/20 border-blue-300 dark:border-blue-700
+                               text-blue-600 dark:text-blue-400 hover:text-blue-900 dark:hover:text-blue-100
+                               hover:bg-blue-100 dark:hover:bg-blue-800/30 hover:border-blue-400
+                           @elseif($status === 'completed')
+                               bg-emerald-50 dark:bg-emerald-900/20 border-emerald-300 dark:border-emerald-700
+                               text-emerald-600 dark:text-emerald-400 hover:text-emerald-900 dark:hover:text-emerald-100
+                               hover:bg-emerald-100 dark:hover:bg-emerald-800/30 hover:border-emerald-400
+                           @endif">
+                <svg class="w-4 h-4 sm:w-5 sm:h-5 transition-transform duration-200 group-hover:scale-110 group-hover:rotate-90" 
+                     fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"/>
+                </svg>
+                <span class="text-xs sm:text-sm font-medium">Tambah Tugas Baru</span>
+            </button>
+            </div>
+            @endif
             </div>
             @endforeach
         </div>
@@ -339,7 +400,7 @@
     {{-- Sortable.js --}}
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
 
-    {{-- Inline styles for immediate application --}}
+    {{-- Enhanced Inline Styles --}}
     <style>
         /* Container */
         .kanban-container { width: 100%; max-width: 100%; }
@@ -347,159 +408,123 @@
         /* Alpine cloak */
         [x-cloak] { display: none !important; }
 
-        /* Column Layout */
+        /* Responsive Layout */
         @media (max-width: 1023px) {
             .kanban-board { flex-direction: column; }
             .kanban-column { width: 100%; }
         }
 
-        @media (min-width: 1024px) {
-            .kanban-column { flex: 1; min-width: 280px; }
-        }
-
-        /* ============================================
-           SCROLLBAR - Slim & Minimal Design
-           ============================================ */
-        
-        /* Target all scrollable elements in kanban */
-        .custom-scrollbar,
-        .column-content,
-        .kanban-column,
-        .kanban-column * {
+        /* Premium Scrollbar Design */
+        .custom-scrollbar {
             scrollbar-width: thin !important;
-            scrollbar-color: rgba(156,163,175,0.4) transparent !important;
+            scrollbar-color: rgba(148, 163, 184, 0.5) transparent !important;
         }
         
-        /* Webkit Scrollbar - Width (Ultra Slim) */
-        .custom-scrollbar::-webkit-scrollbar,
-        .column-content::-webkit-scrollbar,
-        .kanban-column::-webkit-scrollbar,
-        .kanban-column *::-webkit-scrollbar { 
-            width: 3px !important;
-            height: 3px !important;
+        .custom-scrollbar::-webkit-scrollbar { 
+            width: 6px !important;
+            height: 6px !important;
         }
         
-        /* Webkit Scrollbar - Track */
-        .custom-scrollbar::-webkit-scrollbar-track,
-        .column-content::-webkit-scrollbar-track,
-        .kanban-column::-webkit-scrollbar-track,
-        .kanban-column *::-webkit-scrollbar-track { 
-            background: transparent !important;
-            border-radius: 3px !important;
-        }
-        
-        /* Webkit Scrollbar - Thumb (Default) */
-        .custom-scrollbar::-webkit-scrollbar-thumb,
-        .column-content::-webkit-scrollbar-thumb,
-        .kanban-column::-webkit-scrollbar-thumb,
-        .kanban-column *::-webkit-scrollbar-thumb { 
-            background: rgba(156,163,175,0.5) !important;
-            border-radius: 3px !important;
-        }
-        
-        /* Webkit Scrollbar - Thumb Hover */
-        .custom-scrollbar::-webkit-scrollbar-thumb:hover,
-        .column-content::-webkit-scrollbar-thumb:hover,
-        .kanban-column::-webkit-scrollbar-thumb:hover,
-        .kanban-column *::-webkit-scrollbar-thumb:hover { 
-            background: rgba(107,114,128,0.7) !important;
-        }
-        
-        /* Webkit Scrollbar - Thumb Active */
-        .custom-scrollbar::-webkit-scrollbar-thumb:active,
-        .column-content::-webkit-scrollbar-thumb:active,
-        .kanban-column::-webkit-scrollbar-thumb:active,
-        .kanban-column *::-webkit-scrollbar-thumb:active { 
-            background: rgba(75,85,99,0.8) !important;
-        }
-        
-        /* Webkit Scrollbar - Corner */
-        .custom-scrollbar::-webkit-scrollbar-corner,
-        .column-content::-webkit-scrollbar-corner,
-        .kanban-column::-webkit-scrollbar-corner,
-        .kanban-column *::-webkit-scrollbar-corner {
+        .custom-scrollbar::-webkit-scrollbar-track { 
             background: transparent !important;
         }
         
-        /* ============================================
-           DARK MODE SCROLLBAR
-           ============================================ */
-        .dark .custom-scrollbar,
-        .dark .column-content,
-        .dark .kanban-column,
-        .dark .kanban-column * {
-            scrollbar-color: rgba(75,85,99,0.5) transparent !important;
+        .custom-scrollbar::-webkit-scrollbar-thumb { 
+            background: rgba(148, 163, 184, 0.4) !important;
+            border-radius: 10px !important;
         }
         
-        .dark .custom-scrollbar::-webkit-scrollbar-track,
-        .dark .column-content::-webkit-scrollbar-track,
-        .dark .kanban-column::-webkit-scrollbar-track,
-        .dark .kanban-column *::-webkit-scrollbar-track { 
-            background: transparent !important;
-        }
-        
-        .dark .custom-scrollbar::-webkit-scrollbar-thumb,
-        .dark .column-content::-webkit-scrollbar-thumb,
-        .dark .kanban-column::-webkit-scrollbar-thumb,
-        .dark .kanban-column *::-webkit-scrollbar-thumb { 
-            background: rgba(75,85,99,0.5) !important;
-        }
-        
-        .dark .custom-scrollbar::-webkit-scrollbar-thumb:hover,
-        .dark .column-content::-webkit-scrollbar-thumb:hover,
-        .dark .kanban-column::-webkit-scrollbar-thumb:hover,
-        .dark .kanban-column *::-webkit-scrollbar-thumb:hover { 
-            background: rgba(107,114,128,0.6) !important;
-        }
-        
-        .dark .custom-scrollbar::-webkit-scrollbar-thumb:active,
-        .dark .column-content::-webkit-scrollbar-thumb:active,
-        .dark .kanban-column::-webkit-scrollbar-thumb:active,
-        .dark .kanban-column *::-webkit-scrollbar-thumb:active { 
-            background: rgba(156,163,175,0.6) !important;
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover { 
+            background: rgba(100, 116, 139, 0.6) !important;
         }
 
-        /* Drag Ghost */
-        .kanban-ghost {
-            opacity: 0.4;
-            background: #f3f4f6;
-            border: 2px dashed #9ca3af;
+        /* Dark Mode Scrollbar */
+        .dark .custom-scrollbar {
+            scrollbar-color: rgba(71, 85, 105, 0.5) transparent !important;
         }
+        
+        .dark .custom-scrollbar::-webkit-scrollbar-thumb { 
+            background: rgba(71, 85, 105, 0.5) !important;
+        }
+        
+        .dark .custom-scrollbar::-webkit-scrollbar-thumb:hover { 
+            background: rgba(100, 116, 139, 0.6) !important;
+        }
+
+        /* Enhanced Drag States */
+        .kanban-ghost {
+            opacity: 0.5;
+            background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%);
+            border: 3px dashed #3b82f6;
+            transform: rotate(3deg);
+        }
+        
         .dark .kanban-ghost {
-            background: #1f2937;
-            border-color: #4b5563;
+            background: linear-gradient(135deg, #1e3a8a 0%, #1e40af 100%);
+            border-color: #60a5fa;
         }
 
         .kanban-chosen {
             cursor: grabbing !important;
-            transform: rotate(2deg) scale(1.02);
-            box-shadow: 0 10px 25px rgba(0,0,0,0.15);
+            transform: rotate(2deg) scale(1.05);
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.25), 0 0 0 2px rgba(59, 130, 246, 0.5);
             z-index: 9999;
         }
+        
         .dark .kanban-chosen {
-            box-shadow: 0 10px 25px rgba(0,0,0,0.4);
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.6), 0 0 0 2px rgba(96, 165, 250, 0.5);
         }
 
         .kanban-drag { opacity: 0; }
 
-        body.dragging { cursor: grabbing !important; user-select: none; }
-        body.dragging * { cursor: grabbing !important; }
+        body.dragging { 
+            cursor: grabbing !important; 
+            user-select: none; 
+        }
+        
+        body.dragging * { 
+            cursor: grabbing !important; 
+        }
 
-        /* Card Hover */
+        /* Enhanced Card Hover */
         .kanban-card {
-            transition: transform 0.15s ease, box-shadow 0.15s ease;
+            transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1), 
+                        box-shadow 0.2s cubic-bezier(0.4, 0, 0.2, 1);
             cursor: grab;
         }
+        
         .kanban-card:hover {
-            transform: translateY(-1px);
+            transform: translateY(-2px) scale(1.01);
         }
-        .kanban-card:active { cursor: grabbing; }
+        
+        .kanban-card:active { 
+            cursor: grabbing; 
+        }
 
-        /* Animation */
+        /* Smooth Animations */
         @keyframes fade-in {
-            from { opacity: 0; transform: translateY(-8px); }
-            to { opacity: 1; transform: translateY(0); }
+            from { 
+                opacity: 0; 
+                transform: translateY(-10px) scale(0.95); 
+            }
+            to { 
+                opacity: 1; 
+                transform: translateY(0) scale(1); 
+            }
         }
-        .animate-in { animation: fade-in 0.2s ease-out; }
+        
+        .animate-in { 
+            animation: fade-in 0.3s cubic-bezier(0.4, 0, 0.2, 1); 
+        }
+
+        /* Column Hover Effects */
+        .kanban-column {
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+        }
+
+        .kanban-column:hover {
+            transform: translateY(-2px);
+        }
     </style>
+
 </div>

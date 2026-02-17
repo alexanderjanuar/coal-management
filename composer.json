@@ -21,6 +21,7 @@
         "eightynine/filament-excel-import": "^3.0",
         "filament/filament": "3.3.18",
         "filament/notifications": "^3.2",
+        "gboquizosanchez/filament-log-viewer": "^2.2",
         "google-gemini-php/laravel": "^2.0",
         "guava/filament-modal-relation-managers": "^1.4",
         "guzzlehttp/guzzle": "^7.2",

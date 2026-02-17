@@ -1,162 +1,157 @@
 {{-- resources/views/components/daily-task/partials/kanban-task-card.blade.php --}}
-{{-- Compact Professional Project Management Style --}}
+{{-- Premium UI/UX Pro Max Enhanced Card Design --}}
 @props(['task'])
 
 @php
-    $priorityConfig = [
-        'urgent' => ['border' => 'border-l-red-500', 'badge' => 'bg-red-500 text-white', 'label' => 'Urgent'],
-        'high' => ['border' => 'border-l-orange-500', 'badge' => 'bg-orange-500 text-white', 'label' => 'High'],
-        'normal' => ['border' => 'border-l-blue-500', 'badge' => 'bg-blue-100 text-blue-700 dark:bg-blue-900/50 dark:text-blue-300', 'label' => 'Normal'],
-        'low' => ['border' => 'border-l-gray-400', 'badge' => 'bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400', 'label' => 'Low'],
+    // Premium Category/Tag Color System with proper contrast
+    $categoryColors = [
+        'Website' => [
+            'bg' => 'bg-gradient-to-br from-indigo-500 to-indigo-600',
+            'text' => 'text-white',
+            'glow' => 'shadow-sm shadow-indigo-500/20'
+        ],
+        'Marketing' => [
+            'bg' => 'bg-gradient-to-br from-pink-50 to-pink-100',
+            'text' => 'text-pink-700',
+            'glow' => 'shadow-sm shadow-pink-500/10'
+        ],
+        'Management' => [
+            'bg' => 'bg-gradient-to-br from-orange-500 to-orange-600',
+            'text' => 'text-white',
+            'glow' => 'shadow-sm shadow-orange-500/20'
+        ],
+        'System' => [
+            'bg' => 'bg-gradient-to-br from-violet-50 to-violet-100',
+            'text' => 'text-violet-700',
+            'glow' => 'shadow-sm shadow-violet-500/10'
+        ],
+        'Other' => [
+            'bg' => 'bg-gradient-to-br from-gray-100 to-gray-200',
+            'text' => 'text-gray-700',
+            'glow' => 'shadow-sm shadow-gray-500/10'
+        ],
+        'Product' => [
+            'bg' => 'bg-gradient-to-br from-emerald-50 to-emerald-100',
+            'text' => 'text-emerald-700',
+            'glow' => 'shadow-sm shadow-emerald-500/10'
+        ],
+        'HR' => [
+            'bg' => 'bg-gradient-to-br from-emerald-500 to-emerald-600',
+            'text' => 'text-white',
+            'glow' => 'shadow-sm shadow-emerald-500/20'
+        ],
     ];
-    $priority = $priorityConfig[$task->priority] ?? $priorityConfig['normal'];
 
-    $isOverdue = $task->task_date?->isPast() && $task->status !== 'completed';
-    $isToday = $task->task_date?->isToday();
-    $isTomorrow = $task->task_date?->isTomorrow();
+    // Determine category from task data
+    $category = $task->project ? ($task->project->client?->name ?? $task->project->name ?? 'Other') : 'Other';
+    $categoryStyle = $categoryColors[$category] ?? $categoryColors['Other'];
 
+    // Calculate subtask progress
     $completedSubtasks = $task->subtasks->where('status', 'completed')->count();
     $totalSubtasks = $task->subtasks->count();
-    $subtaskProgress = $totalSubtasks > 0 ? ($completedSubtasks / $totalSubtasks) * 100 : 0;
+
+    // Get first assigned user for avatar
+    $assignedUser = $task->assignedUsers->first();
 @endphp
 
-<div class="kanban-task-card group relative bg-white dark:bg-gray-900 rounded-md
-            border border-l-[3px] {{ $priority['border'] }} border-gray-200 dark:border-gray-800
-            shadow-sm hover:shadow dark:shadow-gray-950/20
-            transition-all duration-150 cursor-pointer overflow-hidden"
-     wire:click="openTaskDetail({{ $task->id }})">
+{{-- Premium Card Container with Layered Depth --}}
+<div class="kanban-task-card group relative bg-white dark:bg-gray-800/90 backdrop-blur-sm rounded-2xl p-4
+            shadow-sm hover:shadow-xl
+            transition-all duration-300 ease-out cursor-pointer
+            border border-gray-100/50 dark:border-gray-700/50
+            hover:-translate-y-1.5 hover:scale-[1.01]
+            overflow-hidden" wire:click="openTaskDetail({{ $task->id }})">
 
-    {{-- Card Content --}}
-    <div class="p-2 space-y-1.5">
 
-        {{-- Header: Priority Badge + Task ID --}}
-        <div class="flex items-center justify-between">
-            <span class="inline-flex items-center px-1 py-0.5 rounded text-[9px] font-semibold uppercase tracking-wide {{ $priority['badge'] }}">
-                {{ $priority['label'] }}
-            </span>
-            <span class="text-[9px] font-mono text-gray-400 dark:text-gray-600">#{{ $task->id }}</span>
-        </div>
 
-        {{-- Task Title --}}
-        <h4 class="text-xs font-medium text-gray-900 dark:text-gray-100 leading-tight line-clamp-2
-                   group-hover:text-gray-700 dark:group-hover:text-gray-200 transition-colors">
+    {{-- Content Layer --}}
+    <div class="relative z-10">
+        {{-- Task Title with Enhanced Typography --}}
+        <h4 class="text-[15px] font-semibold text-gray-900 dark:text-gray-50 mb-3 leading-snug
+                   tracking-tight group-hover:text-gray-950 dark:group-hover:text-white
+                   transition-colors duration-200">
             {{ $task->title }}
         </h4>
 
-        {{-- Description Preview --}}
-        @if($task->description)
-        <p class="text-[10px] text-gray-500 dark:text-gray-500 line-clamp-1 leading-snug">
-            {{ $task->description }}
-        </p>
-        @endif
-
-        {{-- Labels / Tags Row --}}
-        <div class="flex flex-wrap gap-1">
-            {{-- Project/Client Tag --}}
-            @if($task->project)
-            <span class="inline-flex items-center gap-0.5 px-1 py-0.5 rounded text-[9px] font-medium
-                        bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400
-                        border border-gray-200 dark:border-gray-700 max-w-[100px]">
-                <svg class="w-2 h-2 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M2.25 12.75V12A2.25 2.25 0 014.5 9.75h15A2.25 2.25 0 0121.75 12v.75m-8.69-6.44l-2.12-2.12a1.5 1.5 0 00-1.061-.44H4.5A2.25 2.25 0 002.25 6v12a2.25 2.25 0 002.25 2.25h15A2.25 2.25 0 0021.75 18V9a2.25 2.25 0 00-2.25-2.25h-5.379a1.5 1.5 0 01-1.06-.44z"/>
-                </svg>
-                <span class="truncate">{{ $task->project->client?->name ?? $task->project->name }}</span>
+        {{-- Premium Category Tags with Subtle Glow --}}
+        <div class="flex flex-wrap gap-2 mb-4">
+            <span class="inline-flex items-center px-3 py-1.5 rounded-lg text-[11px] font-medium
+                        {{ $categoryStyle['bg'] }} {{ $categoryStyle['text'] }} 
+                        {{ $categoryStyle['glow'] }}
+                        transition-all duration-200 hover:scale-105">
+                {{ $category }}
             </span>
-            @endif
 
-            {{-- Due Date Tag --}}
-            @if($task->task_date)
-            <span class="inline-flex items-center gap-0.5 px-1 py-0.5 rounded text-[9px] font-medium
-                        {{ $isOverdue
-                            ? 'bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-400 border border-red-200 dark:border-red-800'
-                            : ($isToday
-                                ? 'bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-400 border border-amber-200 dark:border-amber-800'
-                                : 'bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400 border border-gray-200 dark:border-gray-700') }}">
-                <svg class="w-2 h-2 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 012.25-2.25h13.5A2.25 2.25 0 0121 7.5v11.25m-18 0A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75m-18 0v-7.5A2.25 2.25 0 015.25 9h13.5A2.25 2.25 0 0121 11.25v7.5"/>
-                </svg>
-                @if($isToday)
-                    Today
-                @elseif($isTomorrow)
-                    Tmrw
-                @elseif($isOverdue)
-                    Overdue
+            @if($task->project && $task->project->name !== $category)
+                <span class="inline-flex items-center px-3 py-1.5 rounded-lg text-[11px] font-medium
+                                bg-gradient-to-br from-emerald-50 to-emerald-100 text-emerald-700 
+                                dark:bg-gradient-to-br dark:from-emerald-900/30 dark:to-emerald-800/20 dark:text-emerald-300
+                                shadow-sm shadow-emerald-500/10
+                                transition-all duration-200 hover:scale-105">
+                    {{ $task->project->name }}
+                </span>
+            @endif
+        </div>
+
+        {{-- Footer: Avatar, Date & Progress with Refined Spacing --}}
+        <div class="flex items-center justify-between pt-2 border-t border-gray-100/50 dark:border-gray-700/50">
+            {{-- Avatar & Date Group --}}
+            <div class="flex items-center gap-2">
+                @if($assignedUser)
+                    @if($assignedUser->avatar_url)
+                        <img src="{{ $assignedUser->avatar_url }}" alt="{{ $assignedUser->name }}"
+                            class="w-7 h-7 rounded-full object-cover ring-2 ring-gray-100 dark:ring-gray-700
+                                                transition-all duration-200 group-hover:ring-indigo-200 dark:group-hover:ring-indigo-800">
+                    @else
+                        <div class="w-7 h-7 rounded-full bg-gradient-to-br from-indigo-500 to-indigo-600
+                                                flex items-center justify-center text-[10px] font-bold text-white
+                                                ring-2 ring-gray-100 dark:ring-gray-700
+                                                transition-all duration-200 group-hover:ring-indigo-200 dark:group-hover:ring-indigo-800
+                                                shadow-sm">
+                            {{ strtoupper(substr($assignedUser->name, 0, 1)) }}
+                        </div>
+                    @endif
                 @else
-                    {{ $task->task_date->format('M d') }}
+                    <div class="w-7 h-7 rounded-full bg-gradient-to-br from-gray-100 to-gray-200 dark:from-gray-700 dark:to-gray-600
+                                        ring-2 ring-gray-100 dark:ring-gray-700"></div>
                 @endif
-            </span>
-            @endif
-        </div>
 
-        {{-- Subtasks Progress --}}
-        @if($totalSubtasks > 0)
-        <div class="flex items-center gap-2">
-            <div class="flex-1 h-1 bg-gray-200 dark:bg-gray-800 rounded-full overflow-hidden">
-                <div class="h-full rounded-full transition-all duration-300
-                            {{ $subtaskProgress >= 100 ? 'bg-green-500' : 'bg-blue-500' }}"
-                     style="width: {{ $subtaskProgress }}%"></div>
+                <span class="text-[13px] font-medium text-gray-600 dark:text-gray-400
+                             group-hover:text-gray-900 dark:group-hover:text-gray-200
+                             transition-colors duration-200">
+                    @if($task->task_date)
+                        {{ $task->task_date->format('M d, Y') }}
+                    @else
+                        <span class="text-gray-400 dark:text-gray-500">No date</span>
+                    @endif
+                </span>
             </div>
-            <span class="text-[9px] font-medium text-gray-500 dark:text-gray-500">{{ $completedSubtasks }}/{{ $totalSubtasks }}</span>
+
+            {{-- Progress Counter with Enhanced Visual Treatment --}}
+            <div class="flex items-center gap-1.5 px-2.5 py-1 rounded-lg
+                        bg-gray-50 dark:bg-gray-700/50
+                        text-gray-500 dark:text-gray-400
+                        group-hover:bg-indigo-50 dark:group-hover:bg-indigo-900/20
+                        group-hover:text-indigo-600 dark:group-hover:text-indigo-400
+                        transition-all duration-200">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round"
+                        d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                <span class="text-[13px] font-semibold tabular-nums">
+                    @if($totalSubtasks > 0)
+                        {{ $completedSubtasks }}/{{ $totalSubtasks }}
+                    @else
+                        0/{{ $task->subtasks->count() > 0 ? $task->subtasks->count() : ($task->status === 'completed' ? '1' : '0') }}
+                    @endif
+                </span>
+            </div>
         </div>
-        @endif
     </div>
 
-    {{-- Card Footer --}}
-    <div class="px-2 py-1.5 border-t border-gray-100 dark:border-gray-800 bg-gray-50/50 dark:bg-gray-900/50
-                flex items-center justify-between">
-
-        {{-- Assignees --}}
-        <div class="flex items-center -space-x-1.5">
-            @forelse($task->assignedUsers->take(3) as $user)
-            <div class="relative group/avatar" title="{{ $user->name }}">
-                @if($user->avatar_url)
-                <img src="{{ $user->avatar_url }}" alt="{{ $user->name }}"
-                     class="w-5 h-5 rounded-full border-2 border-white dark:border-gray-900 object-cover">
-                @else
-                <div class="w-5 h-5 rounded-full border-2 border-white dark:border-gray-900
-                            bg-gray-200 dark:bg-gray-700 flex items-center justify-center
-                            text-[8px] font-bold text-gray-600 dark:text-gray-400">
-                    {{ strtoupper(substr($user->name, 0, 1)) }}
-                </div>
-                @endif
-            </div>
-            @empty
-            <div class="flex items-center gap-1 text-[10px] text-gray-400 dark:text-gray-600">
-                <svg class="w-3 h-3" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M18 18.72a9.094 9.094 0 003.741-.479 3 3 0 00-4.682-2.72m.94 3.198l.001.031c0 .225-.012.447-.037.666A11.944 11.944 0 0112 21c-2.17 0-4.207-.576-5.963-1.584A6.062 6.062 0 016 18.719m12 0a5.971 5.971 0 00-.941-3.197m0 0A5.995 5.995 0 0012 12.75a5.995 5.995 0 00-5.058 2.772m0 0a3 3 0 00-4.681 2.72 8.986 8.986 0 003.74.477m.94-3.197a5.971 5.971 0 00-.94 3.197M15 6.75a3 3 0 11-6 0 3 3 0 016 0zm6 3a2.25 2.25 0 11-4.5 0 2.25 2.25 0 014.5 0zm-13.5 0a2.25 2.25 0 11-4.5 0 2.25 2.25 0 014.5 0z"/>
-                </svg>
-                <span>Unassigned</span>
-            </div>
-            @endforelse
-
-            @if($task->assignedUsers->count() > 3)
-            <div class="w-5 h-5 rounded-full border-2 border-white dark:border-gray-900
-                        bg-gray-300 dark:bg-gray-600 flex items-center justify-center
-                        text-[8px] font-bold text-gray-700 dark:text-gray-300">
-                +{{ $task->assignedUsers->count() - 3 }}
-            </div>
-            @endif
-        </div>
-
-        {{-- Meta Counts --}}
-        <div class="flex items-center gap-2 text-gray-400 dark:text-gray-600">
-            @if(($task->comments_count ?? 0) > 0)
-            <div class="flex items-center gap-0.5 text-[10px]">
-                <svg class="w-3 h-3" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M8.625 12a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0H8.25m4.125 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0H12m4.125 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0h-.375M21 12c0 4.556-4.03 8.25-9 8.25a9.764 9.764 0 01-2.555-.337A5.972 5.972 0 015.41 20.97a5.969 5.969 0 01-.474-.065 4.48 4.48 0 00.978-2.025c.09-.457-.133-.901-.467-1.226C3.93 16.178 3 14.189 3 12c0-4.556 4.03-8.25 9-8.25s9 3.694 9 8.25z"/>
-                </svg>
-                <span class="font-medium">{{ $task->comments_count }}</span>
-            </div>
-            @endif
-
-            @if(($task->attachments_count ?? 0) > 0)
-            <div class="flex items-center gap-0.5 text-[10px]">
-                <svg class="w-3 h-3" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M18.375 12.739l-7.693 7.693a4.5 4.5 0 01-6.364-6.364l10.94-10.94A3 3 0 1119.5 7.372L8.552 18.32m.009-.01l-.01.01m5.699-9.941l-7.81 7.81a1.5 1.5 0 002.112 2.13"/>
-                </svg>
-                <span class="font-medium">{{ $task->attachments_count }}</span>
-            </div>
-            @endif
-        </div>
-    </div>
+    {{-- Premium Shimmer Effect on Hover (Subtle) --}}
+    <div class="absolute inset-0 rounded-2xl opacity-0 group-hover:opacity-100 
+                bg-gradient-to-r from-transparent via-white/10 to-transparent
+                -translate-x-full group-hover:translate-x-full
+                transition-all duration-700 pointer-events-none"></div>
 </div>
