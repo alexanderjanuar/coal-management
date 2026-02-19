@@ -45,11 +45,11 @@ class DailyTaskListComponent extends Component
     public array $creatingNewTasks = [];
     public array $newTaskData = [];
     public ?string $editingGroup = null;
-    
+
     // Pagination settings
     public int $perPage = 20;
     public array $perPageOptions = [10, 20, 50, 100];
-    
+
     // Load more settings untuk grouped view
     public array $groupLoadedCounts = [];
     public int $initialGroupLoad = 10;
@@ -76,10 +76,13 @@ class DailyTaskListComponent extends Component
             'limit' => null
         ],
     ];
-    
+
     public array $creatingInColumn = [];
     public bool $showCompletedTasks = true;
     public int $maxCardsPerColumn = 50;
+
+    // Incremented every time we switch TO kanban — forces a full child re-mount
+    public int $kanbanMountKey = 0;
 
     protected $listeners = [
         'taskUpdated' => 'handleTaskUpdated',
@@ -91,6 +94,7 @@ class DailyTaskListComponent extends Component
         'cancelNewTask' => 'cancelNewTask',
         'filtersChanged' => 'updateFilters',
         'taskMoved' => 'handleTaskMoved',
+        'switchViewMode' => 'switchViewMode',
     ];
 
     public function boot(TaskGroupingService $groupingService, TaskFilterService $filterService)
@@ -122,15 +126,43 @@ class DailyTaskListComponent extends Component
      */
     public function updateFilters(array $filters): void
     {
+        $previousMode = $this->currentFilters['view_mode'] ?? 'kanban';
         $this->currentFilters = array_merge($this->currentFilters, $filters);
+        $newMode = $this->currentFilters['view_mode'] ?? 'kanban';
+
+        // Force child re-mount by bumping the key whenever we switch back to kanban
+        if ($previousMode !== 'kanban' && $newMode === 'kanban') {
+            $this->kanbanMountKey++;
+        }
+
         $this->resetPage();
         $this->groupLoadedCounts = [];
-        
+
         // Clear cached properties when switching views
         unset($this->tasksQuery);
         unset($this->groupedTasks);
-        
-        $this->dispatch('$refresh');
+    }
+
+    /**
+     * Switch view mode directly — called from the toggle buttons
+     */
+    #[On('switchViewMode')]
+    public function switchViewMode(string $mode): void
+    {
+        $previousMode = $this->currentFilters['view_mode'] ?? 'kanban';
+        $this->currentFilters['view_mode'] = $mode;
+
+        // Force child re-mount by bumping the key whenever we switch back to kanban
+        if ($previousMode !== 'kanban' && $mode === 'kanban') {
+            $this->kanbanMountKey++;
+        }
+
+        $this->resetPage();
+        $this->groupLoadedCounts = [];
+
+        // Clear cached properties when switching views
+        unset($this->tasksQuery);
+        unset($this->groupedTasks);
     }
 
     /**
@@ -208,7 +240,7 @@ class DailyTaskListComponent extends Component
     public function tasksQuery()
     {
         $filters = $this->currentFilters;
-        
+
         $query = DailyTask::query()
             ->with([
                 'project:id,name,client_id',
@@ -218,14 +250,22 @@ class DailyTaskListComponent extends Component
                 'subtasks:id,daily_task_id,title,status'
             ])
             ->select([
-                'id', 'title', 'description', 'status', 'priority', 
-                'task_date', 'start_task_date', 'project_id', 'created_by',
-                'created_at', 'updated_at'
+                'id',
+                'title',
+                'description',
+                'status',
+                'priority',
+                'task_date',
+                'start_task_date',
+                'project_id',
+                'created_by',
+                'created_at',
+                'updated_at'
             ]);
-        
+
         $query = $this->filterService->apply($query, $filters);
         $query = $this->filterService->applySorting($query, $filters['sort_by'], $filters['sort_direction']);
-        
+
         return $query;
     }
 
@@ -245,7 +285,7 @@ class DailyTaskListComponent extends Component
     {
         $tasks = $this->tasksQuery->get();
         $groupBy = $this->currentFilters['group_by'];
-        
+
         return $this->groupingService->group($tasks, $groupBy);
     }
 
@@ -257,18 +297,18 @@ class DailyTaskListComponent extends Component
     {
         $tasks = $this->tasksQuery->get();
         $grouped = $tasks->groupBy('status');
-        
+
         $result = collect();
         foreach (array_keys($this->kanbanColumns) as $status) {
             $columnTasks = $grouped->get($status, collect());
-            
+
             if ($columnTasks->count() > $this->maxCardsPerColumn) {
                 $columnTasks = $columnTasks->take($this->maxCardsPerColumn);
             }
-            
+
             $result->put($status, $columnTasks);
         }
-        
+
         return $result;
     }
 
@@ -279,16 +319,16 @@ class DailyTaskListComponent extends Component
     {
         $tasks = $this->kanbanTasks->get($status, collect());
         $total = $tasks->count();
-        
+
         return [
             'total' => $total,
             'urgent' => $tasks->where('priority', 'urgent')->count(),
             'high' => $tasks->where('priority', 'high')->count(),
-            'overdue' => $tasks->filter(function($task) {
+            'overdue' => $tasks->filter(function ($task) {
                 return $task->task_date && $task->task_date->isPast() && $task->status !== 'completed';
             })->count(),
             'limit' => $this->kanbanColumns[$status]['limit'] ?? null,
-            'isAtLimit' => $this->kanbanColumns[$status]['limit'] 
+            'isAtLimit' => $this->kanbanColumns[$status]['limit']
                 ? $total >= $this->kanbanColumns[$status]['limit']
                 : false
         ];
@@ -300,11 +340,11 @@ class DailyTaskListComponent extends Component
     public function getGroupTasks(string $groupKey): Collection
     {
         $loadedCount = $this->groupLoadedCounts[$groupKey] ?? $this->initialGroupLoad;
-        
+
         if (!isset($this->groupedTasks[$groupKey])) {
             return collect();
         }
-        
+
         return $this->groupedTasks[$groupKey]->take($loadedCount);
     }
 
@@ -324,7 +364,7 @@ class DailyTaskListComponent extends Component
     {
         $loadedCount = $this->groupLoadedCounts[$groupKey] ?? $this->initialGroupLoad;
         $totalCount = $this->groupedTasks[$groupKey]->count() ?? 0;
-        
+
         return $loadedCount < $totalCount;
     }
 
@@ -335,7 +375,7 @@ class DailyTaskListComponent extends Component
     {
         $loadedCount = $this->groupLoadedCounts[$groupKey] ?? $this->initialGroupLoad;
         $totalCount = $this->groupedTasks[$groupKey]->count() ?? 0;
-        
+
         return max(0, $totalCount - $loadedCount);
     }
 
@@ -354,7 +394,7 @@ class DailyTaskListComponent extends Component
     public function updateTaskStatus(int $taskId, string $status): void
     {
         $task = DailyTask::find($taskId);
-        
+
         if (!$task) {
             Notification::make()
                 ->title('Error')
@@ -365,13 +405,13 @@ class DailyTaskListComponent extends Component
         }
 
         $task->update(['status' => $status]);
-        
+
         Notification::make()
             ->title('Status Diperbarui')
             ->body("Status task diubah menjadi " . ucfirst($status))
             ->success()
             ->send();
-            
+
         $this->handleTaskStatusChanged();
     }
 
@@ -386,7 +426,7 @@ class DailyTaskListComponent extends Component
             $this->currentFilters['sort_by'] = $field;
             $this->currentFilters['sort_direction'] = 'asc';
         }
-        
+
         $this->resetPage();
     }
 
@@ -404,15 +444,15 @@ class DailyTaskListComponent extends Component
     public function startCreatingTask(string $groupType, string $groupValue): void
     {
         $groupKey = $this->getGroupKey($groupType, $groupValue);
-        
+
         $this->creatingNewTasks = [];
         $this->newTaskData = [];
         $this->creatingNewTasks[$groupKey] = true;
         $this->editingGroup = $groupKey;
-        
+
         $groupDefaults = $this->getDefaultsForGroup($groupType, $groupValue);
         $filterDefaults = $this->getDefaultsFromFilters($groupType);
-        
+
         $this->newTaskData[$groupKey] = array_merge([
             'title' => '',
             'task_date' => today(),
@@ -433,7 +473,7 @@ class DailyTaskListComponent extends Component
             'task_date' => today(),
             'start_task_date' => today(),
         ];
-        
+
         if ($groupType === 'status') {
             $defaults['status'] = strtolower(str_replace(' ', '_', $groupValue));
         } elseif ($groupType === 'priority') {
@@ -449,7 +489,7 @@ class DailyTaskListComponent extends Component
                 $defaults['assigned_users'] = [$userId];
             }
         }
-        
+
         return $defaults;
     }
 
@@ -460,23 +500,23 @@ class DailyTaskListComponent extends Component
     {
         $defaults = [];
         $filters = $this->currentFilters;
-        
+
         if ($excludeGroupType !== 'assignee' && !empty($filters['assignee'])) {
             $defaults['assigned_users'] = $filters['assignee'];
         }
-        
+
         if ($excludeGroupType !== 'project' && !empty($filters['project']) && count($filters['project']) === 1) {
             $defaults['project_id'] = $filters['project'][0];
         }
-        
+
         if ($excludeGroupType !== 'status' && !empty($filters['status']) && count($filters['status']) === 1) {
             $defaults['status'] = $filters['status'][0];
         }
-        
+
         if ($excludeGroupType !== 'priority' && !empty($filters['priority']) && count($filters['priority']) === 1) {
             $defaults['priority'] = $filters['priority'][0];
         }
-        
+
         return $defaults;
     }
 
@@ -495,7 +535,7 @@ class DailyTaskListComponent extends Component
         }
 
         $data = $this->newTaskData[$groupKey];
-        
+
         $task = DailyTask::create([
             'title' => $data['title'],
             'status' => $data['status'] ?? 'pending',
@@ -535,7 +575,7 @@ class DailyTaskListComponent extends Component
             $this->creatingNewTasks = [];
             $this->newTaskData = [];
         }
-        
+
         $this->editingGroup = null;
     }
 
@@ -564,7 +604,7 @@ class DailyTaskListComponent extends Component
     {
         try {
             $task = DailyTask::find($taskId);
-            
+
             if (!$task) {
                 throw new \Exception('Task not found');
             }
@@ -579,7 +619,7 @@ class DailyTaskListComponent extends Component
                         ->warning()
                         ->duration(5000)
                         ->send();
-                    
+
                     $this->dispatch('revertTaskMove', taskId: $taskId);
                     return;
                 }
@@ -599,14 +639,14 @@ class DailyTaskListComponent extends Component
                 ->send();
 
             $this->handleTaskStatusChanged();
-            
+
         } catch (\Exception $e) {
             Notification::make()
                 ->title('Error Moving Task')
                 ->body($e->getMessage())
                 ->danger()
                 ->send();
-                
+
             $this->dispatch('revertTaskMove', taskId: $taskId);
         }
     }
@@ -636,8 +676,8 @@ class DailyTaskListComponent extends Component
             'task_date' => today(),
             'start_task_date' => $status === 'in_progress' ? today() : null,
             'project_id' => null,
-            'assigned_users' => !empty($this->currentFilters['assignee']) 
-                ? $this->currentFilters['assignee'] 
+            'assigned_users' => !empty($this->currentFilters['assignee'])
+                ? $this->currentFilters['assignee']
                 : [auth()->id()],
         ];
     }
@@ -657,7 +697,7 @@ class DailyTaskListComponent extends Component
         }
 
         $data = $this->newTaskData[$status];
-        
+
         $task = DailyTask::create([
             'title' => $data['title'],
             'status' => $data['status'],
@@ -765,9 +805,9 @@ class DailyTaskListComponent extends Component
         $viewMode = $this->getCurrentViewMode();
         $groupBy = $this->getCurrentGroupBy();
         $totalTasks = $this->getTotalTasksCount();
-        
+
         $this->dispatch('updateTotalTasks', count: $totalTasks);
-        
+
         return view('livewire.daily-task.components.daily-task-list-component', [
             'groupedTasks' => $this->groupedTasks,
             'paginatedTasks' => $viewMode === 'list' && $groupBy === 'none' ? $this->getTasks() : null,

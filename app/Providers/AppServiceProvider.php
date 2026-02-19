@@ -5,9 +5,11 @@ namespace App\Providers;
 
 use App\Models\DailyTask;
 use App\Models\DailyTaskSubTask;
+use App\Models\ProjectStep;
 use App\Models\TaxReport;
 use App\Observers\DailyTaskObserver;
 use App\Observers\DailyTaskSubTaskObserver;
+use App\Observers\ProjectStepObserver;
 use App\Observers\TaxReportObserver;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Database\Eloquent\Model;
@@ -26,7 +28,7 @@ class AppServiceProvider extends ServiceProvider
 {
     public $singletons = [
         \Filament\Http\Responses\Auth\Contracts\LoginResponse::class => \App\Http\Responses\LoginResponse::class,
-        \Filament\Http\Responses\Auth\Contracts\LogoutResponse::class => \App\Http\Responses\LogoutResponse::class, 
+        \Filament\Http\Responses\Auth\Contracts\LogoutResponse::class => \App\Http\Responses\LogoutResponse::class,
     ];
     /**
      * Register any application services.
@@ -43,11 +45,12 @@ class AppServiceProvider extends ServiceProvider
     {
         //
 
-        
+
         Model::unguard();
         Invoice::observe(InvoiceObserver::class);
         TaxReport::observe(TaxReportObserver::class);
         DailyTask::observe(DailyTaskObserver::class);
+        ProjectStep::observe(ProjectStepObserver::class);
         // DailyTaskSubTask::observe(DailyTaskSubTaskObserver::class);
 
         DatabaseNotifications::trigger('filament.notifications.database-notifications-trigger');
@@ -72,6 +75,6 @@ class AppServiceProvider extends ServiceProvider
         FilamentView::registerRenderHook(
             PanelsRenderHook::GLOBAL_SEARCH_BEFORE,
             fn(): string => Blade::render('@livewire(\'notification.notification-button\')'),
-        );        
+        );
     }
 }

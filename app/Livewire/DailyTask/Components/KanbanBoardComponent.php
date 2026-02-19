@@ -88,8 +88,35 @@ class KanbanBoardComponent extends Component implements HasForms
     {
         $this->currentFilters = $initialFilters;
 
+        // Pre-initialize newTaskData for every column so Livewire can always
+        // resolve statePath('newTaskData.{status}.*') without entangle errors.
+        $this->initNewTaskData();
+
         // Simulate initial loading
         $this->dispatch('initialLoadComplete');
+    }
+
+    /**
+     * Pre-populate newTaskData with blank entries for all column statuses.
+     * This prevents "Livewire Entangle Error: property cannot be found" when
+     * Alpine initialises $watch on creatingInColumn before a column is activated.
+     */
+    protected function initNewTaskData(): void
+    {
+        foreach (array_keys($this->columns) as $status) {
+            if (!isset($this->newTaskData[$status])) {
+                $this->newTaskData[$status] = [
+                    'title' => '',
+                    'description' => '',
+                    'status' => $status,
+                    'priority' => 'normal',
+                    'task_date' => today()->format('Y-m-d'),
+                    'start_task_date' => null,
+                    'project_id' => null,
+                    'assigned_users' => [],
+                ];
+            }
+        }
     }
 
     /**
@@ -448,7 +475,7 @@ class KanbanBoardComponent extends Component implements HasForms
         }
 
         unset($this->creatingInColumn[$status]);
-        unset($this->newTaskData[$status]);
+        $this->initNewTaskData();   // restore blank stub so entangle stays valid
         $this->currentFormStatus = null;
 
         Notification::make()
@@ -466,7 +493,7 @@ class KanbanBoardComponent extends Component implements HasForms
     public function cancelKanbanTask(string $status): void
     {
         unset($this->creatingInColumn[$status]);
-        unset($this->newTaskData[$status]);
+        $this->initNewTaskData();   // restore blank stub so entangle stays valid
         $this->currentFormStatus = null;
     }
 
