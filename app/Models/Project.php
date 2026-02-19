@@ -42,6 +42,21 @@ class Project extends Model
                     'project_status_changed',
                     "Status proyek '{$project->name}' diubah dari {$project->getOriginal('status')} menjadi {$project->status}"
                 );
+
+                // Sync status to linked daily tasks
+                $taskStatus = match($project->status) {
+                    'draft', 'analysis' => 'pending',
+                    'in_progress', 'review' => 'in_progress',
+                    'completed', 'completed (Not Payed Yet)' => 'completed',
+                    'canceled' => 'cancelled',
+                    default => null,
+                };
+
+                if ($taskStatus) {
+                    $project->dailyTasks()
+                        ->whereNotIn('status', ['completed', 'cancelled'])
+                        ->update(['status' => $taskStatus]);
+                }
             }
             
             if ($project->wasChanged('priority')) {
@@ -104,6 +119,11 @@ class Project extends Model
     public function userProject(): HasMany
     {
         return $this->hasMany(UserProject::class);
+    }
+
+    public function dailyTasks(): HasMany
+    {
+        return $this->hasMany(DailyTask::class);
     }
 
     public function sop(): BelongsTo

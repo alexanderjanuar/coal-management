@@ -126,7 +126,7 @@
     <div x-show="isLoading" x-cloak class="w-full animate-pulse">
         <div class="flex gap-5 p-6">
             @foreach($columns as $status => $config)
-            <div class="flex-1 min-w-[360px] bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-900 dark:to-gray-800 rounded-2xl p-5 space-y-3 shadow-lg">
+            <div class="flex-1 min-w-[420px] bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-900 dark:to-gray-800 rounded-2xl p-5 space-y-3 shadow-lg">
                 <div class="h-8 bg-gray-200 dark:bg-gray-700 rounded-lg w-32"></div>
                 <div class="space-y-3">
                     @for($i = 0; $i < 3; $i++)
@@ -183,7 +183,7 @@
             @endphp
 
             {{-- Column + Add Button Wrapper - Responsive --}}
-            <div class="flex flex-col gap-3 w-full sm:w-[360px]">
+            <div class="flex flex-col gap-3 w-full sm:w-[420px]">
                 {{-- Minimal Status Header --}}
                 <div wire:key="column-{{ $status }}-{{ json_encode($currentFilters) }}"
                      data-status="{{ $status }}">
@@ -221,7 +221,7 @@
                 </div>
 
                 {{-- Task Cards Area - Responsive --}}
-                <div class="column-content custom-scrollbar space-y-2 sm:space-y-3
+                <div class="column-content custom-scrollbar space-y-2 sm:space-y-3 px-3 py-2
                             {{ $tasks->count() === 0 ? 'min-h-[200px] sm:min-h-[240px]' : '' }}
                             {{ $tasks->count() > 3 ? 'max-h-[calc(100vh-300px)] sm:max-h-[calc(100vh-400px)] overflow-y-auto' : '' }}"
                      style="scrollbar-width: thin;"
@@ -414,41 +414,51 @@
             .kanban-column { width: 100%; }
         }
 
-        /* Premium Scrollbar Design */
+        /* Ultra-slim Scrollbar — applies to ALL scrollable elements in kanban */
+        .kanban-container,
+        .kanban-container *,
         .custom-scrollbar {
             scrollbar-width: thin !important;
-            scrollbar-color: rgba(148, 163, 184, 0.5) transparent !important;
+            scrollbar-color: rgba(148, 163, 184, 0.3) transparent !important;
         }
-        
-        .custom-scrollbar::-webkit-scrollbar { 
-            width: 6px !important;
-            height: 6px !important;
+
+        .kanban-container ::-webkit-scrollbar,
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 2px !important;
+            height: 2px !important;
         }
-        
-        .custom-scrollbar::-webkit-scrollbar-track { 
+
+        .kanban-container ::-webkit-scrollbar-track,
+        .custom-scrollbar::-webkit-scrollbar-track {
             background: transparent !important;
         }
-        
-        .custom-scrollbar::-webkit-scrollbar-thumb { 
-            background: rgba(148, 163, 184, 0.4) !important;
-            border-radius: 10px !important;
+
+        .kanban-container ::-webkit-scrollbar-thumb,
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: rgba(148, 163, 184, 0.3) !important;
+            border-radius: 0 !important;
         }
-        
-        .custom-scrollbar::-webkit-scrollbar-thumb:hover { 
-            background: rgba(100, 116, 139, 0.6) !important;
+
+        .kanban-container ::-webkit-scrollbar-thumb:hover,
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+            background: rgba(100, 116, 139, 0.5) !important;
         }
 
         /* Dark Mode Scrollbar */
+        .dark .kanban-container,
+        .dark .kanban-container *,
         .dark .custom-scrollbar {
-            scrollbar-color: rgba(71, 85, 105, 0.5) transparent !important;
+            scrollbar-color: rgba(71, 85, 105, 0.3) transparent !important;
         }
-        
-        .dark .custom-scrollbar::-webkit-scrollbar-thumb { 
-            background: rgba(71, 85, 105, 0.5) !important;
+
+        .dark .kanban-container ::-webkit-scrollbar-thumb,
+        .dark .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: rgba(71, 85, 105, 0.3) !important;
         }
-        
-        .dark .custom-scrollbar::-webkit-scrollbar-thumb:hover { 
-            background: rgba(100, 116, 139, 0.6) !important;
+
+        .dark .kanban-container ::-webkit-scrollbar-thumb:hover,
+        .dark .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+            background: rgba(100, 116, 139, 0.5) !important;
         }
 
         /* Enhanced Drag States */
@@ -486,15 +496,14 @@
             cursor: grabbing !important; 
         }
 
-        /* Enhanced Card Hover */
+        /* Card Interaction */
         .kanban-card {
-            transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1), 
-                        box-shadow 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+            transition: box-shadow 0.2s ease;
             cursor: grab;
         }
         
         .kanban-card:hover {
-            transform: translateY(-2px) scale(1.01);
+            /* Shadow-only hover — no transform, no overflow clipping */
         }
         
         .kanban-card:active { 

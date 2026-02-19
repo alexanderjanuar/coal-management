@@ -9,6 +9,7 @@ use Carbon\Carbon;
 use Filament\Notifications\Notification;
 use Filament\Notifications\Actions\Action;
 use App\Models\User;
+use App\Models\DailyTask;
 
 class CreateProject extends CreateRecord
 {
@@ -38,7 +39,7 @@ class CreateProject extends CreateRecord
 
         // Get all users with required roles (directors, project managers, and verificators)
         $requiredRoleUsers = User::whereHas('roles', function($query) {
-            $query->whereIn('name', ['direktur', 'project-manager', 'verificator']);
+            $query->whereIn('name', ['direktur', 'super-admin']);
         })->get();
 
         // Get existing user IDs from form data
@@ -84,6 +85,32 @@ class CreateProject extends CreateRecord
             'success',
             'View Project'
         );
+
+        // Auto-create a DailyTask for this project
+        $memberIds = collect($this->userProjectData)->pluck('user_id')->unique()->toArray();
+
+        if (!empty($memberIds)) {
+            $dailyTask = DailyTask::create([
+                'title'       => "{$project->name}",
+                'description' => "{$project->name} - Client: {$client->name}",
+                'project_id'  => $project->id,
+                'created_by'  => auth()->id(),
+                'priority'    => $project->priority ?? 'normal',
+                'status'      => 'pending',
+                'task_date'   => $project->due_date,
+            ]);
+
+            $dailyTask->assignedUsers()->sync($memberIds);
+
+            // Create subtasks from project steps
+            $project->load('steps');
+            foreach ($project->steps->sortBy('order') as $step) {
+                $dailyTask->subtasks()->create([
+                    'title'  => $step->name,
+                    'status' => 'pending',
+                ]);
+            }
+        }
 
         // Show success notification with assignment details
         $assignedCount = count($this->userProjectData);
