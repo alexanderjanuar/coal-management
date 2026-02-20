@@ -760,7 +760,7 @@ class DailyTaskListComponent extends Component
             fn() => User::whereDoesntHave('roles', function ($query) {
                 $query->where('name', 'client');
             })
-                ->where('is_active', true)
+                ->where('status', 'active')
                 ->orderBy('name')
                 ->pluck('name', 'id')
                 ->toArray()
