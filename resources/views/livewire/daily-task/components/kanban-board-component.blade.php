@@ -145,6 +145,10 @@
     <div x-show="!isLoading" x-cloak>
         <div class="kanban-board flex flex-col sm:flex-row sm:items-start gap-4 sm:gap-5 p-3 sm:p-4 lg:p-6 overflow-x-auto">
             @foreach($columns as $status => $config)
+            {{-- Hide columns not matching status filter --}}
+            @if(!empty($currentFilters['status']) && !in_array($status, $currentFilters['status']))
+                @continue
+            @endif
             @php
                 $tasks = $kanbanTasks->get($status, collect());
                 $stats = $this->getColumnStats($status);
@@ -289,69 +293,64 @@
                     @endif
 
 
+                </div>
 
-
-                    {{-- Task Creation Form with Smooth Animations --}}
-                    <div x-data="{ show: false }"
-                         x-init="$watch('$wire.creatingInColumn.{{ $status }}', value => show = !!value)"
-                         x-show="show"
-                         x-transition:enter="transition ease-out duration-300 transform"
-                         x-transition:enter-start="opacity-0 scale-95 -translate-y-2"
-                         x-transition:enter-end="opacity-100 scale-100 translate-y-0"
-                         x-transition:leave="transition ease-in duration-200 transform"
-                         x-transition:leave-start="opacity-100 scale-100 translate-y-0"
-                         x-transition:leave-end="opacity-0 scale-95 -translate-y-2"
-                         class="relative bg-white dark:bg-gray-800 
-                                rounded-lg sm:rounded-xl lg:rounded-2xl 
-                                border-2 border-gray-300 dark:border-gray-600
-                                shadow-md sm:shadow-lg origin-top">
-                        
-                        <div class="p-3 sm:p-4 lg:p-5"
-                             x-transition:enter="transition ease-out duration-300 delay-75"
-                             x-transition:enter-start="opacity-0"
-                             x-transition:enter-end="opacity-100">
-                            {{-- Filament Form --}}
-                            <form wire:submit="saveKanbanTask('{{ $status }}')" class="space-y-3">
-                                {{ $this->form }}
-                                
-                                {{-- Action Buttons --}}
-                                <div class="grid grid-cols-2 gap-2 pt-2">
-                                    <button type="submit"
-                                            class="w-full px-2.5 sm:px-4 py-1.5 sm:py-2
-                                                   text-xs font-bold
-                                                   bg-blue-600 hover:bg-blue-700
-                                                   text-white rounded-lg
-                                                   transition-all duration-200
-                                                   shadow-sm hover:shadow-md
-                                                   active:scale-95
-                                                   flex items-center justify-center gap-1.5">
-                                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
-                                        </svg>
-                                        <span>Simpan</span>
-                                    </button>
-                                    
-                                    <button type="button"
-                                            wire:click="cancelKanbanTask('{{ $status }}')"
-                                            class="w-full px-2.5 sm:px-4 py-1.5 sm:py-2
-                                                   text-xs font-semibold
-                                                   bg-gray-100 dark:bg-gray-700
-                                                   hover:bg-gray-200 dark:hover:bg-gray-600
-                                                   text-gray-700 dark:text-gray-300
-                                                   rounded-lg border-2 border-gray-200 dark:border-gray-600
-                                                   transition-all duration-200
-                                                   active:scale-95
-                                                   flex items-center justify-center gap-1.5">
-                                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
-                                        </svg>
-                                        <span>Batal</span>
-                                    </button>
-                                </div>
-                            </form>
-                        </div>
-                    </div>
+                {{-- Task Creation Form — Outside scrollable area --}}
+                <div x-data="{ show: false }"
+                     x-init="$watch('$wire.creatingInColumn.{{ $status }}', value => show = !!value)"
+                     x-show="show"
+                     x-transition:enter="transition ease-out duration-300 transform"
+                     x-transition:enter-start="opacity-0 scale-95 -translate-y-2"
+                     x-transition:enter-end="opacity-100 scale-100 translate-y-0"
+                     x-transition:leave="transition ease-in duration-200 transform"
+                     x-transition:leave-start="opacity-100 scale-100 translate-y-0"
+                     x-transition:leave-end="opacity-0 scale-95 -translate-y-2"
+                     class="relative bg-white dark:bg-gray-800 
+                            rounded-lg sm:rounded-xl lg:rounded-2xl 
+                            border-2 border-gray-300 dark:border-gray-600
+                            shadow-md sm:shadow-lg origin-top mx-1">
                     
+                    <div class="p-3 sm:p-4 lg:p-5">
+                        {{-- Filament Form --}}
+                        <form wire:submit="saveKanbanTask('{{ $status }}')" class="space-y-3">
+                            {{ $this->form }}
+                            
+                            {{-- Action Buttons --}}
+                            <div class="grid grid-cols-2 gap-2 pt-2">
+                                <button type="submit"
+                                        class="w-full px-2.5 sm:px-4 py-1.5 sm:py-2
+                                               text-xs font-bold
+                                               bg-blue-600 hover:bg-blue-700
+                                               text-white rounded-lg
+                                               transition-all duration-200
+                                               shadow-sm hover:shadow-md
+                                               active:scale-95
+                                               flex items-center justify-center gap-1.5">
+                                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+                                    </svg>
+                                    <span>Simpan</span>
+                                </button>
+                                
+                                <button type="button"
+                                        wire:click="cancelKanbanTask('{{ $status }}')"
+                                        class="w-full px-2.5 sm:px-4 py-1.5 sm:py-2
+                                               text-xs font-semibold
+                                               bg-gray-100 dark:bg-gray-700
+                                               hover:bg-gray-200 dark:hover:bg-gray-600
+                                               text-gray-700 dark:text-gray-300
+                                               rounded-lg border-2 border-gray-200 dark:border-gray-600
+                                               transition-all duration-200
+                                               active:scale-95
+                                               flex items-center justify-center gap-1.5">
+                                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                                    </svg>
+                                    <span>Batal</span>
+                                </button>
+                            </div>
+                        </form>
+                    </div>
                 </div>
 
             {{-- Add Task Button - Below Column - Responsive with Animation --}}

@@ -1,7 +1,7 @@
 # Panduan Penggunaan Daily Task Management
 
-**Versi**: 1.0
-**Terakhir diperbarui**: 17 Februari 2026
+**Versi**: 1.1
+**Terakhir diperbarui**: 20 Februari 2026
 
 ---
 
@@ -14,14 +14,15 @@
 5. [Memindahkan Tugas antar Kolom (Drag & Drop)](#5-memindahkan-tugas-antar-kolom-drag--drop)
 6. [Melihat Detail Tugas](#6-melihat-detail-tugas)
 7. [Mengedit Tugas](#7-mengedit-tugas)
-8. [Mengelola Subtask](#8-mengelola-subtask)
-9. [Menambah Komentar](#9-menambah-komentar)
-10. [Melihat Riwayat Aktivitas](#10-melihat-riwayat-aktivitas)
-11. [Menggunakan Filter & Pencarian](#11-menggunakan-filter--pencarian)
-12. [Mengelompokkan Tugas (Grouped View)](#12-mengelompokkan-tugas-grouped-view)
-13. [Menggunakan Dashboard](#13-menggunakan-dashboard)
-14. [Menghapus Tugas](#14-menghapus-tugas)
-15. [Tips & Catatan Penting](#15-tips--catatan-penting)
+8. [Menugaskan & Menghapus Penugasan User](#8-menugaskan--menghapus-penugasan-user)
+9. [Mengelola Subtask](#9-mengelola-subtask)
+10. [Menambah Komentar](#10-menambah-komentar)
+11. [Melihat Riwayat Aktivitas](#11-melihat-riwayat-aktivitas)
+12. [Menggunakan Filter & Pencarian](#12-menggunakan-filter--pencarian)
+13. [Mengelompokkan Tugas (Grouped View)](#13-mengelompokkan-tugas-grouped-view)
+14. [Menggunakan Dashboard](#14-menggunakan-dashboard)
+15. [Menghapus Tugas](#15-menghapus-tugas)
+16. [Tips & Catatan Penting](#16-tips--catatan-penting)
 
 ---
 
@@ -47,7 +48,7 @@ Kanban Board terdiri dari **3 kolom** yang mewakili status tugas:
 - Judul tugas
 - Label kategori (berdasarkan klien/proyek)
 - Nama proyek (jika ada)
-- Avatar user yang ditugaskan
+- Avatar user yang ditugaskan (bisa diklik untuk menugaskan user — lihat Bagian 8)
 - Tanggal deadline
 - Jumlah subtask yang sudah selesai
 
@@ -127,7 +128,7 @@ Untuk membuat tugas dengan informasi yang lebih lengkap, gunakan Wizard Create:
    - Status saat ini
    - Prioritas
    - Tanggal deadline dan tanggal mulai
-   - User yang ditugaskan (beserta departemen & posisi)
+   - User yang ditugaskan (bisa dikelola langsung — lihat Bagian 8)
    - Proyek dan klien terkait
    - Informasi siapa yang membuat dan kapan
 3. Di bagian bawah modal terdapat **3 tab**: Komentar, Subtask, dan Aktivitas
@@ -142,15 +143,53 @@ Untuk membuat tugas dengan informasi yang lebih lengkap, gunakan Wizard Create:
    - **Deskripsi** — klik pada deskripsi untuk mengedit (mendukung rich text)
    - **Status** — gunakan dropdown untuk mengubah status
    - **Prioritas** — gunakan dropdown untuk mengubah prioritas
-   - **Tanggal Deadline** — klik date picker untuk mengubah tanggal
-   - **Tanggal Mulai** — klik date picker untuk mengubah tanggal
-   - **Assign User** — tambah atau hapus user yang ditugaskan
-   - **Proyek** — ubah proyek terkait (dropdown klien akan memfilter proyek)
+   - **Assign User** — klik area "Assignees" untuk menambah atau menghapus user (lihat Bagian 8)
 3. Perubahan akan tersimpan otomatis
 
 ---
 
-## 8. Mengelola Subtask
+## 8. Menugaskan & Menghapus Penugasan User
+
+Kamu bisa menugaskan user ke tugas dari **3 tempat** yang berbeda. Daftar user yang muncul hanya menampilkan **user aktif** (tidak termasuk akun klien).
+
+### Cara 1 — Dari Kartu Kanban (Cepat & Praktis)
+
+Ini cara paling cepat untuk menugaskan user tanpa harus membuka detail tugas.
+
+1. Di kartu tugas pada Kanban Board, cari area **avatar user** di bagian bawah kartu
+   - Jika belum ada user, akan muncul ikon **lingkaran bergaris putus-putus** (ikon "+")
+   - Jika sudah ada user, akan muncul avatar user tersebut
+2. **Klik** pada area avatar tersebut
+3. Dropdown daftar user akan muncul **di atas kartu** (tanpa membuka detail tugas)
+4. Klik nama user yang ingin ditugaskan → tanda ✅ akan muncul
+5. Klik user yang sudah ditugaskan (ada tanda ✅) untuk **menghapus penugasan**
+6. Klik di luar dropdown untuk menutup
+
+### Cara 2 — Dari Detail Tugas (Modal)
+
+1. Buka detail tugas dengan **klik kartu** di Kanban Board
+2. Pada bagian detail di sebelah kanan, cari baris **"Assignees"**
+3. Klik tombol dropdown di sebelah kanan baris tersebut
+4. Dropdown daftar user akan muncul
+5. Klik nama user → user akan ditugaskan
+6. Klik nama user yang sudah ditugaskan (ada tanda ✅) → user akan dihapus dari penugasan
+7. Notifikasi akan muncul setiap kali ada perubahan
+
+### Cara 3 — Dari Tampilan List
+
+1. Jika menggunakan tampilan List (bukan Kanban), setiap baris tugas memiliki kolom **Assignee**
+2. Klik pada kolom Assignee untuk membuka dropdown
+3. Pilih atau hapus user seperti pada cara lainnya
+
+### Catatan Penting tentang Penugasan User
+- Satu tugas bisa ditugaskan ke **lebih dari satu user**
+- Kamu bisa menambah dan menghapus user kapan saja
+- Perubahan langsung tersimpan secara otomatis
+- Setiap perubahan penugasan akan menampilkan notifikasi konfirmasi
+
+---
+
+## 9. Mengelola Subtask
 
 Subtask adalah langkah-langkah kecil di dalam sebuah tugas utama.
 
@@ -181,7 +220,7 @@ Subtask adalah langkah-langkah kecil di dalam sebuah tugas utama.
 
 ---
 
-## 9. Menambah Komentar
+## 10. Menambah Komentar
 
 1. Buka detail tugas
 2. Klik tab **"Komentar"** (tab default saat modal dibuka)
@@ -191,7 +230,7 @@ Subtask adalah langkah-langkah kecil di dalam sebuah tugas utama.
 
 ---
 
-## 10. Melihat Riwayat Aktivitas
+## 11. Melihat Riwayat Aktivitas
 
 1. Buka detail tugas
 2. Klik tab **"Aktivitas"**
@@ -205,7 +244,7 @@ Subtask adalah langkah-langkah kecil di dalam sebuah tugas utama.
 
 ---
 
-## 11. Menggunakan Filter & Pencarian
+## 12. Menggunakan Filter & Pencarian
 
 Filter membantu kamu menemukan tugas tertentu dengan cepat.
 
@@ -237,7 +276,7 @@ Kamu bisa mengkombinasikan beberapa filter sekaligus:
 
 ---
 
-## 12. Mengelompokkan Tugas (Grouped View)
+## 13. Mengelompokkan Tugas (Grouped View)
 
 Selain Kanban Board, kamu bisa melihat tugas dalam bentuk kelompok:
 
@@ -252,7 +291,7 @@ Selain Kanban Board, kamu bisa melihat tugas dalam bentuk kelompok:
 
 ---
 
-## 13. Menggunakan Dashboard
+## 14. Menggunakan Dashboard
 
 Dashboard memberikan ringkasan visual dari seluruh tugas.
 
@@ -291,7 +330,7 @@ Dashboard memiliki filter sendiri yang bisa diatur:
 
 ---
 
-## 14. Menghapus Tugas
+## 15. Menghapus Tugas
 
 1. Buka detail tugas dengan klik kartu di Kanban
 2. Klik tombol **Hapus** (ikon tempat sampah) di bagian header modal
@@ -303,11 +342,12 @@ Dashboard memiliki filter sendiri yang bisa diatur:
 
 ---
 
-## 15. Tips & Catatan Penting
+## 16. Tips & Catatan Penting
 
 - **WIP Limit:** Kolom In Progress dibatasi maksimal 5 tugas. Selesaikan tugas yang ada sebelum menambah tugas baru di kolom tersebut.
 - **Auto-Complete:** Manfaatkan subtask agar tugas utama otomatis selesai saat semua subtask sudah selesai.
 - **Filter Default:** Saat pertama kali membuka halaman, filter akan menampilkan tugas yang ditugaskan kepada kamu.
+- **Assign User Cepat:** Kamu bisa langsung menugaskan user dari kartu Kanban tanpa harus membuka detail tugas — cukup klik avatar di kartu.
 - **Lazy Loading:** Jika dalam satu kolom ada banyak tugas, hanya 10 tugas pertama yang dimuat. Klik **"Muat Lagi"** di bawah kolom untuk melihat tugas selanjutnya.
 - **Dark Mode:** Semua tampilan mendukung dark mode. Sesuaikan melalui pengaturan tema aplikasi.
 - **Keyboard & Aksesibilitas:** Kartu tugas bisa diakses menggunakan keyboard untuk navigasi yang lebih cepat.
