@@ -553,6 +553,72 @@ class KanbanBoardComponent extends Component implements HasForms
     }
 
     /**
+     * Assign a user to a task
+     */
+    public function assignUser(int $taskId, int $userId): void
+    {
+        $task = DailyTask::find($taskId);
+        if (!$task)
+            return;
+
+        if (!$task->assignedUsers->contains($userId)) {
+            $task->assignedUsers()->attach($userId);
+
+            $userName = User::find($userId)?->name ?? 'User';
+
+            Notification::make()
+                ->title('User Ditambahkan')
+                ->body("Ditugaskan ke {$userName}")
+                ->success()
+                ->duration(2000)
+                ->send();
+
+            $this->handleRefresh();
+        }
+    }
+
+    /**
+     * Unassign a user from a task
+     */
+    public function unassignUser(int $taskId, int $userId): void
+    {
+        $task = DailyTask::find($taskId);
+        if (!$task)
+            return;
+
+        $task->assignedUsers()->detach($userId);
+
+        $userName = User::find($userId)?->name ?? 'User';
+
+        Notification::make()
+            ->title('User Dihapus')
+            ->body("Dihapus dari penugasan {$userName}")
+            ->success()
+            ->duration(2000)
+            ->send();
+
+        $this->handleRefresh();
+    }
+
+    /**
+     * Get available users for assignment
+     */
+    public function getUserOptions(): array
+    {
+        return cache()->remember(
+            'assignable_users_list',
+            600,
+            fn() => User::whereDoesntHave('roles', function ($query) {
+                $query->where('name', 'client');
+            })
+                ->where('is_active', true)
+                ->orderBy('name')
+                ->pluck('name', 'id')
+                ->toArray()
+        );
+    }
+
+    /**
      * Toggle show completed tasks
      */
     public function toggleCompletedTasks(): void

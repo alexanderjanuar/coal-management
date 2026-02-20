@@ -750,11 +750,21 @@ class DailyTaskListComponent extends Component
     }
 
     /**
-     * Get available users
+     * Get available users (excluding clients)
      */
     public function getUserOptions(): array
     {
-        return User::orderBy('name')->pluck('name', 'id')->toArray();
+        return cache()->remember(
+            'assignable_users_list',
+            600,
+            fn() => User::whereDoesntHave('roles', function ($query) {
+                $query->where('name', 'client');
+            })
+                ->where('is_active', true)
+                ->orderBy('name')
+                ->pluck('name', 'id')
+                ->toArray()
+        );
     }
 
     /**

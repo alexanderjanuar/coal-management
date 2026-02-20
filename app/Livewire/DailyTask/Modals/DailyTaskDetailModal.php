@@ -25,7 +25,7 @@ class DailyTaskDetailModal extends Component implements HasForms, HasActions
     public ?array $newSubtaskData = [];
     public ?int $editingSubtaskId = null;
     public ?array $editSubtaskData = [];
-    
+
     // For editing task details
     public bool $editingTitle = false;
     public bool $editingDescription = false;
@@ -146,7 +146,7 @@ class DailyTaskDetailModal extends Component implements HasForms, HasActions
         $this->taskEditData = [];
         $this->descriptionData = [];
         $this->activeTab = 'comments';
-        
+
         $this->commentForm->fill();
         $this->newSubtaskForm->fill(['title' => '']);
     }
@@ -154,24 +154,24 @@ class DailyTaskDetailModal extends Component implements HasForms, HasActions
     public function openModal(int $taskId): void
     {
         $this->task = DailyTask::with([
-            'project.client', 
-            'creator', 
-            'assignedUsers', 
+            'project.client',
+            'creator',
+            'assignedUsers',
             'subtasks',
             'comments.user'
         ])->find($taskId);
-        
+
         if ($this->task) {
             $this->taskEditForm->fill([
                 'title' => $this->task->title,
             ]);
-            
+
             $this->descriptionForm->fill([
                 'description' => $this->task->description,
             ]);
-            
+
             $this->activeTab = 'comments';
-            
+
             $this->dispatch('open-modal', id: 'task-detail-modal');
         }
     }
@@ -202,15 +202,16 @@ class DailyTaskDetailModal extends Component implements HasForms, HasActions
 
     public function saveTitle(): void
     {
-        if (!$this->task) return;
+        if (!$this->task)
+            return;
 
         $data = $this->taskEditForm->getState();
         $this->task->update(['title' => $data['title']]);
         $this->task->refresh();
         $this->editingTitle = false;
-        
+
         $this->dispatch('taskUpdated');
-        
+
         Notification::make()
             ->title('Judul berhasil diperbarui')
             ->success()
@@ -236,15 +237,16 @@ class DailyTaskDetailModal extends Component implements HasForms, HasActions
 
     public function saveDescription(): void
     {
-        if (!$this->task) return;
+        if (!$this->task)
+            return;
 
         $data = $this->descriptionForm->getState();
         $this->task->update(['description' => $data['description']]);
         $this->task->refresh();
         $this->editingDescription = false;
-        
+
         $this->dispatch('taskUpdated');
-        
+
         Notification::make()
             ->title('Deskripsi berhasil diperbarui')
             ->success()
@@ -262,7 +264,8 @@ class DailyTaskDetailModal extends Component implements HasForms, HasActions
 
     public function toggleTaskCompletion(): void
     {
-        if (!$this->task) return;
+        if (!$this->task)
+            return;
 
         $newStatus = $this->task->status === 'completed' ? 'pending' : 'completed';
         $this->updateStatus($newStatus);
@@ -270,20 +273,21 @@ class DailyTaskDetailModal extends Component implements HasForms, HasActions
 
     public function updateStatus(string $status): void
     {
-        if (!$this->task) return;
+        if (!$this->task)
+            return;
 
         $this->task->update(['status' => $status]);
         $this->task->refresh();
-        
+
         $this->dispatch('taskUpdated');
-        
+
         $statusLabels = [
             'pending' => 'Tertunda',
             'in_progress' => 'Sedang Dikerjakan',
             'completed' => 'Selesai',
             'cancelled' => 'Dibatalkan'
         ];
-        
+
         Notification::make()
             ->title('Status Diperbarui')
             ->body("Status diubah menjadi " . ($statusLabels[$status] ?? $status))
@@ -294,20 +298,21 @@ class DailyTaskDetailModal extends Component implements HasForms, HasActions
 
     public function updatePriority(string $priority): void
     {
-        if (!$this->task) return;
+        if (!$this->task)
+            return;
 
         $this->task->update(['priority' => $priority]);
         $this->task->refresh();
-        
+
         $this->dispatch('taskUpdated');
-        
+
         $priorityLabels = [
             'low' => 'Rendah',
             'normal' => 'Normal',
             'high' => 'Tinggi',
             'urgent' => 'Mendesak'
         ];
-        
+
         Notification::make()
             ->title('Prioritas Diperbarui')
             ->body("Prioritas diubah menjadi " . ($priorityLabels[$priority] ?? $priority))
@@ -318,10 +323,11 @@ class DailyTaskDetailModal extends Component implements HasForms, HasActions
 
     public function addSubtask(): void
     {
-        if (!$this->task) return;
+        if (!$this->task)
+            return;
 
         $data = $this->newSubtaskForm->getState();
-        
+
         $this->task->subtasks()->create([
             'title' => $data['title'],
             'status' => 'pending',
@@ -329,7 +335,7 @@ class DailyTaskDetailModal extends Component implements HasForms, HasActions
 
         $this->newSubtaskForm->fill(['title' => '']);
         $this->task->refresh();
-        
+
         Notification::make()
             ->title('Subtask berhasil ditambahkan')
             ->success()
@@ -348,17 +354,18 @@ class DailyTaskDetailModal extends Component implements HasForms, HasActions
 
     public function saveSubtaskEdit(): void
     {
-        if (!$this->editingSubtaskId) return;
-        
+        if (!$this->editingSubtaskId)
+            return;
+
         $data = $this->editSubtaskForm->getState();
         $subtask = $this->task->subtasks->find($this->editingSubtaskId);
-        
+
         if ($subtask) {
             $subtask->update(['title' => $data['title']]);
             $this->editingSubtaskId = null;
             $this->editSubtaskForm->fill(['title' => '']);
             $this->task->refresh();
-            
+
             Notification::make()
                 ->title('Subtask berhasil diperbarui')
                 ->success()
@@ -379,7 +386,7 @@ class DailyTaskDetailModal extends Component implements HasForms, HasActions
         if ($subtask) {
             $subtask->delete();
             $this->task->refresh();
-            
+
             Notification::make()
                 ->title('Subtask berhasil dihapus')
                 ->success()
@@ -407,7 +414,8 @@ class DailyTaskDetailModal extends Component implements HasForms, HasActions
 
     public function addComment(): void
     {
-        if (!$this->task) return;
+        if (!$this->task)
+            return;
 
         $data = $this->commentForm->getState();
 
@@ -419,7 +427,7 @@ class DailyTaskDetailModal extends Component implements HasForms, HasActions
 
         $this->commentForm->fill();
         $this->task->refresh();
-        
+
         Notification::make()
             ->title('Komentar ditambahkan')
             ->success()
@@ -428,11 +436,78 @@ class DailyTaskDetailModal extends Component implements HasForms, HasActions
     }
 
     /**
+     * Assign a user to the current task
+     */
+    public function assignUser(int $userId): void
+    {
+        if (!$this->task)
+            return;
+
+        if (!$this->task->assignedUsers->contains($userId)) {
+            $this->task->assignedUsers()->attach($userId);
+            $this->task->refresh();
+
+            $userName = User::find($userId)?->name ?? 'User';
+
+            Notification::make()
+                ->title('User Ditambahkan')
+                ->body("Ditugaskan ke {$userName}")
+                ->success()
+                ->duration(2000)
+                ->send();
+
+            $this->dispatch('taskUpdated');
+        }
+    }
+
+    /**
+     * Unassign a user from the current task
+     */
+    public function unassignUser(int $userId): void
+    {
+        if (!$this->task)
+            return;
+
+        $this->task->assignedUsers()->detach($userId);
+        $this->task->refresh();
+
+        $userName = User::find($userId)?->name ?? 'User';
+
+        Notification::make()
+            ->title('User Dihapus')
+            ->body("Dihapus dari penugasan {$userName}")
+            ->success()
+            ->duration(2000)
+            ->send();
+
+        $this->dispatch('taskUpdated');
+    }
+
+    /**
+     * Get available users for assignment
+     */
+    public function getUserOptions(): array
+    {
+        return cache()->remember(
+            'assignable_users_list',
+            600,
+            fn() => User::whereDoesntHave('roles', function ($query) {
+                $query->where('name', 'client');
+            })
+                ->where('is_active', true)
+                ->orderBy('name')
+                ->pluck('name', 'id')
+                ->toArray()
+        );
+    }
+
+    /**
      * Get activity logs for this task
      */
     public function getActivityLogs()
     {
-        if (!$this->task) return collect();
+        if (!$this->task)
+            return collect();
 
         return Activity::where('subject_type', DailyTask::class)
             ->where('subject_id', $this->task->id)
@@ -476,12 +551,12 @@ class DailyTaskDetailModal extends Component implements HasForms, HasActions
                 $this->task->delete();
                 $this->closeModal();
                 $this->dispatch('taskUpdated');
-                
+
                 Notification::make()
                     ->title('Task berhasil dihapus')
                     ->success()
                     ->send();
-                
+
                 return $this->redirect('/daily-task-list');
             });
     }

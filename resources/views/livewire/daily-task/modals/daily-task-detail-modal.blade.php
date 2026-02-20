@@ -292,24 +292,67 @@
                                 <span class="flex items-center gap-2 text-[.75rem] text-gray-400 dark:text-[#6b6760] font-medium tracking-wide whitespace-nowrap">
                                     <x-heroicon-o-users class="w-3.5 h-3.5" /> Assignees
                                 </span>
-                                <div class="flex items-center gap-2">
-                                    @if($task->assignedUsers && $task->assignedUsers->count() > 0)
-                                        <div class="dt-ava-stack flex items-center">
-                                            @foreach($task->assignedUsers->take(5) as $u)
-                                                <div class="dt-member-ava flex items-center justify-center w-6 h-6 rounded-full text-[.64rem] font-bold text-white border-2 border-white dark:border-[#111110]" title="{{ $u->name }}">
-                                                    {{ strtoupper(substr($u->name, 0, 1)) }}
-                                                </div>
-                                            @endforeach
-                                            @if($task->assignedUsers->count() > 5)
-                                                <div class="flex items-center justify-center w-6 h-6 rounded-full text-[.64rem] font-bold text-gray-500 dark:text-gray-400 bg-gray-200 dark:bg-white/[.08] border-2 border-white dark:border-[#111110]">
-                                                    +{{ $task->assignedUsers->count() - 5 }}
-                                                </div>
-                                            @endif
+                                <div class="relative" x-data="{ assigneeOpen: false, buttonRect: {} }">
+                                    <button @click="assigneeOpen = !assigneeOpen; buttonRect = $el.getBoundingClientRect()"
+                                            class="flex items-center gap-2 px-2.5 py-1 rounded-full text-[.74rem] font-medium border transition-all duration-150
+                                                   bg-gray-100 dark:bg-white/[.06] text-gray-600 dark:text-gray-400 border-black/[.08] dark:border-white/[.08]
+                                                   hover:border-cyan-400 dark:hover:border-cyan-600 hover:bg-cyan-50/50 dark:hover:bg-cyan-900/10">
+                                        @if($task->assignedUsers && $task->assignedUsers->count() > 0)
+                                            <div class="dt-ava-stack flex items-center">
+                                                @foreach($task->assignedUsers->take(3) as $u)
+                                                    <div class="dt-member-ava flex items-center justify-center w-5 h-5 rounded-full text-[.58rem] font-bold text-white border border-white dark:border-[#111110]" title="{{ $u->name }}">
+                                                        {{ strtoupper(substr($u->name, 0, 1)) }}
+                                                    </div>
+                                                @endforeach
+                                                @if($task->assignedUsers->count() > 3)
+                                                    <span class="text-[.68rem] text-gray-400 ml-0.5">+{{ $task->assignedUsers->count() - 3 }}</span>
+                                                @endif
+                                            </div>
+                                            <span class="text-[.74rem]">{{ $task->assignedUsers->count() }} orang</span>
+                                        @else
+                                            <span>+ Tambah</span>
+                                        @endif
+                                        <x-heroicon-o-chevron-down class="w-3 h-3 opacity-50" />
+                                    </button>
+
+                                    <template x-teleport="body">
+                                        <div x-show="assigneeOpen" x-cloak @click.away="assigneeOpen = false"
+                                             x-transition:enter="transition ease-out duration-150"
+                                             x-transition:enter-start="opacity-0 scale-95"
+                                             x-transition:enter-end="opacity-100 scale-100"
+                                             class="fixed w-64 bg-white dark:bg-[#1a1a18] rounded-xl shadow-xl border border-black/[.09] dark:border-white/[.10] z-[9999] max-h-72 overflow-hidden flex flex-col"
+                                             x-bind:style="{
+                                                 top: Math.min(buttonRect.bottom + window.scrollY + 6, window.innerHeight + window.scrollY - 300) + 'px',
+                                                 left: Math.max(8, Math.min(buttonRect.left + window.scrollX, window.innerWidth - 264 - 8)) + 'px'
+                                             }">
+
+                                            {{-- Header --}}
+                                            <div class="px-3.5 py-2.5 text-[.7rem] font-semibold uppercase tracking-wider text-gray-400 dark:text-gray-500 border-b border-black/[.07] dark:border-white/[.07] flex-shrink-0 flex items-center gap-2 sticky top-0 bg-white dark:bg-[#1a1a18]">
+                                                <x-heroicon-o-user-plus class="w-3.5 h-3.5" />
+                                                Assign Users
+                                            </div>
+
+                                            {{-- User List --}}
+                                            <div class="overflow-y-auto flex-1">
+                                                @foreach($this->getUserOptions() as $userId => $userName)
+                                                    @php $isAssigned = $task->assignedUsers->contains($userId); @endphp
+                                                    <button wire:click="{{ $isAssigned ? 'unassignUser' : 'assignUser' }}({{ $userId }})"
+                                                            class="w-full text-left flex items-center gap-3 px-3.5 py-2.5 text-[.82rem]
+                                                                   text-gray-600 dark:text-gray-300
+                                                                   hover:bg-gray-50 dark:hover:bg-white/[.04] transition-colors
+                                                                   {{ $isAssigned ? 'bg-cyan-50/50 dark:bg-cyan-900/10' : '' }}">
+                                                        <div class="dt-member-ava flex items-center justify-center w-7 h-7 rounded-full text-[.7rem] font-bold text-white flex-shrink-0">
+                                                            {{ strtoupper(substr($userName, 0, 1)) }}
+                                                        </div>
+                                                        <span class="font-medium flex-1 truncate">{{ $userName }}</span>
+                                                        @if($isAssigned)
+                                                            <x-heroicon-s-check class="w-4 h-4 text-emerald-500 flex-shrink-0" />
+                                                        @endif
+                                                    </button>
+                                                @endforeach
+                                            </div>
                                         </div>
-                                        <span class="text-[.74rem] text-gray-400 dark:text-[#6b6760]">{{ $task->assignedUsers->count() }} orang</span>
-                                    @else
-                                        <span class="text-[.8rem] text-gray-400 dark:text-[#6b6760]">Belum ada</span>
-                                    @endif
+                                    </template>
                                 </div>
                             </div>
 

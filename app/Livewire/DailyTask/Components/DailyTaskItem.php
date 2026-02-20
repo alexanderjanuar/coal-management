@@ -29,12 +29,12 @@ class DailyTaskItem extends Component implements HasForms
     public function mount(DailyTask $task): void
     {
         $this->task = $task;
-        
+
         // Set selected client based on current project
         if ($this->task->project && $this->task->project->client_id) {
             $this->selectedClientId = $this->task->project->client_id;
         }
-        
+
         $this->newSubtaskForm->fill([
             'title' => '',
         ]);
@@ -65,12 +65,12 @@ class DailyTaskItem extends Component implements HasForms
     public function deleteTask(): void
     {
         $this->task->delete();
-        
+
         Notification::make()
             ->title('Task Deleted')
             ->success()
             ->send();
-            
+
         $this->dispatch('taskUpdated');
     }
 
@@ -97,7 +97,7 @@ class DailyTaskItem extends Component implements HasForms
     public function updateSelectedClient(int $clientId): void
     {
         $this->selectedClientId = $clientId;
-        
+
         // If current project doesn't belong to selected client, clear it
         if ($this->task->project && $this->task->project->client_id !== $clientId) {
             $this->updateProject(null);
@@ -108,7 +108,7 @@ class DailyTaskItem extends Component implements HasForms
     {
         // Cache active clients karena jarang berubah
         return cache()->remember(
-            'active_clients_list', 
+            'active_clients_list',
             300, // cache for 5 minutes
             fn() => Client::where('status', 'Active')
                 ->orderBy('name')
@@ -122,10 +122,10 @@ class DailyTaskItem extends Component implements HasForms
         if (!$this->selectedClientId) {
             return [];
         }
-        
+
         // Cache query result untuk menghindari multiple calls
         return cache()->remember(
-            "projects_for_client_{$this->selectedClientId}", 
+            "projects_for_client_{$this->selectedClientId}",
             60, // cache for 1 minute
             fn() => Project::where('client_id', $this->selectedClientId)
                 ->whereIn('status', ['draft', 'in_progress', 'review'])
@@ -138,9 +138,9 @@ class DailyTaskItem extends Component implements HasForms
     public function updateStatus(string $status): void
     {
         $this->task->update(['status' => $status]);
-        
+
         $this->dispatch('taskUpdated');
-        
+
         Notification::make()
             ->title('Status Updated')
             ->body("Status changed to " . ucfirst($status))
@@ -175,7 +175,7 @@ class DailyTaskItem extends Component implements HasForms
 
         $this->newSubtaskForm->fill(['title' => '']);
         $this->task->refresh();
-        
+
         Notification::make()
             ->title('Subtask Added')
             ->success()
@@ -186,7 +186,7 @@ class DailyTaskItem extends Component implements HasForms
     {
         DailyTaskSubTask::find($subtaskId)?->delete();
         $this->task->refresh();
-        
+
         Notification::make()
             ->title('Subtask Deleted')
             ->success()
@@ -228,9 +228,9 @@ class DailyTaskItem extends Component implements HasForms
     public function updatePriority(string $priority): void
     {
         $this->task->update(['priority' => $priority]);
-        
+
         $this->dispatch('taskUpdated');
-        
+
         Notification::make()
             ->title('Priority Updated')
             ->body("Priority changed to " . ucfirst($priority))
@@ -241,9 +241,9 @@ class DailyTaskItem extends Component implements HasForms
     public function updateProject($projectId): void
     {
         $this->task->update(['project_id' => $projectId]);
-        
+
         $this->dispatch('taskUpdated');
-        
+
         Notification::make()
             ->title('Project Updated')
             ->body($projectId ? "Project assigned" : "Project removed")
@@ -256,15 +256,15 @@ class DailyTaskItem extends Component implements HasForms
         if (!$this->task->assignedUsers->contains($userId)) {
             $this->task->assignedUsers()->attach($userId);
             $this->task->refresh();
-            
+
             $userName = User::find($userId)?->name ?? 'User';
-            
+
             Notification::make()
                 ->title('User Assigned')
                 ->body("Assigned to {$userName}")
                 ->success()
                 ->send();
-                
+
             $this->dispatch('taskUpdated');
         }
     }
@@ -273,15 +273,15 @@ class DailyTaskItem extends Component implements HasForms
     {
         $this->task->assignedUsers()->detach($userId);
         $this->task->refresh();
-        
+
         $userName = User::find($userId)?->name ?? 'User';
-        
+
         Notification::make()
             ->title('User Unassigned')
             ->body("Unassigned from {$userName}")
             ->success()
             ->send();
-            
+
         $this->dispatch('taskUpdated');
     }
 
@@ -297,11 +297,14 @@ class DailyTaskItem extends Component implements HasForms
 
     public function getUserOptions(): array
     {
-        // Cache user list
         return cache()->remember(
-            'active_users_list', 
-            600, // cache for 10 minutes
-            fn() => User::orderBy('name')
+            'assignable_users_list',
+            600,
+            fn() => User::whereDoesntHave('roles', function ($query) {
+                $query->where('name', 'client');
+            })
+                ->where('is_active', true)
+                ->orderBy('name')
                 ->pluck('name', 'id')
                 ->toArray()
         );
@@ -328,13 +331,14 @@ class DailyTaskItem extends Component implements HasForms
 
     public function updateTaskDate($date): void
     {
-        if (!$date) return;
+        if (!$date)
+            return;
 
         $this->task->update(['task_date' => $date]);
         $this->task->refresh();
-        
+
         $this->dispatch('taskUpdated');
-        
+
         Notification::make()
             ->title('Due Date Updated')
             ->body("Due date changed to " . \Carbon\Carbon::parse($date)->format('d M Y'))
@@ -351,7 +355,7 @@ class DailyTaskItem extends Component implements HasForms
     }
 
     public function redirectToCreateProject(): void
-    {  
+    {
         // Redirect ke halaman create project dengan pre-filled client
         $this->redirect($this->getCreateProjectUrl());
     }
