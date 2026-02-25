@@ -23,7 +23,7 @@ class FixDecemberCompensationTargets extends Command
 
         // Find all compensations where the source is a December report
         // and the target is a January report of the SAME year (the bug)
-        $compensations = TaxCompensation::with(['sourceTaxReport', 'targetTaxReport'])
+        $compensations = TaxCompensation::with(['sourceTaxReport.client', 'targetTaxReport'])
             ->whereHas('sourceTaxReport', function ($q) {
                 $q->where('month', 'December');
             })
@@ -40,8 +40,10 @@ class FixDecemberCompensationTargets extends Command
             $target = $compensation->targetTaxReport;
 
             // Only fix if source and target are in the same year (the bug scenario)
+            $clientName = $source->client->name ?? "Client #{$source->client_id}";
+
             if ((int) $source->year !== (int) $target->year) {
-                $this->line("  SKIP #{$compensation->id}: already correct — Dec {$source->year} → Jan {$target->year}");
+                $this->line("  SKIP #{$compensation->id}: already correct — Dec {$source->year} → Jan {$target->year} | {$clientName}");
                 $skipped++;
                 continue;
             }
@@ -55,12 +57,12 @@ class FixDecemberCompensationTargets extends Command
                 ->first();
 
             if (!$correctTarget) {
-                $this->error("  SKIP #{$compensation->id}: No January {$correctYear} report found for client #{$source->client_id}. Create the report first.");
+                $this->error("  SKIP #{$compensation->id}: No January {$correctYear} report found for {$clientName}. Create the report first.");
                 $skipped++;
                 continue;
             }
 
-            $this->info("  FIX  #{$compensation->id}: Dec {$source->year} → Jan {$target->year} (wrong) → Jan {$correctYear} (correct) | Client #{$source->client_id} | Amount: {$compensation->amount_compensated} | Status: {$compensation->status}");
+            $this->info("  FIX  #{$compensation->id}: Dec {$source->year} → Jan {$target->year} (wrong) → Jan {$correctYear} (correct) | {$clientName} | Amount: {$compensation->amount_compensated} | Status: {$compensation->status}");
 
             if (!$isDryRun) {
                 $compensation->update([
