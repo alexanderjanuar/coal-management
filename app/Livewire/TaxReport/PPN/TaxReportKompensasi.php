@@ -108,16 +108,23 @@ class TaxReportKompensasi extends Component
         // Get the next month name based on current report's month
         $currentMonth = $this->taxReport->month;
         $nextMonthName = $this->getNextMonthName($currentMonth);
-        
+
+        // Determine the correct year for the next month
+        $nextYear = $this->taxReport->year;
+        if ($currentMonth === 'December') {
+            $nextYear = (int) $nextYear + 1;
+        }
+
         // Find the next month's tax report
         $this->nextMonthTarget = TaxReport::where('client_id', $this->taxReport->client_id)
             ->where('id', '!=', $this->taxReportId)
             ->where('month', $nextMonthName)
+            ->where('year', $nextYear)
             ->with(['ppnSummary'])
             ->first();
-        
+
         $this->nextMonthExists = $this->nextMonthTarget !== null;
-        
+
         // Calculate max compensation amount
         if ($this->nextMonthExists) {
             $this->calculateMaxCompensation();
@@ -530,11 +537,10 @@ class TaxReportKompensasi extends Component
         $summary = $this->nextMonthTarget->ppnSummary;
         
         // Determine year - if December -> January, add 1 year
-        $currentYear = $this->taxReport->created_at->format('Y');
-        $nextYear = $currentYear;
-        
+        $nextYear = $this->taxReport->year;
+
         if ($this->taxReport->month === 'December' && $this->nextMonthTarget->month === 'January') {
-            $nextYear = (int)$currentYear + 1;
+            $nextYear = (int)$nextYear + 1;
         }
         
         return [
