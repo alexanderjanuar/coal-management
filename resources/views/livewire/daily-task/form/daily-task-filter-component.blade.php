@@ -35,9 +35,9 @@
                            transition-all duration-200">
                 @if(!empty($filterData['search']))
                     <button wire:click="$set('filterData.search', '')" class="absolute right-3 top-1/2 -translate-y-1/2
-                                       p-1 rounded-md text-gray-400 hover:text-gray-600 dark:hover:text-gray-200
-                                       hover:bg-gray-100 dark:hover:bg-gray-700
-                                       transition-all duration-150 active:scale-90">
+                                           p-1 rounded-md text-gray-400 hover:text-gray-600 dark:hover:text-gray-200
+                                           hover:bg-gray-100 dark:hover:bg-gray-700
+                                           transition-all duration-150 active:scale-90">
                         <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
                         </svg>
@@ -87,7 +87,7 @@
                 <span class="hidden sm:inline">Filter</span>
                 @if(!empty($activeFilters))
                     <span class="inline-flex items-center justify-center w-5 h-5 text-[10px] font-bold
-                                     text-white bg-amber-500 dark:bg-amber-600 rounded-full leading-none">
+                                         text-white bg-amber-500 dark:bg-amber-600 rounded-full leading-none">
                         {{ count($activeFilters) }}
                     </span>
                 @endif
@@ -122,8 +122,8 @@
         @foreach($datePresets as $presetKey => $presetLabel)
             <button wire:click="setDateFilter('{{ $presetKey }}')"
                 class="px-2.5 py-1 rounded-md text-[11px] font-semibold tracking-wide
-                           border transition-all duration-150 active:scale-95
-                           {{ ($filterData['date_preset'] ?? '') === $presetKey
+                               border transition-all duration-150 active:scale-95
+                               {{ ($filterData['date_preset'] ?? '') === $presetKey
             ? ($presetKey === 'overdue'
                 ? 'border-rose-300 dark:border-rose-700 bg-rose-50 dark:bg-rose-900/20 text-rose-700 dark:text-rose-300'
                 : 'border-amber-300 dark:border-amber-700 bg-amber-50 dark:bg-amber-900/20 text-amber-700 dark:text-amber-300')
@@ -148,8 +148,8 @@
             @php $isActive = in_array($statusKey, $filterData['status'] ?? []); @endphp
             <button wire:click="toggleQuickFilter('status', '{{ $statusKey }}')"
                 class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[11px] font-semibold tracking-wide
-                           border transition-all duration-150 active:scale-95
-                           {{ $isActive
+                               border transition-all duration-150 active:scale-95
+                               {{ $isActive
             ? 'border-gray-400 dark:border-gray-500 bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-100'
             : 'border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-500 dark:text-gray-400 hover:border-gray-300 dark:hover:border-gray-600' }}">
                 <span class="w-1.5 h-1.5 rounded-full {{ $statusMeta['dot'] }}"></span>
@@ -172,8 +172,8 @@
             @php $isActive = in_array($prioKey, $filterData['priority'] ?? []); @endphp
             <button wire:click="toggleQuickFilter('priority', '{{ $prioKey }}')"
                 class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[11px] font-semibold tracking-wide
-                           border transition-all duration-150 active:scale-95
-                           {{ $isActive
+                               border transition-all duration-150 active:scale-95
+                               {{ $isActive
             ? 'border-gray-400 dark:border-gray-500 bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-100'
             : 'border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-500 dark:text-gray-400 hover:border-gray-300 dark:hover:border-gray-600' }}">
                 <span class="w-1.5 h-1.5 rounded-full {{ $prioMeta['dot'] }}"></span>
@@ -185,9 +185,9 @@
     {{-- ━━━ Active filter chips ━━━ --}}
     @if(!empty($activeFilters))
         <div class="flex flex-wrap items-center gap-1.5 px-3 py-2
-                        bg-gray-50/80 dark:bg-gray-800/40
-                        border border-gray-200 dark:border-gray-700
-                        rounded-lg">
+                            bg-gray-50/80 dark:bg-gray-800/40
+                            border border-gray-200 dark:border-gray-700
+                            rounded-lg">
 
             <span class="text-[10px] font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500 mr-1">
                 {{ count($activeFilters) }} aktif
@@ -218,7 +218,7 @@
             @endforeach
 
             <button wire:click="resetFilters" class="ml-auto text-[11px] font-semibold text-rose-500 dark:text-rose-400
-                           hover:text-rose-700 dark:hover:text-rose-300 transition-colors">
+                               hover:text-rose-700 dark:hover:text-rose-300 transition-colors">
                 Reset semua
             </button>
         </div>
