@@ -16,7 +16,7 @@ class Project extends Model
     use HasFactory;
 
     use Trackable;
-    
+
     use LogsActivity;
 
     protected $fillable = ['client_id', 'name', 'description', 'status'];
@@ -44,7 +44,7 @@ class Project extends Model
                 );
 
                 // Sync status to linked daily tasks
-                $taskStatus = match($project->status) {
+                $taskStatus = match ($project->status) {
                     'draft', 'analysis' => 'pending',
                     'in_progress', 'review' => 'in_progress',
                     'completed', 'completed (Not Payed Yet)' => 'completed',
@@ -58,7 +58,7 @@ class Project extends Model
                         ->update(['status' => $taskStatus]);
                 }
             }
-            
+
             if ($project->wasChanged('priority')) {
                 $project->logActivity(
                     'project_priority_changed',
@@ -81,18 +81,18 @@ class Project extends Model
             ->logOnly(['name', 'description', 'priority', 'type', 'due_date', 'status'])
             ->logOnlyDirty()
             ->dontSubmitEmptyLogs()
-            ->setDescriptionForEvent(function(string $eventName) {
+            ->setDescriptionForEvent(function (string $eventName) {
                 $clientName = $this->client->name ?? 'Klien';
-                
-                return match($eventName) {
+
+                return match ($eventName) {
                     'created' => "[{$clientName}] 📂 PROYEK BARU: {$this->name} | Prioritas: {$this->priority}",
-                    'updated' => match($this->status) {
-                        'completed' => "[{$clientName}] ✅ PROYEK SELESAI: {$this->name}",
-                        'in_progress' => "[{$clientName}] ⚡ PROYEK AKTIF: {$this->name}",
-                        'on_hold' => "[{$clientName}] ⏸️ PROYEK DITUNDA: {$this->name}",
-                        'canceled' => "[{$clientName}] ❌ PROYEK DIBATALKAN: {$this->name}",
-                        default => "[{$clientName}] Proyek {$this->name} diperbarui"
-                    },
+                    'updated' => match ($this->status) {
+                            'completed' => "[{$clientName}] ✅ PROYEK SELESAI: {$this->name}",
+                            'in_progress' => "[{$clientName}] ⚡ PROYEK AKTIF: {$this->name}",
+                            'on_hold' => "[{$clientName}] ⏸️ PROYEK DITUNDA: {$this->name}",
+                            'canceled' => "[{$clientName}] ❌ PROYEK DIBATALKAN: {$this->name}",
+                            default => "[{$clientName}] Proyek {$this->name} diperbarui"
+                        },
                     'deleted' => "[{$clientName}] 🗑️ PROYEK DIHAPUS: {$this->name}",
                     default => "[{$clientName}] Proyek {$this->name} telah di{$eventName}"
                 };
@@ -112,8 +112,8 @@ class Project extends Model
     public function users(): BelongsToMany
     {
         return $this->belongsToMany(User::class, 'user_projects')
-                    ->withPivot('role')
-                    ->withTimestamps();
+            ->withPivot('role')
+            ->withTimestamps();
     }
 
     public function userProject(): HasMany
@@ -124,6 +124,11 @@ class Project extends Model
     public function dailyTasks(): HasMany
     {
         return $this->hasMany(DailyTask::class);
+    }
+
+    public function notes(): HasMany
+    {
+        return $this->hasMany(ProjectNote::class)->latest();
     }
 
     public function sop(): BelongsTo
@@ -144,8 +149,8 @@ class Project extends Model
     public function teamMembers()
     {
         return $this->belongsToMany(User::class, 'user_projects')
-                    ->withPivot('role', 'specializations', 'assigned_date')
-                    ->withTimestamps();
+            ->withPivot('role', 'specializations', 'assigned_date')
+            ->withTimestamps();
     }
 
     /**
@@ -156,8 +161,8 @@ class Project extends Model
         if (!$this->deliverable_files) {
             return [];
         }
-        
-        return collect($this->deliverable_files)->map(function($file) {
+
+        return collect($this->deliverable_files)->map(function ($file) {
             return [
                 'name' => $file['name'] ?? basename($file['path'] ?? ''),
                 'path' => $file['path'] ?? null,
@@ -174,7 +179,7 @@ class Project extends Model
      */
     public function getClientStatusLabelAttribute(): string
     {
-        return match($this->status) {
+        return match ($this->status) {
             'draft' => 'Belum Dimulai',
             'analysis' => 'Sedang Dianalisis',
             'in_progress' => 'Sedang Dikerjakan',
@@ -192,7 +197,7 @@ class Project extends Model
      */
     public function getClientStatusColorAttribute(): string
     {
-        return match($this->status) {
+        return match ($this->status) {
             'draft' => 'gray',
             'analysis' => 'purple',
             'in_progress' => 'blue',
@@ -219,7 +224,7 @@ class Project extends Model
         if (!$this->due_date) {
             return null;
         }
-        
+
         return now()->diffInDays($this->due_date, false);
     }
 

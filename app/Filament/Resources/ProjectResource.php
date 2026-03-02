@@ -47,6 +47,7 @@ use Illuminate\Database\Eloquent\Model;
 use Swis\Filament\Activitylog\Tables\Actions\ActivitylogAction;
 use App\Exports\ProjectMultiSheetExport;
 use Maatwebsite\Excel\Facades\Excel;
+use App\Models\ProjectNote;
 
 class ProjectResource extends Resource
 {
@@ -87,7 +88,8 @@ class ProjectResource extends Resource
                                         auth()->user()->userClients()->pluck('client_id')
                                     )->pluck('name', 'id');
                                 })
-                                ->disableOptionWhen(fn (string $value): bool => 
+                                ->disableOptionWhen(
+                                    fn(string $value): bool =>
                                     Client::find($value)?->status === 'Inactive'
                                 )
                                 ->searchable()
@@ -111,28 +113,28 @@ class ProjectResource extends Resource
                                         'name' => $data['name'],
                                         'status' => 'Active', // Set default status
                                     ]);
-                                    
+
                                     // Automatically assign current user to this client
                                     \App\Models\UserClient::create([
                                         'user_id' => auth()->id(),
                                         'client_id' => $client->id,
                                     ]);
-                                    
+
                                     // Send notification to user
                                     \Filament\Notifications\Notification::make()
                                         ->title('Client Baru Dibuat')
                                         ->body("Client '{$client->name}' berhasil dibuat dan Anda telah ditugaskan sebagai anggota tim.")
                                         ->success()
                                         ->send();
-                                    
+
                                     return $client->id;
                                 }),
-                                    
+
                             Select::make('pic_id')
                                 ->label('Person in Charge (PIC)')
                                 ->options(function (Forms\Get $get) {
                                     $clientId = $get('client_id');
-                                    
+
                                     if (!$clientId) {
                                         return [];
                                     }
@@ -142,11 +144,11 @@ class ProjectResource extends Resource
                                     return User::whereHas('userClients', function ($query) use ($clientId) {
                                         $query->where('client_id', $clientId);
                                     })
-                                    ->where('status', 'active')
-                                    ->whereHas('roles', function ($query) {
+                                        ->where('status', 'active')
+                                        ->whereHas('roles', function ($query) {
                                         $query->whereIn('name', ['project-manager', 'direktur', 'super-admin']);
                                     })
-                                    ->pluck('name', 'id');
+                                        ->pluck('name', 'id');
                                 })
                                 ->searchable()
                                 ->live()
@@ -158,7 +160,7 @@ class ProjectResource extends Resource
                                         : 'Please select a client first';
                                 })
                                 ->columnSpan(2),
-                                
+
                             Select::make('type')
                                 ->label('Type')
                                 ->options([
@@ -338,11 +340,11 @@ class ProjectResource extends Resource
                                             return User::whereHas('userClients', function ($query) use ($clientId) {
                                                 $query->where('client_id', $clientId);
                                             })
-                                            ->whereDoesntHave('roles', function ($query) {
-                                                $query->where('name', 'direktur');
-                                            })
-                                            ->where('status', 'active')
-                                            ->pluck('name', 'id');
+                                                ->whereDoesntHave('roles', function ($query) {
+                                                    $query->where('name', 'direktur');
+                                                })
+                                                ->where('status', 'active')
+                                                ->pluck('name', 'id');
                                         })
                                         ->live()
                                         ->required()
@@ -378,15 +380,15 @@ class ProjectResource extends Resource
                         'client',
                         'pic', // Add PIC relationship to eager loading
                         'steps' => function ($query) {
-                            $query->select('id', 'project_id', 'name', 'status', 'order')
-                                  ->orderBy('order');
-                        },
+                        $query->select('id', 'project_id', 'name', 'status', 'order')
+                            ->orderBy('order');
+                    },
                         'steps.tasks' => function ($query) {
-                            $query->select('id', 'project_step_id', 'title', 'status');
-                        },
+                        $query->select('id', 'project_step_id', 'title', 'status');
+                    },
                         'steps.requiredDocuments' => function ($query) {
-                            $query->select('id', 'project_step_id', 'name', 'status');
-                        }
+                        $query->select('id', 'project_step_id', 'name', 'status');
+                    }
                     ]);
 
                 // If user is super-admin, return the optimized query
@@ -398,9 +400,9 @@ class ProjectResource extends Resource
                 // Use groupBy to avoid duplicates and explicitly prefix table names
                 return $baseQuery
                     ->join('user_clients', function ($join) use ($user) {
-                        $join->on('projects.client_id', '=', 'user_clients.client_id')
-                             ->where('user_clients.user_id', $user->id);
-                    })
+                    $join->on('projects.client_id', '=', 'user_clients.client_id')
+                        ->where('user_clients.user_id', $user->id);
+                })
                     ->select('projects.*')
                     ->groupBy('projects.id'); // Use groupBy instead of distinct for better performance
             })
@@ -409,7 +411,7 @@ class ProjectResource extends Resource
                     ->label('No. ')
                     ->rowIndex()
                     ->sortable(false),
-                    
+
                 // Client Information
                 Tables\Columns\TextColumn::make('client.name')
                     ->label('Nama Klien')
@@ -433,7 +435,7 @@ class ProjectResource extends Resource
                     ->searchable()
                     ->sortable()
                     ->placeholder('PIC Belum Ditugaskan')
-                    ->tooltip(fn ($record) => $record->pic ? "Person in Charge: {$record->pic->name}" : 'No PIC assigned'),
+                    ->tooltip(fn($record) => $record->pic ? "Person in Charge: {$record->pic->name}" : 'No PIC assigned'),
 
                 // Project Status
                 Tables\Columns\TextColumn::make('status')
@@ -449,7 +451,7 @@ class ProjectResource extends Resource
                         fn(string $state): string =>
                         __(Str::title(str_replace('_', ' ', $state)))
                     ),
-                    
+
                 Tables\Columns\TextColumn::make('priority')
                     ->badge()
                     ->color(fn(string $state): string => match ($state) {
@@ -534,6 +536,24 @@ class ProjectResource extends Resource
                     ->dateTime()
                     ->sortable()
                     ->toggleable(isToggledHiddenByDefault: true),
+
+                // Notes indicator
+                Tables\Columns\IconColumn::make('notes_indicator')
+                    ->label('')
+                    ->icon(fn(Project $record): string => $record->notes()->exists() ? 'heroicon-s-chat-bubble-bottom-center-text' : '')
+                    ->color(fn(Project $record): string => match (optional($record->notes()->latest()->first())->type) {
+                        'blocker' => 'danger',
+                        'important' => 'warning',
+                        default => 'info',
+                    })
+                    ->tooltip(
+                        fn(Project $record): ?string => $record->notes()->exists()
+                        ? $record->notes()->count() . ' note(s) — Latest: ' . optional($record->notes()->latest()->first())->created_at?->diffForHumans()
+                        : null
+                    )
+                    ->alignCenter()
+                    ->sortable(false)
+                    ->getStateUsing(fn(Project $record) => $record->notes()->exists()),
             ])
             // Filters
             ->filters([
@@ -547,33 +567,33 @@ class ProjectResource extends Resource
                         'canceled' => 'Canceled',
                     ])
                     ->default(['draft', 'in_progress']),
-                
+
 
 
                 SelectFilter::make('pic_id')
                     ->label('Person in Charge')
                     ->options(function () {
                         $user = auth()->user();
-                        
+
                         if ($user->hasRole('super-admin')) {
                             // Super admin can see all users as PIC options
                             return User::whereHas('userClients')
                                 ->where('status', 'active')
                                 ->whereHas('roles', function ($query) {
-                                    $query->whereIn('name', ['project-manager', 'direktur', 'super-admin']);
-                                })
+                                $query->whereIn('name', ['project-manager', 'direktur', 'super-admin']);
+                            })
                                 ->pluck('name', 'id');
                         }
-                        
+
                         // Regular users can only see PICs from their clients
                         return User::whereHas('userClients', function ($query) use ($user) {
                             $query->whereIn('client_id', $user->userClients()->pluck('client_id'));
                         })
-                        ->where('status', 'active')
-                        ->whereHas('roles', function ($query) {
+                            ->where('status', 'active')
+                            ->whereHas('roles', function ($query) {
                             $query->whereIn('name', ['project-manager', 'direktur', 'super-admin']);
                         })
-                        ->pluck('name', 'id');
+                            ->pluck('name', 'id');
                     })
                     ->searchable()
                     ->preload(),
@@ -583,7 +603,7 @@ class ProjectResource extends Resource
                         if (empty($data['values'])) {
                             return $query;
                         }
-                        
+
                         return $query->whereHas('client', function (Builder $query) use ($data) {
                             $query->whereIn('status', $data['values']);
                         });
@@ -595,16 +615,16 @@ class ProjectResource extends Resource
                     ->multiple()
                     ->default(['Active']) // Default hanya tampilkan client dengan status Active
                     ->preload(),
-                    
+
                 SelectFilter::make('client_id')
                     ->label('Client')
                     ->options(function () {
                         $user = auth()->user();
-                        
+
                         if ($user->hasRole('super-admin')) {
                             return Client::pluck('name', 'id');
                         }
-                        
+
                         return Client::whereIn('id', $user->userClients()->pluck('client_id'))
                             ->pluck('name', 'id');
                     })
@@ -614,33 +634,70 @@ class ProjectResource extends Resource
                         if (empty($data['value'])) {
                             return $query;
                         }
-                        
+
                         // Explicitly use projects.client_id to avoid ambiguity
                         return $query->where('projects.client_id', $data['value']);
                     }),
-                    
+
                 DateRangeFilter::make('due_date'),
             ])
             // Row Actions
             ->actions([
-                Tables\Actions\ActionGroup::make([
-                    ActivitylogAction::make(),
-                    RelationManagerAction::make('project-step-relation-manager')
-                        ->label('Project Step')
-                        ->slideOver()
-                        ->icon('heroicon-o-arrow-path')
-                        ->color('warning')
-                        ->relationManager(StepsRelationManager::make()),
-                    Tables\Actions\ViewAction::make()
-                        ->icon('heroicon-o-eye'),
-                    Tables\Actions\EditAction::make()
-                        ->icon('heroicon-o-pencil'),
-                ])
-                    ->icon('heroicon-m-ellipsis-vertical')
-                    ->color('gray')
-                    ->label('Actions')
+                // Combined Notes action — history at top, add-note form at bottom
+                Tables\Actions\Action::make('notes')
+                    ->label('Notes')
+                    ->icon('heroicon-o-chat-bubble-left-right')
+                    ->color('info')
+                    ->badge(fn(Project $record): ?string => ($count = $record->notes()->count()) ? (string) $count : null)
+                    ->badgeColor('info')
+                    ->slideOver()
+                    ->modalWidth('2xl')
+                    ->modalHeading(fn(Project $record) => 'Notes — ' . $record->name)
+                    ->modalContent(function (Project $record) {
+                        $notes = $record->notes()->with('user')->get();
+                        return view('filament.modals.projects.project-notes', [
+                            'notes' => $notes,
+                            'project' => $record,
+                        ]);
+                    })
+                    ->form([
+                        Forms\Components\Select::make('type')
+                            ->label('Note Type')
+                            ->options([
+                                'general' => '💬 Umum',
+                                'important' => '⚠️ Penting',
+                                'blocker' => '🚫 Penghambat',
+                            ])
+                            ->default('general')
+                            ->required()
+                            ->native(false),
+                        Forms\Components\Textarea::make('content')
+                            ->label('New Note')
+                            ->placeholder('Write your note here...')
+                            ->required()
+                            ->minLength(3)
+                            ->maxLength(2000)
+                            ->rows(3)
+                            ->columnSpanFull(),
+                    ])
+                    ->action(function (Project $record, array $data): void {
+                        ProjectNote::create([
+                            'project_id' => $record->id,
+                            'user_id' => auth()->id(),
+                            'content' => $data['content'],
+                            'type' => $data['type'],
+                        ]);
+
+                        Notification::make()
+                            ->title('Note Added')
+                            ->body('Your note has been saved.')
+                            ->success()
+                            ->send();
+                    })
+                    ->modalSubmitActionLabel('Add Note')
+                    ->modalCancelActionLabel('Close'),
             ])
-            
+
             ->recordUrl(
                 fn(Project $record): string =>
                 static::getUrl('view', ['record' => $record])
@@ -650,34 +707,6 @@ class ProjectResource extends Resource
                 'client.name',
                 'pic.name', // Add PIC grouping option
             ])
-            // Add styling to rows based on document status and SOP
-            ->recordClasses(function (Project $record) {
-                // Check if SOP is "Lapor SPT Tahunan Nihil" - show greyish
-                if ($record->sop && $record->sop->name === 'Lapor SPT Tahunan Nihil') {
-                    return 'bg-gray-200/60 dark:bg-gray-700/40 hover:bg-gray-300/60 dark:hover:bg-gray-600/40 opacity-75';
-                }
-                
-                // Check for submitted documents with 'uploaded' status
-                $hasUploadedDocs = \DB::table('submitted_documents')
-                    ->join('required_documents', 'submitted_documents.required_document_id', '=', 'required_documents.id')
-                    ->join('project_steps', 'required_documents.project_step_id', '=', 'project_steps.id')
-                    ->where('project_steps.project_id', $record->id)
-                    ->where('submitted_documents.status', 'uploaded')
-                    ->exists();
-                
-                if ($hasUploadedDocs) {
-                    return 'bg-blue-100/50 dark:bg-blue-900/20 hover:bg-blue-100 dark:hover:bg-blue-900/30 ring-1 ring-blue-200 dark:ring-blue-800/30';
-                } elseif ($record->status === 'completed') {
-                    return 'border-l-4 border-l-green-500 dark:border-l-green-400 hover:bg-green-50 dark:hover:bg-green-900/10';
-                } elseif ($record->status === 'on_hold') {
-                    return 'border-l-4 border-l-gray-500 dark:border-l-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800/10';
-                } elseif ($record->status === 'canceled') {
-                    return 'border-l-4 border-l-red-500 dark:border-l-red-400 opacity-70 hover:bg-red-50 dark:hover:bg-red-900/10';
-                }
-                
-                // Default hover effect for rows without special status
-                return 'hover:bg-gray-50 dark:hover:bg-gray-800/10';
-            })
             ->deferLoading()
             // Bulk Actions
             ->bulkActions([
@@ -691,26 +720,26 @@ class ProjectResource extends Resource
                                 ->label('Select Person in Charge (PIC)')
                                 ->options(function () {
                                     $user = auth()->user();
-                                    
+
                                     if ($user->hasRole('super-admin')) {
                                         // Super admin can assign any user as PIC
                                         return User::whereHas('userClients')
                                             ->where('status', 'active')
                                             ->whereHas('roles', function ($query) {
-                                                $query->whereIn('name', ['project-manager', 'direktur', 'super-admin']);
-                                            })
+                                            $query->whereIn('name', ['project-manager', 'direktur', 'super-admin']);
+                                        })
                                             ->pluck('name', 'id');
                                     }
-                                    
+
                                     // Regular users can only assign PICs from their clients
                                     return User::whereHas('userClients', function ($query) use ($user) {
                                         $query->whereIn('client_id', $user->userClients()->pluck('client_id'));
                                     })
-                                    ->where('status', 'active')
-                                    ->whereHas('roles', function ($query) {
+                                        ->where('status', 'active')
+                                        ->whereHas('roles', function ($query) {
                                         $query->whereIn('name', ['project-manager', 'direktur', 'super-admin']);
                                     })
-                                    ->pluck('name', 'id');
+                                        ->pluck('name', 'id');
                                 })
                                 ->searchable()
                                 ->required()
@@ -720,7 +749,7 @@ class ProjectResource extends Resource
                         ->action(function (Collection $records, array $data): void {
                             $picUser = User::find($data['pic_id']);
                             $updatedCount = 0;
-                            
+
                             if (!$picUser) {
                                 Notification::make()
                                     ->title('Error')
@@ -738,7 +767,7 @@ class ProjectResource extends Resource
                                         $hasAccess = $user->userClients()
                                             ->where('client_id', $project->client_id)
                                             ->exists();
-                                            
+
                                         if (!$hasAccess) {
                                             continue; // Skip projects user doesn't have access to
                                         }
@@ -798,11 +827,11 @@ class ProjectResource extends Resource
                         ->action(function (Collection $records, array $data): void {
                             $updatedCount = 0;
                             $projectsWithProgress = [];
-                            
+
                             // Find the selected SOP
                             $targetSop = Sop::with(['steps.tasks', 'steps.requiredDocuments'])
                                 ->find($data['sop_id']);
-                            
+
                             if (!$targetSop) {
                                 Notification::make()
                                     ->title('SOP Tidak Ditemukan')
@@ -811,7 +840,7 @@ class ProjectResource extends Resource
                                     ->send();
                                 return;
                             }
-                            
+
                             \DB::transaction(function () use ($records, $targetSop, &$updatedCount, &$projectsWithProgress) {
                                 foreach ($records as $project) {
                                     // Check if project has any progress
@@ -820,19 +849,19 @@ class ProjectResource extends Resource
                                     })->exists() || $project->steps()->whereHas('requiredDocuments', function ($q) {
                                         $q->whereIn('status', ['approved', 'uploaded', 'pending_review']);
                                     })->exists();
-                                    
+
                                     if ($hasProgress) {
                                         $projectsWithProgress[] = $project->name;
                                     }
-                                    
+
                                     // Update SOP
                                     $project->update([
                                         'sop_id' => $targetSop->id,
                                     ]);
-                                    
+
                                     // Delete existing steps (cascades to tasks and documents)
                                     $project->steps()->delete();
-                                    
+
                                     // Copy steps from the target SOP
                                     foreach ($targetSop->steps as $sopStep) {
                                         $projectStep = $project->steps()->create([
@@ -841,7 +870,7 @@ class ProjectResource extends Resource
                                             'order' => $sopStep->order,
                                             'status' => 'pending',
                                         ]);
-                                        
+
                                         // Copy tasks from SOP step
                                         foreach ($sopStep->tasks as $sopTask) {
                                             $projectStep->tasks()->create([
@@ -850,7 +879,7 @@ class ProjectResource extends Resource
                                                 'status' => 'pending',
                                             ]);
                                         }
-                                        
+
                                         // Copy required documents from SOP step
                                         foreach ($sopStep->requiredDocuments as $sopDoc) {
                                             $projectStep->requiredDocuments()->create([
@@ -861,18 +890,18 @@ class ProjectResource extends Resource
                                             ]);
                                         }
                                     }
-                                    
+
                                     $updatedCount++;
                                 }
                             });
-                            
+
                             if ($updatedCount > 0) {
                                 $message = "Berhasil mengubah SOP untuk {$updatedCount} proyek ke '{$targetSop->name}'.";
-                                
+
                                 if (!empty($projectsWithProgress)) {
                                     $message .= " Progress pada " . count($projectsWithProgress) . " proyek telah direset.";
                                 }
-                                
+
                                 Notification::make()
                                     ->title('SOP Berhasil Diubah')
                                     ->body($message)
@@ -915,14 +944,14 @@ class ProjectResource extends Resource
                             $selectedIds = $records->pluck('id')->toArray();
                             $groupBy = $data['group_by'] ?? 'none';
                             $fileName = 'proyek-' . now()->format('Y-m-d-His') . '.xlsx';
-                            
+
                             return Excel::download(new ProjectMultiSheetExport($selectedIds, $groupBy), $fileName);
                         }),
                     Tables\Actions\DeleteBulkAction::make(),
                 ]),
             ]);
     }
-    
+
 
     public static function getRelations(): array
     {
@@ -949,7 +978,7 @@ class ProjectResource extends Resource
 
     public static function getNavigationBadge(): ?string
     {
-        return static::getModel()::whereHas('client', function($query) {
+        return static::getModel()::whereHas('client', function ($query) {
             $query->where('status', 'Active');
         })->where('status', '!=', 'completed')->count();
     }
@@ -1015,10 +1044,10 @@ class ProjectResource extends Resource
 
         // Send UI notification to current user
         Notification::make()
-            ->title($title)
-            ->body($body)
+                    ->title($title)
+                    ->body($body)
             ->{$type}()
-            ->send();
+                ->send();
     }
 
 
