@@ -17,7 +17,7 @@
                 @endphp
                 <div class="rounded-xl ring-1 {{ $typeConfig['ring'] }} {{ $typeConfig['bg'] }} p-4 shadow-sm">
                     {{-- Header --}}
-                    <div class="flex items-center justify-between mb-2 gap-2">
+                    <div class="flex items-center justify-between mb-1 gap-2">
                         <div class="flex items-center gap-2 min-w-0">
                             {{-- Avatar --}}
                             <div
@@ -36,17 +36,16 @@
                         </div>
                         {{-- Type badge --}}
                         <span class="inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-medium ring-1
-                                            @if($note->type === 'important') bg-amber-100 text-amber-800 ring-amber-200 dark:bg-amber-900/30 dark:text-amber-300 dark:ring-amber-700
-                                            @elseif($note->type === 'blocker') bg-red-100 text-red-800 ring-red-200 dark:bg-red-900/30 dark:text-red-300 dark:ring-red-700
-                                            @else bg-gray-100 text-gray-600 ring-gray-200 dark:bg-gray-700 dark:text-gray-300 dark:ring-gray-600
-                                            @endif
-                                        ">
+                                                            @if($note->type === 'important') bg-amber-100 text-amber-800 ring-amber-200 dark:bg-amber-900/30 dark:text-amber-300 dark:ring-amber-700
+                                                            @elseif($note->type === 'blocker') bg-red-100 text-red-800 ring-red-200 dark:bg-red-900/30 dark:text-red-300 dark:ring-red-700
+                                                            @else bg-gray-100 text-gray-600 ring-gray-200 dark:bg-gray-700 dark:text-gray-300 dark:ring-gray-600
+                                                            @endif
+                                                        ">
                             {{ $typeConfig['icon'] }} {{ $typeConfig['label'] }}
                         </span>
                     </div>
-
                     {{-- Content --}}
-                    <div class="text-sm text-gray-700 dark:text-gray-300 whitespace-pre-wrap leading-relaxed pl-10">
+                    <div class="text-sm text-gray-700 dark:text-gray-300 whitespace-pre-wrap leading-normal">
                         {{ $note->content }}
                     </div>
                 </div>
