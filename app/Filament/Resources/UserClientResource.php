@@ -36,14 +36,14 @@ class UserClientResource extends Resource
     {
         return auth()->user()->can('pengguna.*');
     }
-    
+
     public static function canAccess(): bool
     {
         return auth()->user()->can('pengguna.*');
     }
 
     protected static ?string $navigationGroup = 'Master Data';
-    
+
     public static function form(Form $form): Form
     {
         return $form->schema([
@@ -80,7 +80,7 @@ class UserClientResource extends Resource
                         ->searchable()
                         ->placeholder('Pilih departemen')
                         ->helperText('Departemen tempat karyawan bekerja'),
-                    
+
                     Forms\Components\Select::make('user.position')
                         ->label('Jabatan')
                         ->options([
@@ -96,7 +96,7 @@ class UserClientResource extends Resource
                         ->searchable()
                         ->placeholder('Pilih jabatan')
                         ->helperText('Jabatan karyawan di perusahaan'),
-                    
+
                     Forms\Components\Select::make('user.status')
                         ->label('Status')
                         ->options([
@@ -163,58 +163,65 @@ class UserClientResource extends Resource
         return $table
             ->query(
                 User::query()
-                ->whereHas('userClients')
-                ->withCount('userClients')
-                ->with('roles')
-            )
-            ->defaultSort(function ($query) {
-                return $query->leftJoin('model_has_roles', 'users.id', '=', 'model_has_roles.model_id')
+                    ->whereHas('userClients')
+                    ->withCount('userClients')
+                    ->with('roles')
+                    ->select('users.*')
+                    ->leftJoin('model_has_roles', function ($join) {
+                        $join->on('users.id', '=', 'model_has_roles.model_id')
+                            ->where('model_has_roles.model_type', \App\Models\User::class);
+                    })
                     ->leftJoin('roles', 'model_has_roles.role_id', '=', 'roles.id')
+                    ->addSelect('roles.name as primary_role')
                     ->orderByRaw("
+                    CASE roles.name 
+                        WHEN 'direktur' THEN 1
+                        WHEN 'project-manager' THEN 2  
+                        WHEN 'staff' THEN 3
+                        WHEN 'client' THEN 4
+                        ELSE 5
+                    END ASC
+                ")
+            )
+            ->defaultGroup(
+                \Filament\Tables\Grouping\Group::make('primary_role')
+                    ->label('Peran')
+                    ->getTitleFromRecordUsing(fn($record): string => match ($record->primary_role ?? $record->roles->first()?->name) {
+                        'direktur' => '👔 Direktur',
+                        'project-manager' => '📋 Manajer Proyek',
+                        'staff' => '👤 Staf',
+                        'client' => '🏢 Klien',
+                        'super-admin' => '⚙️ Super Admin',
+                        default => '❓ Tanpa Peran',
+                    })
+                    ->orderQueryUsing(fn($query, $direction) => $query->orderByRaw("
                         CASE roles.name 
                             WHEN 'direktur' THEN 1
                             WHEN 'project-manager' THEN 2  
                             WHEN 'staff' THEN 3
                             WHEN 'client' THEN 4
                             ELSE 5
-                        END ASC
-                    ");
-            })
+                        END {$direction}
+                    "))
+            )
             ->columns([
                 ImageColumn::make('avatar_path')
                     ->label('Avatar')
                     ->circular()
                     ->defaultImageUrl(fn($record) => 'https://ui-avatars.com/api/?name=' . urlencode($record->name) . '&color=7F9CF5&background=EBF4FF')
                     ->size(60),
-                    
+
                 TextColumn::make('name')
                     ->label('Nama')
                     ->searchable()
                     ->sortable(),
-                    
+
                 TextColumn::make('email')
                     ->label('Email')
                     ->searchable()
                     ->copyable()
                     ->sortable(),
-                    
-                TextColumn::make('department')
-                    ->label('Departemen')
-                    ->searchable()
-                    ->sortable()
-                    ->badge()
-                    ->color('info')
-                    ->default('-')
-                    ->toggleable(),
 
-                TextColumn::make('position')
-                    ->label('Jabatan')
-                    ->searchable()
-                    ->sortable()
-                    ->badge()
-                    ->color('primary')
-                    ->default('-')
-                    ->toggleable(),
 
                 TextColumn::make('status')
                     ->label('Status')
@@ -230,7 +237,28 @@ class UserClientResource extends Resource
                         default => $state,
                     })
                     ->sortable(),
-                    
+
+                TextColumn::make('roles.name')
+                    ->label('Peran')
+                    ->badge()
+                    ->formatStateUsing(fn($state) => match ($state) {
+                        'direktur' => 'Direktur',
+                        'project-manager' => 'Manajer Proyek',
+                        'staff' => 'Staf',
+                        'client' => 'Klien',
+                        'super-admin' => 'Super Admin',
+                        default => $state,
+                    })
+                    ->color(fn($state) => match ($state) {
+                        'direktur' => 'warning',
+                        'project-manager' => 'info',
+                        'staff' => 'success',
+                        'client' => 'gray',
+                        'super-admin' => 'danger',
+                        default => 'gray',
+                    })
+                    ->searchable(),
+
                 TextColumn::make('user_clients_count')
                     ->label('Klien yang Ditugaskan')
                     ->badge()
@@ -283,7 +311,7 @@ class UserClientResource extends Resource
                         }
                     })
                     ->visible(fn() => !auth()->user()->hasRole('staff')),
-                
+
                 Tables\Filters\SelectFilter::make('department')
                     ->label('Departemen')
                     ->native(false)
@@ -322,7 +350,7 @@ class UserClientResource extends Resource
                     ])
                     ->default('active'),
             ])
-            ->recordClasses(fn (User $record) => match ($record->status) {
+            ->recordClasses(fn(User $record) => match ($record->status) {
                 'inactive' => 'opacity-50 bg-gray-50',
                 default => null,
             })
@@ -460,7 +488,7 @@ class UserClientResource extends Resource
                             if (isset($data['client_ids'])) {
                                 // Delete existing assignments
                                 UserClient::where('user_id', $record->id)->delete();
-                                
+
                                 // Create new assignments
                                 foreach ($data['client_ids'] as $clientId) {
                                     UserClient::create([
@@ -501,7 +529,7 @@ class UserClientResource extends Resource
                                             } else {
                                                 $source = 'Default yang dibuat';
                                             }
-                                            
+
                                             return new \Illuminate\Support\HtmlString(
                                                 '<div class="flex items-center space-x-4">
                                                     <img src="' . $avatarUrl . '" alt="Avatar Saat Ini" class="w-20 h-20 rounded-full object-cover shadow-lg">
@@ -513,7 +541,7 @@ class UserClientResource extends Resource
                                             );
                                         })
                                 ]),
-                            
+
                             Forms\Components\Tabs::make('Opsi Avatar')
                                 ->tabs([
                                     Forms\Components\Tabs\Tab::make('Unggah & Edit')
@@ -535,7 +563,7 @@ class UserClientResource extends Resource
                                                 ->helperText('Unggah gambar dan klik tombol edit untuk memotong, memutar, dan menyesuaikan sebelum menyimpan.')
                                                 ->columnSpanFull()
                                         ]),
-                                    
+
                                     Forms\Components\Tabs\Tab::make('Gunakan URL')
                                         ->icon('heroicon-m-link')
                                         ->schema([
@@ -547,7 +575,7 @@ class UserClientResource extends Resource
                                                 ->default(fn($record) => $record->avatar_url)
                                                 ->live(onBlur: true)
                                                 ->columnSpanFull(),
-                                                
+
                                             Forms\Components\Section::make('Pratinjau URL')
                                                 ->schema([
                                                     Forms\Components\Placeholder::make('url_preview')
@@ -570,7 +598,7 @@ class UserClientResource extends Resource
                                                 ])
                                                 ->visible(fn($get) => filled($get('avatar_url')))
                                         ]),
-                                    
+
                                     Forms\Components\Tabs\Tab::make('Hapus Avatar')
                                         ->icon('heroicon-m-trash')
                                         ->schema([
@@ -587,7 +615,7 @@ class UserClientResource extends Resource
                                                         <p class="text-xs text-red-600 mt-1">Ini akan menghapus avatar saat ini dan kembali ke avatar default yang dibuat.</p>
                                                     </div>'
                                                 )),
-                                            
+
                                             Forms\Components\Checkbox::make('remove_avatar')
                                                 ->label('Ya, hapus avatar saat ini')
                                                 ->helperText('Centang kotak ini untuk mengkonfirmasi penghapusan avatar')
@@ -602,7 +630,7 @@ class UserClientResource extends Resource
                                     'avatar_url' => null,
                                     'avatar_path' => null
                                 ]);
-                                
+
                                 Notification::make()
                                     ->title('Avatar Dihapus')
                                     ->success()
@@ -610,20 +638,20 @@ class UserClientResource extends Resource
                                     ->send();
                                 return;
                             }
-                            
+
                             // Handle file upload with editing
                             if (!empty($data['avatar_file'])) {
                                 // Delete old avatar file if exists
                                 $record->deleteOldAvatar();
-                                
+
                                 // Generate the storage URL with 'storage/' prefix
                                 $avatarUrl = 'storage/' . $data['avatar_file'];
-                                
+
                                 $record->update([
                                     'avatar_path' => $data['avatar_file'],
                                     'avatar_url' => $avatarUrl // Set both path and URL with storage/ prefix
                                 ]);
-                                
+
                                 Notification::make()
                                     ->title('Avatar Diperbarui')
                                     ->success()
@@ -631,17 +659,17 @@ class UserClientResource extends Resource
                                     ->send();
                                 return;
                             }
-                            
+
                             // Handle URL update
                             if (!empty($data['avatar_url'])) {
                                 // Delete old avatar file if exists (since we're switching to URL)
                                 $record->deleteOldAvatar();
-                                
+
                                 $record->update([
                                     'avatar_url' => $data['avatar_url'],
                                     'avatar_path' => null // Clear file path when using URL
                                 ]);
-                                
+
                                 Notification::make()
                                     ->title('Avatar Diperbarui')
                                     ->success()
@@ -649,7 +677,7 @@ class UserClientResource extends Resource
                                     ->send();
                                 return;
                             }
-                            
+
                             // If no action taken
                             Notification::make()
                                 ->title('Tidak Ada Perubahan')
