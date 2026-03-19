@@ -176,7 +176,7 @@ class DailyTaskTimeline extends ChartWidget
         $query = User::query();
 
         if ($this->department) {
-            $query->where('department', $this->department);
+            $query->where('department_id', $this->department);
         }
 
         if ($this->position) {
@@ -287,7 +287,7 @@ class DailyTaskTimeline extends ChartWidget
         if ($this->department || $this->position) {
             $query->whereHas('assignedUsers', function ($userQuery) {
                 if ($this->department) {
-                    $userQuery->where('department', $this->department);
+                    $userQuery->where('department_id', $this->department);
                 }
                 if ($this->position) {
                     $userQuery->where('position', $this->position);
@@ -304,7 +304,7 @@ class DailyTaskTimeline extends ChartWidget
         $query = User::query();
 
         if ($this->department) {
-            $query->where('department', $this->department);
+            $query->where('department_id', $this->department);
         }
         if ($this->position) {
             $query->where('position', $this->position);

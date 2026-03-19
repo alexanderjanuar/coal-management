@@ -70,12 +70,16 @@ class ClientPanelProvider extends PanelProvider
                 \TomatoPHP\FilamentPWA\FilamentPWAPlugin::make(),
                 FilamentApexChartsPlugin::make(),
                 EasyFooterPlugin::make()
-                    ->withFooterPosition('sidebar.footer')  
+                    ->withFooterPosition('sidebar.footer')
                     ->withSentence(new HtmlString('<img src="' . asset('images/Logo/Logo Vertical.png') . '" style="margin-right:.5rem;" alt="Laravel Logo" width="20" height="20"> Kisantra Management')),
                 FilamentProgressbarPlugin::make()->color('#f59e0b'),
                 FilamentErrorPagesPlugin::make(),
-               
+
             ])
+            ->renderHook(
+                'panels::topbar.start',
+                fn() => view('livewire.client.panel.client-switcher-hook'),
+            )
             ->brandLogo(asset('images/Logo/OnlyLogo.png'))
             ->brandLogoHeight('3rem')
             ->viteTheme('resources/css/filament/admin/theme.css')

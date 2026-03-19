@@ -2,6 +2,7 @@
 
 namespace App\Livewire\DailyTask\Form;
 
+use App\Models\Department;
 use App\Models\Project;
 use App\Models\User;
 use Livewire\Component;
@@ -639,12 +640,7 @@ class DailyTaskFilterComponent extends Component implements HasForms
      */
     protected function getDepartmentOptions(): array
     {
-        return User::whereNotNull('department')
-            ->where('status', 'active')
-            ->distinct()
-            ->orderBy('department')
-            ->pluck('department', 'department')
-            ->toArray();
+        return Department::orderBy('name')->pluck('name', 'id')->toArray();
     }
 
     /**

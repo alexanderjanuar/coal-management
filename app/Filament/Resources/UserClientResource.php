@@ -12,6 +12,7 @@ use Filament\Tables;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\SoftDeletingScope;
+use App\Models\Department;
 use App\Models\User;
 use App\Models\Client;
 
@@ -64,18 +65,9 @@ class UserClientResource extends Resource
                         ->placeholder('email@contoh.com')
                         ->label('Email'),
 
-                    Forms\Components\Select::make('user.department')
+                    Forms\Components\Select::make('user.department_id')
                         ->label('Departemen')
-                        ->options([
-                            'Accounting' => 'Accounting',
-                            'Tax' => 'Tax',
-                            'Finance' => 'Finance',
-                            'HR' => 'Human Resources',
-                            'IT' => 'Information Technology',
-                            'Operations' => 'Operations',
-                            'Legal' => 'Legal',
-                            'Administration' => 'Administration',
-                        ])
+                        ->options(Department::orderBy('name')->pluck('name', 'id'))
                         ->native(false)
                         ->searchable()
                         ->placeholder('Pilih departemen')
@@ -222,6 +214,13 @@ class UserClientResource extends Resource
                     ->copyable()
                     ->sortable(),
 
+                TextColumn::make('department.name')
+                    ->label('Departemen')
+                    ->badge()
+                    ->color('info')
+                    ->placeholder('—')
+                    ->sortable()
+                    ->searchable(),
 
                 TextColumn::make('status')
                     ->label('Status')
@@ -312,19 +311,10 @@ class UserClientResource extends Resource
                     })
                     ->visible(fn() => !auth()->user()->hasRole('staff')),
 
-                Tables\Filters\SelectFilter::make('department')
+                Tables\Filters\SelectFilter::make('department_id')
                     ->label('Departemen')
                     ->native(false)
-                    ->options([
-                        'Accounting' => 'Accounting',
-                        'Tax' => 'Tax',
-                        'Finance' => 'Finance',
-                        'HR' => 'Human Resources',
-                        'IT' => 'Information Technology',
-                        'Operations' => 'Operations',
-                        'Legal' => 'Legal',
-                        'Administration' => 'Administration',
-                    ])
+                    ->options(Department::orderBy('name')->pluck('name', 'id'))
                     ->searchable(),
 
                 Tables\Filters\SelectFilter::make('position')
@@ -366,7 +356,7 @@ class UserClientResource extends Resource
                             return [
                                 'name' => $record->name,
                                 'email' => $record->email,
-                                'department' => $record->department,
+                                'department_id' => $record->department_id,
                                 'position' => $record->position,
                                 'status' => $record->status,
                                 'avatar_path' => $record->avatar_path,
@@ -391,18 +381,9 @@ class UserClientResource extends Resource
                                         ->placeholder('email@contoh.com')
                                         ->label('Email'),
 
-                                    Forms\Components\Select::make('department')
+                                    Forms\Components\Select::make('department_id')
                                         ->label('Departemen')
-                                        ->options([
-                                            'Accounting' => 'Accounting',
-                                            'Tax' => 'Tax',
-                                            'Finance' => 'Finance',
-                                            'HR' => 'Human Resources',
-                                            'IT' => 'Information Technology',
-                                            'Operations' => 'Operations',
-                                            'Legal' => 'Legal',
-                                            'Administration' => 'Administration',
-                                        ])
+                                        ->options(Department::orderBy('name')->pluck('name', 'id'))
                                         ->native(false)
                                         ->searchable()
                                         ->placeholder('Pilih departemen')
@@ -472,7 +453,7 @@ class UserClientResource extends Resource
                             $updateData = [
                                 'name' => $data['name'],
                                 'email' => $data['email'],
-                                'department' => $data['department'] ?? null,
+                                'department_id' => $data['department_id'] ?? null,
                                 'position' => $data['position'] ?? null,
                                 'status' => $data['status'] ?? 'active',
                             ];
@@ -810,6 +791,45 @@ class UserClientResource extends Resource
                         })
                         ->requiresConfirmation()
                         ->modalButton('Batalkan Klien yang Dipilih'),
+
+                    Tables\Actions\Action::make('assign_department')
+                        ->label(fn (User $record) => $record->department_id ? 'Ubah Departemen' : 'Tugaskan Departemen')
+                        ->icon('heroicon-m-building-office-2')
+                        ->color('primary')
+                        ->modalHeading(fn (User $record) => "Atur Departemen — {$record->name}")
+                        ->modalDescription(fn (User $record) => $record->department_id
+                            ? "Departemen saat ini: {$record->department->name}. Pilih departemen baru atau kosongkan untuk melepas."
+                            : 'Pilih departemen untuk ditugaskan ke pengguna ini.'
+                        )
+                        ->modalWidth('md')
+                        ->fillForm(fn (User $record) => [
+                            'department_id' => $record->department_id,
+                        ])
+                        ->form([
+                            Forms\Components\Select::make('department_id')
+                                ->label('Departemen')
+                                ->options(Department::orderBy('name')->pluck('name', 'id'))
+                                ->native(false)
+                                ->searchable()
+                                ->placeholder('Tidak ada departemen')
+                                ->nullable()
+                                ->helperText('Kosongkan untuk melepas pengguna dari departemen saat ini.'),
+                        ])
+                        ->action(function (array $data, User $record): void {
+                            $old = $record->department?->name ?? 'Tidak ada';
+                            $record->update(['department_id' => $data['department_id']]);
+                            $new = $data['department_id']
+                                ? Department::find($data['department_id'])?->name
+                                : 'Tidak ada';
+
+                            Notification::make()
+                                ->title('Departemen Diperbarui')
+                                ->success()
+                                ->body("{$record->name}: {$old} → {$new}")
+                                ->send();
+                        })
+                        ->modalSubmitActionLabel('Simpan')
+                        ->modalCancelActionLabel('Batal'),
                 ])
             ])
             ->headerActions([

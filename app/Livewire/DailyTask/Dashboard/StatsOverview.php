@@ -59,7 +59,7 @@ class StatsOverview extends BaseWidget
         if ($this->department || $this->position) {
             $baseQuery->whereHas('assignments.user', function ($query) {
                 if ($this->department) {
-                    $query->where('department', $this->department);
+                    $query->where('department_id', $this->department);
                 }
                 if ($this->position) {
                     $query->where('position', $this->position);

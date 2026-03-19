@@ -20,7 +20,7 @@
                 @if($user->position)
                     {{ $user->position }}
                 @elseif($user->department)
-                    {{ $user->department }}
+                    {{ $user->department->name }}
                 @else
                     {{ $user->email }}
                 @endif

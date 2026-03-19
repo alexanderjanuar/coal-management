@@ -35,7 +35,7 @@ class EditUserClient extends EditRecord
             // Fill user fields with dot notation
             $data['user.name'] = $user->name;
             $data['user.email'] = $user->email;
-            $data['user.department'] = $user->department;
+            $data['user.department_id'] = $user->department_id;
             $data['user.position'] = $user->position;
             $data['user.status'] = $user->status;
             $data['user.avatar_path'] = $user->avatar_path;
@@ -56,7 +56,7 @@ class EditUserClient extends EditRecord
         $updateData = [
             'name' => $data['user']['name'],
             'email' => $data['user']['email'],
-            'department' => $data['user']['department'] ?? null,
+            'department_id' => $data['user']['department_id'] ?? null,
             'position' => $data['user']['position'] ?? null,
             'status' => $data['user']['status'] ?? 'active',
         ];

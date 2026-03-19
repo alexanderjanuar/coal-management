@@ -3,6 +3,7 @@
 namespace App\Livewire\Client\Panel;
 
 use Livewire\Component;
+use Livewire\Attributes\On;
 use App\Models\Client;
 use App\Models\Project;
 use App\Models\TaxReport;
@@ -20,21 +21,27 @@ class OverviewTab extends Component
     public Collection $clients;
     public ?int $selectedClientId = null;
     public bool $isLoading = true;
-    
+
     // Cache duration in seconds (5 minutes)
     protected int $cacheDuration = 300;
-    
+
     protected $listeners = ['refreshOverview' => 'refresh'];
-    
+
     public function mount()
     {
         $this->loadClientData();
+
+        // Restore from session if switcher has already been used
+        $sessionClientId = session('client_panel_selected_client_id');
+        if ($sessionClientId && $this->clients->contains('id', (int) $sessionClientId)) {
+            $this->selectedClientId = (int) $sessionClientId;
+        }
     }
-    
+
     protected function loadClientData()
     {
         $this->isLoading = true;
-        
+
         // Get all clients for current user - optimized with single query
         $this->clients = UserClient::query()
             ->where('user_id', auth()->id())
@@ -42,15 +49,15 @@ class OverviewTab extends Component
             ->get()
             ->pluck('client')
             ->filter();
-        
+
         // Set default selected client
         if ($this->clients->isNotEmpty() && !$this->selectedClientId) {
             $this->selectedClientId = $this->clients->first()->id;
         }
-        
+
         $this->isLoading = false;
     }
-    
+
     /**
      * Get selected client with caching
      */
@@ -59,20 +66,21 @@ class OverviewTab extends Component
         if (!$this->selectedClientId) {
             return null;
         }
-        
+
         return $this->clients->firstWhere('id', $this->selectedClientId);
     }
-    
+
     /**
-     * Change selected client
+     * Change selected client (also called by the global sidebar switcher)
      */
+    #[On('client-switched')]
     public function selectClient(int $clientId)
     {
         $this->selectedClientId = $clientId;
         $this->clearClientCache();
         $this->dispatch('client-changed', clientId: $clientId);
     }
-    
+
     /**
      * Clear cached data for current client
      */
@@ -81,10 +89,10 @@ class OverviewTab extends Component
         if (!$this->selectedClientId) {
             return;
         }
-        
+
         $userId = auth()->id();
         $clientId = $this->selectedClientId;
-        
+
         $cacheKeys = [
             "overview_projects_{$userId}_{$clientId}",
             "overview_documents_{$userId}_{$clientId}",
@@ -93,12 +101,12 @@ class OverviewTab extends Component
             "overview_tax_report_{$userId}_{$clientId}",
             "overview_stats_{$userId}_{$clientId}",
         ];
-        
+
         foreach ($cacheKeys as $key) {
             Cache::forget($key);
         }
     }
-    
+
     /**
      * Get all projects for selected client with optimized query
      * Sorted by status priority: active first, then completed
@@ -108,10 +116,10 @@ class OverviewTab extends Component
         if (!$this->selectedClientId) {
             return collect();
         }
-        
+
         $userId = auth()->id();
         $clientId = $this->selectedClientId;
-        
+
         return Cache::remember(
             "overview_projects_{$userId}_{$clientId}",
             $this->cacheDuration,
@@ -127,7 +135,7 @@ class OverviewTab extends Component
                     'completed (Not Payed Yet)', 
                     'canceled'
                 )");
-                
+
                 return Project::query()
                     ->where('client_id', $clientId)
                     ->select(['id', 'client_id', 'name', 'status', 'priority', 'due_date', 'pic_id'])
@@ -138,7 +146,7 @@ class OverviewTab extends Component
             }
         );
     }
-    
+
     /**
      * Get recent uploaded documents with optimized query
      */
@@ -147,10 +155,10 @@ class OverviewTab extends Component
         if (!$this->selectedClientId) {
             return collect();
         }
-        
+
         $userId = auth()->id();
         $clientId = $this->selectedClientId;
-        
+
         return Cache::remember(
             "overview_documents_{$userId}_{$clientId}",
             $this->cacheDuration,
@@ -159,8 +167,16 @@ class OverviewTab extends Component
                     ->where('client_id', $clientId)
                     ->whereNotNull('file_path')
                     ->select([
-                        'id', 'client_id', 'user_id', 'sop_legal_document_id',
-                        'file_path', 'original_filename', 'status', 'expired_at', 'created_at', 'admin_notes'
+                        'id',
+                        'client_id',
+                        'user_id',
+                        'sop_legal_document_id',
+                        'file_path',
+                        'original_filename',
+                        'status',
+                        'expired_at',
+                        'created_at',
+                        'admin_notes'
                     ])
                     ->with([
                         'user:id,name',
@@ -172,7 +188,7 @@ class OverviewTab extends Component
             }
         );
     }
-    
+
     /**
      * Get document checklist based on SOP Legal Documents
      * Shows which documents are required and their upload status
@@ -182,17 +198,17 @@ class OverviewTab extends Component
         if (!$this->selectedClientId) {
             return collect();
         }
-        
+
         $client = $this->selectedClient;
-        
+
         if (!$client) {
             return collect();
         }
-        
+
         $userId = auth()->id();
         $clientId = $this->selectedClientId;
         $clientType = $client->client_type;
-        
+
         return Cache::remember(
             "overview_doc_checklist_{$userId}_{$clientId}",
             $this->cacheDuration,
@@ -205,24 +221,30 @@ class OverviewTab extends Component
                     ->orderBy('order')
                     ->select(['id', 'name', 'description', 'category', 'is_required'])
                     ->get();
-                
+
                 // Get all uploaded documents for this client (indexed by sop_legal_document_id)
                 $uploadedDocs = ClientDocument::query()
                     ->where('client_id', $clientId)
                     ->whereNotNull('sop_legal_document_id')
                     ->whereNotNull('file_path')
                     ->select([
-                        'id', 'sop_legal_document_id', 'file_path', 
-                        'original_filename', 'status', 'user_id', 'updated_at', 'admin_notes'
+                        'id',
+                        'sop_legal_document_id',
+                        'file_path',
+                        'original_filename',
+                        'status',
+                        'user_id',
+                        'updated_at',
+                        'admin_notes'
                     ])
                     ->with(['user:id,name'])
                     ->get()
                     ->keyBy('sop_legal_document_id');
-                
+
                 // Map each SOP document with its upload status
                 return $sopDocuments->map(function ($sopDoc) use ($uploadedDocs) {
                     $clientDoc = $uploadedDocs->get($sopDoc->id);
-                    
+
                     return [
                         'type' => 'sop_legal',
                         'sop_id' => $sopDoc->id,
@@ -244,7 +266,7 @@ class OverviewTab extends Component
             }
         );
     }
-    
+
     /**
      * Get additional document requirements created by admin
      * These are custom requirements specific to this client
@@ -254,10 +276,10 @@ class OverviewTab extends Component
         if (!$this->selectedClientId) {
             return collect();
         }
-        
+
         $userId = auth()->id();
         $clientId = $this->selectedClientId;
-        
+
         return Cache::remember(
             "overview_requirements_{$userId}_{$clientId}",
             $this->cacheDuration,
@@ -266,17 +288,23 @@ class OverviewTab extends Component
                 $requirements = ClientDocumentRequirement::query()
                     ->where('client_id', $clientId)
                     ->select([
-                        'id', 'client_id', 'name', 'description', 
-                        'category', 'is_required', 'status', 'due_date'
+                        'id',
+                        'client_id',
+                        'name',
+                        'description',
+                        'category',
+                        'is_required',
+                        'status',
+                        'due_date'
                     ])
                     ->orderBy('is_required', 'desc')
                     ->orderBy('due_date')
                     ->orderBy('created_at', 'desc')
                     ->get();
-                
+
                 // Get uploaded documents for these requirements
                 $requirementIds = $requirements->pluck('id')->toArray();
-                
+
                 $uploadedDocs = collect();
                 if (!empty($requirementIds)) {
                     $uploadedDocs = ClientDocument::query()
@@ -284,21 +312,27 @@ class OverviewTab extends Component
                         ->whereIn('requirement_id', $requirementIds)
                         ->whereNotNull('file_path')
                         ->select([
-                            'id', 'requirement_id', 'file_path', 
-                            'original_filename', 'status', 'user_id', 'updated_at', 'admin_notes'
+                            'id',
+                            'requirement_id',
+                            'file_path',
+                            'original_filename',
+                            'status',
+                            'user_id',
+                            'updated_at',
+                            'admin_notes'
                         ])
                         ->with(['user:id,name'])
                         ->get()
                         ->keyBy('requirement_id');
                 }
-                
+
                 // Map requirements with upload status
                 return $requirements->map(function ($req) use ($uploadedDocs) {
                     $clientDoc = $uploadedDocs->get($req->id);
-                    
+
                     // Document is uploaded if there's a file, regardless of requirement status
                     $isUploaded = $clientDoc !== null;
-                    
+
                     return [
                         'type' => 'requirement',
                         'sop_id' => null,
@@ -321,7 +355,7 @@ class OverviewTab extends Component
             }
         );
     }
-    
+
     /**
      * Get combined document checklist (SOP + Requirements)
      * This merges both sources for a unified view
@@ -330,11 +364,11 @@ class OverviewTab extends Component
     {
         $sopChecklist = $this->documentChecklist;
         $requirements = $this->additionalRequirements;
-        
+
         // Merge both collections
         return $sopChecklist->concat($requirements);
     }
-    
+
     /**
      * Get rejected documents that need re-upload
      */
@@ -345,7 +379,7 @@ class OverviewTab extends Component
             return $doc['is_uploaded'] && $doc['status'] === 'rejected';
         })->values();
     }
-    
+
     /**
      * Get pending documents (not uploaded) from all sources
      */
@@ -363,7 +397,7 @@ class OverviewTab extends Component
             return false;
         })->values();
     }
-    
+
     /**
      * Get latest tax report with summaries - optimized query
      */
@@ -372,10 +406,10 @@ class OverviewTab extends Component
         if (!$this->selectedClientId) {
             return null;
         }
-        
+
         $userId = auth()->id();
         $clientId = $this->selectedClientId;
-        
+
         return Cache::remember(
             "overview_tax_report_{$userId}_{$clientId}",
             $this->cacheDuration,
@@ -386,8 +420,12 @@ class OverviewTab extends Component
                     ->with([
                         'taxCalculationSummaries' => fn($q) => $q
                             ->select([
-                                'id', 'tax_report_id', 'tax_type',
-                                'report_status', 'status_final', 'saldo_final'
+                                'id',
+                                'tax_report_id',
+                                'tax_type',
+                                'report_status',
+                                'status_final',
+                                'saldo_final'
                             ])
                             ->orderBy('tax_type')
                     ])
@@ -396,7 +434,7 @@ class OverviewTab extends Component
             }
         );
     }
-    
+
     /**
      * Get all stats in a single optimized query batch
      * Using raw SQL for maximum performance
@@ -410,10 +448,10 @@ class OverviewTab extends Component
                 'documents' => ['total' => 0, 'valid' => 0, 'expired' => 0, 'pending' => 0, 'required' => 0],
             ];
         }
-        
+
         $userId = auth()->id();
         $clientId = $this->selectedClientId;
-        
+
         return Cache::remember(
             "overview_stats_{$userId}_{$clientId}",
             $this->cacheDuration,
@@ -428,7 +466,7 @@ class OverviewTab extends Component
                         SUM(CASE WHEN status IN ('draft', 'analysis') THEN 1 ELSE 0 END) as pending
                     ")
                     ->first();
-                
+
                 // Single query for tax report stats
                 $taxStats = DB::table('tax_calculation_summaries')
                     ->join('tax_reports', 'tax_calculation_summaries.tax_report_id', '=', 'tax_reports.id')
@@ -439,7 +477,7 @@ class OverviewTab extends Component
                         SUM(CASE WHEN tax_calculation_summaries.report_status = 'Belum Lapor' THEN 1 ELSE 0 END) as pending
                     ")
                     ->first();
-                
+
                 // Single query for document stats
                 $docStats = DB::table('client_documents')
                     ->where('client_id', $clientId)
@@ -450,16 +488,16 @@ class OverviewTab extends Component
                         SUM(CASE WHEN status = 'pending_review' THEN 1 ELSE 0 END) as pending
                     ")
                     ->first();
-                
+
                 // Count pending requirements (not uploaded)
                 $pendingRequirements = DB::table('client_document_requirements')
                     ->where('client_id', $clientId)
                     ->where('status', 'pending')
                     ->count();
-                
+
                 $taxTotal = $taxStats->total ?? 0;
                 $taxReported = $taxStats->reported ?? 0;
-                
+
                 return [
                     'projects' => [
                         'total' => (int) ($projectStats->total ?? 0),
@@ -484,7 +522,7 @@ class OverviewTab extends Component
             }
         );
     }
-    
+
     /**
      * Shortcut accessors for stats
      */
@@ -492,17 +530,17 @@ class OverviewTab extends Component
     {
         return $this->stats['projects'];
     }
-    
+
     public function getTaxReportStatsProperty(): array
     {
         return $this->stats['tax_reports'];
     }
-    
+
     public function getDocumentStatsProperty(): array
     {
         return $this->stats['documents'];
     }
-    
+
     /**
      * Download document
      */
@@ -512,20 +550,20 @@ class OverviewTab extends Component
             ->where('id', $documentId)
             ->where('client_id', $this->selectedClientId)
             ->firstOrFail();
-        
+
         if ($document->file_path && \Storage::disk('public')->exists($document->file_path)) {
             return \Storage::disk('public')->download(
                 $document->file_path,
                 $document->original_filename ?? basename($document->file_path)
             );
         }
-        
+
         $this->dispatch('notify', [
             'type' => 'error',
             'message' => 'File tidak ditemukan'
         ]);
     }
-    
+
     /**
      * Refresh the overview data
      */

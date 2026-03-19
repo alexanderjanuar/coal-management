@@ -14,21 +14,27 @@ class TaxReportTab extends Component
     public $selectedClient = null;
     public $selectedMonth = null;
     public $selectedYear = null;
-    
+
     public $currentClient = null;
     public $currentTaxReport = null;
 
     public function mount()
     {
         $this->loadClients();
-        
-        // Auto-select first client and current/latest month
-        if ($this->clients->isNotEmpty()) {
+
+        // Restore client from session if set by the sidebar switcher
+        $sessionClientId = session('client_panel_selected_client_id');
+        if ($sessionClientId && $this->clients->contains('id', (int) $sessionClientId)) {
+            $this->selectedClient = (int) $sessionClientId;
+        } elseif ($this->clients->isNotEmpty()) {
             $this->selectedClient = $this->clients->first()->id;
-            $this->selectedYear = now()->format('Y'); // Default to current year
+        }
+
+        // Auto-select current/latest month
+        $this->selectedYear = now()->format('Y');
+        if ($this->selectedClient) {
             $this->loadClientData($this->selectedClient);
-            
-            // Try to select current month or latest available month
+
             if ($this->currentTaxReport) {
                 $this->selectedMonth = $this->currentTaxReport->month;
                 $this->selectedYear = $this->currentTaxReport->created_at->format('Y');
@@ -53,11 +59,12 @@ class TaxReportTab extends Component
             ->get();
     }
 
+    #[On('client-switched')]
     public function selectClient($clientId)
     {
         $this->selectedClient = $clientId;
         $this->loadClientData($clientId);
-        
+
         // Emit event to child components to refresh their data
         if ($this->currentTaxReport) {
             $this->dispatch('taxReportChanged', $this->currentTaxReport->id);
@@ -68,7 +75,7 @@ class TaxReportTab extends Component
     {
         $this->selectedMonth = $month;
         $this->loadMonthData($month);
-        
+
         // Emit event to child components to refresh their data
         if ($this->currentTaxReport) {
             $this->dispatch('taxReportChanged', $this->currentTaxReport->id);
@@ -78,14 +85,14 @@ class TaxReportTab extends Component
     public function selectYear($year)
     {
         $this->selectedYear = $year;
-        
+
         // Reload data for the selected year
         if ($this->selectedMonth) {
             $this->loadMonthData($this->selectedMonth);
         } else {
             $this->loadClientData($this->selectedClient);
         }
-        
+
         // Emit event to child components to refresh their data
         if ($this->currentTaxReport) {
             $this->dispatch('taxReportChanged', $this->currentTaxReport->id);
@@ -100,43 +107,43 @@ class TaxReportTab extends Component
         if (!$this->currentClient) {
             return collect([now()->format('Y')]);
         }
-        
+
         $years = TaxReport::where('client_id', $this->currentClient->id)
             ->selectRaw('YEAR(created_at) as year')
             ->distinct()
             ->orderBy('year', 'desc')
             ->pluck('year');
-        
+
         // If no years found, return current year
         if ($years->isEmpty()) {
             return collect([now()->format('Y')]);
         }
-        
+
         return $years;
     }
 
     public function loadClientData($clientId)
     {
         $this->currentClient = Client::find($clientId);
-        
+
         if (!$this->currentClient) {
             $this->currentTaxReport = null;
             return;
         }
-        
+
         // Get the most recent tax report for this client
         $this->currentTaxReport = TaxReport::where('client_id', $clientId)
             ->with([
                 'invoices',
                 'incomeTaxs',
                 'bupots',
-                'taxCalculationSummaries' => function($query) {
+                'taxCalculationSummaries' => function ($query) {
                     $query->select('id', 'tax_report_id', 'tax_type', 'report_status');
                 }
             ])
             ->latest('created_at')
             ->first();
-        
+
         if ($this->currentTaxReport) {
             $this->selectedMonth = $this->currentTaxReport->month;
         }
@@ -158,7 +165,7 @@ class TaxReportTab extends Component
                 'invoices',
                 'incomeTaxs',
                 'bupots',
-                'taxCalculationSummaries' => function($query) {
+                'taxCalculationSummaries' => function ($query) {
                     $query->select('id', 'tax_report_id', 'tax_type', 'report_status');
                 }
             ])
@@ -172,7 +179,7 @@ class TaxReportTab extends Component
                     'invoices',
                     'incomeTaxs',
                     'bupots',
-                    'taxCalculationSummaries' => function($query) {
+                    'taxCalculationSummaries' => function ($query) {
                         $query->select('id', 'tax_report_id', 'tax_type', 'report_status');
                     }
                 ])
@@ -192,7 +199,7 @@ class TaxReportTab extends Component
                 $this->loadClientData($this->selectedClient);
             }
         }
-        
+
         // Emit event to child components after refresh
         if ($this->currentTaxReport) {
             $this->dispatch('taxReportChanged', $this->currentTaxReport->id);

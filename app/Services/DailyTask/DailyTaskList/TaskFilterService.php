@@ -91,7 +91,7 @@ class TaskFilterService
     private function applyDepartmentFilter(Builder $query, array $departments): Builder
     {
         return $query->whereHas('assignedUsers', function ($q) use ($departments) {
-            $q->whereIn('users.department', $departments);
+            $q->whereIn('users.department_id', $departments);
         });
     }
 

@@ -1,0 +1,1 @@
+@livewire('client.panel.client-switcher')

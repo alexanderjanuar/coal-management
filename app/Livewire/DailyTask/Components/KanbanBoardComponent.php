@@ -186,7 +186,7 @@ class KanbanBoardComponent extends Component implements HasForms
                 'project:id,name,client_id',
                 'project.client:id,name',
                 'creator:id,name,avatar_url',
-                'assignedUsers:id,name,avatar_url,department,position',
+                'assignedUsers:id,name,avatar_url,department_id,position',
                 'subtasks:id,daily_task_id,title,status'
             ])
             ->select([
@@ -244,7 +244,7 @@ class KanbanBoardComponent extends Component implements HasForms
         // Handle department filter from dashboard
         if (!empty($this->currentFilters['department'])) {
             $query->whereHas('assignedUsers', function ($q) {
-                $q->where('department', $this->currentFilters['department']);
+                $q->where('department_id', $this->currentFilters['department']);
             });
         }
 

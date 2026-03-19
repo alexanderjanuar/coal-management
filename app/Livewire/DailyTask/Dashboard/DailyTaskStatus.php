@@ -198,7 +198,7 @@ class DailyTaskStatus extends ChartWidget
         if ($this->department || $this->position) {
             $query->whereHas('assignedUsers', function ($userQuery) {
                 if ($this->department) {
-                    $userQuery->where('department', $this->department);
+                    $userQuery->where('department_id', $this->department);
                 }
                 if ($this->position) {
                     $userQuery->where('position', $this->position);
@@ -277,7 +277,7 @@ class DailyTaskStatus extends ChartWidget
         if ($this->department || $this->position) {
             $query->whereHas('assignedUsers', function ($userQuery) {
                 if ($this->department) {
-                    $userQuery->where('department', $this->department);
+                    $userQuery->where('department_id', $this->department);
                 }
                 if ($this->position) {
                     $userQuery->where('position', $this->position);

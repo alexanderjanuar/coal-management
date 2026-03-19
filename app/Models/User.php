@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Spatie\Activitylog\Traits\CausesActivity;
 use Spatie\Activitylog\LogOptions;
@@ -31,6 +32,7 @@ class User extends Authenticatable implements FilamentUser, HasAvatar
         'name',
         'email',
         'password',
+        'department_id',
     ];
 
     /**
@@ -52,6 +54,11 @@ class User extends Authenticatable implements FilamentUser, HasAvatar
         'email_verified_at' => 'datetime',
         'password' => 'hashed',
     ];
+
+    public function department(): BelongsTo
+    {
+        return $this->belongsTo(Department::class);
+    }
 
     public function documents()
     {

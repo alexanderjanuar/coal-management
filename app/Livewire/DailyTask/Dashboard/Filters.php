@@ -11,6 +11,7 @@ use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Actions;
 use Filament\Forms\Components\Actions\Action;
+use App\Models\Department;
 use App\Models\User;
 use Illuminate\Support\Carbon;
 
@@ -219,10 +220,7 @@ class Filters extends Widget implements HasForms
 
     protected function getDepartmentOptions(): array
     {
-        return User::whereNotNull('department')
-            ->distinct('department')
-            ->pluck('department', 'department')
-            ->toArray();
+        return Department::orderBy('name')->pluck('name', 'id')->toArray();
     }
 
     protected function getPositionOptions(): array

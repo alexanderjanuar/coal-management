@@ -3,34 +3,65 @@
 namespace App\Livewire\Client\Panel;
 
 use Livewire\Component;
+use Livewire\Attributes\On;
+use App\Models\Client;
 use App\Models\Project;
 use App\Models\UserClient;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Storage;
 
 class ProyekTab extends Component
 {
+    public ?int $selectedClientId = null;
     public $selectedProjectId;
 
     public function mount()
     {
-        // Auto-select first project on mount
+        // Restore from session if the sidebar switcher has been used
+        $sessionClientId = session('client_panel_selected_client_id');
+        $clientIds = UserClient::where('user_id', auth()->id())->pluck('client_id');
+
+        if ($sessionClientId && $clientIds->contains((int) $sessionClientId)) {
+            $this->selectedClientId = (int) $sessionClientId;
+        } elseif ($clientIds->isNotEmpty()) {
+            $this->selectedClientId = $clientIds->first();
+        }
+
+        // Auto-select first project of the selected client
         $firstProject = $this->getProjectsProperty()->first();
         if ($firstProject) {
             $this->selectedProjectId = $firstProject->id;
         }
     }
 
-    public function getProjectsProperty()
+    /**
+     * Called by the global ClientSwitcher when the user picks a different client.
+     */
+    #[On('client-switched')]
+    public function onClientSwitched(int $clientId): void
     {
-        // Get all client IDs linked to current user
-        $clientIds = UserClient::where('user_id', auth()->id())
-            ->pluck('client_id');
+        $this->selectedClientId = $clientId;
+        $this->selectedProjectId = null;
 
-        if ($clientIds->isEmpty()) {
+        $firstProject = $this->getProjectsProperty()->first();
+        if ($firstProject) {
+            $this->selectedProjectId = $firstProject->id;
+        }
+    }
+
+    public function getProjectsProperty(): Collection
+    {
+        if (!$this->selectedClientId) {
             return collect([]);
         }
 
-        return Project::whereIn('client_id', $clientIds)
+        // Verify the client belongs to this user
+        $clientIds = UserClient::where('user_id', auth()->id())->pluck('client_id');
+        if (!$clientIds->contains($this->selectedClientId)) {
+            return collect([]);
+        }
+
+        return Project::where('client_id', $this->selectedClientId)
             ->with([
                 'client',
                 'pic',
@@ -48,30 +79,12 @@ class ProyekTab extends Component
 
     public function getActiveProjectsCountProperty()
     {
-        $clientIds = UserClient::where('user_id', auth()->id())
-            ->pluck('client_id');
-
-        if ($clientIds->isEmpty()) {
-            return 0;
-        }
-
-        return Project::whereIn('client_id', $clientIds)
-            ->whereIn('status', ['draft', 'in_progress', 'review', 'analysis'])
-            ->count();
+        return $this->projects->whereIn('status', ['draft', 'in_progress', 'review', 'analysis'])->count();
     }
 
     public function getCompletedProjectsCountProperty()
     {
-        $clientIds = UserClient::where('user_id', auth()->id())
-            ->pluck('client_id');
-
-        if ($clientIds->isEmpty()) {
-            return 0;
-        }
-
-        return Project::whereIn('client_id', $clientIds)
-            ->where('status', 'completed')
-            ->count();
+        return $this->projects->where('status', 'completed')->count();
     }
 
     public function selectProject($projectId)
@@ -82,8 +95,8 @@ class ProyekTab extends Component
     public function downloadDeliverable($projectId, $fileIndex)
     {
         $project = Project::findOrFail($projectId);
-        
-        // Authorization check - verify user has access to this project's client
+
+        // Authorization check
         $hasAccess = UserClient::where('user_id', auth()->id())
             ->where('client_id', $project->client_id)
             ->exists();
@@ -97,13 +110,11 @@ class ProyekTab extends Component
         }
 
         $deliverableFiles = is_array($project->deliverable_files) ? $project->deliverable_files : [];
-        
+
         if (isset($deliverableFiles[$fileIndex])) {
             $fileData = $deliverableFiles[$fileIndex];
-            
-            // Handle both string paths and array structures
             $filePath = is_string($fileData) ? $fileData : ($fileData['path'] ?? null);
-            
+
             if ($filePath && Storage::disk('public')->exists($filePath)) {
                 return Storage::disk('public')->download($filePath);
             }
