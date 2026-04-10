@@ -18,6 +18,9 @@ return [
 
     'name' => env('APP_NAME', 'Laravel'),
 
+    'discord_webhook_url' => env('DISCORD_WEBHOOK_URL'),
+    'discord_mention_ids' => env('DISCORD_MENTION_IDS', ''),
+
     /*
     |--------------------------------------------------------------------------
     | Application Environment

@@ -96,37 +96,55 @@ class DepartmentResource extends Resource
                     ->label('Nama Departemen')
                     ->searchable()
                     ->sortable()
-                    ->weight('medium'),
+                    ->weight('semibold')
+                    ->icon('heroicon-o-building-office-2')
+                    ->iconColor('primary')
+                    ->description(fn ($record) => 'ID: #' . $record->id)
+                    ->wrap(),
 
                 Tables\Columns\TextColumn::make('users_count')
                     ->label('Jumlah Anggota')
                     ->counts('users')
                     ->badge()
-                    ->color('primary')
-                    ->sortable(),
+                    ->color(fn (int $state): string => match (true) {
+                        $state === 0 => 'gray',
+                        $state <= 3  => 'warning',
+                        $state <= 10 => 'success',
+                        default      => 'primary',
+                    })
+                    ->icon('heroicon-o-users')
+                    ->sortable()
+                    ->alignCenter(),
 
                 Tables\Columns\TextColumn::make('created_at')
                     ->label('Dibuat')
                     ->dateTime('d M Y')
                     ->sortable()
+                    ->icon('heroicon-o-calendar')
+                    ->color('gray')
                     ->toggleable(isToggledHiddenByDefault: true),
 
                 Tables\Columns\TextColumn::make('updated_at')
-                    ->label('Diperbarui')
-                    ->dateTime('d M Y')
+                    ->label('Terakhir Diperbarui')
+                    ->since()
                     ->sortable()
-                    ->toggleable(isToggledHiddenByDefault: true),
+                    ->icon('heroicon-o-clock')
+                    ->color('gray')
+                    ->toggleable(),
             ])
             ->actions([
                 ActionGroup::make([
                     Tables\Actions\ViewAction::make()
-                        ->label('Lihat Detail'),
+                        ->label('Lihat Detail')
+                        ->icon('heroicon-o-eye'),
 
                     Tables\Actions\EditAction::make()
-                        ->label('Edit'),
+                        ->label('Edit')
+                        ->icon('heroicon-o-pencil-square'),
 
                     Tables\Actions\DeleteAction::make()
                         ->label('Hapus')
+                        ->icon('heroicon-o-trash')
                         ->requiresConfirmation()
                         ->modalHeading('Hapus Departemen')
                         ->modalDescription(fn ($record) => $record->users()->count() > 0
@@ -137,7 +155,9 @@ class DepartmentResource extends Resource
                         ->before(function ($record) {
                             $record->users()->update(['department_id' => null]);
                         }),
-                ]),
+                ])
+                ->tooltip('Aksi')
+                ->icon('heroicon-m-ellipsis-vertical'),
             ])
             ->bulkActions([
                 Tables\Actions\BulkActionGroup::make([
@@ -146,8 +166,17 @@ class DepartmentResource extends Resource
                         ->requiresConfirmation(),
                 ]),
             ])
+            ->emptyStateIcon('heroicon-o-building-office-2')
+            ->emptyStateHeading('Belum ada departemen')
+            ->emptyStateDescription('Buat departemen pertama untuk mulai mengorganisir tim Anda.')
+            ->emptyStateActions([
+                Tables\Actions\CreateAction::make()
+                    ->label('Tambah Departemen')
+                    ->icon('heroicon-o-plus'),
+            ])
             ->defaultSort('name')
-            ->striped();
+            ->striped()
+            ->paginated([10, 25, 50]);
     }
 
     public static function getRelations(): array

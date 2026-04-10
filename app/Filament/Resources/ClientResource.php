@@ -109,6 +109,7 @@ class ClientResource extends Resource
                                     default => 'Sub Tipe',
                                 };
                             })
+                            
                             ->options(function (Forms\Get $get) {
                                 $clientType = $get('client_type');
                                 

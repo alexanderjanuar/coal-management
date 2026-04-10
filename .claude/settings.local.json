@@ -7,7 +7,8 @@
       "Bash(composer dump-autoload:*)",
       "Bash(find:*)",
       "Bash(php -r:*)",
-      "Bash(git checkout:*)"
+      "Bash(git checkout:*)",
+      "Bash(curl -s -o /dev/null -w '%{http_code}' -X POST https://discordapp.com/api/webhooks/1492008526959345705/hNycHEngBmGgWXgq7vmyzPsD4XXXEQj5yoe8p8wHcFCbzMRalxHhacoDa2zx7TFEkbJ8 -H 'Content-Type: application/json' -d '{:*)"
     ]
   }
 }

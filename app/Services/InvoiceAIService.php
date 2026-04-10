@@ -4,6 +4,7 @@ namespace App\Services;
 
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Http;
 use Gemini\Laravel\Facades\Gemini;
 use Gemini\Data\GenerationConfig;
 use Gemini\Data\Blob;
@@ -31,23 +32,18 @@ class InvoiceAIService
             // Pass client name to prompt
             $prompt = $this->getInvoiceExtractionPrompt($clientName);
 
-            $result = Gemini::generativeModel(model: 'gemini-2.5-flash')
-                ->withGenerationConfig(
-                    generationConfig: new GenerationConfig(
-                        responseMimeType: ResponseMimeType::APPLICATION_JSON,
-                        temperature: 0.1,
-                        maxOutputTokens: 1500, // Increase token limit
-                    )
-                )
-                ->generateContent([
-                    $prompt,
-                    new Blob(
-                        mimeType: MimeType::from($mimeType),
-                        data: $base64Content
-                    )
+            // Try Gemini first, fall back to OpenAI on error
+            $responseData = null;
+            try {
+                $geminiResult = $this->callGemini($base64Content, $mimeType, $prompt);
+                $responseData = $this->extractResponseData($geminiResult);
+            } catch (\Exception $geminiError) {
+                Log::warning('Gemini failed, falling back to OpenAI: ' . $geminiError->getMessage(), [
+                    'client' => $clientName,
                 ]);
+                $responseData = $this->callOpenAI($filePath, $base64Content, $mimeType, $prompt);
+            }
 
-            $responseData = $this->extractResponseData($result);
             $extractedData = $this->parseAndValidateResponse($responseData, $clientName);
             
             if (!$extractedData) {
@@ -159,6 +155,88 @@ class InvoiceAIService
         ];
     }
     
+    /**
+     * Call Gemini API for invoice extraction
+     */
+    private function callGemini(string $base64Content, string $mimeType, string $prompt)
+    {
+        return Gemini::generativeModel(model: 'gemini-2.5-flash')
+            ->withGenerationConfig(
+                generationConfig: new GenerationConfig(
+                    responseMimeType: ResponseMimeType::APPLICATION_JSON,
+                    temperature: 0.1,
+                    maxOutputTokens: 1500,
+                )
+            )
+            ->generateContent([
+                $prompt,
+                new Blob(
+                    mimeType: MimeType::from($mimeType),
+                    data: $base64Content
+                )
+            ]);
+    }
+
+    /**
+     * Call OpenAI API for invoice extraction (fallback)
+     */
+    private function callOpenAI(string $filePath, string $base64Content, string $mimeType, string $prompt): string
+    {
+        $apiKey = env('OPENAI_API_KEY');
+
+        if (empty($apiKey)) {
+            throw new \Exception('OpenAI API key not configured. Set OPENAI_API_KEY in .env');
+        }
+
+        // Build file content block based on MIME type
+        if ($mimeType === 'application/pdf') {
+            $fileContent = [
+                'type' => 'file',
+                'file' => [
+                    'filename' => basename($filePath),
+                    'file_data' => 'data:application/pdf;base64,' . $base64Content,
+                ],
+            ];
+        } else {
+            $fileContent = [
+                'type' => 'image_url',
+                'image_url' => [
+                    'url' => 'data:' . $mimeType . ';base64,' . $base64Content,
+                ],
+            ];
+        }
+
+        $response = Http::withToken($apiKey)
+            ->timeout(60)
+            ->post('https://api.openai.com/v1/chat/completions', [
+                'model' => 'gpt-4o',
+                'messages' => [
+                    [
+                        'role' => 'user',
+                        'content' => [
+                            ['type' => 'text', 'text' => $prompt],
+                            $fileContent,
+                        ],
+                    ],
+                ],
+                'response_format' => ['type' => 'json_object'],
+                'max_tokens' => 1500,
+                'temperature' => 0.1,
+            ]);
+
+        if (!$response->successful()) {
+            throw new \Exception('OpenAI API error ' . $response->status() . ': ' . $response->body());
+        }
+
+        $content = $response->json('choices.0.message.content');
+
+        if ($content === null) {
+            throw new \Exception('Empty response from OpenAI API');
+        }
+
+        return $content;
+    }
+
     /**
      * Extract response data from Gemini result
      */
