@@ -157,20 +157,128 @@
         <div class="page-transition mb-3 md:mb-4">
             <div class="">
                 <div class="flex flex-col gap-3 p-3 md:flex-row md:items-center md:justify-between md:px-6 md:py-4">
-                    {{-- Client Info --}}
-                    <div class="flex items-center gap-3">
-                        <div
-                            class="flex h-8 w-8 md:h-10 md:w-10 items-center justify-center rounded-lg bg-gradient-to-br from-blue-500 to-blue-600">
+                    {{-- Client Info with dropdown selector --}}
+                    <div class="flex items-center gap-3"
+                        x-data="{
+                            open: false,
+                            search: '',
+                            clients: @js($clientNavMap),
+                            get filtered() {
+                                if (!this.search) return this.clients;
+                                const q = this.search.toLowerCase();
+                                return this.clients.filter(c => c.name.toLowerCase().includes(q));
+                            },
+                            navigate(url) {
+                                if (url) window.location.href = url;
+                            }
+                        }"
+                        @click.outside="open = false; search = ''">
+
+                        <div class="flex h-8 w-8 md:h-10 md:w-10 flex-shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-blue-500 to-blue-600">
                             <x-filament::icon icon="heroicon-o-building-office-2"
                                 class="h-4 w-4 md:h-5 md:w-5 text-white" />
                         </div>
-                        <div class="min-w-0 flex-1">
-                            <h1 class="truncate text-base md:text-lg font-bold text-gray-900 dark:text-white">
-                                {{ $record->client->name }}
-                            </h1>
-                            <p class="text-xs text-gray-500 dark:text-gray-400">
-                                Tax Report • {{ $record->created_at->format('Y') }}
-                            </p>
+
+                        {{-- Clickable client name trigger --}}
+                        <div class="relative min-w-0 flex-1">
+                            <button @click="open = !open" type="button"
+                                class="group flex items-center gap-2 rounded-lg px-2 py-1 text-left transition-colors hover:bg-blue-50 dark:hover:bg-blue-900/20">
+                                <div class="min-w-0 flex-1">
+                                    <h1 class="truncate text-base font-bold text-gray-900 transition-colors group-hover:text-blue-600 dark:text-white dark:group-hover:text-blue-400 md:text-lg">
+                                        {{ $record->client->name }}
+                                    </h1>
+                                    <p class="text-xs text-gray-500 dark:text-gray-400">
+                                        Tax Report • {{ $currentYear }} • {{ $currentMonth }}
+                                    </p>
+                                </div>
+                                <span class="flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full bg-blue-100 text-blue-600 transition-colors group-hover:bg-blue-200 dark:bg-blue-900/40 dark:text-blue-400 dark:group-hover:bg-blue-800/60">
+                                    <x-filament::icon icon="heroicon-o-chevron-down"
+                                        class="h-3.5 w-3.5 transition-transform duration-200"
+                                        ::class="{ 'rotate-180': open }" />
+                                </span>
+                            </button>
+
+                            {{-- Dropdown panel --}}
+                            <div x-show="open" x-cloak
+                                x-transition:enter="transition ease-out duration-100"
+                                x-transition:enter-start="opacity-0 scale-95"
+                                x-transition:enter-end="opacity-100 scale-100"
+                                x-transition:leave="transition ease-in duration-75"
+                                x-transition:leave-start="opacity-100 scale-100"
+                                x-transition:leave-end="opacity-0 scale-95"
+                                class="absolute left-0 top-full z-50 mt-1.5 w-72 overflow-hidden rounded-xl bg-white shadow-xl ring-1 ring-gray-900/10 dark:bg-gray-900 dark:ring-white/10"
+                                @click.stop>
+
+                                {{-- Search --}}
+                                <div class="border-b border-gray-100 p-2 dark:border-gray-800">
+                                    <div class="relative">
+                                        <x-filament::icon icon="heroicon-o-magnifying-glass"
+                                            class="absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+                                        <input x-model="search" x-ref="searchInput" @keydown.escape="open = false"
+                                            type="text" placeholder="Cari klien..."
+                                            class="w-full rounded-lg border-0 bg-gray-50 py-1.5 pl-8 pr-3 text-sm text-gray-900 placeholder:text-gray-400 focus:ring-1 focus:ring-blue-500 dark:bg-gray-800 dark:text-white" />
+                                    </div>
+                                </div>
+
+                                {{-- Client list --}}
+                                <div class="max-h-60 overflow-y-auto py-1">
+                                    <template x-for="client in filtered" :key="client.id">
+                                        <button
+                                            @click="navigate(client.url)"
+                                            :disabled="client.is_current"
+                                            :class="{
+                                                'bg-blue-50 dark:bg-blue-900/20': client.is_current,
+                                                'hover:bg-gray-50 dark:hover:bg-gray-800 cursor-pointer': !client.is_current,
+                                            }"
+                                            class="flex w-full items-center gap-2.5 px-3 py-2 text-left text-sm transition-colors"
+                                            type="button">
+
+                                            {{-- Icon --}}
+                                            <span class="flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-md"
+                                                :class="client.is_current
+                                                    ? 'bg-blue-100 dark:bg-blue-800'
+                                                    : 'bg-gray-100 dark:bg-gray-800'">
+                                                <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5"
+                                                    :class="client.is_current
+                                                        ? 'text-blue-600 dark:text-blue-400'
+                                                        : 'text-gray-500 dark:text-gray-400'"
+                                                    fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                                                    <path stroke-linecap="round" stroke-linejoin="round"
+                                                        d="M3.75 21h16.5M4.5 3h15M5.25 3v18m13.5-18v18M9 6.75h1.5m-1.5 3h1.5m-1.5 3H9m3.75-6h1.5m-1.5 3h1.5m-1.5 3h1.5M6.75 21v-3.375c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125V21" />
+                                                </svg>
+                                            </span>
+
+                                            {{-- Name --}}
+                                            <span class="flex-1 truncate font-medium"
+                                                :class="client.is_current
+                                                    ? 'text-blue-700 dark:text-blue-300'
+                                                    : 'text-gray-900 dark:text-white'"
+                                                x-text="client.name"></span>
+
+                                            {{-- Current checkmark --}}
+                                            <template x-if="client.is_current">
+                                                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 flex-shrink-0 text-blue-600 dark:text-blue-400" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" d="m4.5 12.75 6 6 9-13.5" />
+                                                </svg>
+                                            </template>
+                                        </button>
+                                    </template>
+
+                                    {{-- Empty search state --}}
+                                    <div x-show="filtered.length === 0"
+                                        class="px-3 py-6 text-center text-sm text-gray-400">
+                                        Klien tidak ditemukan
+                                    </div>
+                                </div>
+
+                                {{-- Footer --}}
+                                <div class="border-t border-gray-100 px-3 py-2 dark:border-gray-800">
+                                    <p class="text-[10px] text-gray-400">
+                                        Klien dengan laporan
+                                        <span class="font-semibold text-gray-500 dark:text-gray-300">{{ $currentMonth }} {{ $currentYear }}</span>
+                                    </p>
+                                </div>
+                            </div>
                         </div>
                     </div>
 
