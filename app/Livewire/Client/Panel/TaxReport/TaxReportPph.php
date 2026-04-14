@@ -112,9 +112,8 @@ class TaxReportPph extends Component
         
         // Use cache to avoid repeated calculations (5 minutes cache)
         $cacheKey = "client_pph_calculations_{$this->taxReportId}";
-        
-        $calculations = Cache::remember($cacheKey, 300, function () {
-            // Single optimized query using aggregations and CASE statements
+
+        $query = function () {
             return DB::table('income_taxes')
                 ->where('tax_report_id', $this->taxReportId)
                 ->select([
@@ -122,23 +121,29 @@ class TaxReportPph extends Component
                     DB::raw('SUM(CASE WHEN jenis_pajak = "Pasal 21" THEN pajak_penghasilan ELSE 0 END) as pph21_total'),
                     DB::raw('COUNT(CASE WHEN jenis_pajak = "Pasal 21" THEN 1 END) as pph21_count'),
                     DB::raw('SUM(CASE WHEN jenis_pajak = "Pasal 21" THEN dasar_pengenaan_pajak ELSE 0 END) as pph21_bruto'),
-                    
+
                     // PPh 23
                     DB::raw('SUM(CASE WHEN jenis_pajak = "Pasal 23" THEN pajak_penghasilan ELSE 0 END) as pph23_total'),
                     DB::raw('COUNT(CASE WHEN jenis_pajak = "Pasal 23" THEN 1 END) as pph23_count'),
                     DB::raw('SUM(CASE WHEN jenis_pajak = "Pasal 23" THEN dasar_pengenaan_pajak ELSE 0 END) as pph23_bruto'),
-                    
+
                     // PPh 4(2)
                     DB::raw('SUM(CASE WHEN jenis_pajak IN ("Pasal 4(2)", "Pasal 4 ayat 2") THEN pajak_penghasilan ELSE 0 END) as pph42_total'),
                     DB::raw('COUNT(CASE WHEN jenis_pajak IN ("Pasal 4(2)", "Pasal 4 ayat 2") THEN 1 END) as pph42_count'),
                     DB::raw('SUM(CASE WHEN jenis_pajak IN ("Pasal 4(2)", "Pasal 4 ayat 2") THEN dasar_pengenaan_pajak ELSE 0 END) as pph42_bruto'),
-                    
+
                     // Totals
                     DB::raw('SUM(pajak_penghasilan) as total_pph'),
                     DB::raw('COUNT(*) as total_bukti_potong')
                 ])
                 ->first();
-        });
+        };
+
+        try {
+            $calculations = Cache::remember($cacheKey, 300, $query);
+        } catch (\Exception $e) {
+            $calculations = $query();
+        }
         
         // Assign to component properties
         $this->pph21Total = $calculations->pph21_total ?? 0;

@@ -13,6 +13,7 @@ class Kernel extends ConsoleKernel
     protected function schedule(Schedule $schedule): void
     {
         // $schedule->command('inspire')->hourly();
+        $schedule->command('backup:discord-db')->weeklyOn(1, '08:00'); // Every Monday at 08:00
     }
 
     /**

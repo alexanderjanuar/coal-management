@@ -101,8 +101,8 @@ class TaxReportBupot extends Component
         
         // Use cache to avoid repeated queries (5 minutes cache)
         $cacheKey = "client_bupot_data_{$this->taxReportId}";
-        
-        $this->bupots = Cache::remember($cacheKey, 300, function () {
+
+        $query = function () {
             return Bupot::where('tax_report_id', $this->taxReportId)
                 ->select([
                     'id',
@@ -117,7 +117,13 @@ class TaxReportBupot extends Component
                 ->orderBy('created_at', 'desc')
                 ->get()
                 ->toArray();
-        });
+        };
+
+        try {
+            $this->bupots = Cache::remember($cacheKey, 300, $query);
+        } catch (\Exception $e) {
+            $this->bupots = $query();
+        }
 
         
         // Calculate totals
