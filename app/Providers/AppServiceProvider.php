@@ -43,8 +43,15 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
-        //
-
+        // Ensure the file cache directory tree exists on every boot.
+        // Prevents "file_put_contents: No such file or directory" on Linux
+        // servers where storage/framework/cache/data/ sub-folders are missing.
+        if (config('cache.default') === 'file') {
+            $cacheDataPath = config('cache.stores.file.path', storage_path('framework/cache/data'));
+            if (!is_dir($cacheDataPath)) {
+                mkdir($cacheDataPath, 0775, true);
+            }
+        }
 
         Model::unguard();
         Invoice::observe(InvoiceObserver::class);
