@@ -46,6 +46,11 @@ class TaxReportKompensasi extends Component
     public $selectedCompensationId = null;
     public $rejectionReason = '';
 
+    // Revision
+    public $reviseCompensationId = null;
+    public $reviseAmount = 0;
+    public $reviseNotes = '';
+
     protected $listeners = [
         'refreshKompensasi' => 'loadData',
         'compensationCreated' => 'loadData',
@@ -593,6 +598,105 @@ class TaxReportKompensasi extends Component
         $this->compensationNotes = '';
         $this->rejectionReason = '';
         $this->resetValidation();
+    }
+
+    /**
+     * Returns every approved outgoing compensation whose amount no longer
+     * matches the current surplus, meaning the source month's data changed
+     * after the compensation was approved.
+     *
+     * Two cases are flagged:
+     *  - Over-compensated : amount_compensated > kompensasi_tersedia (critical)
+     *  - Under-compensated: amount_compensated < kompensasi_tersedia (informational)
+     */
+    public function getStaleGivenCompensationsProperty()
+    {
+        $ppnSummary = $this->taxReport->ppnSummary;
+
+        if (!$ppnSummary) {
+            return collect();
+        }
+
+        $currentSurplus = $ppnSummary->kompensasi_tersedia;
+
+        return $this->givenCompensations
+            ->where('status', 'approved')
+            ->filter(fn ($c) => (float) $c->amount_compensated !== (float) $currentSurplus);
+    }
+
+    /**
+     * True when the sum of approved outgoing compensations exceeds the
+     * current available surplus — i.e. we compensated more than we have.
+     */
+    public function getIsOverCompensatedProperty(): bool
+    {
+        $ppnSummary = $this->taxReport->ppnSummary;
+
+        if (!$ppnSummary) {
+            return false;
+        }
+
+        return $ppnSummary->kompensasi_terpakai > $ppnSummary->kompensasi_tersedia;
+    }
+
+    /**
+     * Open the revise modal for a specific approved compensation.
+     * Pre-fills the amount with the current correct surplus.
+     */
+    public function openReviseModal(int $compensationId): void
+    {
+        $ppnSummary = $this->taxReport->ppnSummary;
+
+        $this->reviseCompensationId = $compensationId;
+        $this->reviseAmount         = $ppnSummary ? (float) $ppnSummary->kompensasi_tersedia : 0;
+        $this->reviseNotes          = '';
+
+        $this->dispatch('open-modal', id: 'revise-compensation-modal');
+    }
+
+    /**
+     * Execute the revision: cancel old compensation and create a new approved
+     * one with the updated amount, then cascade-recalculate all future months.
+     */
+    public function confirmRevise(): void
+    {
+        $this->validate([
+            'reviseAmount' => ['required', 'numeric', 'min:1'],
+            'reviseNotes'  => ['nullable', 'string', 'max:1000'],
+        ], [
+            'reviseAmount.required' => 'Jumlah revisi wajib diisi',
+            'reviseAmount.min'      => 'Jumlah minimal Rp 1',
+        ]);
+
+        try {
+            $compensation = TaxCompensation::findOrFail($this->reviseCompensationId);
+
+            $compensation->revise(
+                newAmount: (float) $this->reviseAmount,
+                userId:    auth()->id(),
+                notes:     $this->reviseNotes ?: null,
+            );
+
+            Notification::make()
+                ->success()
+                ->title('Kompensasi Direvisi')
+                ->body('Kompensasi berhasil diperbarui dan semua bulan berikutnya telah dikalkulasi ulang.')
+                ->send();
+
+            $this->dispatch('close-modal', id: 'revise-compensation-modal');
+            $this->reviseCompensationId = null;
+            $this->reviseAmount         = 0;
+            $this->reviseNotes          = '';
+            $this->loadData();
+            $this->dispatch('compensationUpdated');
+
+        } catch (\Throwable $e) {
+            Notification::make()
+                ->danger()
+                ->title('Gagal Merevisi Kompensasi')
+                ->body($e->getMessage())
+                ->send();
+        }
     }
 
     /**

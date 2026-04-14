@@ -111,6 +111,54 @@
     </div>
 
     {{-- ============================================
+    STALE COMPENSATION WARNING BANNER
+    ============================================ --}}
+    @if($this->staleGivenCompensations->isNotEmpty())
+    <div class="rounded-xl border {{ $this->isOverCompensated ? 'border-red-300 bg-red-50 dark:border-red-700 dark:bg-red-950/40' : 'border-amber-300 bg-amber-50 dark:border-amber-700 dark:bg-amber-950/40' }} p-4">
+        <div class="flex items-start gap-3">
+            <div class="flex-shrink-0 mt-0.5">
+                @if($this->isOverCompensated)
+                <x-filament::icon icon="heroicon-o-exclamation-triangle" class="h-5 w-5 text-red-600 dark:text-red-400" />
+                @else
+                <x-filament::icon icon="heroicon-o-information-circle" class="h-5 w-5 text-amber-600 dark:text-amber-400" />
+                @endif
+            </div>
+            <div class="flex-1 min-w-0">
+                <p class="text-sm font-semibold {{ $this->isOverCompensated ? 'text-red-800 dark:text-red-200' : 'text-amber-800 dark:text-amber-200' }}">
+                    @if($this->isOverCompensated)
+                        Kompensasi Melebihi Surplus Terkini
+                    @else
+                        Nilai Kompensasi Tidak Sesuai Surplus Terkini
+                    @endif
+                </p>
+                <p class="mt-1 text-xs {{ $this->isOverCompensated ? 'text-red-700 dark:text-red-300' : 'text-amber-700 dark:text-amber-300' }}">
+                    @if($this->isOverCompensated)
+                        Penambahan faktur telah mengubah surplus sehingga jumlah kompensasi yang sudah disetujui
+                        <strong>melebihi saldo tersedia</strong>. Revisi diperlukan untuk menjaga konsistensi data.
+                    @else
+                        Penambahan faktur mengubah surplus periode ini. Jumlah kompensasi yang disetujui
+                        berbeda dengan surplus terkini. Pertimbangkan untuk merevisi.
+                    @endif
+                </p>
+                <div class="mt-3 flex flex-wrap gap-2">
+                    @foreach($this->staleGivenCompensations as $staleComp)
+                    <button wire:click="openReviseModal({{ $staleComp->id }})"
+                        class="inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors
+                            {{ $this->isOverCompensated
+                                ? 'bg-red-600 text-white hover:bg-red-700 dark:bg-red-700 dark:hover:bg-red-600'
+                                : 'bg-amber-600 text-white hover:bg-amber-700 dark:bg-amber-700 dark:hover:bg-amber-600' }}">
+                        <x-filament::icon icon="heroicon-m-pencil-square" class="h-3.5 w-3.5" />
+                        Revisi ke {{ $staleComp->targetTaxReport->month }}
+                        (Rp {{ number_format($staleComp->amount_compensated, 0, ',', '.') }})
+                    </button>
+                    @endforeach
+                </div>
+            </div>
+        </div>
+    </div>
+    @endif
+
+    {{-- ============================================
     SECTION 2: NEXT PERIOD COMPENSATION
     ============================================ --}}
     @if($statusSetelah === 'Lebih Bayar' && $kompensasiTersedia > 0)
@@ -417,6 +465,18 @@
                             </x-filament::button>
                             <x-filament::button wire:click="cancelCompensation({{ $compensation->id }})"
                                 wire:confirm="Yakin ingin membatalkan?" color="gray" size="sm" icon="heroicon-m-trash">
+                                Batal
+                            </x-filament::button>
+                        </div>
+                        @elseif($compensation->status === 'approved')
+                        <div class="flex flex-col gap-2">
+                            <x-filament::button wire:click="openReviseModal({{ $compensation->id }})"
+                                color="warning" size="sm" icon="heroicon-m-pencil-square">
+                                Revisi
+                            </x-filament::button>
+                            <x-filament::button wire:click="cancelCompensation({{ $compensation->id }})"
+                                wire:confirm="Yakin ingin membatalkan kompensasi yang sudah disetujui ini?"
+                                color="gray" size="sm" icon="heroicon-m-trash">
                                 Batal
                             </x-filament::button>
                         </div>
@@ -738,6 +798,96 @@
         </x-filament::button>
         <x-filament::button color="danger" wire:click="rejectCompensation">
             Tolak Kompensasi
+        </x-filament::button>
+    </x-slot>
+</x-filament::modal>
+
+{{-- Revise Compensation Modal --}}
+<x-filament::modal id="revise-compensation-modal" width="lg" :close-by-clicking-away="false">
+    <x-slot name="heading">Revisi Kompensasi</x-slot>
+    <x-slot name="description">
+        Kompensasi lama akan dibatalkan dan digantikan dengan nilai baru.
+        Semua bulan setelah bulan target akan dikalkulasi ulang secara otomatis.
+    </x-slot>
+
+    <div class="space-y-5">
+        {{-- Current vs New --}}
+        @if($reviseCompensationId)
+        @php $rc = $givenCompensations->firstWhere('id', $reviseCompensationId); @endphp
+        @if($rc)
+        <div class="grid grid-cols-2 gap-3">
+            <div class="rounded-lg border border-gray-200 bg-gray-50 p-3 dark:border-gray-700 dark:bg-gray-800">
+                <p class="text-xs text-gray-500 dark:text-gray-400 mb-1">Jumlah Saat Ini</p>
+                <p class="text-lg font-bold text-gray-500 line-through dark:text-gray-400">
+                    Rp {{ number_format($rc->amount_compensated, 0, ',', '.') }}
+                </p>
+                <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                    ke {{ $rc->targetTaxReport->month }}
+                </p>
+            </div>
+            <div class="rounded-lg border border-green-200 bg-green-50 p-3 dark:border-green-800 dark:bg-green-950/40">
+                <p class="text-xs text-green-700 dark:text-green-300 mb-1">Surplus Terkini</p>
+                <p class="text-lg font-bold text-green-700 dark:text-green-300">
+                    Rp {{ number_format($this->taxReport->ppnSummary?->kompensasi_tersedia ?? 0, 0, ',', '.') }}
+                </p>
+                <p class="text-xs text-green-600 dark:text-green-400 mt-1">
+                    tersedia untuk dikompensasi
+                </p>
+            </div>
+        </div>
+        @endif
+        @endif
+
+        {{-- New Amount Input --}}
+        <div>
+            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                Jumlah Revisi <span class="text-red-500">*</span>
+            </label>
+            <div class="relative">
+                <span class="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-gray-500 dark:text-gray-400">Rp</span>
+                <input wire:model="reviseAmount" type="number" min="1"
+                    :max="{{ $this->taxReport->ppnSummary?->kompensasi_tersedia ?? 0 }}"
+                    class="w-full rounded-lg border border-gray-300 bg-white py-2 pl-9 pr-3 text-sm text-gray-900 focus:border-primary-500 focus:ring-1 focus:ring-primary-500 dark:border-gray-700 dark:bg-gray-900 dark:text-white" />
+            </div>
+            @error('reviseAmount')
+            <p class="mt-1 text-xs text-red-600 dark:text-red-400">{{ $message }}</p>
+            @enderror
+        </div>
+
+        {{-- Notes --}}
+        <div>
+            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                Catatan Revisi
+            </label>
+            <textarea wire:model="reviseNotes" rows="2"
+                placeholder="Alasan revisi (opsional)..."
+                class="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 placeholder:text-gray-400 focus:border-primary-500 focus:ring-1 focus:ring-primary-500 dark:border-gray-700 dark:bg-gray-900 dark:text-white"></textarea>
+            @error('reviseNotes')
+            <p class="mt-1 text-xs text-red-600 dark:text-red-400">{{ $message }}</p>
+            @enderror
+        </div>
+
+        {{-- Info note --}}
+        <div class="rounded-lg border border-blue-100 bg-blue-50 p-3 dark:border-blue-900 dark:bg-blue-950/30">
+            <div class="flex gap-2">
+                <x-filament::icon icon="heroicon-o-information-circle"
+                    class="h-4 w-4 flex-shrink-0 text-blue-600 dark:text-blue-400 mt-0.5" />
+                <p class="text-xs text-blue-800 dark:text-blue-200">
+                    Kompensasi lama akan disimpan dengan status <strong>Dibatalkan</strong> sebagai riwayat.
+                    Kompensasi baru akan langsung berstatus <strong>Disetujui</strong> dan semua bulan setelah
+                    periode target akan dihitung ulang secara otomatis.
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <x-slot name="footerActions">
+        <x-filament::button wire:click="confirmRevise" color="warning" icon="heroicon-m-pencil-square">
+            Konfirmasi Revisi
+        </x-filament::button>
+        <x-filament::button color="gray"
+            x-on:click="$dispatch('close-modal', { id: 'revise-compensation-modal' })">
+            Batal
         </x-filament::button>
     </x-slot>
 </x-filament::modal>

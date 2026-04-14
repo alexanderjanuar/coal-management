@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Facades\DB;
 
 class TaxCompensation extends Model
 {
@@ -181,17 +182,13 @@ class TaxCompensation extends Model
         ]);
 
         if ($updated) {
-            // Recalculate both source and target summaries
+            // Recalculate source and direct target first
             $this->sourceTaxReport->getOrCreateSummary($this->tax_type)->recalculate();
             $this->targetTaxReport->getOrCreateSummary($this->tax_type)->recalculate();
-            
-            // Update invoice_tax_status untuk backward compatibility (khusus PPN)
-            if ($this->tax_type === 'ppn') {
-                $targetSummary = $this->targetTaxReport->ppnSummary;
-                if ($targetSummary) {
-                    $this->targetTaxReport->update(['invoice_tax_status' => $targetSummary->status_final]);
-                }
-            }
+
+            // Cascade forward: recalculate every month after the target
+            // so the whole chain stays consistent
+            $this->targetTaxReport->cascadeRecalculate();
         }
 
         return $updated;
@@ -214,17 +211,12 @@ class TaxCompensation extends Model
         ]);
 
         if ($updated) {
-            // Recalculate summaries
+            // Recalculate source and direct target first
             $this->sourceTaxReport->getOrCreateSummary($this->tax_type)->recalculate();
             $this->targetTaxReport->getOrCreateSummary($this->tax_type)->recalculate();
-            
-            // Update invoice_tax_status untuk backward compatibility (khusus PPN)
-            if ($this->tax_type === 'ppn') {
-                $targetSummary = $this->targetTaxReport->ppnSummary;
-                if ($targetSummary) {
-                    $this->targetTaxReport->update(['invoice_tax_status' => $targetSummary->status_final]);
-                }
-            }
+
+            // Cascade forward from the target month onward
+            $this->targetTaxReport->cascadeRecalculate();
         }
 
         return $updated;
@@ -242,20 +234,67 @@ class TaxCompensation extends Model
         $updated = $this->update(['status' => 'cancelled']);
 
         if ($updated) {
-            // Recalculate summaries
+            // Recalculate source and direct target first
             $this->sourceTaxReport->getOrCreateSummary($this->tax_type)->recalculate();
             $this->targetTaxReport->getOrCreateSummary($this->tax_type)->recalculate();
-            
-            // Update invoice_tax_status untuk backward compatibility (khusus PPN)
-            if ($this->tax_type === 'ppn') {
-                $targetSummary = $this->targetTaxReport->ppnSummary;
-                if ($targetSummary) {
-                    $this->targetTaxReport->update(['invoice_tax_status' => $targetSummary->status_final]);
-                }
-            }
+
+            // Cascade forward from the target month onward
+            $this->targetTaxReport->cascadeRecalculate();
         }
 
         return $updated;
+    }
+
+    /**
+     * Revise an approved compensation to a new amount.
+     *
+     * Atomically:
+     *   1. Cancels this record (audit trail kept, cascade runs)
+     *   2. Creates a new compensation for the same source → target with
+     *      the corrected amount
+     *   3. Immediately approves the new one (cascade runs again)
+     *
+     * Returns the new TaxCompensation on success, or throws on failure.
+     *
+     * Only call this when the compensation is already approved and the
+     * source surplus has changed (e.g. a new invoice was added).
+     */
+    public function revise(float $newAmount, int $userId, ?string $notes = null): self
+    {
+        if (!$this->canBeCancelled()) {
+            throw new \RuntimeException(
+                "Compensation #{$this->id} cannot be revised (status: {$this->status})."
+            );
+        }
+
+        if ($newAmount <= 0) {
+            throw new \InvalidArgumentException('Revised amount must be greater than zero.');
+        }
+
+        return DB::transaction(function () use ($newAmount, $userId, $notes) {
+            // Step 1 — cancel the existing record; this recalculates source,
+            // target, and every month after the target automatically.
+            $this->cancel();
+
+            // Step 2 — create a replacement with the updated amount.
+            /** @var self $replacement */
+            $replacement = self::create([
+                'source_tax_report_id' => $this->source_tax_report_id,
+                'target_tax_report_id' => $this->target_tax_report_id,
+                'tax_type'             => $this->tax_type,
+                'amount_compensated'   => $newAmount,
+                'status'               => 'pending',
+                'type'                 => 'manual',
+                'created_by'           => $userId,
+                'notes'                => $notes ?? "Revisi dari kompensasi #{$this->id}",
+            ]);
+
+            // Step 3 — approve immediately so downstream months pick it up;
+            // approve() triggers cascadeRecalculate() from the target onward.
+            $replacement->approve($userId);
+
+            return $replacement->fresh();
+        });
     }
 
     /**

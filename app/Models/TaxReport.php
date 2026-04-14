@@ -11,6 +11,17 @@ class TaxReport extends Model
 {
     use HasFactory,Trackable;
 
+    /**
+     * Maps month name → its numeric position (1–12).
+     * Used to sort and compare month strings chronologically.
+     */
+    const MONTH_ORDER = [
+        'January'   => 1,  'February'  => 2,  'March'     => 3,
+        'April'     => 4,  'May'       => 5,  'June'      => 6,
+        'July'      => 7,  'August'    => 8,  'September' => 9,
+        'October'   => 10, 'November'  => 11, 'December'  => 12,
+    ];
+
     protected $fillable = [
         'client_id',
         'month',
@@ -529,12 +540,46 @@ class TaxReport extends Model
             $summary = $this->getOrCreateSummary($taxType);
             $summary->recalculate();
         }
-        
-        // Update invoice_tax_status untuk backward compatibility
-        $ppnSummary = $this->ppnSummary;
-        if ($ppnSummary) {
-            $this->update(['invoice_tax_status' => $ppnSummary->status_final]);
-        }
+    }
+
+    /**
+     * Recalculate all tax reports for this client that come AFTER this month
+     * chronologically, in order. This propagates the effect of any change in
+     * this report (e.g. a new invoice, or a revised compensation) forward
+     * through the entire chain so every downstream month stays consistent.
+     *
+     * Example:  Jan changed → Feb, Mar, Apr … all recalculate in sequence.
+     */
+    public function cascadeRecalculate(): void
+    {
+        $currentYear     = $this->year ?? $this->created_at->year;
+        $currentMonthNum = self::MONTH_ORDER[$this->month] ?? 0;
+
+        // Fetch every other report for this client and filter/sort in PHP
+        // to avoid relying on DB-specific month-string ordering.
+        TaxReport::where('client_id', $this->client_id)
+            ->where('id', '!=', $this->id)
+            ->get()
+            ->filter(function (TaxReport $report) use ($currentYear, $currentMonthNum) {
+                $reportYear     = $report->year ?? $report->created_at->year;
+                $reportMonthNum = self::MONTH_ORDER[$report->month] ?? 0;
+
+                // Keep only reports that are strictly after the current one
+                return $reportYear > $currentYear
+                    || ($reportYear === $currentYear && $reportMonthNum > $currentMonthNum);
+            })
+            ->sortBy(function (TaxReport $report) {
+                $reportYear     = $report->year ?? $report->created_at->year;
+                $reportMonthNum = self::MONTH_ORDER[$report->month] ?? 0;
+
+                // Single comparable integer: YYYYMM
+                return $reportYear * 100 + $reportMonthNum;
+            })
+            ->each(function (TaxReport $report) {
+                // recalculateAllSummaries() reads live DB values each time,
+                // so by the time March runs, February is already saved correctly.
+                $report->recalculateAllSummaries();
+            });
     }
 
     /**
