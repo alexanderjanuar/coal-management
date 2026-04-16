@@ -23,6 +23,7 @@ use Filament\Notifications\Livewire\DatabaseNotifications;
 use App\Models\Invoice;
 use App\Observers\InvoiceObserver;
 use Illuminate\Support\Facades\Vite;
+use Livewire\Livewire;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -61,6 +62,8 @@ class AppServiceProvider extends ServiceProvider
         // DailyTaskSubTask::observe(DailyTaskSubTaskObserver::class);
 
         DatabaseNotifications::trigger('filament.notifications.database-notifications-trigger');
+
+        Livewire::component('tax-report.ppn.bulk-invoice-ai-import', \App\Livewire\TaxReport\Ppn\BulkInvoiceAIImport::class);
 
         // FilamentAsset::register([
         //     Js::make('chart-js-plugins', Vite::asset('resources/js/filament-chart-js-plugins.js'))->module(),
