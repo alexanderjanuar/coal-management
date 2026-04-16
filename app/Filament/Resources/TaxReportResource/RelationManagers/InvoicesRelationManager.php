@@ -307,7 +307,7 @@ class InvoicesRelationManager extends RelationManager
                     })),
             ])
             ->headerActions([
-                    
+
                 Tables\Actions\Action::make('export_all')
                     ->label('Ekspor Semua ke Excel')
                     ->icon('heroicon-o-document-arrow-down')
@@ -316,39 +316,69 @@ class InvoicesRelationManager extends RelationManager
                         $taxReport = $this->getOwnerRecord();
                         $monthYear = FileManagementService::convertToIndonesianMonth($taxReport->month) . '_' . date('Y');
                         $filename = 'Faktur_' . $monthYear . '.xlsx';
-                        
+
                         return \Maatwebsite\Excel\Facades\Excel::download(
                             new \App\Exports\TaxReportInvoicesExport($taxReport),
                             $filename
                         );
                     })
-                    ->tooltip('Ekspor semua faktur ke format Excel'),                                    
-                    
-                Tables\Actions\CreateAction::make()
+                    ->tooltip('Ekspor semua faktur ke format Excel'),
+
+                Tables\Actions\Action::make('create_invoice')
                     ->label('Faktur Baru')
-                    ->successNotificationTitle('Faktur berhasil dibuat')
-                    ->modalWidth('7xl')
+                    ->icon('heroicon-o-sparkles')
+                    ->color('primary')
+                    ->modalHeading('Tambah Faktur Pajak')
+                    ->modalDescription('Upload 1–10 berkas faktur. AI akan mengekstrak data setiap dokumen secara otomatis.')
+                    ->modalWidth('5xl')
+                    ->modalSubmitAction(false)
+                    ->modalCancelActionLabel('Tutup')
+                    ->modalContent(fn () => view(
+                        'livewire.tax-report.ppn.bulk-invoice-ai-import-modal',
+                        ['taxReportId' => $this->getOwnerRecord()->id]
+                    ))
                     ->tooltip(function () {
                         $taxReport = $this->getOwnerRecord();
-                        
                         if ($taxReport) {
                             $client = \App\Models\Client::find($taxReport->client_id);
-                            
                             if (!$client || !$client->ppn_contract) {
-                                return 'Klien tidak memiliki kontrak PPN aktif. Aktifkan kontrak PPN terlebih dahulu.';
+                                return 'Klien tidak memiliki kontrak PPN aktif.';
                             }
                         }
-                        
-                        return 'Tambah Faktur Pajak Baru';
+                        return 'Tambah 1–10 faktur sekaligus — AI mengekstrak data otomatis';
                     })
                     ->disabled(function () {
                         $taxReport = $this->getOwnerRecord();
-                        
                         if ($taxReport) {
                             $client = \App\Models\Client::find($taxReport->client_id);
                             return !($client && $client->ppn_contract);
                         }
-                        
+                        return true;
+                    }),
+
+                Tables\Actions\CreateAction::make()
+                    ->label('Input Manual')
+                    ->icon('heroicon-o-pencil-square')
+                    ->color('gray')
+                    ->successNotificationTitle('Faktur berhasil disimpan')
+                    ->modalHeading('Input Faktur Manual')
+                    ->modalWidth('7xl')
+                    ->tooltip(function () {
+                        $taxReport = $this->getOwnerRecord();
+                        if ($taxReport) {
+                            $client = \App\Models\Client::find($taxReport->client_id);
+                            if (!$client || !$client->ppn_contract) {
+                                return 'Klien tidak memiliki kontrak PPN aktif.';
+                            }
+                        }
+                        return 'Isi data faktur secara manual (gunakan jika AI tidak tersedia)';
+                    })
+                    ->disabled(function () {
+                        $taxReport = $this->getOwnerRecord();
+                        if ($taxReport) {
+                            $client = \App\Models\Client::find($taxReport->client_id);
+                            return !($client && $client->ppn_contract);
+                        }
                         return true;
                     }),
             ])

@@ -305,21 +305,47 @@ class InvoiceTable extends Component implements HasForms, HasTable
                     ->modalSubmitActionLabel('Ekspor')
                     ->modalWidth('md'),
 
-                Tables\Actions\CreateAction::make()
+                Tables\Actions\Action::make('create_invoice')
                     ->label('Faktur Baru')
-                    ->successNotificationTitle('Faktur berhasil dibuat')
-                    ->modalWidth('7xl')
-                    ->form($this->getInvoiceFormSchema())
-                    ->mutateFormDataUsing(function (array $data): array {
-                        $data['tax_report_id'] = $this->taxReportId;
-                        $data['created_by'] = auth()->id();
-                        return $data;
-                    })
+                    ->icon('heroicon-o-sparkles')
+                    ->color('primary')
+                    ->modalHeading('Tambah Faktur Pajak')
+                    ->modalDescription('Upload 1–10 berkas faktur. AI akan mengekstrak data setiap dokumen secara otomatis.')
+                    ->modalWidth('5xl')
+                    ->modalSubmitAction(false)
+                    ->modalCancelActionLabel('Tutup')
+                    ->modalContent(fn () => view(
+                        'livewire.tax-report.ppn.bulk-invoice-ai-import-modal',
+                        ['taxReportId' => $this->taxReportId]
+                    ))
                     ->tooltip(function () {
                         if (!$this->taxReport->client || !$this->taxReport->client->ppn_contract) {
                             return 'Klien tidak memiliki kontrak PPN aktif. Aktifkan kontrak PPN terlebih dahulu.';
                         }
-                        return 'Tambah Faktur Pajak Baru';
+                        return 'Tambah 1–10 faktur sekaligus — AI mengekstrak data otomatis';
+                    })
+                    ->disabled(function () {
+                        return !($this->taxReport->client && $this->taxReport->client->ppn_contract);
+                    }),
+
+                Tables\Actions\CreateAction::make()
+                    ->label('Input Manual')
+                    ->icon('heroicon-o-pencil-square')
+                    ->color('gray')
+                    ->successNotificationTitle('Faktur berhasil disimpan')
+                    ->modalHeading('Input Faktur Manual')
+                    ->modalWidth('7xl')
+                    ->form($this->getInvoiceFormSchema())
+                    ->mutateFormDataUsing(function (array $data): array {
+                        $data['tax_report_id'] = $this->taxReportId;
+                        $data['created_by']    = auth()->id();
+                        return $data;
+                    })
+                    ->tooltip(function () {
+                        if (!$this->taxReport->client || !$this->taxReport->client->ppn_contract) {
+                            return 'Klien tidak memiliki kontrak PPN aktif.';
+                        }
+                        return 'Isi data faktur secara manual (gunakan jika AI tidak tersedia)';
                     })
                     ->disabled(function () {
                         return !($this->taxReport->client && $this->taxReport->client->ppn_contract);
