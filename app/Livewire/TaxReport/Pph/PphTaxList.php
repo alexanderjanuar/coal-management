@@ -62,6 +62,26 @@ class PphTaxList extends Component implements HasForms, HasTable
                     ->with(['employee', 'createdBy'])
             )
             ->columns([
+                TextColumn::make('row_number')
+                    ->label('No.')
+                    ->getStateUsing(function ($record) {
+                        static $computed = [];
+                        static $counters = [];
+
+                        if (isset($computed[$record->id])) {
+                            return $computed[$record->id];
+                        }
+
+                        $jenisPajak = $record->jenis_pajak ?? 'other';
+                        if (!isset($counters[$jenisPajak])) {
+                            $counters[$jenisPajak] = 0;
+                        }
+                        $computed[$record->id] = ++$counters[$jenisPajak];
+                        return $computed[$record->id];
+                    })
+                    ->alignCenter()
+                    ->extraCellAttributes(['class' => 'font-mono text-gray-500 text-xs']),
+
                 TextColumn::make('masa_pajak')
                     ->label('Masa Pajak')
                     ->formatStateUsing(fn ($state) => $this->formatMasaPajak($state))
@@ -330,6 +350,8 @@ class PphTaxList extends Component implements HasForms, HasTable
                     })
                     ->deselectRecordsAfterCompletion(),
             ])
+            ->groups(['jenis_pajak'])
+            ->defaultGroup('jenis_pajak')
             ->emptyStateHeading('Belum ada data PPh')
             ->emptyStateDescription('Tambahkan data PPh menggunakan tombol Import Excel')
             ->emptyStateIcon('heroicon-o-document-text')

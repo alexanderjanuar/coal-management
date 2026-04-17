@@ -72,6 +72,26 @@ class InvoiceTable extends Component implements HasForms, HasTable
         return $table
             ->query(Invoice::query()->where('tax_report_id', $this->taxReportId))
             ->columns([
+                Tables\Columns\TextColumn::make('row_number')
+                    ->label('No.')
+                    ->getStateUsing(function ($record) {
+                        static $computed = [];
+                        static $counters = [];
+
+                        if (isset($computed[$record->id])) {
+                            return $computed[$record->id];
+                        }
+
+                        $type = $record->type ?? 'other';
+                        if (!isset($counters[$type])) {
+                            $counters[$type] = 0;
+                        }
+                        $computed[$record->id] = ++$counters[$type];
+                        return $computed[$record->id];
+                    })
+                    ->alignCenter()
+                    ->extraCellAttributes(['class' => 'font-mono text-gray-500 text-xs']),
+
                 Tables\Columns\ImageColumn::make('user_avatar')
                     ->label('Dibuat Oleh')
                     ->circular()
