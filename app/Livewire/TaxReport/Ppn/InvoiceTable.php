@@ -69,24 +69,40 @@ class InvoiceTable extends Component implements HasForms, HasTable
 
     public function table(Table $table): Table
     {
+        $component = $this;
+
         return $table
-            ->query(Invoice::query()->where('tax_report_id', $this->taxReportId))
+            ->query(
+                Invoice::query()
+                    ->where('tax_report_id', $this->taxReportId)
+                    ->with(['createdBy', 'revisions', 'originalInvoice'])
+                    ->withCount('revisions')
+            )
             ->columns([
                 Tables\Columns\TextColumn::make('row_number')
                     ->label('No.')
-                    ->getStateUsing(function ($record) {
+                    ->getStateUsing(function ($record) use ($component) {
                         static $computed = [];
                         static $counters = [];
+                        static $seq = [0];
 
                         if (isset($computed[$record->id])) {
                             return $computed[$record->id];
                         }
 
-                        $type = $record->type ?? 'other';
-                        if (!isset($counters[$type])) {
-                            $counters[$type] = 0;
+                        $isGrouped = method_exists($component, 'getTableGrouping')
+                            && $component->getTableGrouping() !== null;
+
+                        if ($isGrouped) {
+                            $type = $record->type ?? 'other';
+                            if (!isset($counters[$type])) {
+                                $counters[$type] = 0;
+                            }
+                            $computed[$record->id] = ++$counters[$type];
+                        } else {
+                            $computed[$record->id] = ++$seq[0];
                         }
-                        $computed[$record->id] = ++$counters[$type];
+
                         return $computed[$record->id];
                     })
                     ->alignCenter()
@@ -96,22 +112,17 @@ class InvoiceTable extends Component implements HasForms, HasTable
                     ->label('Dibuat Oleh')
                     ->circular()
                     ->state(function ($record) {
-                        if ($record->created_by) {
-                            $user = \App\Models\User::find($record->created_by);
-                            if ($user && method_exists($user, 'getAvatarUrl')) {
-                                return $user->getAvatarUrl();
-                            }
+                        $user = $record->createdBy;
+                        if ($user && method_exists($user, 'getAvatarUrl')) {
+                            return $user->getAvatarUrl();
                         }
                         return null;
                     })
                     ->defaultImageUrl(asset('images/default-avatar.png'))
                     ->size(40)
                     ->tooltip(function ($record): string {
-                        if ($record->created_by) {
-                            $user = \App\Models\User::find($record->created_by);
-                            return $user ? $user->name : 'User #' . $record->created_by;
-                        }
-                        return 'No System';
+                        $user = $record->createdBy;
+                        return $user ? $user->name : 'No System';
                     }),
 
                 Tables\Columns\TextColumn::make('invoice_number')
@@ -120,13 +131,12 @@ class InvoiceTable extends Component implements HasForms, HasTable
                     ->sortable()
                     ->description(function ($record) {
                         if (!$record) return null;
-                        
+
                         if ($record->is_revision) {
                             return "Revisi #{$record->revision_number}";
                         }
-                        if ($record->hasRevisions()) {
-                            $revisionCount = $record->revisions()->count();
-                            return "Memiliki {$revisionCount} revisi";
+                        if ($record->revisions_count > 0) {
+                            return "Memiliki {$record->revisions_count} revisi";
                         }
                         return null;
                     }),

@@ -55,6 +55,8 @@ class PphTaxList extends Component implements HasForms, HasTable
 
     public function table(Table $table): Table
     {
+        $component = $this;
+
         return $table
             ->query(
                 IncomeTax::query()
@@ -64,19 +66,28 @@ class PphTaxList extends Component implements HasForms, HasTable
             ->columns([
                 TextColumn::make('row_number')
                     ->label('No.')
-                    ->getStateUsing(function ($record) {
+                    ->getStateUsing(function ($record) use ($component) {
                         static $computed = [];
                         static $counters = [];
+                        static $seq = [0];
 
                         if (isset($computed[$record->id])) {
                             return $computed[$record->id];
                         }
 
-                        $jenisPajak = $record->jenis_pajak ?? 'other';
-                        if (!isset($counters[$jenisPajak])) {
-                            $counters[$jenisPajak] = 0;
+                        $isGrouped = method_exists($component, 'getTableGrouping')
+                            && $component->getTableGrouping() !== null;
+
+                        if ($isGrouped) {
+                            $jenisPajak = $record->jenis_pajak ?? 'other';
+                            if (!isset($counters[$jenisPajak])) {
+                                $counters[$jenisPajak] = 0;
+                            }
+                            $computed[$record->id] = ++$counters[$jenisPajak];
+                        } else {
+                            $computed[$record->id] = ++$seq[0];
                         }
-                        $computed[$record->id] = ++$counters[$jenisPajak];
+
                         return $computed[$record->id];
                     })
                     ->alignCenter()
