@@ -6,6 +6,7 @@ use App\Models\IncomeTax;
 use App\Models\TaxReport;
 use Livewire\Component;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Cache;
 
 class TaxReportPph extends Component
 {
