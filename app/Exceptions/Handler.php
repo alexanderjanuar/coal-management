@@ -2,6 +2,7 @@
 
 namespace App\Exceptions;
 
+use Illuminate\Auth\AuthenticationException;
 use Illuminate\Foundation\Exceptions\Handler as ExceptionHandler;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
@@ -31,6 +32,19 @@ class Handler extends ExceptionHandler
         \Symfony\Component\HttpKernel\Exception\NotFoundHttpException::class,
         \Symfony\Component\HttpKernel\Exception\MethodNotAllowedHttpException::class,
     ];
+
+    /**
+     * Redirect unauthenticated users to the correct Filament panel login.
+     * Laravel's default looks for a 'login' route which doesn't exist here.
+     */
+    protected function unauthenticated($request, AuthenticationException $exception)
+    {
+        if ($request->expectsJson()) {
+            return response()->json(['message' => $exception->getMessage()], 401);
+        }
+
+        return redirect()->guest(route('filament.admin.auth.login'));
+    }
 
     /**
      * Register the exception handling callbacks for the application.

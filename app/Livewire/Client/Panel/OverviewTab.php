@@ -7,6 +7,7 @@ use Livewire\Attributes\On;
 use App\Models\Client;
 use App\Models\Project;
 use App\Models\TaxReport;
+use App\Models\UserActivity;
 use App\Models\UserClient;
 use App\Models\ClientDocument;
 use App\Models\ClientDocumentRequirement;
@@ -582,6 +583,22 @@ class OverviewTab extends Component
         return $this->pendingDocuments;
     }
 
+    /**
+     * Get recent activities for the selected client
+     */
+    public function getRecentActivitiesProperty(): Collection
+    {
+        if (!$this->selectedClientId) {
+            return collect();
+        }
+
+        return UserActivity::where('client_id', $this->selectedClientId)
+            ->with('user:id,name')
+            ->latest()
+            ->limit(15)
+            ->get();
+    }
+
     public function render()
     {
         return view('livewire.client.panel.overview-tab', [
@@ -598,6 +615,7 @@ class OverviewTab extends Component
             'projectStats' => $this->projectStats,
             'taxReportStats' => $this->taxReportStats,
             'documentStats' => $this->documentStats,
+            'recentActivities' => $this->recentActivities,
         ]);
     }
 }

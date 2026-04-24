@@ -41,31 +41,6 @@
     </div>
     @else
 
-    {{-- Client Selector --}}
-    <div class="rounded-xl border border-gray-200 bg-white shadow-sm dark:border-gray-700 dark:bg-gray-800"
-        x-show="mounted" x-transition:enter="transition ease-out duration-300"
-        x-transition:enter-start="opacity-0 transform -translate-y-2"
-        x-transition:enter-end="opacity-100 transform translate-y-0">
-        <div class="p-5">
-            <div
-                class="mb-3 flex items-center gap-2 text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">
-                <x-heroicon-o-building-office-2 class="h-4 w-4" />
-                <span>Pilih Perusahaan</span>
-            </div>
-            <div class="flex flex-wrap gap-2">
-                @foreach($clients as $client)
-                <button wire:click="selectClient({{ $client->id }})" class="group relative overflow-hidden rounded-lg px-4 py-2.5 text-sm font-medium transition-all duration-200
-                        {{ $selectedClient === $client->id 
-                            ? 'bg-primary-600 text-white shadow-lg shadow-primary-500/30 hover:bg-primary-700 dark:bg-primary-500 dark:shadow-primary-400/20' 
-                            : 'bg-gray-100 text-gray-700 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600' 
-                        }}">
-                    {{ $client->name }}
-                </button>
-                @endforeach
-            </div>
-        </div>
-    </div>
-
     @if($selectedClient && $currentTaxReport)
     <div class="space-y-6" x-show="mounted" x-transition:enter="transition ease-out duration-300 delay-100"
         x-transition:enter-start="opacity-0 transform translate-y-4"

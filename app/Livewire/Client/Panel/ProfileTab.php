@@ -2,6 +2,7 @@
 
 namespace App\Livewire\Client\Panel;
 
+use Livewire\Attributes\On;
 use Livewire\Component;
 use App\Models\Client;
 use App\Models\UserClient;
@@ -68,6 +69,7 @@ class ProfileTab extends Component
         );
     }
 
+    #[On('client-switched')]
     public function selectClient(int $clientId)
     {
         $this->selectedClientId = $clientId;
