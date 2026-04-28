@@ -5,7 +5,9 @@ namespace App\Livewire\Client\Panel;
 use Livewire\Attributes\On;
 use Livewire\Component;
 use App\Models\Client;
+use App\Models\ClientCredential;
 use App\Models\UserClient;
+use Filament\Notifications\Notification;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Cache;
 
@@ -15,8 +17,29 @@ class ProfileTab extends Component
     public ?int $selectedClientId = null;
     public bool $isLoading = true;
     public bool $showCredentials = false;
+    public bool $showCredentialModal = false;
+
+    public string $credCoreTaxUserId = '';
+    public string $credCoreTaxPassword = '';
+    public string $credDjpAccount = '';
+    public string $credDjpPassword = '';
+    public string $credEmail = '';
+    public string $credEmailPassword = '';
 
     protected int $cacheDuration = 300;
+
+    protected $rules = [
+        'credCoreTaxUserId'   => 'nullable|string|max:255',
+        'credCoreTaxPassword' => 'nullable|string|max:255',
+        'credDjpAccount'      => 'nullable|string|max:255',
+        'credDjpPassword'     => 'nullable|string|max:255',
+        'credEmail'           => 'nullable|email|max:255',
+        'credEmailPassword'   => 'nullable|string|max:255',
+    ];
+
+    protected $messages = [
+        'credEmail.email' => 'Format email tidak valid.',
+    ];
 
     protected $listeners = ['refreshProfile' => 'refresh', 'client-changed' => 'handleClientChange'];
 
@@ -98,6 +121,90 @@ class ProfileTab extends Component
     public function toggleCredentials()
     {
         $this->showCredentials = !$this->showCredentials;
+    }
+
+    public function openCredentialModal(): void
+    {
+        if (!$this->selectedClientId || !$this->userOwnsClient($this->selectedClientId)) {
+            return;
+        }
+
+        $cred = $this->selectedClient?->clientCredential;
+
+        if ($cred) {
+            $this->credCoreTaxUserId   = $cred->core_tax_user_id ?? '';
+            $this->credCoreTaxPassword = $cred->core_tax_password ?? '';
+            $this->credDjpAccount      = $cred->djp_account ?? '';
+            $this->credDjpPassword     = $cred->djp_password ?? '';
+            $this->credEmail           = $cred->email ?? '';
+            $this->credEmailPassword   = $cred->email_password ?? '';
+        } else {
+            $this->resetCredentialForm();
+        }
+
+        $this->showCredentialModal = true;
+    }
+
+    public function closeCredentialModal(): void
+    {
+        $this->showCredentialModal = false;
+        $this->resetCredentialForm();
+        $this->resetErrorBag();
+    }
+
+    public function saveCredentials(): void
+    {
+        $this->validate();
+
+        $client = $this->selectedClient;
+
+        if (!$client || !$this->userOwnsClient($client->id)) {
+            return;
+        }
+
+        $data = [
+            'core_tax_user_id'  => $this->credCoreTaxUserId ?: null,
+            'core_tax_password' => $this->credCoreTaxPassword ?: null,
+            'djp_account'       => $this->credDjpAccount ?: null,
+            'djp_password'      => $this->credDjpPassword ?: null,
+            'email'             => $this->credEmail ?: null,
+            'email_password'    => $this->credEmailPassword ?: null,
+        ];
+
+        if ($client->credential_id && $client->clientCredential) {
+            $client->clientCredential->update($data);
+        } else {
+            $credential = ClientCredential::create(array_merge($data, [
+                'client_id' => $client->id,
+            ]));
+            $client->credential_id = $credential->id;
+            $client->save();
+        }
+
+        $this->clearClientCache();
+        $this->closeCredentialModal();
+
+        Notification::make()
+            ->title('Kredensial berhasil disimpan')
+            ->success()
+            ->send();
+    }
+
+    protected function userOwnsClient(int $clientId): bool
+    {
+        return UserClient::where('user_id', auth()->id())
+            ->where('client_id', $clientId)
+            ->exists();
+    }
+
+    protected function resetCredentialForm(): void
+    {
+        $this->credCoreTaxUserId   = '';
+        $this->credCoreTaxPassword = '';
+        $this->credDjpAccount      = '';
+        $this->credDjpPassword     = '';
+        $this->credEmail           = '';
+        $this->credEmailPassword   = '';
     }
 
     public function getContractStatusProperty(): array

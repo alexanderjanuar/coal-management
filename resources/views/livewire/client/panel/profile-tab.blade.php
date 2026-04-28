@@ -167,8 +167,6 @@
         </div>
 
         {{-- ── PANEL: KREDENSIAL AKUN ──────────────────────────── --}}
-        @if($selectedClient->clientCredential)
-        @php $cred = $selectedClient->clientCredential; @endphp
         <div class="rounded-xl border border-amber-200 dark:border-amber-900/40 bg-white dark:bg-slate-900 shadow-sm overflow-hidden"
             x-data="{
                 copiedField: null,
@@ -182,7 +180,24 @@
             <div class="flex items-center gap-2 px-4 py-3 border-b border-amber-100 dark:border-amber-900/30 bg-amber-50/40 dark:bg-amber-900/10">
                 <div class="w-1 h-4 rounded-full bg-amber-400"></div>
                 <span class="text-xs font-semibold text-slate-700 dark:text-slate-300">Kredensial Akun</span>
+                <div class="flex-1"></div>
+                <button wire:click="openCredentialModal"
+                    class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium transition-colors
+                        {{ $selectedClient->clientCredential
+                            ? 'text-amber-700 dark:text-amber-400 bg-amber-100 dark:bg-amber-900/30 hover:bg-amber-200 dark:hover:bg-amber-800/50'
+                            : 'text-white bg-amber-500 hover:bg-amber-600 active:bg-amber-700' }}">
+                    @if($selectedClient->clientCredential)
+                        <x-heroicon-o-pencil-square class="h-3 w-3" />
+                        Perbarui
+                    @else
+                        <x-heroicon-o-plus class="h-3 w-3" />
+                        Tambah Kredensial
+                    @endif
+                </button>
             </div>
+
+            @if($selectedClient->clientCredential)
+            @php $cred = $selectedClient->clientCredential; @endphp
 
             {{-- Security notice --}}
             <div class="flex items-center gap-2 px-4 py-2 bg-amber-50/30 dark:bg-amber-900/5 border-b border-amber-50 dark:border-amber-900/20">
@@ -283,8 +298,18 @@
                     @endforeach
                 </div>
             </div>
+
+            @else
+            {{-- Empty state --}}
+            <div class="flex flex-col items-center justify-center py-10 px-4 text-center">
+                <div class="w-10 h-10 rounded-full bg-amber-50 dark:bg-amber-900/20 flex items-center justify-center mb-3">
+                    <x-heroicon-o-key class="h-5 w-5 text-amber-400" />
+                </div>
+                <p class="text-sm font-medium text-slate-700 dark:text-slate-300">Belum Ada Kredensial</p>
+                <p class="mt-1 text-xs text-slate-400 max-w-xs">Tambahkan kredensial akun untuk Core Tax, DJP Online, dan Email terdaftar.</p>
+            </div>
+            @endif
         </div>
-        @endif
 
         {{-- ── PANEL: KONTAK TAMBAHAN ──────────────────────────── --}}
         @if($selectedClient->contacts && $selectedClient->contacts->count() > 0)
@@ -325,4 +350,172 @@
 
     @endif
     @endif
+
+    {{-- ── SLIDE-OVER: EDIT / TAMBAH KREDENSIAL ───────────── --}}
+    <div
+        x-data="{ open: $wire.entangle('showCredentialModal') }"
+        x-show="open"
+        x-transition:enter="transition-opacity ease-out duration-300"
+        x-transition:enter-start="opacity-0"
+        x-transition:enter-end="opacity-100"
+        x-transition:leave="transition-opacity ease-in duration-200"
+        x-transition:leave-start="opacity-100"
+        x-transition:leave-end="opacity-0"
+        class="fixed inset-0 z-50 overflow-hidden"
+        style="display: none;">
+
+        {{-- Backdrop --}}
+        <div class="absolute inset-0 bg-slate-900/60 dark:bg-black/70 backdrop-blur-sm"
+            @click="$wire.closeCredentialModal()"></div>
+
+        {{-- Panel --}}
+        <div class="absolute inset-y-0 right-0 flex max-w-full pointer-events-none">
+            <div
+                x-show="open"
+                x-transition:enter="transform transition ease-in-out duration-300"
+                x-transition:enter-start="translate-x-full"
+                x-transition:enter-end="translate-x-0"
+                x-transition:leave="transform transition ease-in-out duration-200"
+                x-transition:leave-start="translate-x-0"
+                x-transition:leave-end="translate-x-full"
+                class="pointer-events-auto w-screen max-w-md flex flex-col bg-white dark:bg-slate-900 shadow-2xl border-l border-slate-200 dark:border-slate-800">
+
+                {{-- Header --}}
+                <div class="flex items-center justify-between px-5 py-4 border-b border-slate-200 dark:border-slate-800 flex-shrink-0">
+                    <div class="flex items-center gap-2 min-w-0">
+                        <div class="w-1 h-4 rounded-full bg-amber-400 flex-shrink-0"></div>
+                        <h2 class="text-sm font-semibold text-slate-800 dark:text-slate-200">
+                            {{ $selectedClient?->clientCredential ? 'Perbarui Kredensial' : 'Tambah Kredensial' }}
+                        </h2>
+                        @if($selectedClient?->name)
+                        <span class="text-xs text-slate-400 dark:text-slate-500 truncate">— {{ $selectedClient->name }}</span>
+                        @endif
+                    </div>
+                    <button wire:click="closeCredentialModal" type="button"
+                        class="flex-shrink-0 p-1.5 rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors ml-2">
+                        <x-heroicon-o-x-mark class="h-4 w-4" />
+                    </button>
+                </div>
+
+                {{-- Security notice --}}
+                <div class="flex items-center gap-2 px-5 py-2.5 bg-amber-50 dark:bg-amber-900/10 border-b border-amber-100 dark:border-amber-900/20 flex-shrink-0">
+                    <x-heroicon-o-shield-exclamation class="h-3.5 w-3.5 text-amber-500 flex-shrink-0" />
+                    <p class="text-[11px] text-amber-700 dark:text-amber-500">Data tersimpan aman. Jangan bagikan kepada pihak yang tidak berwenang.</p>
+                </div>
+
+                {{-- Form Body --}}
+                <div class="flex-1 overflow-y-auto px-5 py-5 space-y-6">
+
+                    {{-- Core Tax --}}
+                    <div class="space-y-3">
+                        <p class="text-[10px] font-bold uppercase tracking-widest text-slate-400 dark:text-slate-500">Core Tax</p>
+
+                        <div>
+                            <label class="block text-xs font-medium text-slate-500 dark:text-slate-400 mb-1.5">User ID</label>
+                            <input wire:model="credCoreTaxUserId" type="text" autocomplete="off"
+                                class="w-full rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-2 text-sm font-mono text-slate-800 dark:text-slate-200 placeholder-slate-300 dark:placeholder-slate-600 focus:outline-none focus:ring-2 focus:ring-amber-400/60 focus:border-amber-400 transition"
+                                placeholder="Masukkan User ID">
+                            @error('credCoreTaxUserId')<p class="mt-1 text-[11px] text-red-500">{{ $message }}</p>@enderror
+                        </div>
+
+                        <div x-data="{ show: false }">
+                            <label class="block text-xs font-medium text-slate-500 dark:text-slate-400 mb-1.5">Password</label>
+                            <div class="relative">
+                                <input wire:model="credCoreTaxPassword" :type="show ? 'text' : 'password'" autocomplete="new-password"
+                                    class="w-full rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-2 pr-9 text-sm font-mono text-slate-800 dark:text-slate-200 placeholder-slate-300 dark:placeholder-slate-600 focus:outline-none focus:ring-2 focus:ring-amber-400/60 focus:border-amber-400 transition"
+                                    placeholder="Masukkan Password">
+                                <button type="button" @click="show = !show"
+                                    class="absolute right-2.5 top-1/2 -translate-y-1/2 p-0.5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition-colors">
+                                    <x-heroicon-o-eye class="h-4 w-4" x-show="!show" />
+                                    <x-heroicon-o-eye-slash class="h-4 w-4" x-show="show" style="display:none" />
+                                </button>
+                            </div>
+                            @error('credCoreTaxPassword')<p class="mt-1 text-[11px] text-red-500">{{ $message }}</p>@enderror
+                        </div>
+                    </div>
+
+                    <div class="h-px bg-slate-100 dark:bg-slate-800"></div>
+
+                    {{-- DJP Online --}}
+                    <div class="space-y-3">
+                        <p class="text-[10px] font-bold uppercase tracking-widest text-slate-400 dark:text-slate-500">DJP Online</p>
+
+                        <div>
+                            <label class="block text-xs font-medium text-slate-500 dark:text-slate-400 mb-1.5">Username</label>
+                            <input wire:model="credDjpAccount" type="text" autocomplete="off"
+                                class="w-full rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-2 text-sm font-mono text-slate-800 dark:text-slate-200 placeholder-slate-300 dark:placeholder-slate-600 focus:outline-none focus:ring-2 focus:ring-amber-400/60 focus:border-amber-400 transition"
+                                placeholder="Masukkan Username DJP">
+                            @error('credDjpAccount')<p class="mt-1 text-[11px] text-red-500">{{ $message }}</p>@enderror
+                        </div>
+
+                        <div x-data="{ show: false }">
+                            <label class="block text-xs font-medium text-slate-500 dark:text-slate-400 mb-1.5">Password</label>
+                            <div class="relative">
+                                <input wire:model="credDjpPassword" :type="show ? 'text' : 'password'" autocomplete="new-password"
+                                    class="w-full rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-2 pr-9 text-sm font-mono text-slate-800 dark:text-slate-200 placeholder-slate-300 dark:placeholder-slate-600 focus:outline-none focus:ring-2 focus:ring-amber-400/60 focus:border-amber-400 transition"
+                                    placeholder="Masukkan Password DJP">
+                                <button type="button" @click="show = !show"
+                                    class="absolute right-2.5 top-1/2 -translate-y-1/2 p-0.5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition-colors">
+                                    <x-heroicon-o-eye class="h-4 w-4" x-show="!show" />
+                                    <x-heroicon-o-eye-slash class="h-4 w-4" x-show="show" style="display:none" />
+                                </button>
+                            </div>
+                            @error('credDjpPassword')<p class="mt-1 text-[11px] text-red-500">{{ $message }}</p>@enderror
+                        </div>
+                    </div>
+
+                    <div class="h-px bg-slate-100 dark:bg-slate-800"></div>
+
+                    {{-- Email Terdaftar --}}
+                    <div class="space-y-3">
+                        <p class="text-[10px] font-bold uppercase tracking-widest text-slate-400 dark:text-slate-500">Email Terdaftar</p>
+
+                        <div>
+                            <label class="block text-xs font-medium text-slate-500 dark:text-slate-400 mb-1.5">Email</label>
+                            <input wire:model="credEmail" type="email" autocomplete="off"
+                                class="w-full rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-2 text-sm font-mono text-slate-800 dark:text-slate-200 placeholder-slate-300 dark:placeholder-slate-600 focus:outline-none focus:ring-2 focus:ring-amber-400/60 focus:border-amber-400 transition"
+                                placeholder="nama@domain.com">
+                            @error('credEmail')<p class="mt-1 text-[11px] text-red-500">{{ $message }}</p>@enderror
+                        </div>
+
+                        <div x-data="{ show: false }">
+                            <label class="block text-xs font-medium text-slate-500 dark:text-slate-400 mb-1.5">Password</label>
+                            <div class="relative">
+                                <input wire:model="credEmailPassword" :type="show ? 'text' : 'password'" autocomplete="new-password"
+                                    class="w-full rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-2 pr-9 text-sm font-mono text-slate-800 dark:text-slate-200 placeholder-slate-300 dark:placeholder-slate-600 focus:outline-none focus:ring-2 focus:ring-amber-400/60 focus:border-amber-400 transition"
+                                    placeholder="Masukkan Password Email">
+                                <button type="button" @click="show = !show"
+                                    class="absolute right-2.5 top-1/2 -translate-y-1/2 p-0.5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition-colors">
+                                    <x-heroicon-o-eye class="h-4 w-4" x-show="!show" />
+                                    <x-heroicon-o-eye-slash class="h-4 w-4" x-show="show" style="display:none" />
+                                </button>
+                            </div>
+                            @error('credEmailPassword')<p class="mt-1 text-[11px] text-red-500">{{ $message }}</p>@enderror
+                        </div>
+                    </div>
+                </div>
+
+                {{-- Footer --}}
+                <div class="flex items-center justify-end gap-3 px-5 py-4 border-t border-slate-100 dark:border-slate-800 bg-slate-50/60 dark:bg-slate-900/80 flex-shrink-0">
+                    <button wire:click="closeCredentialModal" type="button"
+                        class="px-4 py-2 text-sm font-medium text-slate-600 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors">
+                        Batal
+                    </button>
+                    <button wire:click="saveCredentials" type="button"
+                        wire:loading.attr="disabled"
+                        wire:target="saveCredentials"
+                        class="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-amber-500 hover:bg-amber-600 active:bg-amber-700 disabled:opacity-60 disabled:cursor-not-allowed rounded-lg transition-colors">
+                        <svg wire:loading wire:target="saveCredentials"
+                            class="animate-spin h-3.5 w-3.5 text-white"
+                            xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 22 6.477 22 12h-4z"></path>
+                        </svg>
+                        <span wire:loading.remove wire:target="saveCredentials">Simpan Kredensial</span>
+                        <span wire:loading wire:target="saveCredentials" style="display:none">Menyimpan...</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
 </div>

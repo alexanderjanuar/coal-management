@@ -12,6 +12,20 @@ class ClientCredential extends Model
 {
     use HasFactory, LogsActivity;
 
+    protected $fillable = [
+        'client_id',
+        'core_tax_user_id',
+        'core_tax_password',
+        'djp_account',
+        'djp_password',
+        'email',
+        'email_password',
+        'credential_type',
+        'notes',
+        'is_active',
+        'last_used_at',
+    ];
+
 
     /**
      * Relationship ke Client (one-to-one melalui foreign key di clients table)
