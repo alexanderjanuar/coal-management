@@ -1,236 +1,208 @@
-<div class="space-y-6">
-    {{-- Header Section --}}
-    <div class="rounded-2xl bg-gradient-to-r from-gray-50 to-gray-100 p-6 dark:from-gray-800 dark:to-gray-900">
-        <div>
-            <h2 class="text-2xl font-bold text-gray-900 dark:text-white">
-                Proyek & Layanan
-            </h2>
-            <p class="mt-1 text-sm text-gray-600 dark:text-gray-400">
-                Kelola proyek untuk {{ $client->name }}
-            </p>
-        </div>
-    </div>
+<div>
+    @php
+        $projectCollection = collect($projects);
+    @endphp
 
-    {{-- Stats Cards --}}
-    <div class="grid grid-cols-1 gap-4 sm:grid-cols-4">
+    @if($projectCollection->isNotEmpty())
+    <div class="grid grid-cols-1 gap-6 2xl:grid-cols-2">
+        @foreach($projectCollection as $project)
         @php
-        $statsConfig = [
-        ['label' => 'Total Proyek', 'value' => $stats['total'] ?? 0, 'icon' => 'heroicon-o-folder-open', 'color' =>
-        'text-blue-600 dark:text-blue-400'],
-        ['label' => 'Sedang Berjalan', 'value' => $stats['in_progress'] ?? 0, 'icon' => 'heroicon-o-arrow-path', 'color'
-        => 'text-yellow-600 dark:text-yellow-400'],
-        ['label' => 'Selesai', 'value' => $stats['completed'] ?? 0, 'icon' => 'heroicon-o-check-circle', 'color' =>
-        'text-green-600 dark:text-green-400'],
-        ['label' => 'Urgent', 'value' => $stats['urgent'] ?? 0, 'icon' => 'heroicon-o-exclamation-triangle', 'color' =>
-        'text-red-600 dark:text-red-400'],
-        ];
+            $statusConfig = [
+                'draft' => ['label' => 'Draft', 'class' => 'bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300', 'rail' => 'bg-gray-400', 'icon' => 'heroicon-o-pencil-square'],
+                'analysis' => ['label' => 'Analysis', 'class' => 'bg-violet-100 text-violet-700 dark:bg-violet-900/40 dark:text-violet-300', 'rail' => 'bg-violet-500', 'icon' => 'heroicon-o-magnifying-glass-circle'],
+                'in_progress' => ['label' => 'In Progress', 'class' => 'bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300', 'rail' => 'bg-blue-500', 'icon' => 'heroicon-o-arrow-path'],
+                'review' => ['label' => 'Review', 'class' => 'bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300', 'rail' => 'bg-amber-500', 'icon' => 'heroicon-o-eye'],
+                'completed' => ['label' => 'Completed', 'class' => 'bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-300', 'rail' => 'bg-green-500', 'icon' => 'heroicon-o-check-circle'],
+                'completed (Not Payed Yet)' => ['label' => 'Not Paid', 'class' => 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/40 dark:text-yellow-300', 'rail' => 'bg-yellow-500', 'icon' => 'heroicon-o-banknotes'],
+                'canceled' => ['label' => 'Canceled', 'class' => 'bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300', 'rail' => 'bg-red-500', 'icon' => 'heroicon-o-x-circle'],
+            ];
+
+            $typeLabels = [
+                'single' => 'On Spot',
+                'monthly' => 'Monthly',
+                'yearly' => 'Yearly',
+            ];
+
+            $priorityConfig = [
+                'urgent' => ['label' => 'Urgent', 'class' => 'bg-red-50 text-red-700 ring-red-600/10 dark:bg-red-900/20 dark:text-red-400 dark:ring-red-400/20'],
+                'normal' => ['label' => 'Normal', 'class' => 'bg-gray-50 text-gray-700 ring-gray-600/10 dark:bg-gray-900 dark:text-gray-300 dark:ring-gray-400/20'],
+                'low' => ['label' => 'Low', 'class' => 'bg-slate-50 text-slate-600 ring-slate-600/10 dark:bg-slate-900/40 dark:text-slate-300 dark:ring-slate-400/20'],
+            ];
+
+            $statusConf = $statusConfig[$project->status] ?? $statusConfig['draft'];
+            $priorityConf = $priorityConfig[$project->priority] ?? $priorityConfig['normal'];
+            $typeLabel = $typeLabels[$project->type] ?? ucfirst($project->type ?? 'On Spot');
+            $dueDate = $project->due_date ? \Carbon\Carbon::parse($project->due_date) : null;
+            $diff = $dueDate ? now()->startOfDay()->diffInDays($dueDate->copy()->startOfDay(), false) : null;
+
+            $progress = $project->steps_count > 0
+                ? (int) round(($project->completed_steps_count / max($project->steps_count, 1)) * 100)
+                : match ($project->status) {
+                    'completed', 'completed (Not Payed Yet)' => 100,
+                    'review' => 75,
+                    'in_progress' => 50,
+                    'analysis' => 25,
+                    default => 0,
+                };
+
+            if ($diff === null) {
+                $deadlineTone = 'text-gray-600 dark:text-gray-400';
+                $deadlineLabel = 'Belum ada deadline';
+                $deadlineIcon = 'heroicon-o-calendar';
+            } elseif ($diff < 0) {
+                $deadlineTone = 'text-red-600 dark:text-red-400';
+                $deadlineLabel = 'Terlambat ' . abs($diff) . ' hari';
+                $deadlineIcon = 'heroicon-o-exclamation-triangle';
+            } elseif ($diff === 0) {
+                $deadlineTone = 'text-amber-600 dark:text-amber-400';
+                $deadlineLabel = 'Hari ini';
+                $deadlineIcon = 'heroicon-o-clock';
+            } elseif ($diff <= 7) {
+                $deadlineTone = 'text-amber-600 dark:text-amber-400';
+                $deadlineLabel = $diff . ' hari lagi';
+                $deadlineIcon = 'heroicon-o-clock';
+            } else {
+                $deadlineTone = 'text-gray-600 dark:text-gray-400';
+                $deadlineLabel = $diff . ' hari lagi';
+                $deadlineIcon = 'heroicon-o-calendar';
+            }
+
+            $description = trim(strip_tags($project->description ?? ''));
+            $resultNotes = trim(strip_tags($project->result_notes ?? ''));
         @endphp
 
-        @foreach($statsConfig as $stat)
-        <div class="rounded-xl bg-white p-5 shadow-sm dark:bg-gray-800">
-            <div class="flex items-center justify-between">
-                <div>
-                    <p class="text-sm font-medium text-gray-600 dark:text-gray-400">
-                        {{ $stat['label'] }}
-                    </p>
-                    <p class="mt-1 text-3xl font-bold text-gray-900 dark:text-white">
-                        {{ $stat['value'] }}
-                    </p>
+        <article
+            onclick="window.location.href='{{ route('filament.admin.resources.projects.view', ['record' => $project->id]) }}'"
+            class="group relative cursor-pointer overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm ring-1 ring-gray-950/5 transition duration-200 hover:-translate-y-0.5 hover:shadow-lg dark:border-gray-700 dark:bg-gray-800 dark:ring-white/10">
+
+            <div class="p-6">
+                <div class="flex min-w-0 items-start justify-between gap-4">
+                    <div class="min-w-0">
+                        <div class="mb-3 flex flex-wrap items-center gap-2">
+                            <span class="inline-flex items-center gap-1.5 rounded-md px-2.5 py-1 text-xs font-medium {{ $statusConf['class'] }}">
+                                <x-filament::icon :icon="$statusConf['icon']" class="h-3.5 w-3.5" />
+                                {{ $statusConf['label'] }}
+                            </span>
+                            <span class="inline-flex items-center rounded-md px-2.5 py-1 text-xs font-medium ring-1 ring-inset {{ $priorityConf['class'] }}">
+                                {{ $priorityConf['label'] }} Priority
+                            </span>
+                        </div>
+
+                        <h3 class="text-lg font-semibold leading-7 text-gray-950 dark:text-white">
+                            {{ $project->name }}
+                        </h3>
+
+                        <div class="mt-2 flex flex-wrap items-center gap-x-4 gap-y-2 text-xs text-gray-500 dark:text-gray-400">
+                            <span class="inline-flex items-center gap-1.5">
+                                <x-filament::icon icon="heroicon-o-rectangle-stack" class="h-4 w-4" />
+                                {{ $typeLabel }}
+                            </span>
+                            <span class="inline-flex items-center gap-1.5">
+                                <x-filament::icon icon="heroicon-o-clipboard-document-list" class="h-4 w-4" />
+                                {{ $project->sop?->name ?? 'Tanpa SOP' }}
+                            </span>
+                            <span class="inline-flex items-center gap-1.5">
+                                <x-filament::icon icon="heroicon-o-calendar-days" class="h-4 w-4" />
+                                Dibuat {{ $project->created_at?->format('d M Y') ?? '-' }}
+                            </span>
+                        </div>
+                    </div>
+
+                    <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-gray-200 bg-gray-50 text-gray-400 transition group-hover:bg-gray-100 group-hover:text-gray-600 dark:border-gray-700 dark:bg-gray-900 dark:group-hover:bg-gray-700 dark:group-hover:text-gray-300">
+                        <x-filament::icon icon="heroicon-o-arrow-up-right" class="h-5 w-5" />
+                    </div>
                 </div>
-                <div class="flex h-12 w-12 items-center justify-center rounded-lg bg-gray-100 dark:bg-gray-700">
-                    <x-filament::icon :icon="$stat['icon']" class="h-6 w-6 {{ $stat['color'] }}" />
+
+                <p class="mt-5 min-h-[3rem] text-sm leading-6 text-gray-600 dark:text-gray-400">
+                    {{ $description !== '' ? \Illuminate\Support\Str::limit($description, 180) : 'Belum ada deskripsi proyek.' }}
+                </p>
+
+                <div class="mt-6 rounded-lg border border-gray-200 bg-gray-50/70 p-4 dark:border-gray-700 dark:bg-gray-900/40">
+                    <div class="flex items-center justify-between gap-4">
+                        <div>
+                            <p class="text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">Progress</p>
+                            <p class="mt-1 text-sm font-semibold text-gray-900 dark:text-white">
+                                {{ $project->completed_steps_count }} / {{ $project->steps_count }} tahap selesai
+                            </p>
+                        </div>
+                        <span class="text-lg font-semibold text-gray-900 dark:text-white">{{ $progress }}%</span>
+                    </div>
+                    <div class="mt-3 h-2 overflow-hidden rounded-full bg-gray-200 dark:bg-gray-700">
+                        <div class="h-full rounded-full {{ $statusConf['rail'] }}" style="width: {{ $progress }}%"></div>
+                    </div>
+                </div>
+
+                <div class="mt-5 grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
+                    <div class="rounded-lg border border-gray-200 p-3 dark:border-gray-700">
+                        <div class="flex items-center gap-2 {{ $deadlineTone }}">
+                            <x-filament::icon :icon="$deadlineIcon" class="h-4 w-4" />
+                            <span class="text-xs font-medium uppercase tracking-wide">Deadline</span>
+                        </div>
+                        <p class="mt-2 text-sm font-semibold text-gray-900 dark:text-white">{{ $dueDate ? $dueDate->format('d M Y') : '-' }}</p>
+                        <p class="text-xs {{ $deadlineTone }}">{{ $deadlineLabel }}</p>
+                    </div>
+
+                    <div class="rounded-lg border border-gray-200 p-3 dark:border-gray-700">
+                        <div class="flex items-center gap-2 text-gray-500 dark:text-gray-400">
+                            <x-filament::icon icon="heroicon-o-user-circle" class="h-4 w-4" />
+                            <span class="text-xs font-medium uppercase tracking-wide">PIC</span>
+                        </div>
+                        <p class="mt-2 truncate text-sm font-semibold text-gray-900 dark:text-white">
+                            {{ $project->pic?->name ?? 'Belum ditentukan' }}
+                        </p>
+                    </div>
+
+                    <div class="rounded-lg border border-gray-200 p-3 dark:border-gray-700">
+                        <div class="flex items-center gap-2 text-gray-500 dark:text-gray-400">
+                            <x-filament::icon icon="heroicon-o-users" class="h-4 w-4" />
+                            <span class="text-xs font-medium uppercase tracking-wide">Tim</span>
+                        </div>
+                        <p class="mt-2 text-sm font-semibold text-gray-900 dark:text-white">
+                            {{ $project->team_members_count }} anggota
+                        </p>
+                    </div>
+
+                    <div class="rounded-lg border border-gray-200 p-3 dark:border-gray-700">
+                        <div class="flex items-center gap-2 text-gray-500 dark:text-gray-400">
+                            <x-filament::icon icon="heroicon-o-paper-clip" class="h-4 w-4" />
+                            <span class="text-xs font-medium uppercase tracking-wide">Output</span>
+                        </div>
+                        <p class="mt-2 text-sm font-semibold text-gray-900 dark:text-white">
+                            {{ $project->deliverables_count }} file
+                        </p>
+                    </div>
+                </div>
+
+                <div class="mt-5 flex flex-wrap items-center justify-between gap-3 border-t border-gray-200 pt-4 text-xs text-gray-500 dark:border-gray-700 dark:text-gray-400">
+                    <div class="flex flex-wrap items-center gap-x-4 gap-y-2">
+                        <span class="inline-flex items-center gap-1.5">
+                            <x-filament::icon icon="heroicon-o-check-circle" class="h-4 w-4" />
+                            {{ $project->completed_daily_tasks_count }} / {{ $project->daily_tasks_count }} task selesai
+                        </span>
+                        <span class="inline-flex items-center gap-1.5">
+                            <x-filament::icon icon="heroicon-o-chat-bubble-left-ellipsis" class="h-4 w-4" />
+                            {{ $project->notes_count }} catatan
+                        </span>
+                    </div>
+
+                    @if($resultNotes !== '')
+                    <span class="inline-flex max-w-full items-center gap-1.5 truncate rounded-md bg-gray-100 px-2 py-1 font-medium text-gray-700 dark:bg-gray-700 dark:text-gray-300">
+                        <x-filament::icon icon="heroicon-o-document-check" class="h-4 w-4 shrink-0" />
+                        {{ \Illuminate\Support\Str::limit($resultNotes, 52) }}
+                    </span>
+                    @endif
                 </div>
             </div>
-        </div>
+        </article>
         @endforeach
     </div>
-
-    {{-- Projects Table --}}
-    <div class="overflow-hidden rounded-2xl bg-white shadow-sm dark:bg-gray-800">
-        <div class="overflow-x-auto">
-            <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
-                <thead class="bg-gray-50 dark:bg-gray-900">
-                    <tr>
-                        <th scope="col"
-                            class="px-6 py-4 text-left text-xs font-semibold uppercase tracking-wider text-gray-700 dark:text-gray-300">
-                            Nama Proyek
-                        </th>
-                        <th scope="col"
-                            class="px-6 py-4 text-left text-xs font-semibold uppercase tracking-wider text-gray-700 dark:text-gray-300">
-                            Tipe & Prioritas
-                        </th>
-                        <th scope="col"
-                            class="px-6 py-4 text-left text-xs font-semibold uppercase tracking-wider text-gray-700 dark:text-gray-300">
-                            Deadline
-                        </th>
-                        <th scope="col"
-                            class="px-6 py-4 text-left text-xs font-semibold uppercase tracking-wider text-gray-700 dark:text-gray-300">
-                            Status
-                        </th>
-                        <th scope="col"
-                            class="px-6 py-4 text-left text-xs font-semibold uppercase tracking-wider text-gray-700 dark:text-gray-300">
-                            PIC
-                        </th>
-                    </tr>
-                </thead>
-                <tbody class="divide-y divide-gray-200 bg-white dark:divide-gray-700 dark:bg-gray-800">
-                    @forelse($projects as $project)
-                    <tr wire:navigate
-                        href="{{ route('filament.admin.resources.projects.view', ['record' => $project->id]) }}"
-                        class="group cursor-pointer transition-all duration-200 hover:bg-gradient-to-r hover:from-blue-50 hover:to-transparent dark:hover:from-blue-900/20 dark:hover:to-transparent hover:shadow-sm"
-                        onclick="window.location.href='{{ route('filament.admin.resources.projects.view', ['record' => $project->id]) }}'">
-                        {{-- Nama Proyek --}}
-                        <td class="whitespace-nowrap px-6 py-4">
-                            <div class="flex items-center gap-3">
-                                <div
-                                    class="flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-blue-500 to-blue-600 text-white shadow-md transition-transform group-hover:scale-110">
-                                    <x-filament::icon icon="heroicon-o-folder-open" class="h-6 w-6" />
-                                </div>
-                                <div class="min-w-0 flex-1">
-                                    <p class="text-sm font-bold text-gray-900 dark:text-white truncate"
-                                        title="{{ $project->name }}">
-                                        {{ $project->name }}
-                                    </p>
-                                    @if($project->description)
-                                    <p class="text-xs text-gray-500 dark:text-gray-400 truncate"
-                                        title="{{ $project->description }}">
-                                        {{ $project->description }}
-                                    </p>
-                                    @endif
-                                </div>
-                            </div>
-                        </td>
-
-                        {{-- Tipe & Prioritas --}}
-                        <td class="whitespace-nowrap px-6 py-4">
-                            <div class="flex flex-col gap-2">
-                                {{-- Type Badge - Simplified --}}
-                                @php
-                                $typeConfig = [
-                                'single' => ['class' => 'bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300',
-                                'label' => 'Single'],
-                                'monthly' => ['class' => 'bg-gray-100 text-gray-700 dark:bg-gray-700
-                                dark:text-gray-300', 'label' => 'Monthly'],
-                                'yearly' => ['class' => 'bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300',
-                                'label' => 'Yearly']
-                                ];
-                                $typeConf = $typeConfig[$project->type] ?? $typeConfig['single'];
-                                @endphp
-
-                                <span
-                                    class="inline-flex w-fit items-center rounded-md px-2 py-1 text-xs font-medium {{ $typeConf['class'] }}">
-                                    {{ $typeConf['label'] }}
-                                </span>
-
-                                {{-- Priority Badge - Only show if Urgent --}}
-                                @if($project->priority === 'urgent')
-                                <span
-                                    class="inline-flex w-fit items-center gap-1 rounded-md bg-red-50 px-2 py-1 text-xs font-medium text-red-700 dark:bg-red-900/20 dark:text-red-400">
-                                    <svg class="h-3 w-3" fill="currentColor" viewBox="0 0 20 20">
-                                        <path fill-rule="evenodd"
-                                            d="M8.485 2.495c.673-1.167 2.357-1.167 3.03 0l6.28 10.875c.673 1.167-.17 2.625-1.516 2.625H3.72c-1.347 0-2.189-1.458-1.515-2.625L8.485 2.495zM10 5a.75.75 0 01.75.75v3.5a.75.75 0 01-1.5 0v-3.5A.75.75 0 0110 5zm0 9a1 1 0 100-2 1 1 0 000 2z"
-                                            clip-rule="evenodd" />
-                                    </svg>
-                                    Urgent
-                                </span>
-                                @endif
-                            </div>
-                        </td>
-
-                        {{-- Deadline --}}
-                        <td class="whitespace-nowrap px-6 py-4">
-                            @php
-                            $now = \Carbon\Carbon::now();
-                            $dueDate = \Carbon\Carbon::parse($project->due_date);
-                            $diff = $now->diffInDays($dueDate, false);
-
-                            if ($diff < 0) { $deadlineClass='text-red-600 dark:text-red-400' ;
-                                $deadlineIcon='heroicon-o-exclamation-triangle' ;
-                                $deadlineBg='bg-red-50 dark:bg-red-900/20' ; } elseif ($diff <=7) {
-                                $deadlineClass='text-yellow-600 dark:text-yellow-400' ; $deadlineIcon='heroicon-o-clock'
-                                ; $deadlineBg='bg-yellow-50 dark:bg-yellow-900/20' ; } else {
-                                $deadlineClass='text-gray-600 dark:text-gray-400' ; $deadlineIcon='heroicon-o-calendar'
-                                ; $deadlineBg='bg-gray-50 dark:bg-gray-900/50' ; } @endphp <div
-                                class="inline-flex items-center gap-2 rounded-lg px-3 py-2 {{ $deadlineBg }}">
-                                <x-filament::icon :icon="$deadlineIcon" class="h-4 w-4 {{ $deadlineClass }}" />
-                                <div>
-                                    <p class="text-xs font-semibold {{ $deadlineClass }}">
-                                        {{ $dueDate->format('d M Y') }}
-                                    </p>
-                                    <p class="text-xs {{ $deadlineClass }}">
-                                        @if($diff < 0) Terlambat {{ abs($diff) }} hari @elseif($diff==0) Hari ini! @else
-                                            {{ $diff }} hari lagi @endif </p>
-                                </div>
+    @else
+    <div class="rounded-xl border border-dashed border-gray-300 bg-white px-6 py-16 text-center shadow-sm dark:border-gray-700 dark:bg-gray-800">
+        <div class="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-gray-100 dark:bg-gray-700">
+            <x-filament::icon icon="heroicon-o-folder-open" class="h-8 w-8 text-gray-400 dark:text-gray-500" />
         </div>
-        </td>
-
-        {{-- Status --}}
-        <td class="whitespace-nowrap px-6 py-4">
-            @php
-            $statusConfig = [
-            'draft' => ['class' => 'bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-300', 'label' => 'Draft'],
-            'analysis' => ['class' => 'bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-300', 'label' =>
-            'Analysis'],
-            'in_progress' => ['class' => 'bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300', 'label' =>
-            'In Progress', 'pulse' => true],
-            'review' => ['class' => 'bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-300', 'label' =>
-            'Review'],
-            'completed' => ['class' => 'bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-300', 'label'
-            => 'Completed'],
-            'completed (Not Payed Yet)' => ['class' => 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/40
-            dark:text-yellow-300', 'label' => 'Not Paid'],
-            'canceled' => ['class' => 'bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300', 'label' =>
-            'Canceled']
-            ];
-            $statusConf = $statusConfig[$project->status] ?? $statusConfig['draft'];
-            @endphp
-
-            <span
-                class="inline-flex items-center gap-1.5 rounded-md px-2 py-1 text-xs font-medium {{ $statusConf['class'] }}">
-                @if(isset($statusConf['pulse']) && $statusConf['pulse'])
-                <span class="relative flex h-2 w-2">
-                    <span
-                        class="absolute inline-flex h-full w-full animate-ping rounded-full bg-blue-400 opacity-75"></span>
-                    <span class="relative inline-flex h-2 w-2 rounded-full bg-blue-500"></span>
-                </span>
-                @endif
-                {{ $statusConf['label'] }}
-            </span>
-        </td>
-
-        {{-- PIC --}}
-        <td class="whitespace-nowrap px-6 py-4">
-            @if($project->pic)
-            <div class="inline-flex items-center gap-2 rounded-lg bg-gray-50 px-3 py-2 dark:bg-gray-900/50">
-                <x-filament::icon icon="heroicon-o-user-circle" class="h-4 w-4 text-gray-500 dark:text-gray-400" />
-                <span class="text-sm font-medium text-gray-700 dark:text-gray-300">
-                    {{ $project->pic->name }}
-                </span>
-            </div>
-            @else
-            <span class="text-sm italic text-gray-400 dark:text-gray-500">-</span>
-            @endif
-        </td>
-        </tr>
-        @empty
-        <tr>
-            <td colspan="5" class="px-6 py-16 text-center">
-                <div
-                    class="mx-auto flex h-20 w-20 items-center justify-center rounded-full bg-gray-100 dark:bg-gray-700">
-                    <x-filament::icon icon="heroicon-o-folder-open"
-                        class="h-10 w-10 text-gray-400 dark:text-gray-500" />
-                </div>
-                <h3 class="mt-6 text-xl font-semibold text-gray-900 dark:text-white">
-                    Belum ada proyek
-                </h3>
-                <p class="mt-2 text-sm text-gray-600 dark:text-gray-400">
-                    Proyek untuk klien ini akan muncul di sini.
-                </p>
-            </td>
-        </tr>
-        @endforelse
-        </tbody>
-        </table>
+        <h3 class="mt-6 text-lg font-semibold text-gray-900 dark:text-white">Belum ada proyek</h3>
+        <p class="mt-2 text-sm text-gray-600 dark:text-gray-400">Proyek untuk klien ini akan muncul di sini.</p>
     </div>
-</div>
+    @endif
 </div>

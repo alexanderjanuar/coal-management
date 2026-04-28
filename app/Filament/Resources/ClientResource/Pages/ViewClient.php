@@ -35,7 +35,7 @@ class ViewClient extends ViewRecord
     {
         return [
             'identitas' => 'Identitas',
-            'perpajakan' => 'Perpajakan',
+            'relasi' => 'Relasi',
             'projek' => 'Projek',
             'kontrak' => 'Kontrak',
             'dokumen' => 'Dokumen',

@@ -205,7 +205,7 @@ class UserClientResource extends Resource
 
                 TextColumn::make('name')
                     ->label('Nama')
-                    ->searchable()
+                    ->searchable(['users.name'])
                     ->sortable(),
 
                 TextColumn::make('email')

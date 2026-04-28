@@ -1,505 +1,376 @@
 {{-- resources/views/livewire/client/components/dokumen-tab.blade.php --}}
 
 <div class="space-y-6">
-    <!-- Progress Section -->
-    <div class="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-5">
-        <div class="flex items-center justify-between mb-3">
-            <div>
-                <h3 class="text-base font-semibold text-gray-900 dark:text-gray-100">Kelengkapan Dokumen Legal</h3>
-                <p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
-                    {{ $stats['uploaded'] ?? 0 }} dari {{ count($checklist) }} dokumen terupload
-                </p>
-            </div>
-            <div class="flex items-center gap-4">
-                <!-- Mini Stats -->
-                <div class="flex items-center gap-3">
-                    <div class="flex items-center gap-1.5">
-                        <div class="w-2 h-2 rounded-full bg-green-500"></div>
-                        <span class="text-xs text-gray-600 dark:text-gray-400">Valid: <span
-                                class="font-semibold text-gray-900 dark:text-gray-100">{{ $stats['valid'] ?? 0
-                                }}</span></span>
-                    </div>
-                    <div class="flex items-center gap-1.5">
-                        <div class="w-2 h-2 rounded-full bg-yellow-500"></div>
-                        <span class="text-xs text-gray-600 dark:text-gray-400">Pending: <span
-                                class="font-semibold text-gray-900 dark:text-gray-100">{{ $stats['pending_review'] ?? 0
-                                }}</span></span>
-                    </div>
-                    <div class="flex items-center gap-1.5">
-                        <div class="w-2 h-2 rounded-full bg-red-500"></div>
-                        <span class="text-xs text-gray-600 dark:text-gray-400">Expired: <span
-                                class="font-semibold text-gray-900 dark:text-gray-100">{{ $stats['expired'] ?? 0
-                                }}</span></span>
-                    </div>
-                </div>
-                <!-- Percentage Badge -->
-                <div class="px-3 py-1.5 bg-primary-100 dark:bg-primary-900/30 rounded-lg">
-                    <span class="text-lg font-bold text-primary-600 dark:text-primary-400">{{
-                        $stats['completion_percentage'] ?? 0 }}%</span>
-                </div>
-            </div>
-        </div>
-
-        <!-- Progress Bar -->
-        <div class="relative">
-            <div class="h-2.5 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
-                <div class="h-full bg-gradient-to-r from-primary-500 to-primary-600 transition-all duration-700 ease-out rounded-full relative overflow-hidden"
-                    style="width: {{ $stats['completion_percentage'] ?? 0 }}%">
-                    <div
-                        class="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent animate-shimmer">
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-
     <style>
-        @keyframes shimmer {
-            0% {
-                transform: translateX(-100%);
-            }
-
-            100% {
-                transform: translateX(100%);
-            }
+        .document-row-missing {
+            background-color: rgba(249, 250, 251, 0.88);
+            background-image: repeating-linear-gradient(
+                135deg,
+                rgba(148, 163, 184, 0.18) 0,
+                rgba(148, 163, 184, 0.18) 1px,
+                transparent 1px,
+                transparent 10px
+            );
         }
 
-        .animate-shimmer {
-            animation: shimmer 2s infinite;
+        .document-row-missing:hover {
+            border-color: rgba(8, 145, 178, 0.45);
+            background-color: rgba(236, 254, 255, 0.72);
+        }
+
+        .document-row-missing::before {
+            content: "";
+            position: absolute;
+            inset: 0;
+            z-index: 0;
+            pointer-events: none;
+            background: rgba(107, 114, 128, 0.08);
+            transition: background-color 180ms ease;
+        }
+
+        .document-row-missing:hover::before {
+            background: rgba(8, 145, 178, 0.10);
+        }
+
+        .document-row-missing > * {
+            position: relative;
+            z-index: 1;
+        }
+
+        .dark .document-row-missing {
+            background-color: rgba(17, 24, 39, 0.48);
+            background-image: repeating-linear-gradient(
+                135deg,
+                rgba(148, 163, 184, 0.13) 0,
+                rgba(148, 163, 184, 0.13) 1px,
+                transparent 1px,
+                transparent 10px
+            );
+        }
+
+        .dark .document-row-missing:hover {
+            border-color: rgba(34, 211, 238, 0.42);
+            background-color: rgba(22, 78, 99, 0.28);
+        }
+
+        .dark .document-row-missing::before {
+            background: rgba(75, 85, 99, 0.18);
+        }
+
+        .dark .document-row-missing:hover::before {
+            background: rgba(34, 211, 238, 0.12);
         }
     </style>
 
-    <!-- Dokumen Legal Wajib Section -->
-    <div
-        class="bg-white dark:bg-gray-800 rounded-lg shadow-sm overflow-hidden border border-gray-200 dark:border-gray-700">
-        <!-- Header -->
-        <div class="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
-            <div class="flex items-center justify-between">
-                <div>
-                    <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100">Dokumen Legal Wajib</h3>
-                    <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">
-                        Dokumen yang wajib dilengkapi sesuai tipe client
-                    </p>
+    @php
+        $legalDocuments = collect($checklist);
+        $additionalDocumentsCollection = collect($additionalDocuments);
+        $requiredDocumentsCollection = collect($requiredAdditionalDocuments);
+
+        $validLegal = $legalDocuments->filter(fn ($item) => ($item['uploaded_document']?->status ?? null) === 'valid')->count();
+        $validRequired = $requiredDocumentsCollection->filter(fn ($requirement) => $requirement->getLatestDocument()?->status === 'valid')->count();
+        $validAdditional = $additionalDocumentsCollection->where('status', 'valid')->count();
+        $validTotal = $validLegal + $validRequired + $validAdditional;
+
+        $needUploadLegal = $legalDocuments->filter(fn ($item) => ! $item['is_uploaded'])->count();
+        $needUploadRequired = $requiredDocumentsCollection->filter(fn ($requirement) => ! $requirement->getLatestDocument())->count();
+        $needUploadTotal = $needUploadLegal + $needUploadRequired;
+
+        $pendingLegal = $legalDocuments->filter(fn ($item) => ($item['uploaded_document']?->status ?? null) === 'pending_review')->count();
+        $pendingRequired = $requiredDocumentsCollection->filter(fn ($requirement) => $requirement->getLatestDocument()?->status === 'pending_review')->count();
+        $pendingAdditional = $additionalDocumentsCollection->where('status', 'pending_review')->count();
+        $pendingTotal = $pendingLegal + $pendingRequired + $pendingAdditional;
+
+        $totalDocuments = $legalDocuments->count() + $requiredDocumentsCollection->count() + $additionalDocumentsCollection->count();
+        $completePct = $totalDocuments > 0 ? round(($validTotal / $totalDocuments) * 100) : 0;
+    @endphp
+
+    <div class="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900">
+        <div class="flex flex-col divide-y divide-slate-100 border-b border-slate-100 dark:divide-slate-800 dark:border-slate-800 lg:flex-row lg:divide-x lg:divide-y-0">
+            <div class="flex items-center gap-2 px-4 py-3">
+                <span class="text-xl font-bold tabular-nums text-slate-900 dark:text-white">{{ $totalDocuments }}</span>
+                <span class="text-xs text-slate-400">dokumen</span>
+            </div>
+            <div class="flex items-center gap-2 px-4 py-3">
+                <span class="h-2 w-2 rounded-full bg-cyan-500"></span>
+                <span class="text-sm font-semibold tabular-nums text-slate-700 dark:text-slate-300">{{ $validTotal }}</span>
+                <span class="text-xs text-slate-400">valid</span>
+            </div>
+            <div class="flex items-center gap-2 px-4 py-3">
+                <span class="h-2 w-2 rounded-full bg-amber-400"></span>
+                <span class="text-sm font-semibold tabular-nums text-slate-700 dark:text-slate-300">{{ $pendingTotal }}</span>
+                <span class="text-xs text-slate-400">review</span>
+            </div>
+            <div class="flex items-center gap-2 px-4 py-3">
+                <span class="h-2 w-2 rounded-full bg-slate-300 dark:bg-slate-600"></span>
+                <span class="text-sm font-semibold tabular-nums text-slate-700 dark:text-slate-300">{{ $needUploadTotal }}</span>
+                <span class="text-xs text-slate-400">perlu upload</span>
+            </div>
+            <div class="flex min-w-0 flex-1 items-center gap-2.5 px-4 py-3">
+                <div class="h-1 flex-1 overflow-hidden rounded-full bg-slate-100 dark:bg-slate-800">
+                    <div class="h-full rounded-full bg-cyan-500 transition-all duration-700" style="width: {{ $completePct }}%"></div>
                 </div>
+                <span class="shrink-0 text-[11px] font-semibold tabular-nums text-slate-400">{{ $completePct }}%</span>
             </div>
         </div>
 
-        <!-- Table -->
-        <div class="overflow-x-auto">
-            <table class="w-full">
-                <thead>
-                    <tr class="border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-700/50">
-                        <th
-                            class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                            Dokumen</th>
-                        <th
-                            class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                            Nomor</th>
-                        <th
-                            class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                            Kadaluarsa</th>
-                        <th
-                            class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                            Upload Oleh</th>
-                        <th
-                            class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                            Status</th>
-                        <th
-                            class="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                            Aksi</th>
-                    </tr>
-                </thead>
-                <tbody class="divide-y divide-gray-200 dark:divide-gray-700">
-                    @forelse($checklist as $item)
-                    <tr class="hover:bg-gray-50 dark:hover:bg-gray-700/30 transition-colors">
-                        <td class="px-6 py-4">
-                            <div class="flex items-start gap-3">
-                                <div>
-                                    <div class="font-medium text-gray-900 dark:text-gray-100">{{ $item['name'] }}</div>
-                                    @if($item['description'])
-                                    <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">{{ $item['description'] }}
-                                    </p>
-                                    @endif
-                                    @if($item['is_required'])
-                                    <span
-                                        class="inline-flex items-center gap-1 px-2 py-0.5 bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400 text-xs font-medium rounded mt-1">
-                                        <x-heroicon-o-exclamation-circle class="w-3 h-3" />
-                                        Wajib
-                                    </span>
-                                    @endif
-                                </div>
-                            </div>
-                        </td>
-                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-600 dark:text-gray-300">
-                            {{ $item['uploaded_document']->document_number ?? '-' }}
-                        </td>
-                        <td class="px-6 py-4 whitespace-nowrap text-sm">
-                            @if($item['is_uploaded'] && $item['uploaded_document']->expired_at)
-                            <span
-                                class="@if(\Carbon\Carbon::parse($item['uploaded_document']->expired_at)->isPast()) text-red-600 dark:text-red-400 font-medium @else text-gray-700 dark:text-gray-200 @endif">
-                                {{ \Carbon\Carbon::parse($item['uploaded_document']->expired_at)->format('d M Y') }}
-                            </span>
-                            @else
-                            <span class="text-gray-400">-</span>
-                            @endif
-                        </td>
-                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-600 dark:text-gray-300">
-                            @if($item['is_uploaded'] && $item['uploaded_document'])
-                            <div class="flex flex-col gap-1">
-                                <span>{{ $item['uploaded_document']->user->name ?? '-' }}</span>
-                                <span class="text-gray-400 text-xs">{{ $item['uploaded_document']->created_at->format('d
-                                    M Y, H:i') }}</span>
-                            </div>
-                            @else
-                            <span class="text-gray-400">-</span>
-                            @endif
-                        </td>
-                        <td class="px-6 py-4 whitespace-nowrap">
-                            @if($item['is_uploaded'])
-                            @php
-                            $doc = $item['uploaded_document'];
-                            $statusBadge = $doc->status_badge;
-                            @endphp
-                            <span
-                                class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg shadow-sm {{ $statusBadge['class'] }}">
-                                <x-dynamic-component :component="$statusBadge['icon']" class="w-3.5 h-3.5" />
-                                {{ $statusBadge['text'] }}
-                            </span>
-                            @if($doc->admin_notes)
-                            <div
-                                class="mt-2 text-xs text-gray-600 dark:text-gray-400 bg-gray-50 dark:bg-gray-900/50 p-2 rounded">
-                                <span class="font-medium">Catatan:</span> {{ $doc->admin_notes }}
-                            </div>
-                            @endif
-                            @else
-                            <span
-                                class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 text-xs font-semibold rounded-md">
-                                <x-heroicon-o-clock class="w-3.5 h-3.5" />
-                                Belum Upload
-                            </span>
-                            @endif
-                        </td>
-                        <td class="px-6 py-4 whitespace-nowrap text-right text-sm">
-                            <div class="flex items-center justify-end gap-2">
-                                @if($item['is_uploaded'] && $item['uploaded_document'])
-                                @php $doc = $item['uploaded_document']; @endphp
-                                <x-filament::icon-button icon="heroicon-o-eye" color="gray" size="sm" tooltip="Preview & Review"
-                                    wire:click="previewDocuments({{ $doc->id }})" />
-                                <x-filament::icon-button icon="heroicon-o-arrow-down-tray" size="sm" color="info"
-                                    tooltip="Download" wire:click="downloadDocument({{ $doc->id }})" />
-                                <x-filament::icon-button icon="heroicon-o-trash" color="danger" size="sm"
-                                    tooltip="Hapus" wire:click="deleteDocumentConfirm({{ $doc->id }})" />
-                                <div class="w-px h-6 bg-gray-300 dark:bg-gray-600 mx-1"></div>
-                                @endif
-                                <x-filament::button wire:click="openUploadModal({{ $item['sop_id'] }}, false)" size="sm"
-                                    icon="heroicon-o-arrow-up-tray">
-                                    {{ $item['is_uploaded'] ? 'Re-upload' : 'Upload' }}
-                                </x-filament::button>
-                            </div>
-                        </td>
-                    </tr>
-                    @empty
-                    <tr>
-                        <td colspan="6" class="px-6 py-12 text-center">
-                            <svg class="w-12 h-12 mx-auto text-gray-300 dark:text-gray-600 mb-3" fill="none"
-                                stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                    d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z">
-                                </path>
-                            </svg>
-                            <p class="text-gray-500 dark:text-gray-400 text-sm">Tidak ada dokumen legal yang diperlukan
-                                untuk tipe client ini</p>
-                        </td>
-                    </tr>
-                    @endforelse
-                </tbody>
-            </table>
-        </div>
-    </div>
-
-    <!-- Dokumen Tambahan yang Dibutuhkan Section -->
-    <div
-        class="bg-white dark:bg-gray-800 rounded-lg shadow-sm overflow-hidden border border-gray-200 dark:border-gray-700">
-        <!-- Header -->
-        <div class="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
-            <div class="flex items-center justify-between">
-                <div>
-                    <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100">Dokumen Tambahan yang Dibutuhkan
-                    </h3>
-                    <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">
-                        Daftar dokumen tambahan yang perlu diupload oleh client
-                    </p>
-                </div>
-                <x-filament::button wire:click="openRequirementModal" size="sm" icon="heroicon-o-plus">
+        <div class="flex flex-col gap-2 border-b border-slate-100 bg-white px-4 py-3 dark:border-slate-800 dark:bg-slate-900 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+                <h3 class="text-sm font-semibold text-slate-900 dark:text-white">Dokumen Client</h3>
+                <p class="text-xs text-slate-400">Kelola dokumen legal, persyaratan tambahan, dan dokumen pendukung.</p>
+            </div>
+            <div class="flex flex-wrap items-center gap-2">
+                <x-filament::button wire:click="openRequirementModal" size="sm" color="gray" icon="heroicon-o-clipboard-document-list">
                     Tambah Persyaratan
                 </x-filament::button>
-            </div>
-        </div>
-
-        <!-- Table -->
-        <div class="overflow-x-auto">
-            <table class="w-full">
-                <thead>
-                    <tr class="border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-700/50">
-                        <th
-                            class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                            Dokumen yang Dibutuhkan</th>
-                        <th
-                            class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                            Kategori</th>
-                        <th
-                            class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                            Tenggat</th>
-                        <th
-                            class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                            Status</th>
-                        <th
-                            class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                            Dokumen Terupload</th>
-                        <th
-                            class="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                            Aksi</th>
-                    </tr>
-                </thead>
-                <tbody class="divide-y divide-gray-200 dark:divide-gray-700">
-                    @forelse($requiredAdditionalDocuments as $requirement)
-                    <tr class="hover:bg-gray-50 dark:hover:bg-gray-700/30 transition-colors">
-                        <td class="px-6 py-4">
-                            <div class="flex items-center gap-3">
-                                <div class="bg-amber-100 dark:bg-amber-900/30 p-2 rounded-lg">
-                                    <x-heroicon-o-document-text class="w-5 h-5 text-amber-600 dark:text-amber-400" />
-                                </div>
-                                <div>
-                                    <div class="font-medium text-gray-900 dark:text-gray-100">{{
-                                        $requirement->name }}</div>
-                                    @if($requirement->description)
-                                    <p class="text-xs text-gray-500 dark:text-gray-400 mt-1 max-w-md">{{
-                                        $requirement->description }}</p>
-                                    @endif
-                                    @if($requirement->is_required)
-                                    <span
-                                        class="inline-flex items-center gap-1 px-2 py-0.5 bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400 text-xs font-medium rounded mt-1">
-                                        <x-heroicon-o-exclamation-circle class="w-3 h-3" />
-                                        Wajib
-                                    </span>
-                                    @endif
-                                </div>
-                            </div>
-                        </td>
-                        <td class="px-6 py-4 whitespace-nowrap">
-                            <span
-                                class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold shadow-sm ring-1 ring-inset
-                                {{ $requirement->category === 'legal' ? 'bg-blue-50 text-blue-700 ring-blue-600/20 dark:bg-blue-900/30 dark:text-blue-400 dark:ring-blue-400/30' : '' }}
-                                {{ $requirement->category === 'financial' ? 'bg-green-50 text-green-700 ring-green-600/20 dark:bg-green-900/30 dark:text-green-400 dark:ring-green-400/30' : '' }}
-                                {{ $requirement->category === 'operational' ? 'bg-purple-50 text-purple-700 ring-purple-600/20 dark:bg-purple-900/30 dark:text-purple-400 dark:ring-purple-400/30' : '' }}
-                                {{ $requirement->category === 'compliance' ? 'bg-yellow-50 text-yellow-700 ring-yellow-600/20 dark:bg-yellow-900/30 dark:text-yellow-400 dark:ring-yellow-400/30' : '' }}
-                                {{ $requirement->category === 'other' ? 'bg-gray-50 text-gray-700 ring-gray-600/20 dark:bg-gray-700 dark:text-gray-300 dark:ring-gray-400/30' : '' }}">
-                                {{ ucfirst($requirement->category) }}
-                            </span>
-                        </td>
-                        <td class="px-6 py-4 whitespace-nowrap text-sm">
-                            @if($requirement->due_date)
-                            <div class="flex flex-col gap-1">
-                                <span
-                                    class="@if($requirement->isOverdue()) text-red-600 dark:text-red-400 font-medium @else text-gray-700 dark:text-gray-200 @endif">
-                                    {{ $requirement->due_date->format('d M Y') }}
-                                </span>
-                                @if($requirement->isOverdue())
-                                <span class="text-xs text-red-500">Terlambat</span>
-                                @endif
-                            </div>
-                            @else
-                            <span class="text-gray-400 text-sm">-</span>
-                            @endif
-                        </td>
-                        <td class="px-6 py-4 whitespace-nowrap">
-                            @php $statusBadge = $requirement->status_badge; @endphp
-                            <span
-                                class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg shadow-sm {{ $statusBadge['class'] }}">
-                                <x-dynamic-component :component="$statusBadge['icon']" class="w-3.5 h-3.5" />
-                                {{ $statusBadge['text'] }}
-                            </span>
-                        </td>
-                        <td class="px-6 py-4">
-                            @php $latestDoc = $requirement->getLatestDocument(); @endphp
-                            @if($latestDoc)
-                            <div class="flex items-center gap-2">
-                                @php $docStatusBadge = $latestDoc->status_badge; @endphp
-                                <span
-                                    class="inline-flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-semibold rounded-lg shadow-sm {{ $docStatusBadge['class'] }}">
-                                    <x-dynamic-component :component="$docStatusBadge['icon']" class="w-3.5 h-3.5" />
-                                    {{ $docStatusBadge['text'] }}
-                                </span>
-                                <x-filament::icon-button icon="heroicon-o-eye" color="gray" size="sm"
-                                    tooltip="Preview & Review" wire:click="previewDocuments({{ $latestDoc->id }})" />
-                            </div>
-                            @if($latestDoc->admin_notes)
-                            <div
-                                class="mt-2 text-xs text-gray-600 dark:text-gray-400 bg-gray-50 dark:bg-gray-900/50 p-2 rounded">
-                                <span class="font-medium">Catatan:</span> {{ $latestDoc->admin_notes }}
-                            </div>
-                            @endif
-                            @else
-                            <span
-                                class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 text-xs font-semibold rounded-lg shadow-sm">
-                                <x-heroicon-o-clock class="w-3.5 h-3.5" />
-                                Belum Diupload
-                            </span>
-                            @endif
-                        </td>
-                        <td class="px-6 py-4 whitespace-nowrap text-right text-sm">
-                            <div class="flex items-center justify-end gap-2">
-                                @if($requirement->status === 'pending')
-                                <x-filament::button wire:click="openUploadModal(null, false, {{ $requirement->id }})"
-                                    size="sm" icon="heroicon-o-arrow-up-tray">
-                                    Upload
-                                </x-filament::button>
-                                <x-filament::icon-button icon="heroicon-o-minus-circle" color="warning" size="sm"
-                                    tooltip="Kecualikan" wire:click="waiveRequirement({{ $requirement->id }})"
-                                    wire:confirm="Yakin ingin mengecualikan persyaratan ini?" />
-                                @endif
-                                <x-filament::icon-button icon="heroicon-o-trash" color="danger" size="sm"
-                                    tooltip="Hapus Persyaratan" wire:click="deleteRequirement({{ $requirement->id }})"
-                                    wire:confirm="Yakin ingin menghapus persyaratan ini?" />
-                            </div>
-                        </td>
-                    </tr>
-                    @empty
-                    <tr>
-                        <td colspan="6" class="px-6 py-12 text-center">
-                            <svg class="w-12 h-12 mx-auto text-gray-300 dark:text-gray-600 mb-3" fill="none"
-                                stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                    d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z">
-                                </path>
-                            </svg>
-                            <p class="text-gray-500 dark:text-gray-400 text-sm mb-3">Belum ada dokumen tambahan yang
-                                dibutuhkan</p>
-                            <x-filament::button wire:click="openRequirementModal" size="sm" icon="heroicon-o-plus">
-                                Tambah Persyaratan Pertama
-                            </x-filament::button>
-                        </td>
-                    </tr>
-                    @endforelse
-                </tbody>
-            </table>
-        </div>
-    </div>
-
-    <!-- Dokumen Tambahan Section -->
-    <div
-        class="bg-white dark:bg-gray-800 rounded-lg shadow-sm overflow-hidden border border-gray-200 dark:border-gray-700">
-        <!-- Header -->
-        <div class="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
-            <div class="flex items-center justify-between">
-                <div>
-                    <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100">Dokumen Tambahan</h3>
-                    <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">{{ count($additionalDocuments) }} dokumen
-                        tambahan</p>
-                </div>
                 <x-filament::button wire:click="openUploadModal(null, true)" size="sm" icon="heroicon-o-plus">
                     Tambah Dokumen
                 </x-filament::button>
             </div>
         </div>
 
-        <!-- Table -->
-        <div class="overflow-x-auto">
-            <table class="w-full">
-                <thead>
-                    <tr class="border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-700/50">
-                        <th
-                            class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                            Nama Dokumen</th>
-                        <th
-                            class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                            Nomor</th>
-                        <th
-                            class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                            Kadaluarsa</th>
-                        <th
-                            class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                            Upload Oleh</th>
-                        <th
-                            class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                            Status</th>
-                        <th
-                            class="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                            Aksi</th>
-                    </tr>
-                </thead>
-                <tbody class="divide-y divide-gray-200 dark:divide-gray-700">
-                    @forelse($additionalDocuments as $doc)
-                    <tr class="hover:bg-gray-50 dark:hover:bg-gray-700/30 transition-colors">
-                        <td class="px-6 py-4">
-                            <div class="font-medium text-gray-900 dark:text-gray-100">{{ $doc->description ??
-                                $doc->original_filename }}</div>
-                            @if($doc->description && $doc->original_filename !== $doc->description)
-                            <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">{{ $doc->original_filename }}</p>
-                            @endif
-                        </td>
-                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-600 dark:text-gray-300">{{
-                            $doc->document_number ?? '-' }}</td>
-                        <td class="px-6 py-4 whitespace-nowrap text-sm">
-                            @if($doc->expired_at)
-                            <span
-                                class="@if(\Carbon\Carbon::parse($doc->expired_at)->isPast()) text-red-600 dark:text-red-400 font-medium @else text-gray-700 dark:text-gray-200 @endif">
-                                {{ \Carbon\Carbon::parse($doc->expired_at)->format('d M Y') }}
-                            </span>
+        <div>
+            <div class="flex items-center gap-2 border-b border-cyan-100 bg-cyan-50/70 px-4 py-2.5 backdrop-blur dark:border-cyan-900/30 dark:bg-cyan-900/10">
+                <x-heroicon-o-shield-check class="h-3.5 w-3.5 shrink-0 text-cyan-500" />
+                <span class="text-[11px] font-bold uppercase tracking-widest text-cyan-700 dark:text-cyan-400">Dokumen Legal Wajib</span>
+                <div class="h-px flex-1 bg-cyan-200/60 dark:bg-cyan-800/40"></div>
+                <span class="inline-flex items-center rounded-full bg-cyan-100 px-2 py-0.5 text-[10px] font-bold tabular-nums text-cyan-600 dark:bg-cyan-900/30 dark:text-cyan-400">{{ $legalDocuments->count() }}</span>
+            </div>
+
+            @forelse($legalDocuments as $item)
+            @php
+                $doc = $item['uploaded_document'] ?? null;
+                $isUploaded = $item['is_uploaded'] && $doc;
+                $isExpired = $isUploaded && $doc->expired_at && \Carbon\Carbon::parse($doc->expired_at)->isPast();
+                $statusBadge = $isUploaded ? $doc->status_badge : null;
+            @endphp
+            <div class="group relative flex flex-col gap-3 overflow-hidden border-b border-slate-50 px-4 py-3.5 transition-colors hover:bg-slate-50/70 dark:border-slate-800/40 dark:hover:bg-slate-800/20 sm:flex-row sm:items-center {{ ! $isUploaded ? 'document-row-missing border-b-slate-100 dark:border-b-slate-800' : '' }}">
+                <div class="flex min-w-0 flex-1 items-start gap-3">
+                    <div class="flex shrink-0 items-center gap-2.5">
+                        <div class="h-9 w-0.5 rounded-full {{ $isUploaded ? 'bg-cyan-400' : 'bg-slate-300 dark:bg-slate-700' }}"></div>
+                        <div class="flex h-9 w-9 items-center justify-center rounded-lg border {{ $isUploaded ? 'border-cyan-100 bg-cyan-50 dark:border-cyan-900/40 dark:bg-cyan-900/20' : 'border-slate-200 bg-white/70 dark:border-slate-700 dark:bg-slate-800/70' }}">
+                            @if($isUploaded)
+                            <x-heroicon-o-document-check class="h-4 w-4 text-cyan-500" />
                             @else
-                            <span class="text-gray-400">-</span>
+                            <x-heroicon-o-document class="h-4 w-4 text-slate-400" />
                             @endif
-                        </td>
-                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-600 dark:text-gray-300">
-                            <div class="flex flex-col gap-1">
-                                <span>{{ $doc->user->name ?? '-' }}</span>
-                                <span class="text-gray-400 text-xs">{{ $doc->created_at->format('d M Y, H:i') }}</span>
-                            </div>
-                        </td>
-                        <td class="px-6 py-4 whitespace-nowrap">
-                            @php $statusBadge = $doc->status_badge; @endphp
-                            <span
-                                class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg shadow-sm {{ $statusBadge['class'] }}">
-                                <x-dynamic-component :component="$statusBadge['icon']" class="w-3.5 h-3.5" />
-                                {{ $statusBadge['text'] }}
-                            </span>
+                        </div>
+                    </div>
+                    <div class="min-w-0 flex-1">
+                        <div class="flex flex-wrap items-center gap-1.5">
+                            <span class="text-sm font-medium {{ $isUploaded ? 'text-slate-800 dark:text-slate-200' : 'text-slate-600 dark:text-slate-400' }}">{{ $item['name'] }}</span>
+                            @if($item['is_required'])
+                            <span class="inline-flex rounded bg-cyan-500 px-1.5 py-0.5 text-[10px] font-bold leading-none text-white">Wajib</span>
+                            @endif
+                        </div>
+                        <div class="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[11px] text-slate-400 dark:text-slate-500">
+                            @if($item['description'])
+                            <span>{{ \Illuminate\Support\Str::limit($item['description'], 78) }}</span>
+                            @endif
+                            @if($doc?->document_number)
+                            <span>No. {{ $doc->document_number }}</span>
+                            @endif
+                            @if($doc?->expired_at)
+                            <span class="{{ $isExpired ? 'text-rose-500 dark:text-rose-400' : '' }}">s.d. {{ \Carbon\Carbon::parse($doc->expired_at)->format('d M Y') }}</span>
+                            @endif
+                            @if($doc?->admin_notes)
+                            <span class="text-amber-500 dark:text-amber-400">{{ \Illuminate\Support\Str::limit($doc->admin_notes, 55) }}</span>
+                            @endif
+                        </div>
+                    </div>
+                </div>
+
+                <div class="flex flex-wrap items-center justify-between gap-2 sm:justify-end">
+                    @if($isUploaded)
+                    <span class="inline-flex items-center gap-1 rounded-md border px-2 py-1 text-[11px] font-semibold {{ $statusBadge['class'] }}">
+                        <x-dynamic-component :component="$statusBadge['icon']" class="h-3 w-3" />
+                        {{ $statusBadge['text'] }}
+                    </span>
+                    @else
+                    <span class="inline-flex items-center gap-1 rounded-md border border-slate-200 bg-slate-50 px-2 py-1 text-[11px] font-medium text-slate-500 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-400">
+                        <x-heroicon-o-minus-circle class="h-3 w-3" />
+                        Belum Upload
+                    </span>
+                    @endif
+
+                    <div class="flex items-center gap-1">
+                        @if($isUploaded)
+                        <x-filament::icon-button icon="heroicon-o-eye" color="gray" size="sm" tooltip="Preview & Review"
+                            wire:click="previewDocuments({{ $doc->id }})" />
+                        <x-filament::icon-button icon="heroicon-o-arrow-down-tray" color="gray" size="sm" tooltip="Download"
+                            wire:click="downloadDocument({{ $doc->id }})" />
+                        <x-filament::icon-button icon="heroicon-o-arrow-path" color="gray" size="sm" tooltip="Upload Ulang"
+                            wire:click="openUploadModal({{ $item['sop_id'] }}, false)" />
+                        <x-filament::icon-button icon="heroicon-o-trash" color="gray" size="sm" tooltip="Hapus"
+                            wire:click="deleteDocumentConfirm({{ $doc->id }})" />
+                        @else
+                        <x-filament::button wire:click="openUploadModal({{ $item['sop_id'] }}, false)" size="sm" icon="heroicon-o-arrow-up-tray">
+                            Upload
+                        </x-filament::button>
+                        @endif
+                    </div>
+                </div>
+            </div>
+            @empty
+            <div class="px-4 py-10 text-center text-sm text-slate-400">Tidak ada dokumen legal wajib.</div>
+            @endforelse
+        </div>
+
+        <div>
+            <div class="flex items-center gap-2 border-b border-t border-amber-100 bg-amber-50/70 px-4 py-2.5 backdrop-blur dark:border-amber-900/30 dark:bg-amber-900/10">
+                <x-heroicon-o-exclamation-circle class="h-3.5 w-3.5 shrink-0 text-amber-500" />
+                <span class="text-[11px] font-bold uppercase tracking-widest text-amber-700 dark:text-amber-400">Dokumen Tambahan Dibutuhkan</span>
+                <div class="h-px flex-1 bg-amber-200/60 dark:bg-amber-800/40"></div>
+                <span class="inline-flex items-center rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-bold tabular-nums text-amber-600 dark:bg-amber-900/30 dark:text-amber-400">{{ $requiredDocumentsCollection->count() }}</span>
+            </div>
+
+            @forelse($requiredDocumentsCollection as $requirement)
+            @php
+                $latestDoc = $requirement->getLatestDocument();
+                $statusBadge = $requirement->status_badge;
+                $docStatusBadge = $latestDoc?->status_badge;
+                $displayStatusBadge = $latestDoc ? $docStatusBadge : $statusBadge;
+                $isMissingUpload = $requirement->status === 'pending' && ! $latestDoc;
+                $categoryClass = match($requirement->category ?? 'other') {
+                    'legal' => 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400',
+                    'financial' => 'bg-emerald-50 text-emerald-600 dark:bg-emerald-900/20 dark:text-emerald-400',
+                    'operational' => 'bg-purple-50 text-purple-600 dark:bg-purple-900/20 dark:text-purple-400',
+                    'compliance' => 'bg-cyan-50 text-cyan-600 dark:bg-cyan-900/20 dark:text-cyan-400',
+                    default => 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400',
+                };
+            @endphp
+            <div class="group relative flex flex-col gap-3 overflow-hidden border-b border-slate-50 px-4 py-3.5 transition-colors hover:bg-slate-50/70 dark:border-slate-800/40 dark:hover:bg-slate-800/20 sm:flex-row sm:items-center {{ $isMissingUpload ? 'document-row-missing border-b-slate-100 dark:border-b-slate-800' : '' }}">
+                <div class="flex min-w-0 flex-1 items-start gap-3">
+                    <div class="flex shrink-0 items-center gap-2.5">
+                        <div class="h-9 w-0.5 rounded-full {{ $latestDoc ? 'bg-amber-400' : 'bg-slate-300 dark:bg-slate-700' }}"></div>
+                        <div class="flex h-9 w-9 items-center justify-center rounded-lg border {{ $latestDoc ? 'border-amber-100 bg-amber-50 dark:border-amber-900/40 dark:bg-amber-900/20' : 'border-slate-200 bg-white/70 dark:border-slate-700 dark:bg-slate-800/70' }}">
+                            <x-heroicon-o-document-text class="h-4 w-4 {{ $latestDoc ? 'text-amber-500' : 'text-slate-400' }}" />
+                        </div>
+                    </div>
+                    <div class="min-w-0 flex-1">
+                        <div class="flex flex-wrap items-center gap-1.5">
+                            <span class="text-sm font-medium {{ $isMissingUpload ? 'text-slate-600 dark:text-slate-400' : 'text-slate-800 dark:text-slate-200' }}">{{ $requirement->name }}</span>
+                            @if($requirement->is_required)
+                            <span class="inline-flex rounded bg-amber-500 px-1.5 py-0.5 text-[10px] font-bold leading-none text-white">Wajib</span>
+                            @endif
+                            @if($requirement->isOverdue())
+                            <span class="inline-flex rounded bg-rose-500 px-1.5 py-0.5 text-[10px] font-bold leading-none text-white">Terlambat</span>
+                            @endif
+                            <span class="inline-flex rounded px-1.5 py-0.5 text-[10px] font-medium leading-none {{ $categoryClass }}">{{ strtoupper($requirement->category ?? 'OTHER') }}</span>
+                        </div>
+                        <div class="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[11px] text-slate-400 dark:text-slate-500">
+                            @if($requirement->due_date)
+                            <span class="{{ $requirement->isOverdue() ? 'text-rose-500 dark:text-rose-400' : '' }}">Tenggat {{ $requirement->due_date->format('d M Y') }}</span>
+                            @endif
+                            @if($requirement->description)
+                            <span>{{ \Illuminate\Support\Str::limit($requirement->description, 72) }}</span>
+                            @endif
+                            @if($latestDoc?->admin_notes)
+                            <span class="text-amber-500 dark:text-amber-400">{{ \Illuminate\Support\Str::limit($latestDoc->admin_notes, 55) }}</span>
+                            @endif
+                        </div>
+                    </div>
+                </div>
+
+                <div class="flex flex-wrap items-center justify-between gap-2 sm:justify-end">
+                    <span class="inline-flex items-center gap-1 rounded-md border px-2 py-1 text-[11px] font-semibold {{ $displayStatusBadge['class'] }}">
+                        <x-dynamic-component :component="$displayStatusBadge['icon']" class="h-3 w-3" />
+                        {{ $displayStatusBadge['text'] }}
+                    </span>
+
+                    <div class="flex items-center gap-1">
+                        @if($latestDoc)
+                        <x-filament::icon-button icon="heroicon-o-eye" color="gray" size="sm" tooltip="Preview & Review"
+                            wire:click="previewDocuments({{ $latestDoc->id }})" />
+                        @endif
+                        @if($requirement->status === 'pending')
+                        <x-filament::button wire:click="openUploadModal(null, false, {{ $requirement->id }})" size="sm" icon="heroicon-o-arrow-up-tray">
+                            Upload
+                        </x-filament::button>
+                        <x-filament::icon-button icon="heroicon-o-minus-circle" color="gray" size="sm" tooltip="Kecualikan"
+                            wire:click="waiveRequirement({{ $requirement->id }})"
+                            wire:confirm="Yakin ingin mengecualikan persyaratan ini?" />
+                        @endif
+                        <x-filament::icon-button icon="heroicon-o-trash" color="gray" size="sm" tooltip="Hapus Persyaratan"
+                            wire:click="deleteRequirement({{ $requirement->id }})"
+                            wire:confirm="Yakin ingin menghapus persyaratan ini?" />
+                    </div>
+                </div>
+            </div>
+            @empty
+            <div class="px-4 py-10 text-center">
+                <p class="mb-3 text-sm text-slate-400">Belum ada dokumen tambahan yang dibutuhkan.</p>
+                <x-filament::button wire:click="openRequirementModal" size="sm" color="gray" icon="heroicon-o-plus">
+                    Tambah Persyaratan Pertama
+                </x-filament::button>
+            </div>
+            @endforelse
+        </div>
+
+        <div>
+            <div class="flex items-center gap-2 border-b border-t border-slate-100 bg-slate-50/80 px-4 py-2.5 backdrop-blur dark:border-slate-800 dark:bg-slate-800/30">
+                <x-heroicon-o-paper-clip class="h-3.5 w-3.5 shrink-0 text-slate-400" />
+                <span class="text-[11px] font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400">Dokumen Tambahan</span>
+                <div class="h-px flex-1 bg-slate-200 dark:bg-slate-700"></div>
+                <span class="inline-flex items-center rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-bold tabular-nums text-slate-500 dark:bg-slate-800 dark:text-slate-400">{{ $additionalDocumentsCollection->count() }}</span>
+                <x-filament::button wire:click="openUploadModal(null, true)" size="xs" color="gray" icon="heroicon-o-plus">
+                    Tambah
+                </x-filament::button>
+            </div>
+
+            @forelse($additionalDocumentsCollection as $doc)
+            @php
+                $statusBadge = $doc->status_badge;
+                $isExpired = $doc->expired_at && \Carbon\Carbon::parse($doc->expired_at)->isPast();
+            @endphp
+            <div class="group flex flex-col gap-3 border-b border-slate-50 px-4 py-3.5 transition-colors hover:bg-slate-50/70 dark:border-slate-800/40 dark:hover:bg-slate-800/20 sm:flex-row sm:items-center">
+                <div class="flex min-w-0 flex-1 items-start gap-3">
+                    <div class="flex shrink-0 items-center gap-2.5">
+                        <div class="h-9 w-0.5 rounded-full bg-slate-200 dark:bg-slate-700"></div>
+                        <div class="flex h-9 w-9 items-center justify-center rounded-lg border border-slate-200 bg-slate-50 dark:border-slate-700 dark:bg-slate-800">
+                            <x-heroicon-o-document class="h-4 w-4 text-slate-400" />
+                        </div>
+                    </div>
+                    <div class="min-w-0 flex-1">
+                        <span class="block truncate text-sm font-medium text-slate-800 dark:text-slate-200">{{ $doc->description ?? $doc->original_filename }}</span>
+                        <div class="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[11px] text-slate-400 dark:text-slate-500">
+                            @if($doc->description && $doc->original_filename !== $doc->description)
+                            <span class="max-w-[220px] truncate">{{ $doc->original_filename }}</span>
+                            @endif
+                            <span>{{ $doc->created_at->format('d M Y') }}</span>
+                            @if($doc->expired_at)
+                            <span class="{{ $isExpired ? 'text-rose-500 dark:text-rose-400' : '' }}">s.d. {{ \Carbon\Carbon::parse($doc->expired_at)->format('d M Y') }}</span>
+                            @endif
                             @if($doc->admin_notes)
-                            <div
-                                class="mt-2 text-xs text-gray-600 dark:text-gray-400 bg-gray-50 dark:bg-gray-900/50 p-2 rounded max-w-xs">
-                                <span class="font-medium">Catatan:</span> {{ $doc->admin_notes }}
-                            </div>
+                            <span class="text-amber-500 dark:text-amber-400">{{ \Illuminate\Support\Str::limit($doc->admin_notes, 45) }}</span>
                             @endif
-                        </td>
-                        <td class="px-6 py-4 whitespace-nowrap text-right text-sm">
-                            <div class="flex items-center justify-end gap-2">
-                                <x-filament::icon-button icon="heroicon-o-eye" color="gray" size="sm" tooltip="Preview & Review"
-                                    wire:click="previewDocuments({{ $doc->id }})" />
-                                <x-filament::icon-button icon="heroicon-o-arrow-down-tray" color="info" size="sm"
-                                    tooltip="Download" wire:click="downloadDocument({{ $doc->id }})" />
-                                <x-filament::icon-button icon="heroicon-o-trash" color="danger" size="sm"
-                                    tooltip="Hapus" wire:click="deleteDocumentConfirm({{ $doc->id }})" />
-                            </div>
-                        </td>
-                    </tr>
-                    @empty
-                    <tr>
-                        <td colspan="6" class="px-6 py-12 text-center">
-                            <svg class="w-12 h-12 mx-auto text-gray-300 dark:text-gray-600 mb-3" fill="none"
-                                stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                    d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z">
-                                </path>
-                            </svg>
-                            <p class="text-gray-500 dark:text-gray-400 text-sm mb-3">Belum ada dokumen tambahan</p>
-                            <x-filament::button wire:click="openUploadModal(null, true)" size="sm"
-                                icon="heroicon-o-plus">
-                                Tambah Dokumen Pertama
-                            </x-filament::button>
-                        </td>
-                    </tr>
-                    @endforelse
-                </tbody>
-            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="flex flex-wrap items-center justify-between gap-2 sm:justify-end">
+                    <span class="inline-flex items-center gap-1 rounded-md border px-2 py-1 text-[11px] font-semibold {{ $statusBadge['class'] }}">
+                        <x-dynamic-component :component="$statusBadge['icon']" class="h-3 w-3" />
+                        {{ $statusBadge['text'] }}
+                    </span>
+                    <div class="flex items-center gap-1">
+                        <x-filament::icon-button icon="heroicon-o-eye" color="gray" size="sm" tooltip="Preview & Review"
+                            wire:click="previewDocuments({{ $doc->id }})" />
+                        <x-filament::icon-button icon="heroicon-o-arrow-down-tray" color="gray" size="sm" tooltip="Download"
+                            wire:click="downloadDocument({{ $doc->id }})" />
+                        <x-filament::icon-button icon="heroicon-o-trash" color="gray" size="sm" tooltip="Hapus"
+                            wire:click="deleteDocumentConfirm({{ $doc->id }})" />
+                    </div>
+                </div>
+            </div>
+            @empty
+            <div class="px-4 py-12 text-center">
+                <p class="mb-3 text-sm text-slate-400">Belum ada dokumen tambahan.</p>
+                <x-filament::button wire:click="openUploadModal(null, true)" size="sm" color="gray" icon="heroicon-o-plus">
+                    Tambah Dokumen Pertama
+                </x-filament::button>
+            </div>
+            @endforelse
         </div>
     </div>
 

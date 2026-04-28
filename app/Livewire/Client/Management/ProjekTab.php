@@ -130,6 +130,18 @@ class ProjekTab extends Component implements HasForms
     {
         $this->projects = $this->client->projects()
             ->with(['pic', 'sop', 'teamMembers'])
+            ->withCount([
+                'steps',
+                'teamMembers',
+                'dailyTasks',
+                'notes',
+                'steps as completed_steps_count' => function ($query) {
+                    $query->where('status', 'completed');
+                },
+                'dailyTasks as completed_daily_tasks_count' => function ($query) {
+                    $query->where('status', 'completed');
+                },
+            ])
             ->latest()
             ->get();
         
