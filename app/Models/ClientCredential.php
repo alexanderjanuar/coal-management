@@ -13,7 +13,6 @@ class ClientCredential extends Model
     use HasFactory, LogsActivity;
 
     protected $fillable = [
-        'client_id',
         'core_tax_user_id',
         'core_tax_password',
         'djp_account',

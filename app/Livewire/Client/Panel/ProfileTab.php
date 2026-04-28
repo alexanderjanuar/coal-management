@@ -174,9 +174,7 @@ class ProfileTab extends Component
         if ($client->credential_id && $client->clientCredential) {
             $client->clientCredential->update($data);
         } else {
-            $credential = ClientCredential::create(array_merge($data, [
-                'client_id' => $client->id,
-            ]));
+            $credential = ClientCredential::create($data);
             $client->credential_id = $credential->id;
             $client->save();
         }
