@@ -1,5 +1,7 @@
 <?php
 
+use App\Models\ChatThread;
+use App\Services\ChatService;
 use Illuminate\Support\Facades\Broadcast;
 
 /*
@@ -15,4 +17,20 @@ use Illuminate\Support\Facades\Broadcast;
 
 Broadcast::channel('App.Models.User.{id}', function ($user, $id) {
     return (int) $user->id === (int) $id;
+});
+
+Broadcast::channel('chat.thread.{threadId}', function ($user, int $threadId): bool {
+    $thread = ChatThread::find($threadId);
+
+    if (!$thread) {
+        return false;
+    }
+
+    try {
+        app(ChatService::class)->authorizeThreadAccess($user, $thread);
+
+        return true;
+    } catch (Throwable) {
+        return false;
+    }
 });

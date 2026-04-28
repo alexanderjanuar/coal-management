@@ -131,6 +131,11 @@ class Project extends Model
         return $this->hasMany(ProjectNote::class)->latest();
     }
 
+    public function chatThreads(): HasMany
+    {
+        return $this->hasMany(ChatThread::class);
+    }
+
     public function sop(): BelongsTo
     {
         return $this->belongsTo(Sop::class);

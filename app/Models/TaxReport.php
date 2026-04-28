@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Facades\DB;
 use App\Traits\Trackable; // Import trait
 
@@ -58,6 +59,11 @@ class TaxReport extends Model
     public function taxCalculationSummaries()   
     {
         return $this->hasMany(TaxCalculationSummary::class);
+    }
+
+    public function chatThreads(): HasMany
+    {
+        return $this->hasMany(ChatThread::class);
     }
 
     public function createdBy()

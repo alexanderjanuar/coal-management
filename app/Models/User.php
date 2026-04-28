@@ -90,6 +90,28 @@ class User extends Authenticatable implements FilamentUser, HasAvatar
         return $this->hasMany(UserClient::class);
     }
 
+    public function chatThreads(): BelongsToMany
+    {
+        return $this->belongsToMany(ChatThread::class, 'chat_participants')
+            ->withPivot(['role', 'last_read_at', 'muted_at'])
+            ->withTimestamps();
+    }
+
+    public function chatParticipants(): HasMany
+    {
+        return $this->hasMany(ChatParticipant::class);
+    }
+
+    public function chatMessages(): HasMany
+    {
+        return $this->hasMany(ChatMessage::class);
+    }
+
+    public function createdChatThreads(): HasMany
+    {
+        return $this->hasMany(ChatThread::class, 'created_by_id');
+    }
+
     public function userProjects()
     {
         return $this->hasMany(UserProject::class);
