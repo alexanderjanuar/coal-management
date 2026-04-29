@@ -19,6 +19,8 @@ class ChatPanel extends Component
 
     public bool $showAllClients = false;
 
+    public bool $compact = false;
+
     public ?int $selectedClientId = null;
 
     public ?int $newThreadClientId = null;

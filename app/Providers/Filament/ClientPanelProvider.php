@@ -80,6 +80,10 @@ class ClientPanelProvider extends PanelProvider
                 'panels::topbar.start',
                 fn() => view('livewire.client.panel.client-switcher-hook'),
             )
+            ->renderHook(
+                'panels::body.end',
+                fn() => view('filament.client.chat-floating'),
+            )
             ->brandLogo(asset('images/Logo/OnlyLogo.png'))
             ->brandLogoHeight('3rem')
             ->viteTheme('resources/css/filament/admin/theme.css')
