@@ -271,6 +271,14 @@ class ClientResource extends Resource
                             ->default('Active')
                             ->required()
                             ->native(false),
+                        Select::make('group_id')
+                            ->label('Grup Client')
+                            ->relationship('group', 'name')
+                            ->searchable()
+                            ->preload()
+                            ->nullable()
+                            ->placeholder('Tidak ada grup')
+                            ->helperText('Opsional — pilih jika client ini terafiliasi ke suatu grup'),
                         FileUpload::make('logo')
                             ->label('Client Logo')
                             ->openable()
@@ -369,7 +377,6 @@ class ClientResource extends Resource
                             ->collapsed(false)
                             ->cloneable()
                             ->columnSpanFull()
-                            ->minItems(1)
                             ->maxItems(10)
                     ])
                     ->collapsible()
@@ -508,6 +515,16 @@ class ClientResource extends Resource
                     ->sortable()
                     ->searchable(),
                 
+                Tables\Columns\TextColumn::make('group.name')
+                    ->label('Grup')
+                    ->badge()
+                    ->color('info')
+                    ->icon('heroicon-o-building-library')
+                    ->placeholder('—')
+                    ->searchable()
+                    ->sortable()
+                    ->toggleable(),
+
                 Tables\Columns\BadgeColumn::make('client_type')
                     ->label('Tipe')
                     ->colors([
@@ -642,7 +659,14 @@ class ClientResource extends Resource
                 ->color('info')
                 ->tooltip('Lihat Semua Kredensial')
                 ->modalHeading(fn ($record) => 'Kredensial Aplikasi - ' . $record->name)
-                ->modalContent(fn ($record) => view('filament.modals.clients.client-all-credentials', ['record' => $record]))
+                ->modalContent(fn ($record) => view(
+                    'filament.modals.clients.client-all-credentials',
+                    ['record' => \App\Models\Client::with([
+                        'applicationCredentials.application',
+                        'clientCredential',
+                        'pic',
+                    ])->findOrFail($record->id)]
+                ))
                 ->modalWidth('4xl')
                 ->slideOver(),
 

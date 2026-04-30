@@ -13,6 +13,13 @@ class ApplicationClient extends Pivot
 
     protected $table = 'application_clients';
 
+    protected $casts = [
+        'additional_data' => 'array',
+        'account_period'  => 'date',
+        'last_used_at'    => 'datetime',
+        'is_active'       => 'boolean',
+    ];
+
     public function application()
     {
         return $this->belongsTo(Application::class);

@@ -129,7 +129,7 @@ class ProfileTab extends Component
             return;
         }
 
-        $cred = $this->selectedClient?->clientCredential;
+        $cred = $this->selectedClient?->load('clientCredential')->clientCredential;
 
         if ($cred) {
             $this->credCoreTaxUserId   = $cred->core_tax_user_id ?? '';

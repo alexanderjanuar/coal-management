@@ -10,7 +10,6 @@ use App\Services\InvoiceAIService;
 use App\Services\TaxCalculationService;
 use App\Services\FileManagementService;
 use App\Services\ClientTypeService;
-use Illuminate\Support\Str;
 
 class BulkInvoiceAIImport extends Component
 {
@@ -136,7 +135,7 @@ class BulkInvoiceAIImport extends Component
 
         try {
             $taxReport  = TaxReport::with('client')->find($this->taxReportId);
-            $clientName = $taxReport?->client ? Str::slug($taxReport->client->name) : 'unknown-client';
+            $clientName = $taxReport?->client?->name ?? 'unknown-client';
             $monthName  = $taxReport ? FileManagementService::convertToIndonesianMonth($taxReport->month) : 'unknown-month';
 
             $file     = $this->uploadedFiles[$index];

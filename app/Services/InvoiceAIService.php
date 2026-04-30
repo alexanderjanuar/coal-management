@@ -293,32 +293,32 @@ class InvoiceAIService
      */
     private function getInvoiceExtractionPrompt($clientName = 'unknown-client')
     {
-        return "Analisis dokumen faktur pajak Indonesia ini dan ekstrak informasi berikut dalam format JSON yang tepat:
-        {
-            \"invoice_number\": \"nomor faktur pajak lengkap\",
-            \"invoice_date\": \"tanggal faktur dalam format YYYY-MM-DD\",
-            \"pengusaha_kena_pajak\": {
-                \"nama\": \"nama dari section Pengusaha Kena Pajak\",
-                \"npwp\": \"NPWP dari section Pengusaha Kena Pajak\"
-            },
-            \"pembeli\": {
-                \"nama\": \"nama dari section Pembeli Barang Kena Pajak/Penerima Jasa Kena Pajak\",
-                \"npwp\": \"NPWP dari section Pembeli\"
-            },
-            \"dpp\": \"Dasar Pengenaan Pajak dalam angka saja (tanpa titik, koma, atau simbol)\",
-            \"ppn\": \"Jumlah PPN dalam angka saja (tanpa titik, koma, atau simbol)\"
-        }
+        return "Analisis dokumen faktur pajak Indonesia ini dan ekstrak informasi berikut dalam format JSON.
 
-        INSTRUKSI PENTING:
-        - Ekstrak SEMUA data: Pengusaha Kena Pajak dan Pembeli
-        - Nomor faktur harus lengkap dengan format Indonesia
-        - Tanggal format YYYY-MM-DD
-        - NPWP format lengkap dengan titik dan strip
-        - DPP dan PPN hanya angka murni tanpa pemisah
-        - JANGAN tentukan type faktur, sistem akan menentukan berdasarkan nama client
-        - Client name saat ini: {$clientName}
+Kembalikan HANYA JSON berikut, tanpa teks atau penjelasan lain:
+{
+    \"invoice_number\": \"nomor faktur pajak lengkap sesuai dokumen\",
+    \"invoice_date\": \"tanggal faktur dalam format YYYY-MM-DD\",
+    \"pengusaha_kena_pajak\": {
+        \"nama\": \"nama lengkap dari section Pengusaha Kena Pajak / Penjual\",
+        \"npwp\": \"NPWP dari section Pengusaha Kena Pajak, format XX.XXX.XXX.X-XXX.XXX\"
+    },
+    \"pembeli\": {
+        \"nama\": \"nama lengkap dari section Pembeli Barang Kena Pajak / Penerima Jasa\",
+        \"npwp\": \"NPWP dari section Pembeli, format XX.XXX.XXX.X-XXX.XXX\"
+    },
+    \"dpp\": \"nilai Dasar Pengenaan Pajak dalam angka bulat saja, tanpa titik/koma/simbol\",
+    \"ppn\": \"nilai PPN dalam angka bulat saja, tanpa titik/koma/simbol\"
+}
 
-        Berikan hanya JSON, tanpa penjelasan tambahan.";
+ATURAN WAJIB:
+1. Ekstrak nama dan NPWP dari KEDUA pihak: Pengusaha Kena Pajak DAN Pembeli
+2. Nomor faktur: salin persis sesuai dokumen termasuk titik dan strip
+3. Tanggal: konversi ke format YYYY-MM-DD
+4. NPWP: sertakan semua titik dan strip (contoh: 01.234.567.8-901.000)
+5. DPP dan PPN: angka murni tanpa pemisah ribuan (contoh: 10000000 bukan 10.000.000)
+6. JANGAN tentukan jenis faktur — sistem akan menentukan secara otomatis berdasarkan nama client
+7. Nama client yang sedang diproses: \"{$clientName}\"";
     }
     
     /**
@@ -528,21 +528,25 @@ class InvoiceAIService
      */
     private function normalizeName(string $name): string
     {
-        // Convert to lowercase
         $normalized = strtolower(trim($name));
-        
+
+        // Remove dots and commas first so "pt." becomes "pt"
+        $normalized = str_replace(['.', ','], '', $normalized);
+
         // Remove multiple spaces
         $normalized = preg_replace('/\s+/', ' ', $normalized);
-        
-        // Remove common company suffixes for better matching
-        $suffixes = [' pt', ' cv', ' ud', ' fa', ' pd', ' persero', ' tbk', ','];
+
+        // Strip leading company type prefixes (e.g. "pt ", "cv ")
+        $normalized = preg_replace('/^(pt|cv|ud|fa|pd)\s+/', '', $normalized);
+
+        // Strip trailing suffixes (e.g. " tbk", " persero", " tbk persero")
+        $suffixes = [' tbk persero', ' persero tbk', ' persero', ' tbk', ' pt', ' cv', ' ud', ' fa', ' pd'];
         foreach ($suffixes as $suffix) {
-            $normalized = str_replace($suffix, '', $normalized);
+            if (str_ends_with($normalized, $suffix)) {
+                $normalized = substr($normalized, 0, -strlen($suffix));
+            }
         }
-        
-        // Remove dots and commas
-        $normalized = str_replace(['.', ','], '', $normalized);
-        
+
         return trim($normalized);
     }
 

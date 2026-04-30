@@ -188,7 +188,7 @@
                         </div>
 
                         {{-- Additional Data (if exists) --}}
-                        @if($credential->additional_data && count($credential->additional_data) > 0)
+                        @if(is_array($credential->additional_data) && count($credential->additional_data) > 0)
                             <div class="mt-3 pt-3 border-t border-gray-200 dark:border-gray-700">
                                 <p class="text-xs font-medium text-gray-600 dark:text-gray-400 mb-2">Data Tambahan:</p>
                                 <div class="grid grid-cols-2 gap-2 text-xs">
@@ -221,6 +221,79 @@
                 @endforeach
             </div>
         @endforeach
+    @endif
+
+    {{-- Client Panel Credentials (set by the client themselves via ProfileTab) --}}
+    @php $cred = $record->clientCredential; @endphp
+    @if($cred)
+        <div class="border-t border-gray-200 dark:border-gray-700 pt-6">
+            <div class="flex items-center justify-between gap-2 mb-4">
+                <div class="flex items-center gap-2">
+                    <svg class="w-5 h-5 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z"/>
+                    </svg>
+                    <h4 class="text-sm font-semibold text-gray-700 dark:text-gray-300 uppercase">
+                        Kredensial Klien (Diisi oleh Klien)
+                    </h4>
+                </div>
+                <span class="text-[11px] text-gray-400 dark:text-gray-500">
+                    Diperbarui {{ $cred->updated_at->diffForHumans() }}
+                </span>
+            </div>
+
+            <div class="rounded-lg border border-amber-200 bg-amber-50 dark:border-amber-800/50 dark:bg-amber-900/10 p-4">
+                @php
+                    $credFields = [
+                        'Core Tax User ID'  => $cred->core_tax_user_id,
+                        'Core Tax Password' => $cred->core_tax_password,
+                        'DJP Account'       => $cred->djp_account,
+                        'DJP Password'      => $cred->djp_password,
+                        'Email'             => $cred->email,
+                        'Email Password'    => $cred->email_password,
+                    ];
+                    $hasAny = collect($credFields)->filter()->isNotEmpty();
+                @endphp
+
+                @if(!$hasAny)
+                    <p class="text-sm text-amber-600 dark:text-amber-400">Klien belum mengisi kredensial.</p>
+                @else
+                    <div class="grid grid-cols-2 gap-3">
+                        @foreach($credFields as $label => $value)
+                            @if($value)
+                                @php $fieldId = 'cred-' . Str::slug($label) . '-' . $record->id; @endphp
+                                <div class="space-y-1">
+                                    <label class="block text-xs font-medium text-gray-600 dark:text-gray-400">{{ $label }}</label>
+                                    <div class="flex items-center gap-2">
+                                        @php $isPassword = str_contains(strtolower($label), 'password'); @endphp
+                                        <div class="flex-1 relative">
+                                            <input
+                                                type="{{ $isPassword ? 'password' : 'text' }}"
+                                                id="{{ $fieldId }}"
+                                                value="{{ $value }}"
+                                                readonly
+                                                class="w-full rounded border border-gray-300 bg-white px-2 py-1.5 pr-8 font-mono text-sm text-gray-900 dark:border-gray-600 dark:bg-gray-900 dark:text-white"
+                                            />
+                                            @if($isPassword)
+                                                <button type="button"
+                                                        onclick="const f=document.getElementById('{{ $fieldId }}');f.type=f.type==='password'?'text':'password';"
+                                                        class="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
+                                                    <svg class="w-3 h-3" fill="currentColor" viewBox="0 0 20 20"><path d="M10 12a2 2 0 100-4 2 2 0 000 4z"/><path fill-rule="evenodd" d="M.458 10C1.732 5.943 5.522 3 10 3s8.268 2.943 9.542 7c-1.274 4.057-5.064 7-9.542 7S1.732 14.057.458 10zM14 10a4 4 0 11-8 0 4 4 0 018 0z"/></svg>
+                                                </button>
+                                            @endif
+                                        </div>
+                                        <button type="button"
+                                                onclick="navigator.clipboard.writeText('{{ addslashes($value) }}');this.textContent='✓';setTimeout(()=>this.textContent='Salin',2000);"
+                                                class="shrink-0 rounded px-2 py-1.5 text-xs bg-amber-100 text-amber-700 hover:bg-amber-200 dark:bg-amber-900/40 dark:text-amber-300">
+                                            Salin
+                                        </button>
+                                    </div>
+                                </div>
+                            @endif
+                        @endforeach
+                    </div>
+                @endif
+            </div>
+        </div>
     @endif
 
     {{-- PIC Credentials Section --}}
