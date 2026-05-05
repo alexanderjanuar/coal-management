@@ -14,6 +14,7 @@ class ClientDocumentRequirement extends Model
 
     protected $fillable = [
         'client_id',
+        'group_id',
         'created_by',
         'name',
         'description',
@@ -36,6 +37,11 @@ class ClientDocumentRequirement extends Model
     public function client(): BelongsTo
     {
         return $this->belongsTo(Client::class);
+    }
+
+    public function group(): BelongsTo
+    {
+        return $this->belongsTo(ClientRequirementGroup::class, 'group_id');
     }
 
     public function createdBy(): BelongsTo

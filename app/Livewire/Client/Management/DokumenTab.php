@@ -6,6 +6,7 @@ namespace App\Livewire\Client\Management;
 use App\Models\Client;
 use App\Models\ClientDocument;
 use App\Models\ClientDocumentRequirement;
+use App\Models\ClientRequirementGroup;
 use App\Models\SopLegalDocument;
 use Filament\Notifications\Notification;
 use Filament\Forms\Concerns\InteractsWithForms;
@@ -52,11 +53,24 @@ class DokumenTab extends Component implements HasForms
     
     // Preview state
     public $previewDocument = null;
-    
+
     // Review modal state
     public $documentToReview = null;
     public $reviewAction = null;
     public $reviewNotes = '';
+
+    // Group management
+    public $groups = [];
+    public $requirementGroupId = null;
+
+    // Group modal state
+    public $editingGroupId = null;
+    public $groupName = '';
+    public $groupDescription = '';
+    public $groupYear = null;
+    public $groupDueDate = null;
+    public $groupStatus = 'active';
+    public $groupNotes = '';
 
     public function mount(Client $client)
     {
@@ -136,7 +150,20 @@ class DokumenTab extends Component implements HasForms
                                     ->default(true)
                                     ->visible($this->isRequirementMode)
                                     ->columnSpan(1),
-                                
+
+                                Select::make('requirementGroupId')
+                                    ->label('Masukkan ke Grup')
+                                    ->placeholder('Tanpa Grup (Persyaratan Bebas)')
+                                    ->options(function () {
+                                        return $this->client->requirementGroups()
+                                            ->where('status', 'active')
+                                            ->orderBy('name')
+                                            ->pluck('name', 'id')
+                                            ->toArray();
+                                    })
+                                    ->visible($this->isRequirementMode)
+                                    ->columnSpan(2),
+
                                 DatePicker::make('dueDate')
                                     ->label('Tenggat Waktu')
                                     ->placeholder('Pilih tenggat waktu (opsional)')
@@ -168,9 +195,17 @@ class DokumenTab extends Component implements HasForms
                             
                         FileUpload::make('uploadFile')
                             ->label('File Dokumen')
-                            ->acceptedFileTypes(['application/pdf', 'image/*', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'])
+                            ->acceptedFileTypes([
+                                'application/pdf',
+                                'image/*',
+                                'application/msword',
+                                'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+                                'application/vnd.ms-excel',
+                                'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+                                'text/csv',
+                            ])
                             ->maxSize(10240) // 10MB
-                            ->helperText('Format: PDF, JPG, JPEG, PNG, DOC, DOCX (Maksimal 10MB)')
+                            ->helperText('Format: PDF, JPG, PNG, DOC, DOCX, XLS, XLSX, CSV (Maks. 10MB)')
                             ->disk('public')
                             ->directory(function () {
                                 return $this->isAdditionalDocument || $this->isRequirementMode || $this->selectedRequirementId
@@ -190,6 +225,7 @@ class DokumenTab extends Component implements HasForms
         $this->checklist = $this->client->getLegalDocumentsChecklist();
         $this->loadAdditionalDocuments();
         $this->loadRequiredAdditionalDocuments();
+        $this->loadGroups();
         $this->calculateStats();
     }
 
@@ -205,8 +241,20 @@ class DokumenTab extends Component implements HasForms
     public function loadRequiredAdditionalDocuments()
     {
         $this->requiredAdditionalDocuments = $this->client->documentRequirements()
-            ->with(['createdBy', 'documents' => function($query) {
+            ->with(['createdBy', 'group', 'documents' => function ($query) {
                 $query->latest()->with('user', 'reviewer');
+            }])
+            ->latest()
+            ->get();
+    }
+
+    public function loadGroups()
+    {
+        $this->groups = $this->client->requirementGroups()
+            ->with(['requirements' => function ($query) {
+                $query->with(['documents' => function ($q) {
+                    $q->latest()->with('user', 'reviewer');
+                }, 'createdBy'])->latest();
             }])
             ->latest()
             ->get();
@@ -255,8 +303,9 @@ class DokumenTab extends Component implements HasForms
         $this->requirementCategory = 'other';
         $this->isRequired = true;
         $this->dueDate = null;
-        
-        if (!$this->selectedSopId && !$this->selectedRequirementId) {
+        $this->requirementGroupId = null;
+
+        if (! $this->selectedSopId && ! $this->selectedRequirementId) {
             $this->selectedSopId = null;
             $this->selectedRequirementId = null;
         }
@@ -270,14 +319,15 @@ class DokumenTab extends Component implements HasForms
             // If creating a requirement (template)
             if ($this->isRequirementMode) {
                 $requirement = ClientDocumentRequirement::create([
-                    'client_id' => $this->client->id,
-                    'created_by' => auth()->id(),
-                    'name' => $data['documentName'],
+                    'client_id'   => $this->client->id,
+                    'created_by'  => auth()->id(),
+                    'name'        => $data['documentName'],
                     'description' => $data['documentDescription'] ?? null,
-                    'category' => $data['requirementCategory'] ?? 'other',
+                    'category'    => $data['requirementCategory'] ?? 'other',
                     'is_required' => $data['isRequired'] ?? true,
-                    'due_date' => $data['dueDate'] ?? null,
-                    'status' => 'pending',
+                    'due_date'    => $data['dueDate'] ?? null,
+                    'group_id'    => $data['requirementGroupId'] ?? null,
+                    'status'      => 'pending',
                 ]);
                 
                 // Send notification to client users about new requirement
@@ -1067,6 +1117,129 @@ class DokumenTab extends Component implements HasForms
             ]);
         }
     }
+
+    // ─── Group CRUD ───────────────────────────────────────────────────────────
+
+    public function openCreateGroupModal(): void
+    {
+        $this->editingGroupId  = null;
+        $this->groupName       = '';
+        $this->groupDescription = '';
+        $this->groupYear       = (int) now()->year;
+        $this->groupDueDate    = null;
+        $this->groupStatus     = 'active';
+        $this->groupNotes      = '';
+
+        $this->dispatch('open-modal', id: 'group-modal');
+    }
+
+    public function openEditGroupModal(int $groupId): void
+    {
+        $group = ClientRequirementGroup::find($groupId);
+        if (! $group) {
+            return;
+        }
+
+        $this->editingGroupId   = $groupId;
+        $this->groupName        = $group->name;
+        $this->groupDescription = $group->description ?? '';
+        $this->groupYear        = $group->year;
+        $this->groupDueDate     = $group->due_date?->format('Y-m-d');
+        $this->groupStatus      = $group->status;
+        $this->groupNotes       = $group->notes ?? '';
+
+        $this->dispatch('open-modal', id: 'group-modal');
+    }
+
+    public function saveGroup(): void
+    {
+        $this->validate([
+            'groupName'    => 'required|string|max:255',
+            'groupYear'    => 'nullable|integer|min:2000|max:2100',
+            'groupDueDate' => 'nullable|date',
+            'groupStatus'  => 'required|in:active,completed,cancelled',
+        ]);
+
+        try {
+            $data = [
+                'name'        => $this->groupName,
+                'description' => $this->groupDescription ?: null,
+                'year'        => $this->groupYear ?: null,
+                'due_date'    => $this->groupDueDate ?: null,
+                'status'      => $this->groupStatus,
+                'notes'       => $this->groupNotes ?: null,
+            ];
+
+            if ($this->editingGroupId) {
+                ClientRequirementGroup::find($this->editingGroupId)?->update($data);
+                $message = 'Grup berhasil diperbarui!';
+            } else {
+                ClientRequirementGroup::create(array_merge($data, [
+                    'client_id'  => $this->client->id,
+                    'created_by' => auth()->id(),
+                ]));
+                $message = 'Grup berhasil dibuat!';
+            }
+
+            $this->closeGroupModal();
+            $this->loadData();
+
+            Notification::make()->title('Berhasil!')->body($message)->success()->send();
+
+        } catch (\Exception $e) {
+            Notification::make()
+                ->title('Error!')
+                ->body('Gagal menyimpan grup: ' . $e->getMessage())
+                ->danger()
+                ->send();
+        }
+    }
+
+    public function deleteGroup(int $groupId): void
+    {
+        try {
+            ClientRequirementGroup::find($groupId)?->delete();
+            $this->loadData();
+
+            Notification::make()
+                ->title('Berhasil!')
+                ->body('Grup dihapus. Persyaratan di dalamnya tidak ikut terhapus.')
+                ->success()
+                ->send();
+        } catch (\Exception $e) {
+            Notification::make()
+                ->title('Error!')
+                ->body('Gagal menghapus grup: ' . $e->getMessage())
+                ->danger()
+                ->send();
+        }
+    }
+
+    public function closeGroupModal(): void
+    {
+        $this->editingGroupId   = null;
+        $this->groupName        = '';
+        $this->groupDescription = '';
+        $this->groupYear        = null;
+        $this->groupDueDate     = null;
+        $this->groupStatus      = 'active';
+        $this->groupNotes       = '';
+
+        $this->dispatch('close-modal', id: 'group-modal');
+    }
+
+    public function openRequirementModalForGroup(int $groupId): void
+    {
+        $this->isRequirementMode     = true;
+        $this->isAdditionalDocument  = false;
+        $this->selectedRequirementId = null;
+        $this->resetModalFields();
+        $this->requirementGroupId = $groupId;
+
+        $this->dispatch('open-modal', id: 'upload-document-modal');
+    }
+
+    // ─── Lifecycle ────────────────────────────────────────────────────────────
 
     #[On('refresh-data')]
     public function refreshData()

@@ -3,6 +3,7 @@
 namespace App\Livewire\Client\Panel;
 
 use App\Models\Client;
+use App\Models\ClientRequirementGroup;
 use App\Models\UserClient;
 use App\Models\ClientDocument;
 use App\Models\ClientDocumentRequirement;
@@ -34,6 +35,7 @@ class DocumentTab extends Component implements HasForms
     public $checklist = [];
     public $additionalDocuments = [];
     public $requiredAdditionalDocuments = [];
+    public $groups = [];
     public $stats = [];
 
     // Search and Filter
@@ -141,6 +143,7 @@ class DocumentTab extends Component implements HasForms
         Cache::forget("client_checklist_{$userId}_{$clientId}");
         Cache::forget("client_additional_docs_{$userId}_{$clientId}");
         Cache::forget("client_requirements_{$userId}_{$clientId}");
+        Cache::forget("client_groups_{$userId}_{$clientId}");
     }
 
     public function loadClientData($clientId)
@@ -154,6 +157,7 @@ class DocumentTab extends Component implements HasForms
         $this->checklist = $this->getClientChecklist();
         $this->loadAdditionalDocuments();
         $this->loadRequiredAdditionalDocuments();
+        $this->loadGroups();
         $this->calculateStats();
     }
 
@@ -232,10 +236,18 @@ class DocumentTab extends Component implements HasForms
 
                         FileUpload::make('uploadFile')
                             ->label('File Dokumen')
-                            ->acceptedFileTypes(['application/pdf', 'image/*', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'])
+                            ->acceptedFileTypes([
+                                'application/pdf',
+                                'image/*',
+                                'application/msword',
+                                'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+                                'application/vnd.ms-excel',
+                                'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+                                'text/csv',
+                            ])
                             ->maxSize(10240) // 10MB
                             ->required()
-                            ->helperText('Format: PDF, JPG, JPEG, PNG, DOC, DOCX (Maksimal 10MB)')
+                            ->helperText('Format: PDF, JPG, PNG, DOC, DOCX, XLS, XLSX, CSV (Maks. 10MB)')
                             ->disk('public')
                             ->directory(fn() => $this->getUploadDirectory())
                             ->visibility('private')
@@ -339,6 +351,29 @@ class DocumentTab extends Component implements HasForms
                     ])
                     ->latest()
                     ->get();
+            }
+        );
+    }
+
+    public function loadGroups()
+    {
+        if (!$this->currentClient) {
+            $this->groups = [];
+            return;
+        }
+
+        $userId = auth()->id();
+        $clientId = $this->currentClient->id;
+
+        $this->groups = Cache::remember(
+            "client_groups_{$userId}_{$clientId}",
+            $this->cacheDuration,
+            function () {
+                return $this->currentClient->requirementGroups()
+                    ->active()
+                    ->orderBy('name')
+                    ->get()
+                    ->toArray();
             }
         );
     }

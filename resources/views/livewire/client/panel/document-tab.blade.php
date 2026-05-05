@@ -36,6 +36,10 @@
         $completePct    = $statTotal > 0 ? round($statValid / $statTotal * 100) : 0;
     @endphp
 
+    @php
+        $ungroupedReqs = $this->filteredRequirements->filter(fn($r) => is_null($r->group_id));
+    @endphp
+
     <div x-show="mounted" x-transition.opacity.duration.300ms>
 
         {{-- ── MAIN PANEL ───────────────────────────────────────── --}}
@@ -246,17 +250,143 @@
                 @endforelse
             </div>
 
-            {{-- ═══ SECTION 2: TAMBAHAN DIBUTUHKAN ═══ --}}
-            @if($requiredAdditionalDocuments->isNotEmpty())
+            {{-- ═══ SECTION 2: GRUP PERSYARATAN ═══ --}}
+            @if(count($groups) > 0)
+            <div>
+                <div class="sticky top-0 z-10 flex items-center gap-2 px-4 py-2.5 bg-violet-50/70 dark:bg-violet-900/10 backdrop-blur border-b border-violet-100 dark:border-violet-900/30 border-t border-t-slate-100 dark:border-t-slate-800">
+                    <x-heroicon-o-folder-open class="h-3.5 w-3.5 text-violet-500 flex-shrink-0" />
+                    <span class="text-[11px] font-bold uppercase tracking-widest text-violet-700 dark:text-violet-400">Grup Persyaratan</span>
+                    <div class="flex-1 h-px bg-violet-200/60 dark:bg-violet-800/40"></div>
+                    <span class="inline-flex items-center rounded-full bg-violet-100 dark:bg-violet-900/30 px-2 py-0.5 text-[10px] font-bold text-violet-600 dark:text-violet-400 tabular-nums">{{ count($groups) }}</span>
+                </div>
+
+                @foreach(collect($groups) as $group)
+                @php
+                    $groupReqs  = $this->filteredRequirements->where('group_id', $group['id']);
+                    $groupTotal = $groupReqs->count();
+                    $groupDone  = $groupReqs->filter(fn($r) => $r->getLatestDocument()?->status === 'valid')->count();
+                    $groupPct   = $groupTotal > 0 ? round($groupDone / $groupTotal * 100) : 0;
+                    $isOverdueGroup = $group['due_date'] && \Carbon\Carbon::parse($group['due_date'])->isPast();
+                @endphp
+                <div x-data="{ open: true }" class="border-b border-slate-50 dark:border-slate-800/40">
+                    {{-- Group header --}}
+                    <button type="button" @click="open = !open"
+                        class="w-full flex items-center gap-3 px-4 py-3 hover:bg-violet-50/50 dark:hover:bg-violet-900/5 transition-colors text-left">
+                        <div class="w-7 h-7 rounded-lg bg-violet-100 dark:bg-violet-900/30 border border-violet-200 dark:border-violet-800/50 flex items-center justify-center flex-shrink-0">
+                            <x-heroicon-o-folder class="h-3.5 w-3.5 text-violet-500" />
+                        </div>
+                        <div class="min-w-0 flex-1">
+                            <div class="flex items-center gap-2 flex-wrap">
+                                <span class="text-sm font-semibold text-slate-800 dark:text-slate-200">{{ $group['name'] }}</span>
+                                @if($group['year'])
+                                    <span class="inline-flex rounded-full px-2 py-0.5 text-[10px] font-bold bg-violet-100 dark:bg-violet-900/30 text-violet-600 dark:text-violet-400">{{ $group['year'] }}</span>
+                                @endif
+                                @if($isOverdueGroup)
+                                    <span class="inline-flex rounded px-1.5 py-0.5 text-[10px] font-bold bg-rose-500 text-white">Terlambat</span>
+                                @elseif($group['due_date'])
+                                    <span class="text-[11px] text-slate-400">Tenggat {{ \Carbon\Carbon::parse($group['due_date'])->format('d M Y') }}</span>
+                                @endif
+                            </div>
+                            <div class="mt-1.5 flex items-center gap-2">
+                                <div class="h-1 rounded-full bg-slate-100 dark:bg-slate-800 overflow-hidden w-24">
+                                    <div class="h-full rounded-full bg-violet-400 transition-all duration-500" style="width: {{ $groupPct }}%"></div>
+                                </div>
+                                <span class="text-[10px] text-slate-400 tabular-nums">{{ $groupDone }}/{{ $groupTotal }}</span>
+                            </div>
+                        </div>
+                        <div class="flex items-center gap-2 flex-shrink-0">
+                            <span class="text-[11px] font-bold tabular-nums text-violet-600 dark:text-violet-400">{{ $groupPct }}%</span>
+                            <x-heroicon-o-chevron-down class="h-4 w-4 text-slate-400 transition-transform duration-200" ::class="{ 'rotate-180': !open }" />
+                        </div>
+                    </button>
+
+                    {{-- Group requirements --}}
+                    <div x-show="open" x-transition.opacity.duration.150ms class="border-t border-violet-100/50 dark:border-violet-900/20">
+                        @forelse($groupReqs as $requirement)
+                        @php
+                            $latestDoc      = $requirement->getLatestDocument();
+                            $reqStatusBadge = $latestDoc ? $latestDoc->status_badge : $requirement->status_badge;
+                        @endphp
+                        <div class="group flex items-center gap-3 pl-8 pr-4 py-3 border-b border-slate-50 dark:border-slate-800/40 hover:bg-slate-50/70 dark:hover:bg-slate-800/20 transition-colors">
+                            <div class="flex items-center gap-2.5 flex-shrink-0">
+                                <div class="w-0.5 h-8 rounded-full {{ $latestDoc ? 'bg-violet-400' : 'bg-slate-200 dark:bg-slate-700' }}"></div>
+                                <div class="w-8 h-8 rounded-lg flex items-center justify-center border
+                                    {{ $latestDoc ? 'bg-violet-50 dark:bg-violet-900/20 border-violet-100 dark:border-violet-900/40' : 'bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700' }}">
+                                    <x-heroicon-o-document-text class="h-3.5 w-3.5 {{ $latestDoc ? 'text-violet-500' : 'text-slate-400' }}" />
+                                </div>
+                            </div>
+                            <div class="min-w-0 flex-1">
+                                <div class="flex items-center gap-1.5 flex-wrap">
+                                    <span class="text-sm font-medium text-slate-800 dark:text-slate-200">{{ $requirement->name }}</span>
+                                    @if($requirement->is_required)
+                                        <span class="inline-flex rounded px-1.5 py-0.5 text-[10px] font-bold bg-violet-500 text-white leading-none">Wajib</span>
+                                    @endif
+                                    @if($requirement->isOverdue())
+                                        <span class="inline-flex rounded px-1.5 py-0.5 text-[10px] font-bold bg-rose-500 text-white leading-none">Terlambat</span>
+                                    @endif
+                                </div>
+                                <div class="mt-0.5 flex flex-wrap items-center gap-x-2 text-[11px] text-slate-400 dark:text-slate-500">
+                                    @if($requirement->due_date)
+                                        <span class="{{ $requirement->isOverdue() ? 'text-rose-400' : '' }}">Tenggat {{ $requirement->due_date->format('d M Y') }}</span>
+                                    @endif
+                                    @if($requirement->description)
+                                        <span class="text-slate-300 dark:text-slate-600">·</span>
+                                        <span>{{ Str::limit($requirement->description, 50) }}</span>
+                                    @endif
+                                </div>
+                            </div>
+                            <div class="flex-shrink-0 hidden sm:block">
+                                <span class="inline-flex items-center gap-1 rounded-md border px-2 py-1 text-[11px] font-semibold {{ $reqStatusBadge['class'] }}">
+                                    <x-dynamic-component :component="$reqStatusBadge['icon']" class="h-3 w-3" />
+                                    {{ $reqStatusBadge['text'] }}
+                                </span>
+                            </div>
+                            <div class="flex-shrink-0 flex items-center gap-1">
+                                @if($latestDoc)
+                                    <button wire:click="previewDocuments({{ $latestDoc->id }})"
+                                        class="p-1.5 rounded-md text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors"
+                                        title="Lihat">
+                                        <x-heroicon-o-eye class="h-4 w-4" />
+                                    </button>
+                                    @if($latestDoc->status !== 'valid')
+                                    <button wire:click="openUploadModal({{ $currentClient->id }}, null, false, {{ $requirement->id }})"
+                                        class="p-1.5 rounded-md text-slate-400 hover:text-violet-500 hover:bg-violet-50 dark:hover:bg-violet-900/20 transition-colors"
+                                        title="Upload Ulang">
+                                        <x-heroicon-o-arrow-path class="h-4 w-4" />
+                                    </button>
+                                    @endif
+                                @else
+                                    <button wire:click="openUploadModal({{ $currentClient->id }}, null, false, {{ $requirement->id }})"
+                                        class="inline-flex items-center gap-1.5 rounded-lg bg-violet-500 hover:bg-violet-600 px-2.5 py-1.5 text-[11px] font-semibold text-white shadow-sm transition-colors focus:outline-none">
+                                        <x-heroicon-o-arrow-up-tray class="h-3.5 w-3.5" />
+                                        Upload
+                                    </button>
+                                @endif
+                            </div>
+                        </div>
+                        @empty
+                        <div class="flex items-center gap-2 pl-8 pr-4 py-4 text-[12px] text-slate-400">
+                            <x-heroicon-o-inbox class="h-4 w-4" />
+                            Tidak ada persyaratan dalam grup ini
+                        </div>
+                        @endforelse
+                    </div>
+                </div>
+                @endforeach
+            </div>
+            @endif
+
+            {{-- ═══ SECTION 3: TAMBAHAN DIBUTUHKAN (TANPA GRUP) ═══ --}}
+            @if($ungroupedReqs->isNotEmpty())
             <div>
                 <div class="sticky top-0 z-10 flex items-center gap-2 px-4 py-2.5 bg-amber-50/70 dark:bg-amber-900/10 backdrop-blur border-b border-amber-100 dark:border-amber-900/30 border-t border-t-slate-100 dark:border-t-slate-800">
                     <x-heroicon-o-exclamation-circle class="h-3.5 w-3.5 text-amber-500 flex-shrink-0" />
-                    <span class="text-[11px] font-bold uppercase tracking-widest text-amber-700 dark:text-amber-400">Dokumen Tambahan Dibutuhkan</span>
+                    <span class="text-[11px] font-bold uppercase tracking-widest text-amber-700 dark:text-amber-400">Persyaratan Lainnya</span>
                     <div class="flex-1 h-px bg-amber-200/60 dark:bg-amber-800/40"></div>
-                    <span class="inline-flex items-center rounded-full bg-amber-100 dark:bg-amber-900/30 px-2 py-0.5 text-[10px] font-bold text-amber-600 dark:text-amber-400 tabular-nums">{{ $this->filteredRequirements->count() }}</span>
+                    <span class="inline-flex items-center rounded-full bg-amber-100 dark:bg-amber-900/30 px-2 py-0.5 text-[10px] font-bold text-amber-600 dark:text-amber-400 tabular-nums">{{ $ungroupedReqs->count() }}</span>
                 </div>
 
-                @foreach($this->filteredRequirements as $requirement)
+                @foreach($ungroupedReqs as $requirement)
                 @php
                     $latestDoc      = $requirement->getLatestDocument();
                     $reqStatusBadge = $latestDoc ? $latestDoc->status_badge : $requirement->status_badge;

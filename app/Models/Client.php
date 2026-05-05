@@ -108,6 +108,11 @@ class Client extends Model
         return $this->hasMany(ChatThread::class);
     }
 
+    public function requirementGroups(): HasMany
+    {
+        return $this->hasMany(ClientRequirementGroup::class);
+    }
+
     public function documentRequirements(): HasMany
     {
         return $this->hasMany(ClientDocumentRequirement::class);

@@ -19,6 +19,7 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Query\Builder as QueryBuilder;
 use Illuminate\Support\Str;
 use Livewire\Features\SupportFileUploads\TemporaryUploadedFile;
+use Livewire\Attributes\On;
 use Filament\Notifications\Notification;
 use Filament\Tables\Columns\Summarizers\Sum;
 use Illuminate\Support\Collection;
@@ -841,6 +842,12 @@ class InvoiceTable extends Component implements HasForms, HasTable
         } else {
             $set('ppn', '0.00');
         }
+    }
+
+    #[On('faktur-bulk-saved')]
+    public function onFakturBulkSaved(): void
+    {
+        $this->unmountTableAction();
     }
 
     public function render()

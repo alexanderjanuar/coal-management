@@ -14,6 +14,7 @@ use Filament\Forms\Components\Section;
 use Filament\Forms\Components\Grid;
 use Illuminate\Support\Str;
 use Livewire\Features\SupportFileUploads\TemporaryUploadedFile;
+use Livewire\Attributes\On;
 use Filament\Notifications\Notification;
 use Filament\Tables\Columns\Summarizers\Sum;
 use Filament\Forms\Components\FileUpload;
@@ -773,6 +774,12 @@ class InvoicesRelationManager extends RelationManager
             $set('dpp', '0.00');
             $set('ppn', '0.00');
         }
+    }
+
+    #[On('faktur-bulk-saved')]
+    public function onFakturBulkSaved(): void
+    {
+        $this->unmountTableAction();
     }
 
     /**
