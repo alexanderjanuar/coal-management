@@ -526,7 +526,7 @@ class DocumentTab extends Component implements HasForms
 
     public function downloadDocument($documentId)
     {
-        $document = ClientDocument::find($documentId);
+        $document = ClientDocument::with(['client', 'requirement', 'sopLegalDocument'])->find($documentId);
 
         if (!$document || !$document->file_path) {
             Notification::make()
@@ -548,7 +548,7 @@ class DocumentTab extends Component implements HasForms
 
         return response()->download(
             storage_path('app/public/' . $document->file_path),
-            $document->original_filename
+            $document->getDownloadFilename()
         );
     }
 
@@ -640,7 +640,7 @@ class DocumentTab extends Component implements HasForms
 
     public function previewDocuments($documentId)
     {
-        $this->previewDocument = ClientDocument::with('user:id,name')->find($documentId);
+        $this->previewDocument = ClientDocument::with(['user:id,name', 'requirement', 'sopLegalDocument'])->find($documentId);
 
         if ($this->previewDocument) {
             $this->dispatch('open-modal', id: 'preview-document-modal');
@@ -658,6 +658,45 @@ class DocumentTab extends Component implements HasForms
     {
         $this->previewDocument = null;
         $this->dispatch('close-modal', id: 'preview-document-modal');
+    }
+
+    public function updatePreviewDocumentStatus(int $documentId, string $status): void
+    {
+        if (! auth()->user()?->hasAnyRole(['project-manager', 'direktur', 'super-admin', 'verificator', 'staff'])) {
+            return;
+        }
+
+        if (! in_array($status, ['pending_review', 'valid', 'rejected'], true)) {
+            return;
+        }
+
+        try {
+            $document = ClientDocument::with(['user:id,name', 'requirement', 'sopLegalDocument'])->findOrFail($documentId);
+
+            $document->update([
+                'status' => $status,
+                'reviewed_by' => auth()->id(),
+                'reviewed_at' => now(),
+            ]);
+
+            $this->previewDocument = $document->fresh(['user:id,name', 'requirement', 'sopLegalDocument']);
+
+            if ($this->currentClient) {
+                $this->clearClientCache($this->currentClient->id);
+                $this->loadClientData($this->currentClient->id);
+            }
+
+            Notification::make()
+                ->title('Status dokumen diperbarui')
+                ->success()
+                ->send();
+        } catch (\Exception $e) {
+            Notification::make()
+                ->title('Error!')
+                ->body('Gagal memperbarui status dokumen: ' . $e->getMessage())
+                ->danger()
+                ->send();
+        }
     }
 
     /**

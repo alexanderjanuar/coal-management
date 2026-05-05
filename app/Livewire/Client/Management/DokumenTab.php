@@ -171,19 +171,6 @@ class DokumenTab extends Component implements HasForms
                                     ->visible($this->isRequirementMode)
                                     ->columnSpan(2),
                                     
-                                // For actual document upload
-                                TextInput::make('documentNumber')
-                                    ->label('Nomor Dokumen')
-                                    ->placeholder('Masukkan nomor dokumen (opsional)')
-                                    ->visible(!$this->isRequirementMode)
-                                    ->columnSpan(1),
-                                    
-                                DatePicker::make('expiredAt')
-                                    ->label('Tanggal Kadaluarsa')
-                                    ->placeholder('Pilih tanggal kadaluarsa (opsional)')
-                                    ->after('today')
-                                    ->visible(!$this->isRequirementMode)
-                                    ->columnSpan(1),
                             ]),
                         
                         Textarea::make('adminNotes')
@@ -213,6 +200,7 @@ class DokumenTab extends Component implements HasForms
                                     : $this->client->getLegalFolderPath();
                             })
                             ->visibility('private')
+                            ->preserveFilenames()
                             ->uploadingMessage('Sedang mengupload...')
                             ->visible(!$this->isRequirementMode)
                             ->columnSpanFull(),
@@ -356,11 +344,10 @@ class DokumenTab extends Component implements HasForms
                     $originalName = basename($uploadedFile);
                 }
                 
-                $filename = time() . '_' . $originalName;
-                
                 $storagePath = $this->isAdditionalDocument || $this->selectedRequirementId
                     ? $this->client->getFolderPath() 
                     : $this->client->getLegalFolderPath();
+                $filename = $this->getAvailableStorageFilename($storagePath, $originalName);
                 
                 if (is_object($uploadedFile) && method_exists($uploadedFile, 'storeAs')) {
                     $filePath = $uploadedFile->storeAs($storagePath, $filename, 'public');
@@ -373,8 +360,6 @@ class DokumenTab extends Component implements HasForms
                     'user_id' => auth()->id(),
                     'file_path' => $filePath,
                     'original_filename' => $originalName,
-                    'document_number' => $data['documentNumber'] ?? null,
-                    'expired_at' => $data['expiredAt'] ?? null,
                     'status' => 'valid',
                     'admin_notes' => $data['adminNotes'] ?? null,
                     'reviewed_by' => auth()->id(),
@@ -560,6 +545,47 @@ class DokumenTab extends Component implements HasForms
         $this->dispatch('close-modal', id: 'review-document-modal');
     }
 
+    public function updatePreviewDocumentStatus(int $documentId, string $status): void
+    {
+        if (! in_array($status, ['pending_review', 'valid', 'rejected'], true)) {
+            return;
+        }
+
+        try {
+            $document = ClientDocument::with(['user', 'reviewer', 'requirement', 'sopLegalDocument'])->findOrFail($documentId);
+
+            $document->update([
+                'status' => $status,
+                'reviewed_by' => auth()->id(),
+                'reviewed_at' => now(),
+                'admin_notes' => $status === 'rejected'
+                    ? ($this->reviewNotes ?: $document->admin_notes)
+                    : $document->admin_notes,
+            ]);
+
+            if ($status === 'valid') {
+                $this->sendDocumentReviewNotification($document, 'approved', $this->reviewNotes);
+            } elseif ($status === 'rejected') {
+                $this->sendDocumentReviewNotification($document, 'rejected', $this->reviewNotes);
+            }
+
+            $this->previewDocument = $document->fresh(['user', 'reviewer', 'requirement', 'sopLegalDocument']);
+            $this->reviewNotes = '';
+            $this->loadData();
+
+            Notification::make()
+                ->title('Status dokumen diperbarui')
+                ->success()
+                ->send();
+        } catch (\Exception $e) {
+            Notification::make()
+                ->title('Error!')
+                ->body('Gagal memperbarui status dokumen: ' . $e->getMessage())
+                ->danger()
+                ->send();
+        }
+    }
+
     public function submitReview()
     {
         if (!$this->documentToReview) {
@@ -675,9 +701,12 @@ class DokumenTab extends Component implements HasForms
 
     public function downloadDocument($documentId)
     {
-        $document = ClientDocument::find($documentId);
+        $document = ClientDocument::with(['client', 'requirement', 'sopLegalDocument'])->find($documentId);
         if ($document && $document->file_path) {
-            return response()->download(storage_path('app/public/' . $document->file_path));
+            return response()->download(
+                storage_path('app/public/' . $document->file_path),
+                $document->getDownloadFilename()
+            );
         }
         
         Notification::make()
@@ -784,7 +813,7 @@ class DokumenTab extends Component implements HasForms
 
     public function previewDocuments($documentId)
     {
-        $this->previewDocument = ClientDocument::with('user', 'reviewer')->find($documentId);
+        $this->previewDocument = ClientDocument::with(['user', 'reviewer', 'requirement', 'sopLegalDocument'])->find($documentId);
         if ($this->previewDocument) {
             $this->dispatch('open-modal', id: 'preview-document-modal');
         } else {
@@ -795,6 +824,24 @@ class DokumenTab extends Component implements HasForms
                 ->duration(3000)
                 ->send();
         }
+    }
+
+    private function getAvailableStorageFilename(string $storagePath, string $originalName): string
+    {
+        $filename = basename($originalName);
+        $extension = pathinfo($filename, PATHINFO_EXTENSION);
+        $name = pathinfo($filename, PATHINFO_FILENAME);
+        $candidate = $filename;
+        $counter = 2;
+
+        while (\Storage::disk('public')->exists(trim($storagePath, '/') . '/' . $candidate)) {
+            $candidate = $extension
+                ? "{$name}-{$counter}.{$extension}"
+                : "{$name}-{$counter}";
+            $counter++;
+        }
+
+        return $candidate;
     }
 
     public function closePreviewModal()

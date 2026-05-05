@@ -548,6 +548,7 @@ class OverviewTab extends Component
     public function downloadDocument(int $documentId)
     {
         $document = ClientDocument::query()
+            ->with(['client', 'requirement', 'sopLegalDocument'])
             ->where('id', $documentId)
             ->where('client_id', $this->selectedClientId)
             ->firstOrFail();
@@ -555,7 +556,7 @@ class OverviewTab extends Component
         if ($document->file_path && \Storage::disk('public')->exists($document->file_path)) {
             return \Storage::disk('public')->download(
                 $document->file_path,
-                $document->original_filename ?? basename($document->file_path)
+                $document->getDownloadFilename()
             );
         }
 

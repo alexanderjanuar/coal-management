@@ -220,7 +220,13 @@
             @php
                 $groupReqs      = collect($group->requirements);
                 $groupTotal     = $groupReqs->count();
-                $groupFulfilled = $groupReqs->where('status', 'fulfilled')->count();
+                $groupFulfilled = $groupReqs->filter(function ($requirement) {
+                    $latestDocument = $requirement->getLatestDocument();
+
+                    return $latestDocument
+                        ? $latestDocument->status === 'valid'
+                        : $requirement->status === 'fulfilled';
+                })->count();
                 $groupPct       = $groupTotal > 0 ? round(($groupFulfilled / $groupTotal) * 100) : 0;
                 $groupIsOverdue = $group->status === 'active' && $group->due_date && $group->due_date->isPast();
                 $groupStatusClass = match($group->status) {
@@ -236,22 +242,33 @@
                 };
             @endphp
 
-            <div x-data="{ open: true }" class="border-b border-slate-100 dark:border-slate-800">
+            <div
+                x-data="{ open: true }"
+                x-bind:class="{ 'bg-violet-50/25 dark:bg-violet-900/10': open }"
+                class="border-b border-slate-100 transition-colors duration-200 dark:border-slate-800"
+            >
                 {{-- Group header --}}
                 <div @click="open = !open"
-                     class="flex cursor-pointer items-center gap-3 px-4 py-3 transition-colors hover:bg-violet-50/40 dark:hover:bg-violet-900/10">
+                     x-bind:aria-expanded="open.toString()"
+                     x-bind:class="{ 'bg-violet-50/80 dark:bg-violet-900/20': open }"
+                     class="relative flex cursor-pointer items-center gap-3 px-4 py-3 transition-colors hover:bg-violet-50/40 dark:hover:bg-violet-900/10">
+                    <span x-show="open" x-transition.opacity class="absolute inset-y-2 left-0 w-1 rounded-r-full bg-violet-500"></span>
                     <x-heroicon-o-chevron-right
                         class="h-4 w-4 shrink-0 text-slate-400 transition-transform duration-200"
-                        ::class="{ 'rotate-90': open }" />
+                        x-bind:class="{ 'text-violet-500': open }"
+                        x-bind:style="{ transform: open ? 'rotate(90deg)' : 'rotate(0deg)' }" />
 
-                    <div class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-violet-200 bg-violet-50 dark:border-violet-800/50 dark:bg-violet-900/20">
+                    <div
+                        x-bind:class="{ 'border-violet-300 bg-violet-100 shadow-sm shadow-violet-100 dark:border-violet-700 dark:bg-violet-900/40 dark:shadow-none': open }"
+                        class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-violet-200 bg-violet-50 transition-colors dark:border-violet-800/50 dark:bg-violet-900/20"
+                    >
                         <x-heroicon-o-folder-open class="h-4 w-4 text-violet-500" x-show="open" />
                         <x-heroicon-o-folder class="h-4 w-4 text-violet-400" x-show="!open" />
                     </div>
 
                     <div class="min-w-0 flex-1">
                         <div class="flex flex-wrap items-center gap-1.5">
-                            <span class="text-sm font-semibold text-slate-800 dark:text-slate-200">{{ $group->name }}</span>
+                            <span x-bind:class="{ 'text-violet-900 dark:text-violet-100': open }" class="text-sm font-semibold text-slate-800 transition-colors dark:text-slate-200">{{ $group->name }}</span>
                             @if($group->year)
                             <span class="inline-flex rounded bg-slate-100 px-1.5 py-0.5 text-[10px] font-bold leading-none text-slate-500 dark:bg-slate-800 dark:text-slate-400">{{ $group->year }}</span>
                             @endif
@@ -346,7 +363,7 @@
                                 <x-filament::icon-button icon="heroicon-o-eye" color="gray" size="sm" tooltip="Preview & Review"
                                     wire:click="previewDocuments({{ $latestDoc->id }})" />
                                 @endif
-                                @if($requirement->status === 'pending')
+                                @if($isMissingUpload)
                                 <x-filament::button wire:click="openUploadModal(null, false, {{ $requirement->id }})" size="sm" icon="heroicon-o-arrow-up-tray">
                                     Upload
                                 </x-filament::button>
@@ -451,7 +468,7 @@
                         <x-filament::icon-button icon="heroicon-o-eye" color="gray" size="sm" tooltip="Preview & Review"
                             wire:click="previewDocuments({{ $latestDoc->id }})" />
                         @endif
-                        @if($requirement->status === 'pending')
+                        @if($isMissingUpload)
                         <x-filament::button wire:click="openUploadModal(null, false, {{ $requirement->id }})" size="sm" icon="heroicon-o-arrow-up-tray">
                             Upload
                         </x-filament::button>
@@ -674,129 +691,215 @@
     </x-filament::modal>
 
     {{-- Preview & Review Modal --}}
-    <x-filament::modal id="preview-document-modal" width="5xl">
-        <x-slot name="heading">
-            <div class="flex items-center gap-3">
-                <div class="rounded-lg bg-primary-100 p-2 dark:bg-primary-900/30">
-                    <x-heroicon-o-document-text class="h-6 w-6 text-primary-600 dark:text-primary-400" />
-                </div>
-                <span class="text-lg font-semibold">Preview & Review Dokumen</span>
-            </div>
-        </x-slot>
-
+    <x-filament::modal id="preview-document-modal" width="7xl">
         @if($previewDocument)
-        <div class="space-y-4">
-            <div class="rounded-lg bg-gray-50 p-4 dark:bg-gray-900/50">
-                <dl class="grid grid-cols-2 gap-4">
-                    <div>
-                        <dt class="text-sm font-medium text-gray-500 dark:text-gray-400">Nama File</dt>
-                        <dd class="mt-1 text-sm text-gray-900 dark:text-white">{{ $previewDocument->original_filename }}</dd>
+        @php
+            $extension = pathinfo($previewDocument->file_path ?? '', PATHINFO_EXTENSION);
+            $isImage   = in_array(strtolower($extension), ['jpg', 'jpeg', 'png', 'gif', 'webp']);
+            $isPdf     = strtolower($extension) === 'pdf';
+            $statusBadge = $previewDocument->status_badge;
+            $documentDisplayName = $previewDocument->requirement?->name
+                ?? $previewDocument->sopLegalDocument?->name
+                ?? $previewDocument->description
+                ?? $previewDocument->original_filename;
+            $documentDisplayLabel = $previewDocument->requirement
+                ? 'Persyaratan'
+                : ($previewDocument->sopLegalDocument ? 'Jenis Dokumen' : 'Dokumen');
+        @endphp
+
+        <div
+            x-data="{ showSidebar: window.innerWidth >= 1024 }"
+            class="space-y-4"
+        >
+            <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                <div class="flex min-w-0 items-start gap-3">
+                    <div class="hidden h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-primary-50 ring-1 ring-primary-100 dark:bg-primary-900/40 dark:ring-primary-800 sm:flex">
+                        @if($isPdf)
+                        <x-heroicon-o-document-text class="h-6 w-6 text-primary-600 dark:text-primary-400" />
+                        @elseif($isImage)
+                        <x-heroicon-o-photo class="h-6 w-6 text-primary-600 dark:text-primary-400" />
+                        @else
+                        <x-heroicon-o-document class="h-6 w-6 text-primary-600 dark:text-primary-400" />
+                        @endif
                     </div>
-                    <div>
-                        <dt class="text-sm font-medium text-gray-500 dark:text-gray-400">Nomor Dokumen</dt>
-                        <dd class="mt-1 text-sm text-gray-900 dark:text-white">{{ $previewDocument->document_number ?? '-' }}</dd>
+                    <div class="min-w-0">
+                        <div class="flex flex-wrap items-center gap-2">
+                            <h3 class="truncate text-lg font-semibold leading-tight text-gray-900 dark:text-white sm:text-xl">{{ $documentDisplayName }}</h3>
+                        </div>
+                        <p class="mt-1 truncate text-xs text-gray-500 dark:text-gray-400 sm:text-sm">
+                            File asli: {{ $previewDocument->original_filename }} · Upload {{ $previewDocument->created_at->diffForHumans() }} oleh {{ $previewDocument->user->name ?? '-' }}
+                        </p>
                     </div>
-                    <div>
-                        <dt class="text-sm font-medium text-gray-500 dark:text-gray-400">Diupload Oleh</dt>
-                        <dd class="mt-1 text-sm text-gray-900 dark:text-white">{{ $previewDocument->user->name ?? '-' }}</dd>
-                    </div>
-                    <div>
-                        <dt class="text-sm font-medium text-gray-500 dark:text-gray-400">Tanggal Upload</dt>
-                        <dd class="mt-1 text-sm text-gray-900 dark:text-white">{{ $previewDocument->created_at->format('d M Y, H:i') }}</dd>
-                    </div>
-                    <div>
-                        <dt class="text-sm font-medium text-gray-500 dark:text-gray-400">Status</dt>
-                        <dd class="mt-1">
-                            @php $statusBadge = $previewDocument->status_badge; @endphp
-                            <span class="inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold shadow-sm {{ $statusBadge['class'] }}">
-                                <x-dynamic-component :component="$statusBadge['icon']" class="h-3.5 w-3.5" />
-                                {{ $statusBadge['text'] }}
-                            </span>
-                        </dd>
-                    </div>
-                    @if($previewDocument->expired_at)
-                    <div>
-                        <dt class="text-sm font-medium text-gray-500 dark:text-gray-400">Kadaluarsa</dt>
-                        <dd class="mt-1 text-sm text-gray-900 dark:text-white">{{ $previewDocument->expired_at->format('d M Y') }}</dd>
-                    </div>
-                    @endif
-                    @if($previewDocument->reviewed_by)
-                    <div class="col-span-2">
-                        <dt class="text-sm font-medium text-gray-500 dark:text-gray-400">Direview Oleh</dt>
-                        <dd class="mt-1 text-sm text-gray-900 dark:text-white">
-                            {{ $previewDocument->reviewer->name ?? '-' }}
-                            @if($previewDocument->reviewed_at)
-                            <span class="text-gray-400">• {{ $previewDocument->reviewed_at->format('d M Y, H:i') }}</span>
-                            @endif
-                        </dd>
-                    </div>
-                    @endif
-                </dl>
-                @if($previewDocument->admin_notes)
-                <div class="mt-4 border-t border-gray-200 pt-4 dark:border-gray-700">
-                    <dt class="mb-2 text-sm font-medium text-gray-500 dark:text-gray-400">Catatan Admin</dt>
-                    <dd class="rounded-lg bg-white p-3 text-sm text-gray-900 dark:bg-gray-800 dark:text-white">{{ $previewDocument->admin_notes }}</dd>
                 </div>
-                @endif
+
+                <div class="flex flex-wrap items-center gap-2">
+                    <x-filament::dropdown placement="bottom-end">
+                        <x-slot name="trigger">
+                            <x-filament::button size="sm" :color="$previewDocument->status_color">
+                                <div class="flex items-center gap-2">
+                                    <x-dynamic-component :component="$statusBadge['icon']" class="h-4 w-4" />
+                                    <span>{{ $previewDocument->status_label }}</span>
+                                    <x-heroicon-m-chevron-down class="h-4 w-4" />
+                                </div>
+                            </x-filament::button>
+                        </x-slot>
+                        <x-filament::dropdown.list>
+                            <x-filament::dropdown.list.item wire:click="updatePreviewDocumentStatus({{ $previewDocument->id }}, 'pending_review')" icon="heroicon-o-eye" color="warning">
+                                Menunggu Review
+                            </x-filament::dropdown.list.item>
+                            <x-filament::dropdown.list.item wire:click="updatePreviewDocumentStatus({{ $previewDocument->id }}, 'valid')" icon="heroicon-o-check-circle" color="success">
+                                Valid
+                            </x-filament::dropdown.list.item>
+                            <x-filament::dropdown.list.item wire:click="updatePreviewDocumentStatus({{ $previewDocument->id }}, 'rejected')" icon="heroicon-o-x-circle" color="danger">
+                                Ditolak
+                            </x-filament::dropdown.list.item>
+                        </x-filament::dropdown.list>
+                    </x-filament::dropdown>
+                    <button
+                        @click="showSidebar = !showSidebar"
+                        type="button"
+                        class="inline-flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm font-medium text-gray-600 shadow-sm transition hover:border-primary-500 hover:bg-primary-50 hover:text-primary-600 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300 dark:hover:border-primary-500 dark:hover:bg-primary-900/20 dark:hover:text-primary-400"
+                        :class="{ 'border-primary-500 bg-primary-50 text-primary-600 dark:border-primary-500 dark:bg-primary-900/20 dark:text-primary-400': showSidebar }"
+                    >
+                        <x-heroicon-o-bars-3 x-show="!showSidebar" class="h-4 w-4" />
+                        <x-heroicon-o-x-mark x-show="showSidebar" class="h-4 w-4" />
+                        <span x-text="showSidebar ? 'Tutup Detail' : 'Detail'"></span>
+                    </button>
+                    <button
+                        x-on:click="$dispatch('close-modal', { id: 'preview-document-modal' })"
+                        wire:click="closePreviewModal"
+                        type="button"
+                        class="rounded-lg p-2 text-gray-400 transition hover:bg-gray-50 hover:text-gray-600 dark:text-gray-500 dark:hover:bg-gray-800 dark:hover:text-gray-300"
+                    >
+                        <span class="sr-only">Tutup</span>
+                        <x-heroicon-m-x-mark class="h-5 w-5" />
+                    </button>
+                </div>
             </div>
 
-            @if($previewDocument->status === 'pending_review')
-            <div class="rounded-lg border border-amber-200 bg-amber-50 p-4 dark:border-amber-800 dark:bg-amber-900/20">
-                <h4 class="mb-3 text-sm font-medium text-amber-900 dark:text-amber-300">Review Dokumen</h4>
-                <div class="space-y-3">
-                    <div>
-                        <label class="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300">
-                            Catatan Review <span class="text-slate-400 font-normal">(Opsional untuk Setujui, Wajib untuk Tolak)</span>
-                        </label>
-                        <textarea wire:model="reviewNotes" rows="3"
-                            class="block w-full rounded-lg border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 dark:border-gray-600 dark:bg-gray-800 dark:text-white"
+            <div
+                class="flex flex-col gap-4 lg:flex-row"
+                style="height: clamp(28rem, 68vh, 48rem); min-height: 28rem;"
+            >
+                <div class="min-w-0 flex-1 rounded-xl bg-gray-50 p-2 ring-1 ring-gray-200 transition-all duration-300 dark:bg-gray-900 dark:ring-gray-700 sm:p-4">
+                    <div class="flex h-full items-center justify-center overflow-hidden rounded-lg bg-white dark:bg-gray-950">
+                    @if($previewDocument->file_path && $isImage)
+                    <img
+                        src="{{ Storage::disk('public')->url($previewDocument->file_path) }}"
+                        alt="{{ $documentDisplayName }}"
+                        class="max-h-full max-w-full rounded-lg object-contain shadow-sm"
+                    />
+                    @elseif($previewDocument->file_path && $isPdf)
+                    <iframe
+                        src="{{ Storage::disk('public')->url($previewDocument->file_path) }}"
+                        class="h-full w-full rounded-lg bg-white"
+                        title="{{ $documentDisplayName }}"
+                    ></iframe>
+                    @else
+                    <div class="px-6 py-12 text-center">
+                        <x-heroicon-o-document class="mx-auto mb-4 h-16 w-16 text-gray-400" />
+                        <p class="text-sm font-medium text-gray-700 dark:text-gray-200">Preview tidak tersedia untuk tipe file ini</p>
+                        <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">Silakan download file untuk melihat dokumen lengkap.</p>
+                    </div>
+                    @endif
+                    </div>
+                </div>
+
+                <aside
+                    x-show="showSidebar"
+                    x-transition:enter="transition ease-out duration-300"
+                    x-transition:enter-start="opacity-0 translate-x-6"
+                    x-transition:enter-end="opacity-100 translate-x-0"
+                    x-transition:leave="transition ease-in duration-200"
+                    x-transition:leave-start="opacity-100 translate-x-0"
+                    x-transition:leave-end="opacity-0 translate-x-6"
+                    class="min-h-0 w-full shrink-0 space-y-4 overflow-y-auto rounded-xl bg-gray-50/70 p-2 dark:bg-gray-900/50 lg:w-[400px]"
+                >
+                <div class="rounded-xl border border-gray-200 bg-white p-4 dark:border-gray-700 dark:bg-gray-900">
+                    <div class="mb-4 flex items-start justify-between gap-3">
+                        <div>
+                            <h4 class="text-sm font-semibold text-gray-900 dark:text-white">Informasi Dokumen</h4>
+                            <p class="mt-0.5 text-xs text-gray-500 dark:text-gray-400">{{ $documentDisplayName }}</p>
+                        </div>
+                        <span class="inline-flex shrink-0 items-center gap-1.5 rounded-lg px-2.5 py-1 text-xs font-semibold shadow-sm {{ $statusBadge['class'] }}">
+                            <x-dynamic-component :component="$statusBadge['icon']" class="h-3.5 w-3.5" />
+                            {{ $statusBadge['text'] }}
+                        </span>
+                    </div>
+
+                    <dl class="space-y-3">
+                        <div class="rounded-lg bg-gray-50 p-3 dark:bg-gray-800/70">
+                            <dt class="text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">{{ $documentDisplayLabel }}</dt>
+                            <dd class="mt-1 break-words text-sm font-semibold text-gray-900 dark:text-white">{{ $documentDisplayName }}</dd>
+                            <dd class="mt-1 break-words text-xs text-gray-500 dark:text-gray-400">File asli: {{ $previewDocument->original_filename }}</dd>
+                        </div>
+                        <div class="grid grid-cols-1 gap-3 sm:grid-cols-2 md:grid-cols-1 xl:grid-cols-2">
+                            <div>
+                                <dt class="text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">Diupload Oleh</dt>
+                                <dd class="mt-1 text-sm text-gray-900 dark:text-white">{{ $previewDocument->user->name ?? '-' }}</dd>
+                            </div>
+                            <div>
+                                <dt class="text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">Tanggal Upload</dt>
+                                <dd class="mt-1 text-sm text-gray-900 dark:text-white">{{ $previewDocument->created_at->format('d M Y, H:i') }}</dd>
+                            </div>
+                        </div>
+                        @if($previewDocument->document_number)
+                        <div>
+                            <dt class="text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">Nomor Dokumen</dt>
+                            <dd class="mt-1 text-sm text-gray-900 dark:text-white">{{ $previewDocument->document_number }}</dd>
+                        </div>
+                        @endif
+                        @if($previewDocument->expired_at)
+                        <div>
+                            <dt class="text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">Kadaluarsa</dt>
+                            <dd class="mt-1 text-sm text-gray-900 dark:text-white">{{ $previewDocument->expired_at->format('d M Y') }}</dd>
+                        </div>
+                        @endif
+                        @if($previewDocument->reviewed_by)
+                        <div>
+                            <dt class="text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">Direview Oleh</dt>
+                            <dd class="mt-1 text-sm text-gray-900 dark:text-white">
+                                {{ $previewDocument->reviewer->name ?? '-' }}
+                                @if($previewDocument->reviewed_at)
+                                <span class="block text-xs text-gray-500 dark:text-gray-400">{{ $previewDocument->reviewed_at->format('d M Y, H:i') }}</span>
+                                @endif
+                            </dd>
+                        </div>
+                        @endif
+                    </dl>
+
+                    @if($previewDocument->admin_notes)
+                    <div class="mt-4 border-t border-gray-200 pt-4 dark:border-gray-700">
+                        <dt class="mb-2 text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">Catatan Admin</dt>
+                        <dd class="rounded-lg bg-gray-50 p-3 text-sm text-gray-900 dark:bg-gray-800 dark:text-white">{{ $previewDocument->admin_notes }}</dd>
+                    </div>
+                    @endif
+                </div>
+
+                @if($previewDocument->status === 'pending_review')
+                <div class="rounded-xl border border-amber-200 bg-amber-50 p-4 dark:border-amber-800 dark:bg-amber-900/20">
+                    <h4 class="text-sm font-semibold text-amber-900 dark:text-amber-300">Review Dokumen</h4>
+                    <p class="mt-1 text-xs text-amber-800/80 dark:text-amber-200/80">Catatan wajib saat menolak dokumen.</p>
+                    <div class="mt-4 space-y-3">
+                        <textarea wire:model="reviewNotes" rows="4"
+                            class="block w-full rounded-lg border-amber-200 bg-white text-sm shadow-sm focus:border-primary-500 focus:ring-primary-500 dark:border-amber-900 dark:bg-gray-900 dark:text-white"
                             placeholder="Tambahkan catatan review..."></textarea>
+                        <div class="grid grid-cols-2 gap-2">
+                            <x-filament::button color="success" wire:click="quickApprove({{ $previewDocument->id }})" icon="heroicon-o-check-circle" size="sm">
+                                Setujui
+                            </x-filament::button>
+                            <x-filament::button color="danger" wire:click="quickReject({{ $previewDocument->id }})" icon="heroicon-o-x-circle" size="sm">
+                                Tolak
+                            </x-filament::button>
+                        </div>
                     </div>
-                    <div class="flex gap-2">
-                        <x-filament::button color="success" wire:click="quickApprove({{ $previewDocument->id }})" icon="heroicon-o-check-circle" size="sm">
-                            Setujui
-                        </x-filament::button>
-                        <x-filament::button color="danger" wire:click="quickReject({{ $previewDocument->id }})" icon="heroicon-o-x-circle" size="sm">
-                            Tolak
-                        </x-filament::button>
-                    </div>
-                </div>
-            </div>
-            @endif
-
-            @if($previewDocument->file_path)
-            <div class="overflow-hidden rounded-lg border border-gray-200 dark:border-gray-700">
-                @php
-                    $extension = pathinfo($previewDocument->file_path, PATHINFO_EXTENSION);
-                    $isImage   = in_array(strtolower($extension), ['jpg', 'jpeg', 'png', 'gif', 'webp']);
-                    $isPdf     = strtolower($extension) === 'pdf';
-                @endphp
-                @if($isImage)
-                <img src="{{ Storage::disk('public')->url($previewDocument->file_path) }}" alt="{{ $previewDocument->original_filename }}" class="h-auto w-full" />
-                @elseif($isPdf)
-                <iframe src="{{ Storage::disk('public')->url($previewDocument->file_path) }}" class="h-96 w-full"></iframe>
-                @else
-                <div class="p-8 text-center">
-                    <x-heroicon-o-document class="mx-auto mb-4 h-16 w-16 text-gray-400" />
-                    <p class="text-gray-500 dark:text-gray-400">Preview tidak tersedia untuk tipe file ini</p>
-                    <x-filament::button wire:click="downloadDocument({{ $previewDocument->id }})" class="mt-4" icon="heroicon-o-arrow-down-tray">
-                        Download File
-                    </x-filament::button>
                 </div>
                 @endif
+                </aside>
             </div>
-            @endif
         </div>
         @endif
 
-        <x-slot name="footerActions">
-            <x-filament::button color="gray" wire:click="closePreviewModal">Tutup</x-filament::button>
-            @if($previewDocument)
-            <x-filament::button wire:click="downloadDocument({{ $previewDocument->id }})" icon="heroicon-o-arrow-down-tray">
-                Download
-            </x-filament::button>
-            @endif
-        </x-slot>
     </x-filament::modal>
 
 </div>

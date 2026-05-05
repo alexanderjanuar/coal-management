@@ -6,6 +6,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Carbon\Carbon;
+use Illuminate\Support\Str;
 
 class ClientDocument extends Model
 {
@@ -15,8 +16,10 @@ class ClientDocument extends Model
         'client_id',
         'user_id', 
         'sop_legal_document_id',
+        'requirement_id',
         'file_path',
         'original_filename',
+        'description',
         'document_number',
         'expired_at',
         'document_category',
@@ -177,6 +180,31 @@ class ClientDocument extends Model
     public function getFileNameAttribute(): string
     {
         return $this->original_filename ?? basename($this->file_path ?? 'Unknown');
+    }
+
+    public function getDownloadFilename(): string
+    {
+        $this->loadMissing(['client', 'requirement', 'sopLegalDocument']);
+
+        $documentName = $this->requirement?->name
+            ?? $this->sopLegalDocument?->name
+            ?? $this->description
+            ?? pathinfo($this->original_filename ?? basename($this->file_path ?? 'dokumen'), PATHINFO_FILENAME);
+
+        $clientName = $this->client?->name ?? 'client';
+        $extension = pathinfo($this->original_filename ?: $this->file_path ?: '', PATHINFO_EXTENSION);
+        $baseName = $this->sanitizeDownloadFilename("{$documentName} - {$clientName}");
+
+        return $extension ? "{$baseName}.{$extension}" : $baseName;
+    }
+
+    private function sanitizeDownloadFilename(string $filename): string
+    {
+        $filename = preg_replace('/[\/\\\\?%*:|"<>]/', '-', $filename);
+        $filename = preg_replace('/\s+/', ' ', $filename ?? '');
+        $filename = trim($filename ?: 'dokumen');
+
+        return Str::limit($filename, 180, '');
     }
 
     public function getFileUrlAttribute(): ?string
