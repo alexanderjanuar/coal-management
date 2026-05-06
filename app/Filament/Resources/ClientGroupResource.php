@@ -4,6 +4,7 @@ namespace App\Filament\Resources;
 
 use App\Filament\Resources\ClientGroupResource\Pages;
 use App\Filament\Resources\ClientGroupResource\RelationManagers\ClientsRelationManager;
+use App\Models\Client;
 use App\Models\ClientGroup;
 use Filament\Forms;
 use Filament\Forms\Form;
@@ -11,7 +12,9 @@ use Filament\Infolists\Components\Grid;
 use Filament\Infolists\Components\ImageEntry;
 use Filament\Infolists\Components\Section as InfoSection;
 use Filament\Infolists\Components\TextEntry;
+use Filament\Infolists\Components\View as InfolisView;
 use Filament\Infolists\Infolist;
+use Filament\Notifications\Notification;
 use Filament\Resources\Resource;
 use Filament\Support\Enums\FontWeight;
 use Filament\Tables;
@@ -121,81 +124,87 @@ class ClientGroupResource extends Resource
     public static function infolist(Infolist $infolist): Infolist
     {
         return $infolist->schema([
-            InfoSection::make('Informasi Grup')
-                ->schema([
-                    Grid::make(4)->schema([
-                        ImageEntry::make('logo')
-                            ->label('Logo')
-                            ->circular()
-                            ->defaultImageUrl(fn ($record) => 'https://ui-avatars.com/api/?name=' . urlencode($record->name) . '&color=7F9CF5&background=EBF4FF&size=128')
-                            ->columnSpan(1),
+            Grid::make(3)->schema([
 
-                        Grid::make(1)->schema([
-                            TextEntry::make('name')
-                                ->label('Nama Grup')
-                                ->weight(FontWeight::Bold)
-                                ->size(TextEntry\TextEntrySize::Large),
+                InfoSection::make('Profil Grup')
+                    ->columnSpan(1)
+                    ->icon('heroicon-o-building-library')
+                    ->schema([
+                        Grid::make(4)->schema([
+                            ImageEntry::make('logo')
+                                ->label('')
+                                ->circular()
+                                ->height(72)
+                                ->width(72)
+                                ->defaultImageUrl(fn ($record) => 'https://ui-avatars.com/api/?name=' . urlencode($record->name) . '&color=7F9CF5&background=EBF4FF&size=128')
+                                ->columnSpan(1),
 
-                            TextEntry::make('status')
-                                ->label('Status')
-                                ->badge()
-                                ->color(fn (string $state): string => match ($state) {
-                                    'active'   => 'success',
-                                    'inactive' => 'danger',
-                                    default    => 'gray',
-                                })
-                                ->formatStateUsing(fn (string $state): string => match ($state) {
-                                    'active'   => 'Aktif',
-                                    'inactive' => 'Tidak Aktif',
-                                    default    => $state,
-                                }),
+                            Grid::make(1)->schema([
+                                TextEntry::make('name')
+                                    ->label('Nama Grup')
+                                    ->weight(FontWeight::Bold)
+                                    ->size(TextEntry\TextEntrySize::Large),
 
-                            TextEntry::make('clients_count')
-                                ->label('Jumlah Client')
-                                ->state(fn ($record) => $record->clients()->count() . ' client')
-                                ->badge()
-                                ->color('primary')
-                                ->icon('heroicon-o-users'),
-                        ])->columnSpan(3),
-                    ]),
-                ]),
+                                TextEntry::make('status')
+                                    ->label('Status')
+                                    ->badge()
+                                    ->color(fn (string $state): string => match ($state) {
+                                        'active'   => 'success',
+                                        'inactive' => 'danger',
+                                        default    => 'gray',
+                                    })
+                                    ->formatStateUsing(fn (string $state): string => match ($state) {
+                                        'active'   => 'Aktif',
+                                        'inactive' => 'Tidak Aktif',
+                                        default    => $state,
+                                    }),
+                            ])->columnSpan(3),
+                        ]),
 
-            InfoSection::make('Kontak & Alamat')
-                ->schema([
-                    TextEntry::make('address')
-                        ->label('Alamat')
-                        ->icon('heroicon-o-map-pin')
-                        ->placeholder('Tidak ada alamat')
-                        ->columnSpanFull(),
+                        TextEntry::make('address')
+                            ->label('Alamat')
+                            ->icon('heroicon-o-map-pin')
+                            ->placeholder('Tidak ada alamat')
+                            ->columnSpanFull(),
 
-                    Grid::make(3)->schema([
                         TextEntry::make('contact_name')
                             ->label('Nama Kontak')
                             ->icon('heroicon-o-user')
-                            ->placeholder('-'),
+                            ->placeholder('-')
+                            ->columnSpanFull(),
 
                         TextEntry::make('contact_email')
                             ->label('Email Kontak')
                             ->icon('heroicon-o-envelope')
                             ->copyable()
-                            ->placeholder('-'),
+                            ->placeholder('-')
+                            ->columnSpanFull(),
 
                         TextEntry::make('contact_phone')
                             ->label('Nomor Telepon')
                             ->icon('heroicon-o-phone')
                             ->copyable()
-                            ->placeholder('-'),
-                    ]),
-                ]),
+                            ->placeholder('-')
+                            ->columnSpanFull(),
 
-            InfoSection::make('Catatan')
-                ->schema([
-                    TextEntry::make('notes')
-                        ->label('Catatan Internal')
-                        ->placeholder('Tidak ada catatan')
-                        ->columnSpanFull(),
-                ])
-                ->collapsed(),
+                        TextEntry::make('notes')
+                            ->label('Catatan Internal')
+                            ->icon('heroicon-o-document-text')
+                            ->placeholder('Tidak ada catatan')
+                            ->columnSpanFull(),
+                    ]),
+
+                InfoSection::make('Client dalam Grup')
+                    ->columnSpan(2)
+                    ->icon('heroicon-o-users')
+                    ->schema([
+                        InfolisView::make('filament.resources.client-group-resource.client-cards')
+                            ->viewData(fn ($record) => [
+                                'clients' => $record->clients()->orderBy('name')->get(),
+                            ])
+                            ->columnSpanFull(),
+                    ]),
+            ]),
         ]);
     }
 
@@ -279,14 +288,58 @@ class ClientGroupResource extends Resource
                     Tables\Actions\EditAction::make()
                         ->label('Edit'),
 
+                    Tables\Actions\Action::make('assign_clients')
+                        ->label('Tambah Client')
+                        ->icon('heroicon-o-user-plus')
+                        ->color('primary')
+                        ->modalHeading(fn ($record) => "Tambah Client ke \"{$record->name}\"")
+                        ->modalDescription(function ($record) {
+                            $count = $record->clients()->count();
+                            return $count > 0
+                                ? "Grup ini sudah memiliki {$count} client. Pilih client tambahan yang ingin dimasukkan."
+                                : 'Pilih satu atau lebih client untuk ditambahkan ke grup ini.';
+                        })
+                        ->modalWidth('lg')
+                        ->modalIcon('heroicon-o-user-plus')
+                        ->form([
+                            Forms\Components\Select::make('client_ids')
+                                ->label('Pilih Client')
+                                ->multiple()
+                                ->options(fn () => Client::whereNull('group_id')
+                                    ->orderBy('name')
+                                    ->pluck('name', 'id')
+                                )
+                                ->searchable()
+                                ->preload()
+                                ->required()
+                                ->placeholder('Ketik untuk mencari client...')
+                                ->helperText('Hanya client yang belum tergabung dalam grup manapun yang ditampilkan.')
+                                ->noSearchResultsMessage('Tidak ada client yang ditemukan.')
+                                ->loadingMessage('Memuat daftar client...'),
+                        ])
+                        ->modalSubmitActionLabel('Tambahkan ke Grup')
+                        ->modalCancelActionLabel('Batal')
+                        ->action(function (array $data, $record): void {
+                            $count = count($data['client_ids']);
+                            Client::whereIn('id', $data['client_ids'])->update(['group_id' => $record->id]);
+
+                            Notification::make()
+                                ->success()
+                                ->title("{$count} client berhasil ditambahkan")
+                                ->body("Client telah ditambahkan ke grup \"{$record->name}\".")
+                                ->send();
+                        }),
+
                     Tables\Actions\DeleteAction::make()
                         ->label('Hapus')
                         ->requiresConfirmation()
                         ->modalHeading('Hapus Grup Client')
-                        ->modalDescription(fn ($record) => $record->clients()->count() > 0
-                            ? "Grup \"{$record->name}\" memiliki {$record->clients()->count()} client. Semua client akan kehilangan asosiasi grupnya."
-                            : "Apakah Anda yakin ingin menghapus grup \"{$record->name}\"?"
-                        )
+                        ->modalDescription(function ($record) {
+                            $count = $record->clients()->count();
+                            return $count > 0
+                                ? "Grup \"{$record->name}\" memiliki {$count} client. Semua client akan kehilangan asosiasi grupnya."
+                                : "Apakah Anda yakin ingin menghapus grup \"{$record->name}\"?";
+                        })
                         ->modalSubmitActionLabel('Ya, Hapus')
                         ->before(fn ($record) => $record->clients()->update(['group_id' => null])),
                 ])
