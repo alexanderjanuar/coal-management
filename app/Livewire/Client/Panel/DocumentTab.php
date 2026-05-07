@@ -2,6 +2,7 @@
 
 namespace App\Livewire\Client\Panel;
 
+use App\Filament\Resources\ClientResource;
 use App\Models\Client;
 use App\Models\ClientRequirementGroup;
 use App\Models\UserClient;
@@ -793,91 +794,29 @@ class DocumentTab extends Component implements HasForms
                 return;
             }
 
+            $clientUrl = ClientResource::getUrl('view', ['record' => $client], panel: 'admin');
+
             // Send notification to each recipient
             foreach ($allRecipients as $user) {
                 // Customize message based on user role
                 $isManagement = $user->hasAnyRole(['project-manager', 'direktur', 'super-admin', 'verificator', 'staff']);
 
-                // Format document type with emoji
-                $docTypeEmoji = match (true) {
-                    str_contains(strtolower($docType), 'legal') => '⚖️',
-                    str_contains(strtolower($docType), 'persyaratan') => '📋',
-                    str_contains(strtolower($docType), 'tambahan') => '➕',
-                    default => '📄'
-                };
-
                 if ($isManagement) {
                     // Management notification
                     $title = 'Dokumen Baru dari Client';
                     $body = sprintf(
-                        "<div style='font-family: system-ui, -apple-system, sans-serif; color: #1f2937; line-height: 1.6;'>
-                            <div style='margin-bottom: 12px; color: #374151;'>
-                                Client mengupload dokumen baru
-                            </div>
-                            <div style='background: #f8fafc; border-left: 3px solid #3b82f6; padding: 14px; margin: 12px 0; border-radius: 4px;'>
-                                <table style='width: 100%%; border-collapse: collapse;'>
-                                    <tr>
-                                        <td style='padding: 5px 0; color: #64748b; width: 100px; font-size: 13px;'>Client</td>
-                                        <td style='padding: 5px 0; color: #0f172a; font-weight: 500;'>%s</td>
-                                    </tr>
-                                    <tr>
-                                        <td style='padding: 5px 0; color: #64748b; font-size: 13px;'>Uploader</td>
-                                        <td style='padding: 5px 0; color: #334155;'>%s</td>
-                                    </tr>
-                                    <tr>
-                                        <td style='padding: 5px 0; color: #64748b; font-size: 13px;'>Jenis</td>
-                                        <td style='padding: 5px 0; color: #475569;'>%s %s</td>
-                                    </tr>
-                                    <tr>
-                                        <td style='padding: 5px 0; color: #64748b; font-size: 13px;'>File</td>
-                                        <td style='padding: 5px 0; color: #475569; font-family: Consolas, Monaco, monospace; font-size: 13px;'>%s</td>
-                                    </tr>
-                                </table>
-                            </div>
-                            <div style='color: #94a3b8; font-size: 12px; margin-top: 10px;'>
-                                %s
-                            </div>
-                        </div>",
+                        "<span style='color: #f59e0b; font-weight: 500;'>%s</span><br><strong>Document:</strong> %s<br><strong>Uploaded at:</strong> %s",
                         $clientName,
-                        $uploaderName,
-                        $docTypeEmoji,
                         $docType,
-                        $filename,
                         now()->format('d M Y • H:i')
                     );
                 } else {
                     // Client notification
                     $title = 'Dokumen Baru Diupload';
                     $body = sprintf(
-                        "<div style='font-family: system-ui, -apple-system, sans-serif; color: #1f2937; line-height: 1.6;'>
-                            <div style='margin-bottom: 12px; color: #374151;'>
-                                <strong style='color: #111827;'>%s</strong> mengupload dokumen baru
-                            </div>
-                            <div style='background: #f8fafc; border-left: 3px solid #3b82f6; padding: 14px; margin: 12px 0; border-radius: 4px;'>
-                                <table style='width: 100%%; border-collapse: collapse;'>
-                                    <tr>
-                                        <td style='padding: 5px 0; color: #64748b; width: 100px; font-size: 13px;'>Client</td>
-                                        <td style='padding: 5px 0; color: #0f172a; font-weight: 500;'>%s</td>
-                                    </tr>
-                                    <tr>
-                                        <td style='padding: 5px 0; color: #64748b; font-size: 13px;'>Dokumen</td>
-                                        <td style='padding: 5px 0; color: #334155;'>%s %s</td>
-                                    </tr>
-                                    <tr>
-                                        <td style='padding: 5px 0; color: #64748b; font-size: 13px;'>File</td>
-                                        <td style='padding: 5px 0; color: #475569; font-family: Consolas, Monaco, monospace; font-size: 13px;'>%s</td>
-                                    </tr>
-                                </table>
-                            </div>
-                            <div style='color: #94a3b8; font-size: 12px; margin-top: 10px;'>
-                                %s
-                            </div>
-                        </div>",
-                        $uploaderName,
+                        "<span style='color: #f59e0b; font-weight: 500;'>%s</span><br><strong>Document:</strong> %s<br><strong>Uploaded at:</strong> %s",
                         $clientName,
-                        $docTypeEmoji,
                         $docType,
-                        $filename,
                         now()->format('d M Y • H:i')
                     );
                 }
@@ -886,7 +825,18 @@ class DocumentTab extends Component implements HasForms
                     ->title($title)
                     ->body($body)
                     ->icon('heroicon-o-document-arrow-up')
+                    ->color('info')
                     ->iconColor('primary')
+                    ->info()
+                    ->persistent()
+                    ->actions([
+                        \Filament\Notifications\Actions\Action::make('view')
+                            ->label('View Client')
+                            ->url($clientUrl)
+                            ->markAsRead(),
+                        \Filament\Notifications\Actions\Action::make('Mark As Read')
+                            ->markAsRead(),
+                    ])
                     ->sendToDatabase($user)
                     ->broadcast($user);
 

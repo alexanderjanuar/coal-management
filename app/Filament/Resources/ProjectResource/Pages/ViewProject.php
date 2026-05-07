@@ -17,10 +17,14 @@ use Livewire\Attributes\Computed;
 use App\Models\Comment;
 use App\Models\Task;
 use App\Models\RequiredDocument;
+use App\Models\ProjectStep;
 use Filament\Notifications\Notification;
 use Nben\FilamentRecordNav\Concerns\WithRecordNavigation;
 use Nben\FilamentRecordNav\Actions\NextRecordAction;
 use Nben\FilamentRecordNav\Actions\PreviousRecordAction;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
+use Throwable;
 
 class ViewProject extends ViewRecord
 {
@@ -70,6 +74,8 @@ class ViewProject extends ViewRecord
             'client' => $this->record->client,
             'steps' => $this->record->steps,
             'progressPercentage' => $this->calculateProgress(),
+            'canDeleteProjectSteps' => $this->canDeleteProjectSteps(),
+            'canDeleteProjectRequiredDocuments' => $this->canDeleteProjectRequiredDocuments(),
         ];
     }
 
@@ -87,6 +93,18 @@ class ViewProject extends ViewRecord
     public function isProjectLocked(): bool
     {
         return $this->record->status === 'completed' || $this->isClientInactive();
+    }
+
+    public function canDeleteProjectSteps(): bool
+    {
+        return ! auth()->user()->hasRole(['staff', 'client'])
+            && ! $this->isProjectLocked();
+    }
+
+    public function canDeleteProjectRequiredDocuments(): bool
+    {
+        return ! auth()->user()->hasRole(['staff', 'client'])
+            && ! $this->isProjectLocked();
     }
 
     /**
@@ -174,6 +192,11 @@ class ViewProject extends ViewRecord
             $documents = $step->requiredDocuments;
 
             if ($tasks->isEmpty() && $documents->isEmpty()) {
+                if ($step->status !== 'pending') {
+                    $step->status = 'pending';
+                    $step->save();
+                }
+
                 continue;
             }
 
@@ -277,6 +300,254 @@ class ViewProject extends ViewRecord
             ->title("Project status updated to " . ucfirst($status))
             ->success()
             ->send();
+    }
+
+    public function deleteProjectStep(ProjectStep $step): void
+    {
+        if ($step->project_id !== $this->record->id) {
+            Notification::make()
+                ->title('Step not found on this project')
+                ->body('The selected step does not belong to this project.')
+                ->warning()
+                ->send();
+
+            $this->dispatch('close-modal', id: "delete-step-modal-{$step->id}");
+
+            return;
+        }
+
+        if (! $this->canDeleteProjectSteps()) {
+            Notification::make()
+                ->title('Step cannot be deleted')
+                ->body('Completed projects, inactive clients, and restricted users cannot delete project steps.')
+                ->warning()
+                ->send();
+
+            $this->dispatch('close-modal', id: "delete-step-modal-{$step->id}");
+
+            return;
+        }
+
+        $stepId = $step->id;
+        $stepName = $step->name;
+        $deletedTasks = 0;
+        $deletedDocuments = 0;
+        $deletedSubmittedDocuments = 0;
+
+        try {
+            DB::transaction(function () use (
+                $step,
+                $stepName,
+                &$deletedTasks,
+                &$deletedDocuments,
+                &$deletedSubmittedDocuments
+            ): void {
+                $step->load([
+                    'comments',
+                    'tasks.comments',
+                    'requiredDocuments.comments',
+                    'requiredDocuments.submittedDocuments.comments',
+                ]);
+
+                $deletedTasks = $step->tasks->count();
+                $deletedDocuments = $step->requiredDocuments->count();
+
+                foreach ($step->requiredDocuments as $requiredDocument) {
+                    foreach ($requiredDocument->submittedDocuments as $submittedDocument) {
+                        if (
+                            filled($submittedDocument->file_path)
+                            && Storage::disk('public')->exists($submittedDocument->file_path)
+                        ) {
+                            Storage::disk('public')->delete($submittedDocument->file_path);
+                        }
+
+                        $submittedDocument->comments()->delete();
+                        $submittedDocument->delete();
+                        $deletedSubmittedDocuments++;
+                    }
+
+                    $requiredDocument->comments()->delete();
+                    $requiredDocument->delete();
+                }
+
+                foreach ($step->tasks as $task) {
+                    $task->comments()->delete();
+                    $task->delete();
+                }
+
+                $step->comments()->delete();
+                $this->deleteMatchingDailyTaskSubtasks($stepName);
+                $step->delete();
+                $this->reorderRemainingProjectSteps();
+
+                Comment::create([
+                    'user_id' => auth()->id(),
+                    'commentable_id' => $this->record->id,
+                    'commentable_type' => get_class($this->record),
+                    'content' => "Project step '{$stepName}' was deleted. {$deletedTasks} task(s), {$deletedDocuments} required document(s), and {$deletedSubmittedDocuments} submitted document(s) were removed.",
+                ]);
+            });
+
+            $this->record->refresh()->load([
+                'client',
+                'steps.tasks.comments',
+                'steps.requiredDocuments.submittedDocuments',
+                'steps.requiredDocuments.comments',
+            ]);
+
+            $this->updateRequiredDocumentStatuses();
+            $this->updateProjectStepStatus();
+            $this->updateProjectStatus();
+
+            Notification::make()
+                ->title('Project step deleted')
+                ->body("'{$stepName}' has been removed from this project.")
+                ->success()
+                ->send();
+        } catch (Throwable $exception) {
+            report($exception);
+
+            Notification::make()
+                ->title('Unable to delete project step')
+                ->body('Something went wrong while deleting the step. Please try again.')
+                ->danger()
+                ->send();
+        } finally {
+            $this->dispatch('close-modal', id: "delete-step-modal-{$stepId}");
+        }
+    }
+
+    public function deleteRequiredDocument(RequiredDocument $document): void
+    {
+        $document->loadMissing('projectStep');
+        $modalId = "delete-required-document-modal-{$document->id}";
+
+        if ($document->projectStep?->project_id !== $this->record->id) {
+            Notification::make()
+                ->title('Document not found on this project')
+                ->body('The selected required document does not belong to this project.')
+                ->warning()
+                ->send();
+
+            $this->dispatch('close-modal', id: $modalId);
+
+            return;
+        }
+
+        if (! $this->canDeleteProjectRequiredDocuments()) {
+            Notification::make()
+                ->title('Required document cannot be deleted')
+                ->body('Completed projects, inactive clients, and restricted users cannot delete required documents.')
+                ->warning()
+                ->send();
+
+            $this->dispatch('close-modal', id: $modalId);
+
+            return;
+        }
+
+        $documentName = $document->name;
+        $stepName = $document->projectStep->name;
+        $deletedSubmittedDocuments = 0;
+
+        try {
+            DB::transaction(function () use (
+                $document,
+                $documentName,
+                $stepName,
+                &$deletedSubmittedDocuments
+            ): void {
+                $document->load([
+                    'comments',
+                    'submittedDocuments.comments',
+                ]);
+
+                foreach ($document->submittedDocuments as $submittedDocument) {
+                    if (
+                        filled($submittedDocument->file_path)
+                        && Storage::disk('public')->exists($submittedDocument->file_path)
+                    ) {
+                        Storage::disk('public')->delete($submittedDocument->file_path);
+                    }
+
+                    $submittedDocument->comments()->delete();
+                    $submittedDocument->delete();
+                    $deletedSubmittedDocuments++;
+                }
+
+                $document->comments()->delete();
+                $document->delete();
+
+                Comment::create([
+                    'user_id' => auth()->id(),
+                    'commentable_id' => $this->record->id,
+                    'commentable_type' => get_class($this->record),
+                    'content' => "Required document '{$documentName}' was deleted from step '{$stepName}'. {$deletedSubmittedDocuments} submitted document(s) were removed.",
+                ]);
+            });
+
+            $this->record->refresh()->load([
+                'client',
+                'steps.tasks.comments',
+                'steps.requiredDocuments.submittedDocuments',
+                'steps.requiredDocuments.comments',
+            ]);
+
+            $this->updateRequiredDocumentStatuses();
+            $this->updateProjectStepStatus();
+            $this->updateProjectStatus();
+
+            $successBody = $deletedSubmittedDocuments > 0
+                ? "'{$documentName}' berhasil dihapus dari {$stepName}. {$deletedSubmittedDocuments} file terkirim juga sudah terhapus."
+                : "'{$documentName}' berhasil dihapus dari {$stepName}.";
+
+            Notification::make()
+                ->title('Dokumen persyaratan dihapus')
+                ->body($successBody)
+                ->success()
+                ->send();
+        } catch (Throwable $exception) {
+            report($exception);
+
+            Notification::make()
+                ->title('Unable to delete required document')
+                ->body('Something went wrong while deleting the required document. Please try again.')
+                ->danger()
+                ->send();
+        } finally {
+            $this->dispatch('close-modal', id: $modalId);
+        }
+    }
+
+    private function deleteMatchingDailyTaskSubtasks(string $stepName): void
+    {
+        $this->record
+            ->dailyTasks()
+            ->with('subtasks')
+            ->get()
+            ->each(function ($dailyTask) use ($stepName): void {
+                $subtask = $dailyTask->subtasks
+                    ->where('title', $stepName)
+                    ->first();
+
+                $subtask?->delete();
+            });
+    }
+
+    private function reorderRemainingProjectSteps(): void
+    {
+        $this->record
+            ->steps()
+            ->orderBy('order')
+            ->get()
+            ->values()
+            ->each(function (ProjectStep $step, int $index): void {
+                $nextOrder = $index + 1;
+
+                if ((int) $step->order !== $nextOrder) {
+                    $step->updateQuietly(['order' => $nextOrder]);
+                }
+            });
     }
 
     protected function getHeaderActions(): array

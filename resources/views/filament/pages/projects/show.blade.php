@@ -487,6 +487,7 @@
                         $stepProgress = $totalTasks > 0 ? ($completedTasks / $totalTasks) * 100 : 0;
                         @endphp
 
+                        <div class="relative">
                         <div x-data="{ isOpen: false }"
                             class="relative transition-all duration-200 rounded-lg cursor-pointer"
                             @click="isOpen = !isOpen">
@@ -579,9 +580,22 @@
                                                 </div>
                                             </div>
                                         </div>
-                                        <div class="self-start p-2 transition-transform duration-300"
-                                            :class="{ 'rotate-180': isOpen }">
-                                            <x-heroicon-o-chevron-down class="w-5 h-5 text-gray-400" />
+                                        <div
+                                            class="flex w-full items-center justify-end gap-2 sm:w-auto sm:self-start">
+                                            @if($canDeleteProjectSteps)
+                                            <button type="button"
+                                                aria-label="Delete step"
+                                                title="Delete step"
+                                                x-on:click.stop="$dispatch('open-modal', { id: 'delete-step-modal-{{ $step->id }}' })"
+                                                class="inline-flex h-8 w-8 items-center justify-center rounded-md text-gray-400 transition-colors hover:bg-gray-100 hover:text-red-500 focus:outline-none focus:ring-2 focus:ring-gray-300 focus:ring-offset-2 dark:text-gray-500 dark:hover:bg-gray-800 dark:hover:text-red-400 dark:focus:ring-gray-700 dark:focus:ring-offset-gray-900">
+                                                <x-heroicon-m-trash class="h-4 w-4" />
+                                            </button>
+                                            @endif
+
+                                            <div class="p-2 transition-transform duration-300"
+                                                :class="{ 'rotate-180': isOpen }">
+                                                <x-heroicon-o-chevron-down class="w-5 h-5 text-gray-400" />
+                                            </div>
                                         </div>
                                     </div>
 
@@ -599,6 +613,7 @@
                                     // Count required documents - now includes approved_without_document as completed
                                     $totalDocs = $step->requiredDocuments->count();
                                     $completedDocs = $step->requiredDocuments->whereIn('status', ['approved', 'approved_without_document'])->count();
+                                    $submittedDocumentsCount = $step->requiredDocuments->sum(fn ($document) => $document->submittedDocuments->count());
                                     $totalItems += $totalDocs;
                                     $completedItems += $completedDocs;
 
@@ -941,11 +956,18 @@
                                     @endphp
                                     <div class="space-y-2">
                                         @foreach($orderByDocs as $document)
+                                        @php
+                                        $documentSubmittedCount = $document->submittedDocuments->count();
+                                        @endphp
+                                        <div class="relative">
                                         <!-- Document Item -->
-                                        <button
+                                        <div
                                             x-on:click="$dispatch('open-modal', { id: 'document-modal-{{ $document->id }}' })"
-                                            class="w-full group">
-                                            <div class="flex flex-col sm:flex-row items-start sm:items-center gap-3 p-3 bg-white dark:bg-gray-800 rounded-lg transition-all duration-200
+                                            x-on:keydown.enter.prevent="$dispatch('open-modal', { id: 'document-modal-{{ $document->id }}' })"
+                                            x-on:keydown.space.prevent="$dispatch('open-modal', { id: 'document-modal-{{ $document->id }}' })"
+                                            role="button"
+                                            tabindex="0"
+                                            class="group flex flex-col sm:flex-row items-start sm:items-center gap-3 p-3 bg-white dark:bg-gray-800 rounded-lg transition-all duration-200 cursor-pointer
                                                 {{ match($document->status) {
                                                     'approved' => 'border-2 border-green-200 dark:border-green-800 hover:border-green-300 dark:hover:border-green-700',
                                                     'approved_without_document' => 'border-2 border-emerald-200 dark:border-emerald-800 hover:border-emerald-300 dark:hover:border-emerald-700',
@@ -1004,12 +1026,12 @@
                                                             class="text-sm text-gray-600 dark:text-gray-400 text-center sm:text-left">
                                                             <!-- Truncated version -->
                                                             <template x-if="!expanded">
-                                                                <div>
-                                                                    {!! Str::limit(strip_tags($document->description),
-                                                                    100) !!}
-                                                                    @if (strlen(strip_tags($document->description)) >
-                                                                    100)
-                                                                    <button @click="expanded = true" type="button"
+                                                        <div>
+                                                            {!! Str::limit(strip_tags($document->description),
+                                                            100) !!}
+                                                            @if (strlen(strip_tags($document->description)) >
+                                                            100)
+                                                                    <button @click.stop="expanded = true" type="button"
                                                                         class="inline-flex items-center text-primary-600 dark:text-primary-400 hover:text-primary-700 dark:hover:text-primary-300 ml-1">
                                                                         <span class="text-sm font-medium">Read
                                                                             more</span>
@@ -1022,9 +1044,9 @@
 
                                                             <!-- Full version -->
                                                             <template x-if="expanded">
-                                                                <div>
-                                                                    {!! str($document->description)->sanitizeHtml() !!}
-                                                                    <button @click="expanded = false" type="button"
+                                                        <div>
+                                                            {!! str($document->description)->sanitizeHtml() !!}
+                                                                    <button @click.stop="expanded = false" type="button"
                                                                         class="inline-flex items-center text-primary-600 dark:text-primary-400 hover:text-primary-700 dark:hover:text-primary-300 ml-1">
                                                                         <span class="text-sm font-medium">Show
                                                                             less</span>
@@ -1085,20 +1107,175 @@
                                                             } }}
                                                         </span>
                                                     </div>
+
+                                                    @if($canDeleteProjectRequiredDocuments)
+                                                    <button type="button"
+                                                        aria-label="Delete required document"
+                                                        title="Delete required document"
+                                                        x-on:click.stop="$dispatch('open-modal', { id: 'delete-required-document-modal-{{ $document->id }}' })"
+                                                        class="inline-flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-md text-gray-400 transition-colors hover:bg-gray-100 hover:text-red-500 focus:outline-none focus:ring-2 focus:ring-gray-300 focus:ring-offset-2 dark:text-gray-500 dark:hover:bg-gray-700 dark:hover:text-red-400 dark:focus:ring-gray-700 dark:focus:ring-offset-gray-900">
+                                                        <x-heroicon-m-trash class="h-4 w-4" />
+                                                    </button>
+                                                    @endif
                                                 </div>
-                                            </div>
-                                        </button> 
+                                        </div>
 
                                         <!-- Document Modal -->
                                         <x-filament::modal id="document-modal-{{ $document->id }}" width="4xl" slide-over>
                                             @livewire('projects.modals.document-modal', ['document' => $document],key('document-modal-'. $document->id . time()))
                                         </x-filament::modal>
 
+                                        @if($canDeleteProjectRequiredDocuments)
+                                        <x-filament::modal id="delete-required-document-modal-{{ $document->id }}"
+                                            width="md">
+                                            <div class="space-y-6 p-2">
+                                                <div class="flex items-start gap-4">
+                                                    <div
+                                                        class="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-full bg-gray-100 dark:bg-gray-800">
+                                                        <x-heroicon-o-trash
+                                                            class="h-6 w-6 text-red-500 dark:text-red-400" />
+                                                    </div>
+
+                                                    <div class="min-w-0">
+                                                        <h2
+                                                            class="text-lg font-semibold text-gray-900 dark:text-white">
+                                                            Delete required document
+                                                        </h2>
+                                                        <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
+                                                            This will remove the requirement from this project step and
+                                                            recalculate project progress.
+                                                        </p>
+                                                    </div>
+                                                </div>
+
+                                                <div
+                                                    class="rounded-lg border border-gray-200 bg-gray-50 p-4 dark:border-gray-700 dark:bg-gray-900">
+                                                    <div class="flex items-start justify-between gap-4">
+                                                        <div class="min-w-0">
+                                                            <p
+                                                                class="truncate text-sm font-medium text-gray-900 dark:text-gray-100">
+                                                                {{ $document->name }}
+                                                            </p>
+                                                            <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                                                                {{ $step->name }} &bull; {{ $documentSubmittedCount }}
+                                                                submitted file(s)
+                                                            </p>
+                                                        </div>
+
+                                                        <x-filament::badge :color="match($document->status) {
+                                                            'approved' => 'success',
+                                                            'approved_without_document' => 'success',
+                                                            'pending_review' => 'warning',
+                                                            'uploaded' => 'info',
+                                                            'rejected' => 'danger',
+                                                            default => 'gray'
+                                                        }">
+                                                            {{ ucwords(str_replace('_', ' ', $document->status)) }}
+                                                        </x-filament::badge>
+                                                    </div>
+                                                </div>
+
+                                                <div
+                                                    class="flex gap-3 rounded-lg border border-gray-200 bg-gray-50 p-4 text-sm text-gray-600 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300">
+                                                    <x-heroicon-o-exclamation-triangle
+                                                        class="mt-0.5 h-5 w-5 flex-shrink-0 text-red-500 dark:text-red-400" />
+                                                    <p>
+                                                        File yang sudah dikirim dan komentar terkait untuk persyaratan
+                                                        ini juga akan dihapus. Tindakan ini tidak dapat dibatalkan.
+                                                    </p>
+                                                </div>
+
+                                                <div class="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
+                                                    <x-filament::button color="gray"
+                                                        x-on:click="$dispatch('close-modal', { id: 'delete-required-document-modal-{{ $document->id }}' })">
+                                                        Cancel
+                                                    </x-filament::button>
+                                                    <x-filament::button color="danger" icon="heroicon-o-trash"
+                                                        wire:click="deleteRequiredDocument({{ $document->id }})"
+                                                        wire:loading.attr="disabled"
+                                                        wire:target="deleteRequiredDocument">
+                                                        Delete Document
+                                                    </x-filament::button>
+                                                </div>
+                                            </div>
+                                        </x-filament::modal>
+                                        @endif
+                                        </div>
+
                                         @endforeach
                                     </div>
                                 </div>
                                 @endif
                             </div>
+                        </div>
+
+                        @if($canDeleteProjectSteps)
+                        <x-filament::modal id="delete-step-modal-{{ $step->id }}" width="md">
+                            <div class="space-y-6 p-2">
+                                <div class="flex items-start gap-4">
+                                    <div
+                                        class="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-full bg-gray-100 dark:bg-gray-800">
+                                        <x-heroicon-o-trash class="h-6 w-6 text-red-500 dark:text-red-400" />
+                                    </div>
+
+                                    <div class="min-w-0">
+                                        <h2 class="text-lg font-semibold text-gray-900 dark:text-white">
+                                            Delete project step
+                                        </h2>
+                                        <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
+                                            This will remove the step from the project timeline and recalculate the
+                                            remaining project progress.
+                                        </p>
+                                    </div>
+                                </div>
+
+                                <div
+                                    class="rounded-lg border border-gray-200 bg-gray-50 p-4 dark:border-gray-700 dark:bg-gray-900">
+                                    <div class="flex items-start justify-between gap-4">
+                                        <div class="min-w-0">
+                                            <p class="truncate text-sm font-medium text-gray-900 dark:text-gray-100">
+                                                {{ $step->name }}
+                                            </p>
+                                            <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                                                Step {{ $step->order }} &bull; {{ $totalTasks }} task(s) &bull; {{ $totalDocs }}
+                                                required document(s) &bull; {{ $submittedDocumentsCount }} submitted file(s)
+                                            </p>
+                                        </div>
+
+                                        <x-filament::badge :color="match($step->status) {
+                                            'completed' => 'success',
+                                            'in_progress' => 'warning',
+                                            'blocked' => 'danger',
+                                            default => 'gray'
+                                        }">
+                                            {{ ucwords(str_replace('_', ' ', $step->status)) }}
+                                        </x-filament::badge>
+                                    </div>
+                                </div>
+
+                                <div
+                                    class="flex gap-3 rounded-lg border border-gray-200 bg-gray-50 p-4 text-sm text-gray-600 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300">
+                                    <x-heroicon-o-exclamation-triangle class="mt-0.5 h-5 w-5 flex-shrink-0 text-red-500 dark:text-red-400" />
+                                    <p>
+                                        Tasks, required documents, submitted files, related comments, and the matching
+                                        daily-task subtask will be removed. This action cannot be undone.
+                                    </p>
+                                </div>
+
+                                <div class="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
+                                    <x-filament::button color="gray"
+                                        x-on:click="$dispatch('close-modal', { id: 'delete-step-modal-{{ $step->id }}' })">
+                                        Cancel
+                                    </x-filament::button>
+                                    <x-filament::button color="danger" icon="heroicon-o-trash"
+                                        wire:click="deleteProjectStep({{ $step->id }})" wire:loading.attr="disabled"
+                                        wire:target="deleteProjectStep">
+                                        Delete Step
+                                    </x-filament::button>
+                                </div>
+                            </div>
+                        </x-filament::modal>
+                        @endif
                         </div>
                         @endforeach
                     </div>

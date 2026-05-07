@@ -297,7 +297,7 @@ class InvoiceAIService
 
 Kembalikan HANYA JSON berikut, tanpa teks atau penjelasan lain:
 {
-    \"invoice_number\": \"nomor faktur pajak lengkap sesuai dokumen\",
+    \"invoice_number\": \"nomor faktur pajak lengkap persis seperti tertulis di dokumen\",
     \"invoice_date\": \"tanggal faktur dalam format YYYY-MM-DD\",
     \"pengusaha_kena_pajak\": {
         \"nama\": \"nama lengkap dari section Pengusaha Kena Pajak / Penjual\",
@@ -313,7 +313,7 @@ Kembalikan HANYA JSON berikut, tanpa teks atau penjelasan lain:
 
 ATURAN WAJIB:
 1. Ekstrak nama dan NPWP dari KEDUA pihak: Pengusaha Kena Pajak DAN Pembeli
-2. Nomor faktur: salin persis sesuai dokumen termasuk titik dan strip
+2. Nomor faktur: SALIN PERSIS karakter demi karakter sesuai yang tertulis di dokumen — pertahankan semua titik, strip, angka, huruf, dan spasi tanpa modifikasi. Nomor faktur bisa dalam berbagai format, tidak terbatas pada format tertentu.
 3. Tanggal: konversi ke format YYYY-MM-DD
 4. NPWP: sertakan semua titik dan strip (contoh: 01.234.567.8-901.000)
 5. DPP dan PPN: angka murni tanpa pemisah ribuan (contoh: 10000000 bukan 10.000.000)

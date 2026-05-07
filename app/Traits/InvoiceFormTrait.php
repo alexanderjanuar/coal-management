@@ -341,8 +341,8 @@ trait InvoiceFormTrait
                             ->required()
                             ->unique(ignoreRecord: true)
                             ->maxLength(255)
-                            ->placeholder('010.000-00.00000000')
-                            ->helperText($isRevision ? 'Nomor faktur revisi (dapat diedit)' : 'Format: 010.000-00.00000000')
+                            ->placeholder('Masukkan nomor faktur sesuai dokumen')
+                            ->helperText($isRevision ? 'Nomor faktur revisi (dapat diedit)' : 'Salin nomor faktur persis sesuai dokumen')
                             ->columnSpan(6)
                             ->live(debounce: 500)
                             ->afterStateUpdated(function (Forms\Get $get, Forms\Set $set, ?string $state) use ($isRevision) {
