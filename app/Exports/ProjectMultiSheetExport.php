@@ -62,13 +62,29 @@ class ProjectMultiSheetExport implements WithMultipleSheets
     
     protected function translateStatus($status)
     {
-        return match ($status) {
-            'draft' => 'Draft',
-            'in_progress' => 'Sedang Dikerjakan',
-            'on_hold' => 'Ditunda',
-            'completed' => 'Selesai',
-            'canceled' => 'Dibatalkan',
-            default => $status ?? 'Unknown',
+        // Look up the status row to get a category-driven Indonesian label.
+        // Falls back to the raw status string if no row matches.
+        $rec = \App\Models\ProjectStatus::where('key', $status)->first();
+        if (!$rec) return $status ?? 'Unknown';
+
+        $specific = match ($status) {
+            'draft'              => 'Draft',
+            'analysis'           => 'Analisis',
+            'in_progress'        => 'Sedang Dikerjakan',
+            'review'             => 'Review',
+            'completed'          => 'Selesai',
+            'completed_not_paid' => 'Selesai (Belum Dibayar)',
+            'canceled'           => 'Dibatalkan',
+            default              => null,
+        };
+        if ($specific !== null) return $specific;
+
+        return match ($rec->category) {
+            'not_started' => 'Belum Dimulai',
+            'active'      => 'Sedang Dikerjakan',
+            'done'        => 'Selesai',
+            'closed'      => 'Dibatalkan',
+            default       => $rec->label,
         };
     }
     

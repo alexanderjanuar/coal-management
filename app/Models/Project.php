@@ -19,7 +19,7 @@ class Project extends Model
 
     use LogsActivity;
 
-    protected $fillable = ['client_id', 'name', 'description', 'status'];
+    protected $fillable = ['client_id', 'department_id', 'name', 'description', 'status'];
 
     protected $casts = [
         'due_date' => 'date',
@@ -43,13 +43,14 @@ class Project extends Model
                     "Status proyek '{$project->name}' diubah dari {$project->getOriginal('status')} menjadi {$project->status}"
                 );
 
-                // Sync status to linked daily tasks
-                $taskStatus = match ($project->status) {
-                    'draft', 'analysis' => 'pending',
-                    'in_progress', 'review' => 'in_progress',
-                    'completed', 'completed (Not Payed Yet)' => 'completed',
-                    'canceled' => 'cancelled',
-                    default => null,
+                // Sync status to linked daily tasks based on the project status
+                // category (so any user-created status still routes correctly).
+                $taskStatus = match ($project->statusRecord?->category) {
+                    'not_started' => 'pending',
+                    'active'      => 'in_progress',
+                    'done'        => 'completed',
+                    'closed'      => 'cancelled',
+                    default       => null,
                 };
 
                 if ($taskStatus) {
@@ -86,12 +87,12 @@ class Project extends Model
 
                 return match ($eventName) {
                     'created' => "[{$clientName}] 📂 PROYEK BARU: {$this->name} | Prioritas: {$this->priority}",
-                    'updated' => match ($this->status) {
-                            'completed' => "[{$clientName}] ✅ PROYEK SELESAI: {$this->name}",
-                            'in_progress' => "[{$clientName}] ⚡ PROYEK AKTIF: {$this->name}",
-                            'on_hold' => "[{$clientName}] ⏸️ PROYEK DITUNDA: {$this->name}",
-                            'canceled' => "[{$clientName}] ❌ PROYEK DIBATALKAN: {$this->name}",
-                            default => "[{$clientName}] Proyek {$this->name} diperbarui"
+                    'updated' => match ($this->statusRecord?->category) {
+                            'done'        => "[{$clientName}] ✅ PROYEK SELESAI: {$this->name}",
+                            'active'      => "[{$clientName}] ⚡ PROYEK AKTIF: {$this->name}",
+                            'closed'      => "[{$clientName}] ❌ PROYEK DIBATALKAN: {$this->name}",
+                            'not_started' => "[{$clientName}] 📋 PROYEK BARU: {$this->name}",
+                            default       => "[{$clientName}] Proyek {$this->name} diperbarui"
                         },
                     'deleted' => "[{$clientName}] 🗑️ PROYEK DIHAPUS: {$this->name}",
                     default => "[{$clientName}] Proyek {$this->name} telah di{$eventName}"
@@ -102,6 +103,29 @@ class Project extends Model
     public function client()
     {
         return $this->belongsTo(Client::class);
+    }
+
+    public function department()
+    {
+        return $this->belongsTo(Department::class);
+    }
+
+    /**
+     * The full status definition row (label, color, shape, category).
+     * Joined by string key — see project_statuses.key.
+     */
+    public function statusRecord()
+    {
+        return $this->belongsTo(ProjectStatus::class, 'status', 'key');
+    }
+
+    /**
+     * Is this project's current status in the given category?
+     * Pass one of ProjectStatus::CATEGORY_* constants.
+     */
+    public function isInStatusCategory(string $category): bool
+    {
+        return $this->statusRecord?->category === $category;
     }
 
     public function steps()
@@ -180,45 +204,57 @@ class Project extends Model
     }
 
     /**
-     * Get client-friendly status label
+     * Client-facing status label (Bahasa Indonesia).
+     *
+     * Known seeded statuses keep their specific phrasing for continuity.
+     * Anything else (a user-created status) falls back to the category label.
      */
     public function getClientStatusLabelAttribute(): string
     {
-        return match ($this->status) {
-            'draft' => 'Belum Dimulai',
-            'analysis' => 'Sedang Dianalisis',
-            'in_progress' => 'Sedang Dikerjakan',
-            'review' => 'Dalam Review',
-            'completed' => 'Selesai',
-            'completed (Not Payed Yet)' => 'Selesai',
-            'on_hold' => 'Ditunda',
-            'canceled' => 'Dibatalkan',
-            default => ucfirst($this->status),
+        $specific = match ($this->status) {
+            'draft'              => 'Belum Dimulai',
+            'analysis'           => 'Sedang Dianalisis',
+            'in_progress'        => 'Sedang Dikerjakan',
+            'review'             => 'Dalam Review',
+            'completed'          => 'Selesai',
+            'completed_not_paid' => 'Selesai (Belum Dibayar)',
+            'canceled'           => 'Dibatalkan',
+            default              => null,
+        };
+        if ($specific !== null) return $specific;
+
+        return match ($this->statusRecord?->category) {
+            'not_started' => 'Belum Dimulai',
+            'active'      => 'Sedang Dikerjakan',
+            'done'        => 'Selesai',
+            'closed'      => 'Dibatalkan',
+            default       => $this->statusRecord?->label ?? ucfirst($this->status),
         };
     }
 
     /**
-     * Get status badge color for client view
+     * Status badge color for the client view.
+     * Category-based so user-created statuses still get a sensible color.
      */
     public function getClientStatusColorAttribute(): string
     {
-        return match ($this->status) {
-            'draft' => 'gray',
-            'analysis' => 'purple',
-            'in_progress' => 'blue',
-            'review' => 'yellow',
-            'completed', 'completed (Not Payed Yet)' => 'green',
-            'on_hold', 'canceled' => 'red',
-            default => 'gray',
+        return match ($this->statusRecord?->category) {
+            'not_started' => 'gray',
+            'active'      => 'blue',
+            'done'        => 'green',
+            'closed'      => 'red',
+            default       => 'gray',
         };
     }
 
     /**
-     * Check if project is active (not completed or canceled)
+     * A project is "active" when its status is not in the done or closed bucket.
+     * Works for any user-created status in the active / not_started buckets.
      */
     public function isActive(): bool
     {
-        return !in_array($this->status, ['completed', 'completed (Not Payed Yet)', 'canceled']);
+        $cat = $this->statusRecord?->category;
+        return $cat !== 'done' && $cat !== 'closed';
     }
 
     /**

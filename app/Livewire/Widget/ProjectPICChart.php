@@ -24,15 +24,17 @@ class ProjectPICChart extends ChartWidget
         // Get PICs and count their projects using the direct pic_id relationship
         $filter = $this->filter ?? 'all';
         
-        // Get PICs and count their projects using the direct pic_id relationship
+        // Get PICs and count their projects using the direct pic_id relationship.
+        // Join the project_statuses table so we can filter by category.
         $query = User::query()
-            ->join('projects', 'users.id', '=', 'projects.pic_id');
+            ->join('projects', 'users.id', '=', 'projects.pic_id')
+            ->leftJoin('project_statuses', 'projects.status', '=', 'project_statuses.key');
 
-        // Apply filter based on project status
+        // Apply filter based on project status category
         if ($filter === 'not_completed') {
-            $query->whereNotIn('projects.status', ['completed', 'completed (Not Payed Yet)']);
+            $query->where('project_statuses.category', '!=', 'done');
         } elseif ($filter === 'completed') {
-            $query->whereIn('projects.status', ['completed', 'completed (Not Payed Yet)']);
+            $query->where('project_statuses.category', '=', 'done');
         }
 
         $picData = $query->select('users.name', DB::raw('COUNT(projects.id) as project_count'))

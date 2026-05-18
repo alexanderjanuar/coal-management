@@ -51,34 +51,35 @@ class ProjectMonthlyChart extends ChartWidget
         $query = $this->baseProjectQuery()
             ->whereNotNull('pic_id')
             ->join('users', 'projects.pic_id', '=', 'users.id')
+            ->leftJoin('project_statuses', 'projects.status', '=', 'project_statuses.key')
             ->select(
                 'users.name as pic_name',
-                'projects.status',
+                'project_statuses.category as category',
                 DB::raw('COUNT(*) as count')
             );
 
         if ($this->filter === 'active') {
-            $query->whereNotIn('projects.status', ['completed', 'canceled']);
+            $query->whereNotIn('project_statuses.category', ['done', 'closed']);
         }
 
         $data = $query
-            ->groupBy('users.name', 'projects.status')
+            ->groupBy('users.name', 'project_statuses.category')
             ->orderBy('users.name')
             ->get();
 
         // Collect unique PIC names
         $picNames = $data->pluck('pic_name')->unique()->values()->toArray();
 
-        // Map all statuses to 3 categories
-        $statusMapping = [
-            'draft' => 'draft',
-            'analysis' => 'in_progress',
-            'in_progress' => 'in_progress',
-            'review' => 'in_progress',
-            'on_hold' => 'in_progress',
-            'completed' => 'completed',
-            'canceled' => 'completed',
-        ];
+        // Map status category to one of the 3 chart series
+        //   not_started → draft
+        //   active       → in_progress
+        //   done, closed → completed
+        $bucketFor = fn (string $category): string => match ($category) {
+            'not_started' => 'draft',
+            'active'      => 'in_progress',
+            'done', 'closed' => 'completed',
+            default       => 'in_progress',
+        };
 
         // Build data arrays for each status
         $draftData = [];
@@ -91,8 +92,8 @@ class ProjectMonthlyChart extends ChartWidget
             $completedCount = 0;
 
             foreach ($data->where('pic_name', $pic) as $row) {
-                $mapped = $statusMapping[$row->status] ?? 'in_progress';
-                
+                $mapped = $bucketFor($row->category ?? '');
+
                 if ($mapped === 'draft') {
                     $draftCount += $row->count;
                 } elseif ($mapped === 'in_progress') {

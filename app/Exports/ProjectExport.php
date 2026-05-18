@@ -79,15 +79,9 @@ class ProjectExport implements FromQuery, WithHeadings, WithMapping, WithStyles,
 
         $percentage = $totalItems > 0 ? round(($completedItems / $totalItems) * 100) : 0;
 
-        // Translate status
-        $statusTranslation = match ($project->status) {
-            'draft' => 'Draft',
-            'in_progress' => 'Sedang Dikerjakan',
-            'on_hold' => 'Ditunda',
-            'completed' => 'Selesai',
-            'canceled' => 'Dibatalkan',
-            default => Str::title(str_replace('_', ' ', $project->status)),
-        };
+        // Indonesian status label — driven by status category, so any user-created
+        // status still gets a sensible translation.
+        $statusTranslation = $project->client_status_label;
 
         // Translate priority
         $priorityTranslation = match ($project->priority) {

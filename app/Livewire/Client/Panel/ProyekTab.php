@@ -66,7 +66,8 @@ class ProyekTab extends Component
                 'client',
                 'pic',
                 'userProjects.user',
-                'steps'
+                'steps',
+                'statusRecord',
             ])
             ->orderBy('created_at', 'desc')
             ->get()
@@ -79,12 +80,17 @@ class ProyekTab extends Component
 
     public function getActiveProjectsCountProperty()
     {
-        return $this->projects->whereIn('status', ['draft', 'in_progress', 'review', 'analysis'])->count();
+        // Anything not in the done or closed bucket counts as "active"
+        return $this->projects
+            ->filter(fn ($p) => ! in_array($p->statusRecord?->category, ['done', 'closed'], true))
+            ->count();
     }
 
     public function getCompletedProjectsCountProperty()
     {
-        return $this->projects->where('status', 'completed')->count();
+        return $this->projects
+            ->filter(fn ($p) => $p->statusRecord?->category === 'done')
+            ->count();
     }
 
     public function selectProject($projectId)

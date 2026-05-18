@@ -78,16 +78,16 @@
                 $stageKeys = array_keys($pipeline['stages']);
                 $lastKey = end($stageKeys);
                 $stageColors = [
-                    'draft' => ['bg' => 'bg-gray-500', 'text' => 'text-gray-600 dark:text-gray-400', 'light' => 'bg-gray-100 dark:bg-gray-800'],
-                    'in_progress' => ['bg' => 'bg-blue-500', 'text' => 'text-blue-600 dark:text-blue-400', 'light' => 'bg-blue-50 dark:bg-blue-900/20'],
-                    'completed' => ['bg' => 'bg-emerald-500', 'text' => 'text-emerald-600 dark:text-emerald-400', 'light' => 'bg-emerald-50 dark:bg-emerald-900/20'],
+                    'not_started' => ['bg' => 'bg-gray-500', 'text' => 'text-gray-600 dark:text-gray-400', 'light' => 'bg-gray-100 dark:bg-gray-800'],
+                    'active'      => ['bg' => 'bg-blue-500', 'text' => 'text-blue-600 dark:text-blue-400', 'light' => 'bg-blue-50 dark:bg-blue-900/20'],
+                    'done'        => ['bg' => 'bg-emerald-500', 'text' => 'text-emerald-600 dark:text-emerald-400', 'light' => 'bg-emerald-50 dark:bg-emerald-900/20'],
                 ];
             @endphp
             @foreach($pipeline['stages'] as $key => $stage)
                 @php
                     $isActive = $stage['count'] > 0;
                     $pct = $pipeline['total'] > 0 ? round(($stage['count'] / $pipeline['total']) * 100) : 0;
-                    $colors = $stageColors[$key] ?? $stageColors['draft'];
+                    $colors = $stageColors[$key] ?? $stageColors['not_started'];
                 @endphp
                 <div class="flex-1 relative group text-center py-4 px-2 transition-colors duration-200
                     {{ $isActive ? 'bg-white dark:bg-gray-900' : '' }}

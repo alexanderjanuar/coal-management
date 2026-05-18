@@ -131,14 +131,18 @@ class ProgressRelationManager extends RelationManager
                     ->label('Project Name'),
                 TextColumn::make('status')
                     ->badge()
-                    ->color(fn(string $state): string => match ($state) {
-                        'draft' => 'gray',
-                        'on_hold' => 'gray',
-                        'in_progress' => 'warning',
-                        'completed' => 'success',
-                        'canceled' => 'danger',
+                    ->color(function ($record): string {
+                        return match ($record->statusRecord?->category) {
+                            'not_started' => 'gray',
+                            'active'      => 'warning',
+                            'done'        => 'success',
+                            'closed'      => 'danger',
+                            default       => 'gray',
+                        };
                     })
-                    ->formatStateUsing(fn(string $state): string => __(Str::title($state))),
+                    ->formatStateUsing(function ($state, $record) {
+                        return $record->statusRecord?->label ?? __(Str::title((string) $state));
+                    }),
                 TextColumn::make('steps_count')->counts('steps')->badge()->label('Project Step'),
                 ProgressBar::make('bar')
                     ->label('Progress')
@@ -153,13 +157,7 @@ class ProgressRelationManager extends RelationManager
             ])
             ->filters([
                 SelectFilter::make('status')
-                    ->options([
-                        'draft' => 'Draft',
-                        'on_hold' => 'On Hold',
-                        'in_progress' => 'In Progress',
-                        'completed' => 'Completed',
-                        'canceled' => 'Canceled',
-                    ])
+                    ->options(fn () => \App\Models\ProjectStatus::ordered()->pluck('label', 'key')->toArray())
             ])
             ->headerActions([
                 Tables\Actions\CreateAction::make(),

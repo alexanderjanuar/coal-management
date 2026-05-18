@@ -23,7 +23,10 @@ public $overdueProjects = [];
         
         $query = Project::with(['client', 'pic'])
             ->where('due_date', '<', $today)
-            ->whereNotIn('status', ['completed', 'completed (Not Payed Yet)', 'canceled'])
+            // Only projects still in not_started / active buckets (i.e. not done or closed)
+            ->whereHas('statusRecord', function ($q) {
+                $q->whereNotIn('category', ['done', 'closed']);
+            })
             ->whereHas('client', function($q) {
                 $q->where('status', 'Active');
             });

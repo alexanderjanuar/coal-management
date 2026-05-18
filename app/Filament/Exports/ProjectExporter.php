@@ -32,13 +32,27 @@ class ProjectExporter extends Exporter
                 
             ExportColumn::make('status')
                 ->label('Status')
-                ->formatStateUsing(fn ($state) => match ($state) {
-                    'draft' => 'Draft',
-                    'in_progress' => 'Sedang Dikerjakan',
-                    'on_hold' => 'Ditunda',
-                    'completed' => 'Selesai',
-                    'canceled' => 'Dibatalkan',
-                    default => Str::title(str_replace('_', ' ', $state)),
+                ->formatStateUsing(function ($state) {
+                    $rec = \App\Models\ProjectStatus::where('key', $state)->first();
+                    $specific = match ($state) {
+                        'draft'              => 'Draft',
+                        'analysis'           => 'Analisis',
+                        'in_progress'        => 'Sedang Dikerjakan',
+                        'review'             => 'Review',
+                        'completed'          => 'Selesai',
+                        'completed_not_paid' => 'Selesai (Belum Dibayar)',
+                        'canceled'           => 'Dibatalkan',
+                        default              => null,
+                    };
+                    if ($specific !== null) return $specific;
+                    if (!$rec) return Str::title(str_replace('_', ' ', $state));
+                    return match ($rec->category) {
+                        'not_started' => 'Belum Dimulai',
+                        'active'      => 'Sedang Dikerjakan',
+                        'done'        => 'Selesai',
+                        'closed'      => 'Dibatalkan',
+                        default       => $rec->label,
+                    };
                 }),
                 
             ExportColumn::make('priority')

@@ -49,7 +49,9 @@ class ProjectCommandCenter extends Component
     private function baseProjectQuery()
     {
         $user = auth()->user();
-        $query = Project::query()->whereYear('created_at', $this->year);
+        // Qualify with table name — pipeline() joins project_statuses,
+        // which also has a created_at column.
+        $query = Project::query()->whereYear('projects.created_at', $this->year);
 
         if (!$user->hasRole('super-admin') && !$user->hasRole('director')) {
             $clientIds = $user->userClients()->pluck('client_id')->toArray();
@@ -74,24 +76,24 @@ class ProjectCommandCenter extends Component
     #[Computed]
     public function pipeline()
     {
-        // Simplified to 3 stages: Draft, Berjalan, Selesai
+        // Simplified to 3 stages based on the status category buckets:
+        //   not_started → Draft, active → Berjalan, done → Selesai.
+        //   closed (canceled) is intentionally excluded from the pipeline.
         $stages = [
-            'draft'       => ['label' => 'Draft', 'count' => 0, 'color' => 'gray'],
-            'in_progress' => ['label' => 'Berjalan', 'count' => 0, 'color' => 'blue'],
-            'completed'   => ['label' => 'Selesai', 'count' => 0, 'color' => 'green'],
+            'not_started' => ['label' => 'Draft', 'count' => 0, 'color' => 'gray'],
+            'active'      => ['label' => 'Berjalan', 'count' => 0, 'color' => 'blue'],
+            'done'        => ['label' => 'Selesai', 'count' => 0, 'color' => 'green'],
         ];
 
         $counts = $this->baseProjectQuery()
-            ->selectRaw("status, COUNT(*) as total")
-            ->groupBy('status')
-            ->pluck('total', 'status');
+            ->leftJoin('project_statuses', 'projects.status', '=', 'project_statuses.key')
+            ->selectRaw('project_statuses.category as category, COUNT(*) as total')
+            ->groupBy('project_statuses.category')
+            ->pluck('total', 'category');
 
-        foreach ($counts as $status => $total) {
-            // Map analysis, review, on_hold to in_progress (Berjalan)
-            if (in_array($status, ['analysis', 'review', 'on_hold'])) {
-                $stages['in_progress']['count'] += $total;
-            } elseif (isset($stages[$status])) {
-                $stages[$status]['count'] = $total;
+        foreach ($counts as $category => $total) {
+            if (isset($stages[$category])) {
+                $stages[$category]['count'] = (int) $total;
             }
         }
 

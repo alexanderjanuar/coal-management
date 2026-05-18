@@ -161,6 +161,15 @@ class ProjectResource extends Resource
                                 })
                                 ->columnSpan(2),
 
+                            Select::make('department_id')
+                                ->label('Departemen')
+                                ->relationship('department', 'name')
+                                ->searchable()
+                                ->preload()
+                                ->native(false)
+                                ->placeholder('Pilih departemen')
+                                ->columnSpan(2),
+
                             Select::make('type')
                                 ->label('Type')
                                 ->options([
@@ -437,20 +446,24 @@ class ProjectResource extends Resource
                     ->placeholder('PIC Belum Ditugaskan')
                     ->tooltip(fn($record) => $record->pic ? "Person in Charge: {$record->pic->name}" : 'No PIC assigned'),
 
-                // Project Status
+                // Project Status — category-driven color and label so the
+                // table works for user-created statuses.
                 Tables\Columns\TextColumn::make('status')
                     ->badge()
-                    ->color(fn(string $state): string => match ($state) {
-                        'draft', 'on_hold' => 'gray',
-                        'in_progress' => 'warning',
-                        'completed' => 'success',
-                        'canceled' => 'danger',
+                    ->color(function ($record): string {
+                        return match ($record->statusRecord?->category) {
+                            'not_started' => 'gray',
+                            'active'      => 'warning',
+                            'done'        => 'success',
+                            'closed'      => 'danger',
+                            default       => 'gray',
+                        };
                     })
                     ->sortable()
-                    ->formatStateUsing(
-                        fn(string $state): string =>
-                        __(Str::title(str_replace('_', ' ', $state)))
-                    ),
+                    ->formatStateUsing(function ($state, $record) {
+                        return $record->statusRecord?->label
+                            ?? Str::title(str_replace('_', ' ', (string) $state));
+                    }),
 
                 Tables\Columns\TextColumn::make('priority')
                     ->badge()
@@ -559,13 +572,7 @@ class ProjectResource extends Resource
             ->filters([
                 SelectFilter::make('status')
                     ->multiple()
-                    ->options([
-                        'draft' => 'Draft',
-                        'on_hold' => 'On Hold',
-                        'in_progress' => 'In Progress',
-                        'completed' => 'Completed',
-                        'canceled' => 'Canceled',
-                    ])
+                    ->options(fn () => \App\Models\ProjectStatus::ordered()->pluck('label', 'key')->toArray())
                     ->default(['draft', 'in_progress']),
 
 

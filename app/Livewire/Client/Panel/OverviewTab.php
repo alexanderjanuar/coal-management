@@ -125,16 +125,11 @@ class OverviewTab extends Component
             "overview_projects_{$userId}_{$clientId}",
             $this->cacheDuration,
             function () use ($clientId) {
-                // Using raw SQL for custom status ordering
-                $statusOrder = DB::raw("FIELD(status, 
-                    'in_progress', 
-                    'review', 
-                    'analysis', 
-                    'draft', 
-                    'on_hold',
-                    'completed', 
-                    'completed (Not Payed Yet)', 
-                    'canceled'
+                // Status ordering: active first, then not_started, then done, then closed.
+                // Within a category, sort by the project_statuses.sort_order column.
+                $statusOrder = DB::raw("(SELECT
+                    FIELD(category, 'active', 'not_started', 'done', 'closed') * 1000 + sort_order
+                    FROM project_statuses WHERE project_statuses.key = projects.status
                 )");
 
                 return Project::query()
@@ -457,14 +452,15 @@ class OverviewTab extends Component
             "overview_stats_{$userId}_{$clientId}",
             $this->cacheDuration,
             function () use ($clientId) {
-                // Single query for project stats
+                // Single query for project stats, bucketed by status category
                 $projectStats = DB::table('projects')
-                    ->where('client_id', $clientId)
+                    ->leftJoin('project_statuses', 'projects.status', '=', 'project_statuses.key')
+                    ->where('projects.client_id', $clientId)
                     ->selectRaw("
                         COUNT(*) as total,
-                        SUM(CASE WHEN status IN ('in_progress', 'review') THEN 1 ELSE 0 END) as active,
-                        SUM(CASE WHEN status IN ('completed', 'completed (Not Payed Yet)') THEN 1 ELSE 0 END) as completed,
-                        SUM(CASE WHEN status IN ('draft', 'analysis') THEN 1 ELSE 0 END) as pending
+                        SUM(CASE WHEN project_statuses.category = 'active' THEN 1 ELSE 0 END) as active,
+                        SUM(CASE WHEN project_statuses.category = 'done' THEN 1 ELSE 0 END) as completed,
+                        SUM(CASE WHEN project_statuses.category = 'not_started' THEN 1 ELSE 0 END) as pending
                     ")
                     ->first();
 

@@ -129,7 +129,7 @@ class ProjekTab extends Component implements HasForms
     public function loadProjects()
     {
         $this->projects = $this->client->projects()
-            ->with(['pic', 'sop', 'teamMembers'])
+            ->with(['pic', 'sop', 'teamMembers', 'statusRecord'])
             ->withCount([
                 'steps',
                 'teamMembers',
@@ -151,10 +151,10 @@ class ProjekTab extends Component implements HasForms
     public function calculateStats()
     {
         $this->stats = [
-            'total' => $this->projects->count(),
-            'in_progress' => $this->projects->whereIn('status', ['in_progress', 'analysis', 'review'])->count(),
-            'completed' => $this->projects->where('status', 'completed')->count(),
-            'urgent' => $this->projects->where('priority', 'urgent')->count(),
+            'total'       => $this->projects->count(),
+            'in_progress' => $this->projects->filter(fn ($p) => $p->statusRecord?->category === 'active')->count(),
+            'completed'   => $this->projects->filter(fn ($p) => $p->statusRecord?->category === 'done')->count(),
+            'urgent'      => $this->projects->where('priority', 'urgent')->count(),
         ];
     }
 

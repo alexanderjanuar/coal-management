@@ -102,13 +102,29 @@ class ProjectGroupedSheet implements FromArray, WithStyles, WithColumnWidths, Wi
     
     protected function translateStatus($status)
     {
-        return match ($status) {
-            'draft' => 'Draft',
-            'in_progress' => 'Sedang Dikerjakan',
-            'on_hold' => 'Ditunda',
-            'completed' => 'Selesai',
-            'canceled' => 'Dibatalkan',
-            default => Str::title(str_replace('_', ' ', $status ?? '')),
+        // Map by category via the project_statuses table so user-created
+        // statuses still translate sensibly.
+        $rec = \App\Models\ProjectStatus::where('key', $status)->first();
+        if (!$rec) return Str::title(str_replace('_', ' ', $status ?? ''));
+
+        $specific = match ($status) {
+            'draft'              => 'Draft',
+            'analysis'           => 'Analisis',
+            'in_progress'        => 'Sedang Dikerjakan',
+            'review'             => 'Review',
+            'completed'          => 'Selesai',
+            'completed_not_paid' => 'Selesai (Belum Dibayar)',
+            'canceled'           => 'Dibatalkan',
+            default              => null,
+        };
+        if ($specific !== null) return $specific;
+
+        return match ($rec->category) {
+            'not_started' => 'Belum Dimulai',
+            'active'      => 'Sedang Dikerjakan',
+            'done'        => 'Selesai',
+            'closed'      => 'Dibatalkan',
+            default       => $rec->label,
         };
     }
     
