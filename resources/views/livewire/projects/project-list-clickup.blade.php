@@ -602,6 +602,13 @@
                             <div x-show="open" @click.outside="open = false" x-cloak class="cu-dropdown-panel cu-action-menu">
                                 <a href="{{ $this->viewUrl($project) }}" class="cu-action-item">View</a>
                                 <a href="{{ $this->editUrl($project) }}" class="cu-action-item">Edit</a>
+                                <button
+                                    type="button"
+                                    wire:click="mountAction('deleteProject', { project: {{ $project->id }} })"
+                                    @click="open = false"
+                                    class="cu-action-item cu-action-item-danger">
+                                    Hapus
+                                </button>
                             </div>
                         </div>
                     </div>
@@ -679,40 +686,56 @@
     </div> {{-- /cu-scroll-wrap --}}
     @else
     {{-- ============== KANBAN / BOARD VIEW ============== --}}
-    @php $kanbanCols = $this->kanbanColumns; @endphp
+    @php
+        $kanbanCols = $this->kanbanColumns;
+        // Which Livewire method handles a drop, given the current group?
+        // 'client' is intentionally read-only (changing client is a heavy operation, not a drag-drop).
+        $kbDropMethod = match ($groupBy) {
+            'priority' => 'updatePriority',
+            'pic'      => 'updateProjectPic',
+            'none', 'client' => null,
+            default    => 'updateStatus',  // status (default)
+        };
+        $kbDragField = match ($groupBy) {
+            'priority' => 'priority',
+            'pic'      => 'pic_id',
+            'client'   => 'client_id',
+            'none'     => null,
+            default    => 'status',
+        };
+    @endphp
     <div class="cu-kanban"
-         x-data="{
-            draggedId: null,
-            draggedFrom: null,
-            hoverCol: null,
-         }">
-        @foreach ($kanbanCols as $statusKey => $col)
-            @php
-                $meta = $col['meta'];
-                $items = $col['projects'];
-            @endphp
+         x-data="{ draggedId: null, draggedFrom: null, hoverCol: null }">
+        @foreach ($kanbanCols as $colId => $col)
             <section class="cu-kb-col"
-                     :class="hoverCol === @js($statusKey) && draggedFrom !== @js($statusKey) ? 'is-drop-target' : ''"
-                     @dragover.prevent="hoverCol = @js($statusKey)"
-                     @dragleave="hoverCol === @js($statusKey) && (hoverCol = null)"
-                     @drop.prevent="
-                        if (draggedId && draggedFrom !== @js($statusKey)) {
-                            $wire.updateStatus(draggedId, @js($statusKey));
-                        }
-                        draggedId = null;
-                        draggedFrom = null;
-                        hoverCol = null;
-                     ">
-                <header class="cu-kb-col-head" style="--col-color: {{ $meta['color'] }};">
+                     :class="hoverCol === @js($colId) && draggedFrom !== @js($col['key']) ? 'is-drop-target' : ''"
+                     @if ($kbDropMethod)
+                        @dragover.prevent="hoverCol = @js($colId)"
+                        @dragleave="hoverCol === @js($colId) && (hoverCol = null)"
+                        @drop.prevent="
+                            if (draggedId && draggedFrom !== @js($col['key'])) {
+                                $wire.{{ $kbDropMethod }}(draggedId, @js($col['key']));
+                            }
+                            draggedId = null;
+                            draggedFrom = null;
+                            hoverCol = null;
+                        "
+                     @endif
+                     >
+                <header class="cu-kb-col-head" style="--col-color: {{ $col['color'] ?? 'var(--cu-line-strong)' }};">
                     <span class="cu-kb-col-marker">
-                        @include('livewire.projects.partials.status-shape', ['shape' => $meta['shape'] ?? 'empty', 'color' => $meta['color'], 'size' => 12])
+                        @if ($groupBy === 'status' && isset($col['shape']))
+                            @include('livewire.projects.partials.status-shape', ['shape' => $col['shape'], 'color' => $col['color'], 'size' => 12])
+                        @else
+                            <span class="cu-kb-col-dot" style="background: {{ $col['color'] ?? '#94a3b8' }};"></span>
+                        @endif
                     </span>
-                    <span class="cu-kb-col-name">{{ $meta['label'] }}</span>
-                    <span class="cu-kb-col-count">{{ $items->count() }}</span>
+                    <span class="cu-kb-col-name" title="{{ $col['label'] }}">{{ $col['label'] }}</span>
+                    <span class="cu-kb-col-count">{{ $col['count'] }}</span>
                 </header>
 
                 <div class="cu-kb-col-body">
-                    @forelse ($items as $project)
+                    @forelse ($col['projects'] as $project)
                         @php
                             $projPrio = $priorities[$project->priority] ?? ['label' => ucfirst($project->priority), 'color' => '#94a3b8', 'bg' => '#f1f5f9'];
                             $projDueLabel = $project->due_date?->translatedFormat('j M');
@@ -722,23 +745,40 @@
                                 if ($days < 0) $projDueClass = 'is-overdue';
                                 elseif ($days <= 3) $projDueClass = 'is-due-soon';
                             }
+                            // What value should `draggedFrom` carry, for same-column detection?
+                            $cardCurrentValue = match ($groupBy) {
+                                'priority' => $project->priority,
+                                'pic'      => $project->pic_id,
+                                'client'   => $project->client_id,
+                                'none'     => null,
+                                default    => $project->status,
+                            };
+                            $projStatusMeta = $statuses[$project->status] ?? null;
                         @endphp
                         <article class="cu-kb-card"
-                                 wire:key="kb-{{ $project->id }}"
-                                 draggable="true"
-                                 @dragstart="
-                                    draggedId = {{ $project->id }};
-                                    draggedFrom = @js($statusKey);
-                                    $event.dataTransfer.effectAllowed = 'move';
-                                 "
-                                 @dragend="draggedId = null; draggedFrom = null; hoverCol = null;"
-                                 :class="draggedId === {{ $project->id }} ? 'is-dragging' : ''"
+                                 wire:key="kb-{{ $project->id }}-{{ $colId }}"
+                                 @if ($kbDropMethod)
+                                    draggable="true"
+                                    @dragstart="
+                                        draggedId = {{ $project->id }};
+                                        draggedFrom = @js($cardCurrentValue);
+                                        $event.dataTransfer.effectAllowed = 'move';
+                                    "
+                                    @dragend="draggedId = null; draggedFrom = null; hoverCol = null;"
+                                    :class="draggedId === {{ $project->id }} ? 'is-dragging' : ''"
+                                 @endif
                                  wire:click="openProjectView({{ $project->id }})"
                                  role="button"
                                  tabindex="0">
                             <div class="cu-kb-card-top">
+                                {{-- When grouped by something other than status, show a small status dot so context isn't lost --}}
+                                @if ($groupBy !== 'status' && $projStatusMeta)
+                                    <span class="cu-kb-card-stat" title="{{ $projStatusMeta['label'] }}">
+                                        @include('livewire.projects.partials.status-shape', ['shape' => $projStatusMeta['shape'] ?? 'empty', 'color' => $projStatusMeta['color'], 'size' => 11])
+                                    </span>
+                                @endif
                                 <h4 class="cu-kb-card-title">{{ $project->name }}</h4>
-                                @if ($project->priority && $project->priority !== 'normal')
+                                @if ($groupBy !== 'priority' && $project->priority && $project->priority !== 'normal')
                                     <span class="cu-kb-card-prio" style="--p-color: {{ $projPrio['color'] }};" title="{{ $projPrio['label'] }}">
                                         <svg width="9" height="9" viewBox="0 0 24 24" fill="currentColor"><path d="M4 21V4c0-.6.4-1 1-1h12l-2 4 2 4H5"/></svg>
                                     </span>
@@ -747,10 +787,11 @@
 
                             @if ($project->client || $project->department)
                                 <div class="cu-kb-card-meta">
-                                    @if ($project->client)
+                                    {{-- Hide client when grouping BY client (redundant), same for department --}}
+                                    @if ($project->client && $groupBy !== 'client')
                                         <span class="cu-kb-card-client" title="{{ $project->client->name }}">{{ $project->client->name }}</span>
                                     @endif
-                                    @if ($project->client && $project->department)
+                                    @if ($project->client && $project->department && $groupBy !== 'client')
                                         <span class="cu-kb-card-sep">·</span>
                                     @endif
                                     @if ($project->department)
@@ -764,7 +805,7 @@
 
                             <div class="cu-kb-card-foot">
                                 <div class="cu-kb-card-people">
-                                    @if ($project->pic)
+                                    @if ($project->pic && $groupBy !== 'pic')
                                         <span class="cu-avatar cu-avatar-pic cu-kb-card-avatar" title="PIC: {{ $project->pic->name }}">
                                             @include('livewire.projects.partials.avatar', ['user' => $project->pic])
                                         </span>
@@ -788,7 +829,7 @@
                         </article>
                     @empty
                         <div class="cu-kb-empty"
-                             :class="hoverCol === @js($statusKey) && draggedFrom !== @js($statusKey) ? 'is-target' : ''">
+                             :class="hoverCol === @js($colId) && draggedFrom !== @js($col['key']) ? 'is-target' : ''">
                             Tidak ada proyek
                         </div>
                     @endforelse
@@ -1220,6 +1261,17 @@
                                                         @php
                                                             $submissions = $reqDoc->submittedDocuments;
                                                             $hasSubs = $submissions && $submissions->isNotEmpty();
+                                                            $reqDocStatus = $reqDoc->status ?? null;
+                                                            $approvedNoDoc = $reqDocStatus === 'approved_without_document';
+                                                            $reqDocStatusMeta = match ($reqDocStatus) {
+                                                                'approved'                  => ['label' => 'Disetujui',                 'tone' => 'approved'],
+                                                                'approved_without_document' => ['label' => 'Disetujui tanpa dokumen',  'tone' => 'approved'],
+                                                                'pending_review'            => ['label' => 'Menunggu peninjauan',      'tone' => 'pending'],
+                                                                'uploaded'                  => ['label' => 'Diunggah',                 'tone' => 'pending'],
+                                                                'rejected'                  => ['label' => 'Ditolak',                  'tone' => 'rejected'],
+                                                                'draft'                     => ['label' => 'Draft',                    'tone' => 'draft'],
+                                                                default => null,
+                                                            };
                                                         @endphp
                                                         <div class="cu-pv-doc">
                                                             <div class="cu-pv-doc-head">
@@ -1229,10 +1281,29 @@
                                                                         <span class="cu-pv-doc-req" title="Wajib">*</span>
                                                                     @endif
                                                                 </span>
-                                                                @if (! $hasSubs)
+                                                                @if ($reqDocStatusMeta)
+                                                                    <span class="cu-pv-doc-status-tag is-{{ $reqDocStatusMeta['tone'] }}">
+                                                                        @if ($reqDocStatusMeta['tone'] === 'approved')
+                                                                            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                                                                        @elseif ($reqDocStatusMeta['tone'] === 'rejected')
+                                                                            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+                                                                        @elseif ($reqDocStatusMeta['tone'] === 'pending')
+                                                                            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><polyline points="12 7 12 12 15 14"/></svg>
+                                                                        @endif
+                                                                        {{ $reqDocStatusMeta['label'] }}
+                                                                    </span>
+                                                                @elseif (! $hasSubs)
                                                                     <span class="cu-pv-doc-empty">Belum diunggah</span>
                                                                 @endif
                                                             </div>
+
+                                                            {{-- Show a flat note if approved-without-document AND no file submissions exist --}}
+                                                            @if ($approvedNoDoc && ! $hasSubs)
+                                                                <div class="cu-pv-doc-no-file-note">
+                                                                    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><polyline points="20 6 9 17 4 12"/></svg>
+                                                                    Dokumen ini dianggap selesai tanpa unggahan file.
+                                                                </div>
+                                                            @endif
                                                             @if ($hasSubs)
                                                                 <ul class="cu-pv-doc-files">
                                                                     @foreach ($submissions as $sub)
@@ -3751,6 +3822,44 @@
         color: var(--cu-subtle);
         font-style: italic;
     }
+
+    /* Required document status tag — semantic colors, sits next to the doc name */
+    .cu-pv-doc-status-tag {
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        padding: 2px 8px;
+        border-radius: 99px;
+        font-size: 10.5px;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: .04em;
+        white-space: nowrap;
+    }
+    .cu-pv-doc-status-tag.is-approved { background: #d1fae5; color: #065f46; }
+    .cu-pv-doc-status-tag.is-rejected { background: #fee2e2; color: #b91c1c; }
+    .cu-pv-doc-status-tag.is-pending  { background: #fef3c7; color: #92400e; }
+    .cu-pv-doc-status-tag.is-draft    { background: var(--cu-bg-soft); color: var(--cu-muted); }
+    .dark .cu-pv-doc-status-tag.is-approved { background: rgba(16,185,129,.15); color: #34d399; }
+    .dark .cu-pv-doc-status-tag.is-rejected { background: rgba(248,113,113,.15); color: #f87171; }
+    .dark .cu-pv-doc-status-tag.is-pending  { background: rgba(251,191,36,.15); color: #fbbf24; }
+
+    /* Inline note shown when a doc is approved without an uploaded file */
+    .cu-pv-doc-no-file-note {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 6px 10px;
+        background: var(--cu-bg-soft);
+        border: 1px dashed var(--cu-line-strong);
+        border-radius: 6px;
+        font-size: 11.5px;
+        color: var(--cu-muted);
+        line-height: 1.3;
+    }
+    .cu-pv-doc-no-file-note svg { color: #047857; flex-shrink: 0; }
+    .dark .cu-pv-doc-no-file-note svg { color: #34d399; }
+
     .cu-pv-doc-files {
         list-style: none;
         margin: 0;
@@ -4466,6 +4575,21 @@
         align-items: center;
         flex-shrink: 0;
     }
+    /* Fallback dot when not grouping by status (priority/pic/client) */
+    .cu-kb-col-dot {
+        width: 9px;
+        height: 9px;
+        border-radius: 50%;
+        display: inline-block;
+    }
+
+    /* Status indicator on a card when grouped by something other than status */
+    .cu-kb-card-stat {
+        display: inline-flex;
+        align-items: center;
+        flex-shrink: 0;
+        margin-top: 1px;
+    }
     .cu-kb-col-name {
         flex: 1;
         font-size: 12px;
@@ -4677,4 +4801,5 @@
         </style>
     @endonce
 
+    <x-filament-actions::modals />
 </div>

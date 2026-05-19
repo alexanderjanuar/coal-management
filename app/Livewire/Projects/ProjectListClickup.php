@@ -8,15 +8,29 @@ use App\Models\Project;
 use App\Models\ProjectStatus;
 use App\Models\User;
 use App\Models\UserProject;
+use Filament\Actions\Action;
+use Filament\Actions\Concerns\InteractsWithActions;
+use Filament\Actions\Contracts\HasActions;
+use Filament\Forms\Concerns\InteractsWithForms;
+use Filament\Forms\Contracts\HasForms;
 use Filament\Notifications\Notification;
+use Filament\Support\Contracts\TranslatableContentDriver;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 use Livewire\Attributes\Url;
 use Livewire\Component;
 
-class ProjectListClickup extends Component
+class ProjectListClickup extends Component implements HasActions, HasForms
 {
+    use InteractsWithActions;
+    use InteractsWithForms;
+
+    public function makeFilamentTranslatableContentDriver(): ?TranslatableContentDriver
+    {
+        return null;
+    }
+
     public const HARD_CAP = 500;
     public const DEFAULT_GROUP_LIMIT = 10;
 
@@ -688,32 +702,166 @@ class ProjectListClickup extends Component
     }
 
     /**
-     * For the board / kanban view: one column per status, projects grouped under
-     * their current status. Ordered by category + sort_order to match the picker.
+     * Columns for the kanban view, driven by $groupBy.
+     * Each column: ['key', 'label', 'color'?, 'shape'?, 'count', 'projects'].
+     * For PIC/client the 'key' is the foreign-key id (or null for unassigned).
      */
     public function getKanbanColumnsProperty(): array
     {
-        $projects = $this->projects;                          // already filtered
-        $statusMap = $this->statusMap;                        // ordered
+        $projects = $this->projects;
 
-        $columns = [];
+        return match ($this->groupBy) {
+            'priority' => $this->kanbanByPriority($projects),
+            'pic'      => $this->kanbanByPic($projects),
+            'client'   => $this->kanbanByClient($projects),
+            'none'     => $this->kanbanSingle($projects),
+            default    => $this->kanbanByStatus($projects),  // 'status' is the default
+        };
+    }
+
+    protected function kanbanByStatus($projects): array
+    {
+        $statusMap = $this->statusMap;
+        $cols = [];
+
         foreach ($statusMap as $key => $meta) {
-            $columns[$key] = [
-                'meta'     => $meta,
-                'projects' => $projects->where('status', $key)->values(),
+            $items = $projects->where('status', $key)->values();
+            $cols[$key] = [
+                'key'      => $key,
+                'label'    => $meta['label'],
+                'color'    => $meta['color'],
+                'shape'    => $meta['shape'] ?? 'empty',
+                'count'    => $items->count(),
+                'projects' => $items,
             ];
         }
 
-        // Catch projects with a status not in the map (legacy values)
         $unknown = $projects->whereNotIn('status', array_keys($statusMap))->values();
         if ($unknown->isNotEmpty()) {
-            $columns['__unknown'] = [
-                'meta'     => ['label' => 'Lainnya', 'color' => '#94a3b8', 'bg' => '#f1f5f9', 'shape' => 'empty', 'category' => 'closed'],
+            $cols['__unknown'] = [
+                'key'      => null,
+                'label'    => 'Lainnya',
+                'color'    => '#94a3b8',
+                'shape'    => 'empty',
+                'count'    => $unknown->count(),
                 'projects' => $unknown,
             ];
         }
 
-        return $columns;
+        return $cols;
+    }
+
+    protected function kanbanByPriority($projects): array
+    {
+        $cols = [];
+        foreach (self::PRIORITIES as $key => $meta) {
+            $items = $projects->where('priority', $key)->values();
+            $cols[$key] = [
+                'key'      => $key,
+                'label'    => $meta['label'],
+                'color'    => $meta['color'],
+                'count'    => $items->count(),
+                'projects' => $items,
+            ];
+        }
+        return $cols;
+    }
+
+    protected function kanbanByPic($projects): array
+    {
+        $cols = [];
+
+        // Unassigned column always shown first
+        $unassigned = $projects->whereNull('pic_id')->values();
+        $cols['_none'] = [
+            'key'      => null,
+            'label'    => 'Belum ada PIC',
+            'color'    => '#94a3b8',
+            'count'    => $unassigned->count(),
+            'projects' => $unassigned,
+        ];
+
+        $picIds = $projects->whereNotNull('pic_id')->pluck('pic_id')->unique();
+        if ($picIds->isNotEmpty()) {
+            $picUsers = User::whereIn('id', $picIds)->orderBy('name')->get(['id', 'name', 'avatar_url', 'avatar_path']);
+            foreach ($picUsers as $pic) {
+                $items = $projects->where('pic_id', $pic->id)->values();
+                $cols['p_' . $pic->id] = [
+                    'key'      => $pic->id,
+                    'label'    => $pic->name,
+                    'color'    => '#6366f1',
+                    'count'    => $items->count(),
+                    'projects' => $items,
+                ];
+            }
+        }
+
+        return $cols;
+    }
+
+    protected function kanbanByClient($projects): array
+    {
+        $cols = [];
+
+        $unassigned = $projects->whereNull('client_id')->values();
+        if ($unassigned->isNotEmpty()) {
+            $cols['_none'] = [
+                'key'      => null,
+                'label'    => 'Tanpa klien',
+                'color'    => '#94a3b8',
+                'count'    => $unassigned->count(),
+                'projects' => $unassigned,
+            ];
+        }
+
+        $clientIds = $projects->whereNotNull('client_id')->pluck('client_id')->unique();
+        if ($clientIds->isNotEmpty()) {
+            $clients = Client::whereIn('id', $clientIds)->orderBy('name')->get(['id', 'name']);
+            foreach ($clients as $client) {
+                $items = $projects->where('client_id', $client->id)->values();
+                $cols['c_' . $client->id] = [
+                    'key'      => $client->id,
+                    'label'    => $client->name,
+                    'color'    => '#0ea5e9',
+                    'count'    => $items->count(),
+                    'projects' => $items,
+                ];
+            }
+        }
+
+        return $cols;
+    }
+
+    protected function kanbanSingle($projects): array
+    {
+        return [
+            '_all' => [
+                'key'      => null,
+                'label'    => 'Semua proyek',
+                'color'    => '#64748b',
+                'count'    => $projects->count(),
+                'projects' => $projects,
+            ],
+        ];
+    }
+
+    public function updateProjectPic(int $projectId, $picId): void
+    {
+        $picId = $picId === null || $picId === '' ? null : (int) $picId;
+
+        $project = $this->baseQuery()->find($projectId);
+        if (! $project) return;
+        if ((int) $project->pic_id === (int) $picId) return;
+
+        if ($picId !== null && ! User::whereKey($picId)->exists()) {
+            Notification::make()->title('PIC tidak ditemukan')->danger()->send();
+            return;
+        }
+
+        $project->pic_id = $picId;
+        $project->save();
+
+        Notification::make()->title('PIC proyek diperbarui')->success()->send();
     }
 
     /**
@@ -818,6 +966,34 @@ class ProjectListClickup extends Component
     public function editUrl(Project $project): string
     {
         return ProjectResource::getUrl('edit', ['record' => $project]);
+    }
+
+    public function deleteProjectAction(): Action
+    {
+        return Action::make('deleteProject')
+            ->requiresConfirmation()
+            ->modalHeading('Hapus Proyek')
+            ->modalDescription(function (array $arguments): string {
+                $project = Project::find($arguments['project'] ?? null);
+                $name = $project?->name ?? 'proyek ini';
+                return "Apakah Anda yakin ingin menghapus '{$name}'? Semua langkah, tugas, dan dokumen terkait akan ikut terhapus. Tindakan ini tidak dapat dibatalkan.";
+            })
+            ->modalSubmitActionLabel('Ya, Hapus')
+            ->modalCancelActionLabel('Batal')
+            ->modalIcon('heroicon-o-trash')
+            ->color('danger')
+            ->action(function (array $arguments): void {
+                $project = Project::find($arguments['project'] ?? null);
+                if (!$project) return;
+
+                $name = $project->name;
+                $project->delete();
+
+                Notification::make()
+                    ->title("Proyek '{$name}' dihapus")
+                    ->success()
+                    ->send();
+            });
     }
 
     public function openStatusManager(): void
