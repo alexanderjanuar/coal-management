@@ -6,8 +6,10 @@ use App\Filament\Resources\ProjectResource;
 use App\Models\Client;
 use App\Models\Project;
 use App\Models\ProjectStatus;
+use App\Models\SubmittedDocument;
 use App\Models\User;
 use App\Models\UserProject;
+use Illuminate\Support\Facades\Storage;
 use Filament\Actions\Action;
 use Filament\Actions\Concerns\InteractsWithActions;
 use Filament\Actions\Contracts\HasActions;
@@ -16,6 +18,7 @@ use Filament\Forms\Contracts\HasForms;
 use Filament\Notifications\Notification;
 use Filament\Support\Contracts\TranslatableContentDriver;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 use Livewire\Attributes\Url;
@@ -126,6 +129,47 @@ class ProjectListClickup extends Component implements HasActions, HasForms
     public function loadProjectViewData(): void
     {
         $this->viewingProjectIdLoaded = $this->viewingProjectId;
+    }
+
+    // Document preview modal — sub-modal di dalam project view modal.
+    public ?int $previewingSubmittedDocumentId = null;
+
+    public function openSubmittedDocumentPreview(int $id): void
+    {
+        $this->previewingSubmittedDocumentId = $id;
+    }
+
+    public function closeSubmittedDocumentPreview(): void
+    {
+        $this->previewingSubmittedDocumentId = null;
+    }
+
+    public function getPreviewingSubmittedDocumentProperty(): ?SubmittedDocument
+    {
+        if (! $this->previewingSubmittedDocumentId) {
+            return null;
+        }
+
+        return SubmittedDocument::with(['user:id,name', 'requiredDocument:id,name'])
+            ->find($this->previewingSubmittedDocumentId);
+    }
+
+    public function getPreviewUrlProperty(): ?string
+    {
+        $doc = $this->previewingSubmittedDocument;
+        if (! $doc || empty($doc->file_path)) {
+            return null;
+        }
+        return Storage::disk('public')->url($doc->file_path);
+    }
+
+    public function getPreviewFileTypeProperty(): ?string
+    {
+        $doc = $this->previewingSubmittedDocument;
+        if (! $doc || empty($doc->file_path)) {
+            return null;
+        }
+        return strtolower(pathinfo($doc->file_path, PATHINFO_EXTENSION));
     }
 
     public function closeProjectView(): void
@@ -574,6 +618,18 @@ class ProjectListClickup extends Component implements HasActions, HasForms
             ->withCount([
                 'steps',
                 'steps as steps_completed_count' => fn ($q) => $q->where('status', 'completed'),
+                'notes',
+            ])
+            // Correlated subquery — hitung submitted documents berstatus 'uploaded'
+            // (file baru di-upload klien, staff belum review). Satu kolom hasil per row,
+            // tetap single round-trip DB.
+            ->addSelect([
+                'uploaded_documents_count' => DB::table('submitted_documents')
+                    ->selectRaw('COUNT(*)')
+                    ->join('required_documents', 'required_documents.id', '=', 'submitted_documents.required_document_id')
+                    ->join('project_steps', 'project_steps.id', '=', 'required_documents.project_step_id')
+                    ->whereColumn('project_steps.project_id', 'projects.id')
+                    ->where('submitted_documents.status', 'uploaded'),
             ]);
 
         if ($this->search !== '') {

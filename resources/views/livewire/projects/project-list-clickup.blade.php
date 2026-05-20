@@ -442,6 +442,47 @@
                         <button type="button"
                                 wire:click="openProjectView({{ $project->id }})"
                                 class="cu-project-name">{{ $project->name }}</button>
+
+                        {{-- Indikator inline: icon + angka. Alpine tooltip terjamin tampil saat hover. --}}
+                        @if (($project->notes_count ?? 0) > 0 || ($project->uploaded_documents_count ?? 0) > 0)
+                            <span class="cu-row-indicators">
+                                @if (($project->uploaded_documents_count ?? 0) > 0)
+                                    {{-- Status 'uploaded' = file baru, butuh review staff --}}
+                                    <span class="cu-indicator-wrap"
+                                          x-data="{ open: false }"
+                                          @mouseenter="open = true"
+                                          @mouseleave="open = false">
+                                        <span class="cu-indicator cu-indicator-review">
+                                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                                                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+                                                <circle cx="12" cy="12" r="3"/>
+                                            </svg>
+                                            <span>{{ $project->uploaded_documents_count }}</span>
+                                        </span>
+                                        <span x-show="open" x-cloak class="cu-indicator-tip">
+                                            {{ $project->uploaded_documents_count }} dokumen menunggu review
+                                        </span>
+                                    </span>
+                                @endif
+
+                                @if (($project->notes_count ?? 0) > 0)
+                                    <span class="cu-indicator-wrap"
+                                          x-data="{ open: false }"
+                                          @mouseenter="open = true"
+                                          @mouseleave="open = false">
+                                        <span class="cu-indicator cu-indicator-note">
+                                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                                                <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/>
+                                            </svg>
+                                            <span>{{ $project->notes_count }}</span>
+                                        </span>
+                                        <span x-show="open" x-cloak class="cu-indicator-tip">
+                                            {{ $project->notes_count }} catatan
+                                        </span>
+                                    </span>
+                                @endif
+                            </span>
+                        @endif
                     </div>
 
                     @if ($this->isColumnVisible('status'))
@@ -1357,8 +1398,6 @@
                                                                         @endif
                                                                         {{ $reqDocStatusMeta['label'] }}
                                                                     </span>
-                                                                @elseif (! $hasSubs)
-                                                                    <span class="cu-pv-doc-empty">Belum diunggah</span>
                                                                 @endif
                                                             </div>
 
@@ -1367,6 +1406,14 @@
                                                                 <div class="cu-pv-doc-no-file-note">
                                                                     <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><polyline points="20 6 9 17 4 12"/></svg>
                                                                     Dokumen ini dianggap selesai tanpa unggahan file.
+                                                                </div>
+                                                            @elseif (! $hasSubs)
+                                                                {{-- Empty state untuk required doc tanpa file: dashed placeholder --}}
+                                                                <div class="cu-pv-doc-empty-state">
+                                                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                                                        <path d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                                                                    </svg>
+                                                                    <span>Belum ada file diunggah</span>
                                                                 </div>
                                                             @endif
                                                             @if ($hasSubs)
@@ -1377,10 +1424,9 @@
                                                                         @endphp
                                                                         <li>
                                                                             <button type="button"
-                                                                                    wire:click="downloadSubmittedDocument({{ $sub->id }})"
+                                                                                    wire:click="openSubmittedDocumentPreview({{ $sub->id }})"
                                                                                     class="cu-pv-doc-file"
-                                                                                    wire:loading.attr="disabled"
-                                                                                    wire:target="downloadSubmittedDocument({{ $sub->id }})">
+                                                                                    title="Klik untuk pratinjau">
                                                                                 <span class="cu-pv-doc-file-ext">{{ $ext }}</span>
                                                                                 <span class="cu-pv-doc-file-main">
                                                                                     <span class="cu-pv-doc-file-name" title="{{ basename($sub->file_path) }}">{{ basename($sub->file_path) }}</span>
@@ -1391,12 +1437,11 @@
                                                                                 </span>
                                                                                 <span class="cu-pv-doc-file-status is-{{ $sub->status }}">{{ ucfirst($sub->status ?? 'pending') }}</span>
                                                                                 <span class="cu-pv-doc-dl" aria-hidden="true">
-                                                                                    <span wire:loading.remove wire:target="downloadSubmittedDocument({{ $sub->id }})" class="cu-pv-doc-dl-ico">
-                                                                                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-                                                                                    </span>
-                                                                                    <span wire:loading wire:target="downloadSubmittedDocument({{ $sub->id }})" class="cu-pv-doc-dl-spin">
-                                                                                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M21 12a9 9 0 1 1-6.2-8.5"/></svg>
-                                                                                    </span>
+                                                                                    {{-- Preview icon — eye, replaces direct download --}}
+                                                                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                                                                                        <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+                                                                                        <circle cx="12" cy="12" r="3"/>
+                                                                                    </svg>
                                                                                 </span>
                                                                             </button>
                                                                         </li>
@@ -2477,6 +2522,66 @@
         max-width: 100%;
     }
     .cu-project-name:hover { color: var(--cu-accent-ink); }
+
+    /* Row indicators — icon + number, no background. Alpine-driven tooltip. */
+    .cu-row-indicators {
+        display: inline-flex;
+        align-items: center;
+        gap: 10px;
+        margin-left: 8px;
+        vertical-align: middle;
+    }
+    .cu-indicator-wrap {
+        position: relative;
+        display: inline-flex;
+        align-items: center;
+        cursor: default;
+    }
+    .cu-indicator {
+        display: inline-flex;
+        align-items: center;
+        gap: 3px;
+        font-size: 11.5px;
+        font-weight: 600;
+        line-height: 1;
+    }
+    .cu-indicator svg { flex-shrink: 0; opacity: .9; }
+    .cu-indicator-note    { color: var(--cu-muted); }
+    .cu-indicator-review  { color: #d97706; }  /* amber-600 — needs attention */
+    .dark .cu-indicator-review { color: #fbbf24; }  /* amber-400 */
+
+    /* Tooltip — positioned above the indicator, guaranteed visible */
+    .cu-indicator-tip {
+        position: absolute;
+        bottom: calc(100% + 6px);
+        left: 50%;
+        transform: translateX(-50%);
+        padding: 5px 9px;
+        background: #0f172a;          /* slate-900 */
+        color: #f8fafc;               /* slate-50 */
+        font-size: 11.5px;
+        font-weight: 500;
+        line-height: 1.3;
+        border-radius: 5px;
+        white-space: nowrap;
+        z-index: 50;
+        pointer-events: none;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, .15);
+    }
+    .cu-indicator-tip::after {
+        content: '';
+        position: absolute;
+        top: 100%;
+        left: 50%;
+        transform: translateX(-50%);
+        border: 4px solid transparent;
+        border-top-color: #0f172a;
+    }
+    .dark .cu-indicator-tip {
+        background: #f8fafc;
+        color: #0f172a;
+    }
+    .dark .cu-indicator-tip::after { border-top-color: #f8fafc; }
 
     /* Client column */
     .cu-client-name {
@@ -3861,22 +3966,25 @@
     .cu-pv-step-doc-count svg { color: var(--cu-subtle); }
 
     .cu-pv-step-docs {
-        padding: 6px 0 14px 32px;
+        padding: 8px 0 18px 32px;
         display: flex;
         flex-direction: column;
-        gap: 12px;
+        gap: 16px;
     }
-    .cu-pv-doc { display: flex; flex-direction: column; gap: 5px; }
+    .cu-pv-doc { display: flex; flex-direction: column; gap: 8px; }
     .cu-pv-doc-head {
         display: flex;
-        align-items: baseline;
-        gap: 10px;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
         flex-wrap: wrap;
     }
     .cu-pv-doc-name {
         font-size: 12.5px;
         font-weight: 600;
         color: var(--cu-ink);
+        flex: 1;
+        min-width: 0;
     }
     .cu-pv-doc-req {
         color: #b91c1c;
@@ -3887,6 +3995,24 @@
         font-size: 11px;
         color: var(--cu-subtle);
         font-style: italic;
+    }
+
+    /* Empty state — required doc tanpa file (dashed placeholder, subtle) */
+    .cu-pv-doc-empty-state {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 10px 12px;
+        background: transparent;
+        border: 1px dashed var(--cu-line-strong);
+        border-radius: 7px;
+        font-size: 11.5px;
+        color: var(--cu-subtle);
+        font-style: italic;
+    }
+    .cu-pv-doc-empty-state svg {
+        opacity: .55;
+        flex-shrink: 0;
     }
 
     /* Required document status tag — semantic colors, sits next to the doc name */
@@ -4913,8 +5039,289 @@
     }
     .cu-skel-note:first-of-type { border-top: 0; }
 
+    /* ============================================
+       DOCUMENT PREVIEW MODAL (nested di dalam project view modal)
+       ============================================ */
+    .cu-pv-preview-modal {
+        max-width: 1100px;
+        max-height: 90vh;
+        display: flex;
+        flex-direction: column;
+        z-index: 60;  /* di atas project view modal */
+    }
+    .cu-pv-preview-head {
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        gap: 16px;
+        padding: 16px 20px;
+        border-bottom: 1px solid var(--cu-line);
+        background: var(--cu-bg);
+    }
+    .cu-pv-preview-head-left {
+        display: flex;
+        align-items: flex-start;
+        gap: 12px;
+        min-width: 0;
+        flex: 1;
+    }
+    .cu-pv-preview-icon {
+        flex-shrink: 0;
+        width: 40px;
+        height: 40px;
+        border-radius: 10px;
+        background: var(--cu-accent-soft);
+        color: var(--cu-accent-ink);
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+    }
+    .cu-pv-preview-meta {
+        min-width: 0;
+        flex: 1;
+    }
+    .cu-pv-preview-title {
+        font-size: 15px;
+        font-weight: 600;
+        color: var(--cu-ink);
+        margin: 0 0 4px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        line-height: 1.3;
+    }
+    .cu-pv-preview-sub {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        flex-wrap: wrap;
+        font-size: 12px;
+        color: var(--cu-muted);
+    }
+    .cu-pv-preview-sub-sep { opacity: .5; }
+    .cu-pv-preview-status {
+        display: inline-flex;
+        align-items: center;
+        padding: 2px 8px;
+        border-radius: 99px;
+        font-size: 10.5px;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: .04em;
+        color: var(--s-color);
+        background: var(--s-bg);
+    }
+    .cu-pv-preview-head-actions {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        flex-shrink: 0;
+    }
+    .cu-pv-preview-btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 8px 14px;
+        border: 1px solid var(--cu-line-strong);
+        background: var(--cu-bg);
+        color: var(--cu-ink);
+        font-size: 12.5px;
+        font-weight: 600;
+        border-radius: 7px;
+        cursor: pointer;
+        transition: background .12s, border-color .12s;
+    }
+    .cu-pv-preview-btn:hover {
+        background: var(--cu-bg-hover);
+        border-color: var(--cu-accent);
+    }
+    .cu-pv-preview-btn-primary {
+        background: var(--cu-accent);
+        border-color: var(--cu-accent);
+        color: #fff;
+    }
+    .cu-pv-preview-btn-primary:hover {
+        background: var(--cu-accent-ink);
+        border-color: var(--cu-accent-ink);
+        color: #fff;
+    }
+    .cu-pv-preview-btn-lg { padding: 10px 18px; font-size: 13px; }
+
+    .cu-pv-preview-body {
+        flex: 1;
+        min-height: 0;
+        display: flex;
+        background: var(--cu-bg-soft);
+        overflow: hidden;
+    }
+    .cu-pv-preview-iframe {
+        width: 100%;
+        height: 75vh;
+        min-height: 500px;
+        border: 0;
+        background: var(--cu-bg);
+        display: block;
+    }
+    .cu-pv-preview-image-wrap {
+        width: 100%;
+        height: 75vh;
+        min-height: 500px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 20px;
+        background: var(--cu-bg-soft);
+        overflow: auto;
+    }
+    .cu-pv-preview-image {
+        max-width: 100%;
+        max-height: 100%;
+        object-fit: contain;
+        border-radius: 6px;
+        box-shadow: 0 4px 20px rgba(0, 0, 0, .08);
+    }
+    .cu-pv-preview-fallback {
+        width: 100%;
+        min-height: 400px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 12px;
+        padding: 40px 24px;
+        text-align: center;
+    }
+    .cu-pv-preview-fallback-icon {
+        width: 64px;
+        height: 64px;
+        border-radius: 50%;
+        background: var(--cu-bg);
+        color: var(--cu-muted);
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        border: 1px solid var(--cu-line);
+        margin-bottom: 4px;
+    }
+    .cu-pv-preview-fallback-title {
+        font-size: 15px;
+        font-weight: 600;
+        color: var(--cu-ink);
+        margin: 0;
+    }
+    .cu-pv-preview-fallback-text {
+        font-size: 13px;
+        color: var(--cu-muted);
+        margin: 0 0 8px;
+        max-width: 380px;
+        line-height: 1.5;
+    }
+
+    @media (max-width: 640px) {
+        .cu-pv-preview-modal { max-width: 100%; max-height: 100vh; border-radius: 0; }
+        .cu-pv-preview-head { padding: 12px 14px; flex-wrap: wrap; }
+        .cu-pv-preview-btn span { display: none; }
+        .cu-pv-preview-iframe,
+        .cu-pv-preview-image-wrap { height: calc(100vh - 100px); }
+    }
+
         </style>
     @endonce
+
+    {{-- ============== DOCUMENT PREVIEW MODAL ============== --}}
+    @if ($previewingSubmittedDocumentId && $this->previewingSubmittedDocument)
+        @php
+            $previewDoc = $this->previewingSubmittedDocument;
+            $previewType = $this->previewFileType;
+            $previewUrl = $this->previewUrl;
+            $previewName = basename($previewDoc->file_path);
+            $previewStatusMeta = match ($previewDoc->status) {
+                'approved'       => ['label' => 'Disetujui',       'color' => '#16a34a', 'bg' => '#dcfce7'],
+                'rejected'       => ['label' => 'Ditolak',         'color' => '#dc2626', 'bg' => '#fee2e2'],
+                'pending_review' => ['label' => 'Menunggu Review', 'color' => '#d97706', 'bg' => '#fef3c7'],
+                'uploaded'       => ['label' => 'Diunggah',        'color' => '#2563eb', 'bg' => '#dbeafe'],
+                default          => ['label' => ucfirst($previewDoc->status ?? 'unknown'), 'color' => '#64748b', 'bg' => '#f1f5f9'],
+            };
+        @endphp
+        <div class="cu-pv-overlay" wire:keydown.escape.window="closeSubmittedDocumentPreview">
+            <div class="cu-pv-backdrop" wire:click="closeSubmittedDocumentPreview"></div>
+            <div class="cu-pv-modal cu-pv-preview-modal" role="dialog" aria-modal="true" aria-label="Pratinjau dokumen">
+                {{-- Header --}}
+                <header class="cu-pv-preview-head">
+                    <div class="cu-pv-preview-head-left">
+                        <div class="cu-pv-preview-icon">
+                            @if ($previewType === 'pdf')
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="9" y1="13" x2="15" y2="13"/><line x1="9" y1="17" x2="13" y2="17"/></svg>
+                            @elseif (in_array($previewType, ['jpg', 'jpeg', 'png', 'gif', 'webp']))
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+                            @else
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+                            @endif
+                        </div>
+                        <div class="cu-pv-preview-meta">
+                            <h2 class="cu-pv-preview-title" title="{{ $previewName }}">{{ $previewName }}</h2>
+                            <div class="cu-pv-preview-sub">
+                                <span class="cu-pv-preview-status" style="--s-color: {{ $previewStatusMeta['color'] }}; --s-bg: {{ $previewStatusMeta['bg'] }};">
+                                    {{ $previewStatusMeta['label'] }}
+                                </span>
+                                @if ($previewDoc->user)
+                                    <span class="cu-pv-preview-sub-sep">·</span>
+                                    <span>Diunggah {{ $previewDoc->created_at?->diffForHumans() }} oleh {{ $previewDoc->user->name }}</span>
+                                @endif
+                                @if ($previewDoc->requiredDocument)
+                                    <span class="cu-pv-preview-sub-sep">·</span>
+                                    <span>{{ $previewDoc->requiredDocument->name }}</span>
+                                @endif
+                            </div>
+                        </div>
+                    </div>
+                    <div class="cu-pv-preview-head-actions">
+                        <button type="button"
+                                wire:click="downloadSubmittedDocument({{ $previewDoc->id }})"
+                                class="cu-pv-preview-btn cu-pv-preview-btn-primary"
+                                title="Unduh file">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                            <span>Unduh</span>
+                        </button>
+                        <button type="button" wire:click="closeSubmittedDocumentPreview" class="cu-pv-icon-btn" aria-label="Tutup">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+                        </button>
+                    </div>
+                </header>
+
+                {{-- Body — preview area --}}
+                <div class="cu-pv-preview-body">
+                    @if ($previewUrl)
+                        @if ($previewType === 'pdf')
+                            <iframe src="{{ $previewUrl }}" class="cu-pv-preview-iframe" title="Pratinjau PDF"></iframe>
+                        @elseif (in_array($previewType, ['jpg', 'jpeg', 'png', 'gif', 'webp']))
+                            <div class="cu-pv-preview-image-wrap">
+                                <img src="{{ $previewUrl }}" alt="{{ $previewName }}" class="cu-pv-preview-image">
+                            </div>
+                        @else
+                            <div class="cu-pv-preview-fallback">
+                                <div class="cu-pv-preview-fallback-icon">
+                                    <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+                                </div>
+                                <h3 class="cu-pv-preview-fallback-title">Pratinjau tidak tersedia</h3>
+                                <p class="cu-pv-preview-fallback-text">Tipe file <strong>{{ strtoupper($previewType) }}</strong> tidak bisa di-preview langsung. Silakan unduh untuk membuka.</p>
+                                <button type="button"
+                                        wire:click="downloadSubmittedDocument({{ $previewDoc->id }})"
+                                        class="cu-pv-preview-btn cu-pv-preview-btn-primary cu-pv-preview-btn-lg">
+                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                                    <span>Unduh File</span>
+                                </button>
+                            </div>
+                        @endif
+                    @else
+                        <div class="cu-pv-preview-fallback">
+                            <p class="cu-pv-preview-fallback-text">File tidak ditemukan.</p>
+                        </div>
+                    @endif
+                </div>
+            </div>
+        </div>
+    @endif
 
     <x-filament-actions::modals />
 </div>
