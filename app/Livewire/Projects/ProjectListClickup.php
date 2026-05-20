@@ -732,11 +732,12 @@ class ProjectListClickup extends Component implements HasActions, HasForms
         $projects = $this->projects;
 
         return match ($this->groupBy) {
-            'priority' => $this->kanbanByPriority($projects),
-            'pic'      => $this->kanbanByPic($projects),
-            'client'   => $this->kanbanByClient($projects),
-            'none'     => $this->kanbanSingle($projects),
-            default    => $this->kanbanByStatus($projects),  // 'status' is the default
+            'priority'   => $this->kanbanByPriority($projects),
+            'pic'        => $this->kanbanByPic($projects),
+            'client'     => $this->kanbanByClient($projects),
+            'department' => $this->kanbanByDepartment($projects),
+            'none'       => $this->kanbanSingle($projects),
+            default      => $this->kanbanByStatus($projects),  // 'status' is the default
         };
     }
 
@@ -853,6 +854,38 @@ class ProjectListClickup extends Component implements HasActions, HasForms
         return $cols;
     }
 
+    protected function kanbanByDepartment($projects): array
+    {
+        $cols = [];
+
+        // Kolom "Tanpa Departemen" selalu pertama
+        $unassigned = $projects->whereNull('department_id')->values();
+        $cols['_none'] = [
+            'key'      => null,
+            'label'    => 'Tanpa Departemen',
+            'color'    => '#94a3b8',
+            'count'    => $unassigned->count(),
+            'projects' => $unassigned,
+        ];
+
+        $deptIds = $projects->whereNotNull('department_id')->pluck('department_id')->unique();
+        if ($deptIds->isNotEmpty()) {
+            $departments = \App\Models\Department::whereIn('id', $deptIds)->orderBy('name')->get(['id', 'name']);
+            foreach ($departments as $dept) {
+                $items = $projects->where('department_id', $dept->id)->values();
+                $cols['d_' . $dept->id] = [
+                    'key'      => $dept->id,
+                    'label'    => $dept->name,
+                    'color'    => '#6366f1',
+                    'count'    => $items->count(),
+                    'projects' => $items,
+                ];
+            }
+        }
+
+        return $cols;
+    }
+
     protected function kanbanSingle($projects): array
     {
         return [
@@ -899,11 +932,12 @@ class ProjectListClickup extends Component implements HasActions, HasForms
         $grouped = [];
         foreach ($projects as $project) {
             $key = match ($this->groupBy) {
-                'status' => $project->status ?? 'unknown',
-                'priority' => $project->priority ?? 'unknown',
-                'pic' => $project->pic?->name ?? 'Unassigned',
-                'client' => $project->client?->name ?? 'No Client',
-                default => '',
+                'status'     => $project->status ?? 'unknown',
+                'priority'   => $project->priority ?? 'unknown',
+                'pic'        => $project->pic?->name ?? 'Unassigned',
+                'client'     => $project->client?->name ?? 'No Client',
+                'department' => $project->department?->name ?? 'Tanpa Departemen',
+                default      => '',
             };
             $grouped[$key] ??= collect();
             $grouped[$key]->push($project);
@@ -972,10 +1006,15 @@ class ProjectListClickup extends Component implements HasActions, HasForms
 
     public function getGroupColor(string $key): array
     {
+        // Default badge color = primary accent (matches --cu-accent in blade).
+        // Status/priority pakai warna spesifik mereka; sisanya (client, pic, dept, dst.)
+        // di-fallback ke primary supaya konsisten dengan brand.
+        $primary = ['color' => '#6366f1', 'bg' => '#eef2ff'];
+
         return match ($this->groupBy) {
-            'status' => $this->statusMap[$key] ?? ['color' => '#64748b', 'bg' => '#f1f5f9'],
-            'priority' => self::PRIORITIES[$key] ?? ['color' => '#64748b', 'bg' => '#f1f5f9'],
-            default => ['color' => '#64748b', 'bg' => '#f1f5f9'],
+            'status'   => $this->statusMap[$key] ?? $primary,
+            'priority' => self::PRIORITIES[$key] ?? $primary,
+            default    => $primary,
         };
     }
 

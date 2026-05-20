@@ -13,6 +13,7 @@
             'priority' => 'Priority',
             'pic' => 'PIC',
             'client' => 'Client',
+            'department' => 'Departemen',
             'none' => 'None',
         ];
     @endphp
@@ -374,7 +375,7 @@
                 @php $prevCategory = $currentCategory; @endphp
             @endif
 
-            <div class="cu-group-card {{ $groupBy === 'none' ? 'cu-group-card-flat' : '' }}" style="--group-color: {{ $groupMeta['color'] ?? '#94a3b8' }};">
+            <div class="cu-group-card {{ $groupBy === 'none' ? 'cu-group-card-flat' : '' }}" style="--group-color: {{ $groupMeta['color'] ?? '#6366f1' }};">
             @if ($groupBy !== 'none')
                 <div class="cu-group-row">
                     <span class="cu-group-badge" style="background: {{ $groupMeta['color'] }};">
@@ -691,17 +692,19 @@
         // Which Livewire method handles a drop, given the current group?
         // 'client' is intentionally read-only (changing client is a heavy operation, not a drag-drop).
         $kbDropMethod = match ($groupBy) {
-            'priority' => 'updatePriority',
-            'pic'      => 'updateProjectPic',
+            'priority'   => 'updatePriority',
+            'pic'        => 'updateProjectPic',
+            'department' => 'updateProjectDepartment',
             'none', 'client' => null,
-            default    => 'updateStatus',  // status (default)
+            default      => 'updateStatus',  // status (default)
         };
         $kbDragField = match ($groupBy) {
-            'priority' => 'priority',
-            'pic'      => 'pic_id',
-            'client'   => 'client_id',
-            'none'     => null,
-            default    => 'status',
+            'priority'   => 'priority',
+            'pic'        => 'pic_id',
+            'client'     => 'client_id',
+            'department' => 'department_id',
+            'none'       => null,
+            default      => 'status',
         };
     @endphp
     <div class="cu-kanban"
@@ -2478,8 +2481,8 @@
     /* Client column */
     .cu-client-name {
         font-size: 12.5px;
-        font-weight: 500;
-        color: var(--cu-muted);
+        font-weight: 700;
+        color: var(--cu-ink);
         overflow: hidden;
         text-overflow: ellipsis;
         white-space: nowrap;
