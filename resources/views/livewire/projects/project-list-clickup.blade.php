@@ -14,6 +14,7 @@
             'pic' => 'PIC',
             'client' => 'Client',
             'department' => 'Departemen',
+            'sop' => 'SOP',
             'none' => 'None',
         ];
     @endphp
@@ -736,7 +737,9 @@
             'priority'   => 'updatePriority',
             'pic'        => 'updateProjectPic',
             'department' => 'updateProjectDepartment',
-            'none', 'client' => null,
+            // 'sop' read-only: mengganti SOP = operasi destruktif (regenerate steps/tasks),
+            // bukan operasi drag-drop. Sama seperti 'client'.
+            'none', 'client', 'sop' => null,
             default      => 'updateStatus',  // status (default)
         };
         $kbDragField = match ($groupBy) {
@@ -744,6 +747,7 @@
             'pic'        => 'pic_id',
             'client'     => 'client_id',
             'department' => 'department_id',
+            'sop'        => 'sop_id',
             'none'       => null,
             default      => 'status',
         };

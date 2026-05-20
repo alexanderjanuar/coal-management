@@ -610,6 +610,7 @@ class ProjectListClickup extends Component implements HasActions, HasForms
             ->with([
                 'client:id,name',
                 'department:id,name',
+                'sop:id,name',
                 'pic:id,name,avatar_url,avatar_path',
                 'teamMembers:id,name,avatar_url,avatar_path',
                 'steps:id,project_id,status,name,order,due_date,priority',
@@ -792,6 +793,7 @@ class ProjectListClickup extends Component implements HasActions, HasForms
             'pic'        => $this->kanbanByPic($projects),
             'client'     => $this->kanbanByClient($projects),
             'department' => $this->kanbanByDepartment($projects),
+            'sop'        => $this->kanbanBySop($projects),
             'none'       => $this->kanbanSingle($projects),
             default      => $this->kanbanByStatus($projects),  // 'status' is the default
         };
@@ -942,6 +944,38 @@ class ProjectListClickup extends Component implements HasActions, HasForms
         return $cols;
     }
 
+    protected function kanbanBySop($projects): array
+    {
+        $cols = [];
+
+        // Kolom "Tanpa SOP" selalu pertama
+        $unassigned = $projects->whereNull('sop_id')->values();
+        $cols['_none'] = [
+            'key'      => null,
+            'label'    => 'Tanpa SOP',
+            'color'    => '#94a3b8',
+            'count'    => $unassigned->count(),
+            'projects' => $unassigned,
+        ];
+
+        $sopIds = $projects->whereNotNull('sop_id')->pluck('sop_id')->unique();
+        if ($sopIds->isNotEmpty()) {
+            $sops = \App\Models\Sop::whereIn('id', $sopIds)->orderBy('name')->get(['id', 'name']);
+            foreach ($sops as $sop) {
+                $items = $projects->where('sop_id', $sop->id)->values();
+                $cols['s_' . $sop->id] = [
+                    'key'      => $sop->id,
+                    'label'    => $sop->name,
+                    'color'    => '#6366f1',
+                    'count'    => $items->count(),
+                    'projects' => $items,
+                ];
+            }
+        }
+
+        return $cols;
+    }
+
     protected function kanbanSingle($projects): array
     {
         return [
@@ -993,6 +1027,7 @@ class ProjectListClickup extends Component implements HasActions, HasForms
                 'pic'        => $project->pic?->name ?? 'Unassigned',
                 'client'     => $project->client?->name ?? 'No Client',
                 'department' => $project->department?->name ?? 'Tanpa Departemen',
+                'sop'        => $project->sop?->name ?? 'Tanpa SOP',
                 default      => '',
             };
             $grouped[$key] ??= collect();
