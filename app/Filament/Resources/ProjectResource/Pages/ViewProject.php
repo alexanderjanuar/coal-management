@@ -39,12 +39,6 @@ class ViewProject extends ViewRecord
 
     protected $listeners = [
         'refresh' => '$refresh',
-        'documentStatusChanged' => 'handleDocumentStatusChange',
-        'documentUploaded' => 'handleDocumentUploaded',
-        'documentApprovedWithoutUpload' => 'handleDocumentApprovedWithoutUpload',
-        'documentRejected' => 'handleDocumentRejected',
-        'documentDeleted' => 'handleDocumentDeleted',
-        'requirementStatusUpdated' => 'refreshProjectStatus',
     ];
 
     /**
@@ -53,16 +47,25 @@ class ViewProject extends ViewRecord
     public $completionNotificationSent = false;
 
     /**
-     * Initialize component and update project statuses when the page loads
+     * Initialize component and re-aggregate child → parent statuses on page load.
+     *
+     * URUTAN AGGREGATOR WAJIB:
+     *   1. updateRequiredDocumentStatuses() — meng-aggregate SubmittedDocument → RequiredDocument
+     *   2. updateProjectStepStatus()        — meng-aggregate Task + RequiredDocument → ProjectStep
+     *   3. updateProjectStatus()            — meng-aggregate ProjectStep → Project
+     *
+     * Setiap step membaca output step sebelumnya, jadi membalik urutan akan
+     * menghasilkan status yang salah. Jangan reorder tanpa update logic.
+     *
+     * Catatan: updateProjectStatus() hanya auto-promote dari kategori 'not_started'
+     * → 'in_progress'. Status manual di kategori active/done/closed dipertahankan
+     * (lihat method tsb. untuk policy lengkap).
      */
     public function mount($record): void
     {
         parent::mount($record);
 
-        // Update required document statuses first
         $this->updateRequiredDocumentStatuses();
-
-        // Update project and step statuses when page loads
         $this->updateProjectStepStatus();
         $this->updateProjectStatus();
     }
@@ -170,6 +173,22 @@ class ViewProject extends ViewRecord
         return 'draft';
     }
 
+    /**
+     * Auto-promote project status berdasarkan agregasi child step.
+     *
+     * Policy:
+     *   - Hanya auto-promote project dari kategori 'not_started' (mis. Draft)
+     *     ke status 'in_progress' saat ada step yang sedang dikerjakan.
+     *   - Project di kategori 'active' / 'done' / 'closed' TIDAK ditimpa —
+     *     status manual user (e.g. "Menunggu Klien", "Review", "Completed",
+     *     "Canceled") harus dipertahankan, termasuk status custom yang user buat.
+     *   - Project dengan status yang tidak ter-map ke project_statuses
+     *     (statusRecord null) juga di-skip untuk keamanan.
+     *
+     * Auto-promote ke 'completed' SENGAJA tidak ada — penyelesaian proyek
+     * dilakukan eksplisit lewat action "Selesaikan Proyek" di header,
+     * yang mengumpulkan deliverable + result notes sebagai bagian flow.
+     */
     private function updateProjectStatus(): void
     {
         $steps = $this->record->steps;
@@ -178,7 +197,10 @@ class ViewProject extends ViewRecord
             return;
         }
 
-        // Only update to in_progress automatically
+        if ($this->record->statusRecord?->category !== 'not_started') {
+            return;
+        }
+
         if ($steps->where('status', 'in_progress')->count() > 0) {
             $this->record->status = 'in_progress';
             $this->record->save();

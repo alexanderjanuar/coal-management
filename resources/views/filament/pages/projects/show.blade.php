@@ -1285,6 +1285,9 @@
     </div>
 
 
+    @livewire('projects.components.project-chaining', ['project' => $record])
+
+
     <x-filament::modal id="team-members-modal" width="3xl">
         <div class="min-h-[50vh]">
             @livewire('projects.components.project-member', ['project' => $record])

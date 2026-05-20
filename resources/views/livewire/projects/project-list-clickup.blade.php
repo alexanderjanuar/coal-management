@@ -1032,7 +1032,69 @@
     @endif
 
     {{-- ============== PROJECT VIEW MODAL ============== --}}
-    @if ($viewingProjectId && $this->viewingProject)
+    @if ($viewingProjectId)
+        @if (! $this->viewingProject)
+            {{-- ============ SKELETON STATE ============
+                 Buka instant. x-init trigger second AJAX → loadProjectViewData()
+                 → next render gets the real data and replaces this skeleton. --}}
+            <div class="cu-pv-overlay" wire:keydown.escape.window="closeProjectView" x-init="$wire.loadProjectViewData()">
+                <div class="cu-pv-backdrop" wire:click="closeProjectView"></div>
+                <div class="cu-pv-modal" role="dialog" aria-modal="true" aria-label="Memuat proyek">
+                    {{-- Header skeleton --}}
+                    <header class="cu-pv-head">
+                        <div class="cu-pv-head-id">
+                            <div class="cu-skel cu-skel-badge"></div>
+                            <div class="cu-skel cu-skel-title"></div>
+                        </div>
+                        <button type="button" wire:click="closeProjectView" class="cu-pv-icon-btn" aria-label="Tutup">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+                        </button>
+                    </header>
+
+                    {{-- Body skeleton --}}
+                    <div class="cu-pv-body">
+                        <section class="cu-pv-info" aria-hidden="true">
+                            {{-- dl-style placeholders --}}
+                            <div class="cu-skel-dl">
+                                @for ($i = 0; $i < 6; $i++)
+                                    <div class="cu-skel-dl-row">
+                                        <div class="cu-skel cu-skel-label"></div>
+                                        <div class="cu-skel cu-skel-value"></div>
+                                    </div>
+                                @endfor
+                            </div>
+
+                            {{-- Progress placeholder --}}
+                            <div class="cu-skel-progress">
+                                <div class="cu-skel cu-skel-bar"></div>
+                            </div>
+
+                            {{-- Steps placeholder --}}
+                            <div class="cu-skel-steps">
+                                <div class="cu-skel cu-skel-section-title"></div>
+                                @for ($i = 0; $i < 3; $i++)
+                                    <div class="cu-skel-step">
+                                        <div class="cu-skel cu-skel-step-icon"></div>
+                                        <div class="cu-skel cu-skel-step-text"></div>
+                                    </div>
+                                @endfor
+                            </div>
+                        </section>
+
+                        <aside class="cu-pv-info" aria-hidden="true">
+                            <div class="cu-skel cu-skel-section-title"></div>
+                            @for ($i = 0; $i < 3; $i++)
+                                <div class="cu-skel-note">
+                                    <div class="cu-skel cu-skel-note-meta"></div>
+                                    <div class="cu-skel cu-skel-note-line"></div>
+                                    <div class="cu-skel cu-skel-note-line short"></div>
+                                </div>
+                            @endfor
+                        </aside>
+                    </div>
+                </div>
+            </div>
+        @else
         @php
             $p = $this->viewingProject;
             $pStatusMeta = $statuses[$p->status] ?? ['label' => ucfirst($p->status), 'color' => '#64748b', 'bg' => '#f1f5f9', 'shape' => 'empty'];
@@ -1470,6 +1532,7 @@
                 </footer>
             </div>
         </div>
+        @endif {{-- /skeleton-vs-loaded --}}
     @endif
 
     @once
@@ -4797,6 +4860,55 @@
         .cu-sm-add-grid { grid-template-columns: 1fr; }
         .cu-sm-inline-shapes { flex-wrap: wrap; }
     }
+
+    /* ============================================
+       SKELETON LOADING (project view modal)
+       ============================================ */
+    .cu-skel {
+        background: linear-gradient(90deg, var(--cu-line) 0%, var(--cu-bg-hover) 50%, var(--cu-line) 100%);
+        background-size: 200% 100%;
+        border-radius: 6px;
+        animation: cu-skel-shimmer 1.4s ease-in-out infinite;
+    }
+    @keyframes cu-skel-shimmer {
+        0%   { background-position: 200% 0; }
+        100% { background-position: -200% 0; }
+    }
+    .cu-skel-badge       { width: 84px;  height: 22px; border-radius: 99px; }
+    .cu-skel-title       { width: 60%;   height: 20px; margin-top: 6px; }
+    .cu-skel-label       { width: 70px;  height: 12px; }
+    .cu-skel-value       { width: 100%;  height: 14px; }
+    .cu-skel-section-title { width: 120px; height: 14px; margin: 18px 0 12px; }
+    .cu-skel-bar         { width: 100%;  height: 8px;  border-radius: 99px; margin-top: 4px; }
+    .cu-skel-step-icon   { width: 16px;  height: 16px; border-radius: 4px; flex-shrink: 0; }
+    .cu-skel-step-text   { width: 75%;   height: 14px; }
+    .cu-skel-note-meta   { width: 40%;   height: 12px; }
+    .cu-skel-note-line   { width: 100%;  height: 12px; margin-top: 6px; }
+    .cu-skel-note-line.short { width: 65%; }
+    .cu-skel-dl {
+        display: grid;
+        grid-template-columns: 100px 1fr;
+        gap: 16px 18px;
+        align-items: center;
+    }
+    .cu-skel-dl-row {
+        display: contents;
+    }
+    .cu-skel-progress { margin-top: 24px; }
+    .cu-skel-steps    { margin-top: 8px; }
+    .cu-skel-step {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 10px 0;
+        border-top: 1px solid var(--cu-line);
+    }
+    .cu-skel-step:first-of-type { border-top: 0; }
+    .cu-skel-note {
+        padding: 14px 0;
+        border-top: 1px solid var(--cu-line);
+    }
+    .cu-skel-note:first-of-type { border-top: 0; }
 
         </style>
     @endonce

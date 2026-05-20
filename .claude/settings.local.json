@@ -15,7 +15,18 @@
       "Skill(impeccable)",
       "Skill(impeccable:*)",
       "Bash(node /Users/alexjanuar/.claude/skills/impeccable/scripts/load-context.mjs)",
-      "Read(//Users/alexjanuar/.claude/skills/impeccable/reference/**)"
+      "Read(//Users/alexjanuar/.claude/skills/impeccable/reference/**)",
+      "Bash(php -l /Users/alexjanuar/Projects/coal-management/app/Livewire/Projects/Components/ProjectChaining.php)",
+      "Bash(php -l /Users/alexjanuar/Projects/coal-management/app/Models/Project.php)",
+      "Bash(php -l /Users/alexjanuar/Projects/coal-management/database/migrations/2026_05_19_120000_add_parent_project_id_to_projects_table.php)",
+      "Bash(awk 'NR==1035,/<\\\\/section>.*<\\\\/div>.*<\\\\/div>.*<\\\\/div>.*<\\\\/div>/' /Users/alexjanuar/Projects/coal-management/resources/views/livewire/projects/project-list-clickup.blade.php)",
+      "Bash(awk 'NR>=1500 && NR<=2200 && /@endif/ {print NR\": \"$0}' /Users/alexjanuar/Projects/coal-management/resources/views/livewire/projects/project-list-clickup.blade.php)",
+      "Bash(awk '$1 > 1500')",
+      "Bash(awk 'NR>=1500 && NR<=2500 && /@endif|====/ {print NR\": \"$0}' /Users/alexjanuar/Projects/coal-management/resources/views/livewire/projects/project-list-clickup.blade.php)",
+      "Bash(awk -F: '$1 > 1300 && $1 < 1550')",
+      "Bash(awk 'NR>=1450 && NR<=1560 && /@endif/' /Users/alexjanuar/Projects/coal-management/resources/views/livewire/projects/project-list-clickup.blade.php)",
+      "Bash(awk -F: '$1 > 1450 && $1 < 1600')",
+      "Bash(awk '/PROJECT VIEW MODAL/,/^[[:space:]]*@once/' /Users/alexjanuar/Projects/coal-management/resources/views/livewire/projects/project-list-clickup.blade.php)"
     ]
   }
 }

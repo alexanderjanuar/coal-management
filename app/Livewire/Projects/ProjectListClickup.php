@@ -102,18 +102,36 @@ class ProjectListClickup extends Component implements HasActions, HasForms
 
     // Project view modal
     public ?int $viewingProjectId = null;
+    /**
+     * Set ke nilai viewingProjectId hanya SETELAH data heavy query selesai di-load.
+     * Dipakai untuk deferred loading: modal buka instant dengan skeleton (idLoaded=null),
+     * lalu request kedua memanggil loadProjectViewData() yang mengisi idLoaded
+     * → computed property `viewingProject` baru menjalankan query saat itu.
+     */
+    public ?int $viewingProjectIdLoaded = null;
     public string $newNoteContent = '';
     public string $newNoteType = 'general';
 
     public function openProjectView(int $projectId): void
     {
         $this->viewingProjectId = $projectId;
+        $this->viewingProjectIdLoaded = null; // reset — skeleton tampil dulu
         $this->resetNoteForm();
+    }
+
+    /**
+     * Triggered dari x-init di skeleton — fires second AJAX round-trip
+     * yang menjalankan heavy query lewat getViewingProjectProperty().
+     */
+    public function loadProjectViewData(): void
+    {
+        $this->viewingProjectIdLoaded = $this->viewingProjectId;
     }
 
     public function closeProjectView(): void
     {
         $this->viewingProjectId = null;
+        $this->viewingProjectIdLoaded = null;
         $this->resetNoteForm();
     }
 
@@ -150,7 +168,10 @@ class ProjectListClickup extends Component implements HasActions, HasForms
 
     public function getViewingProjectProperty(): ?Project
     {
-        if (! $this->viewingProjectId) {
+        // Deferred: hanya jalankan heavy query setelah loadProjectViewData() dipanggil.
+        // Modal buka instant dengan skeleton ketika viewingProjectId di-set tapi
+        // viewingProjectIdLoaded masih null.
+        if (! $this->viewingProjectIdLoaded) {
             return null;
         }
 
@@ -172,7 +193,7 @@ class ProjectListClickup extends Component implements HasActions, HasForms
                 'steps',
                 'steps as steps_completed_count' => fn ($q) => $q->where('status', 'completed'),
             ])
-            ->find($this->viewingProjectId);
+            ->find($this->viewingProjectIdLoaded);
     }
 
     public function getDepartmentOptionsProperty()

@@ -19,7 +19,7 @@ class Project extends Model
 
     use LogsActivity;
 
-    protected $fillable = ['client_id', 'department_id', 'name', 'description', 'status'];
+    protected $fillable = ['client_id', 'parent_project_id', 'department_id', 'name', 'description', 'status'];
 
     protected $casts = [
         'due_date' => 'date',
@@ -103,6 +103,16 @@ class Project extends Model
     public function client()
     {
         return $this->belongsTo(Client::class);
+    }
+
+    public function parentProject(): BelongsTo
+    {
+        return $this->belongsTo(Project::class, 'parent_project_id');
+    }
+
+    public function childProjects(): HasMany
+    {
+        return $this->hasMany(Project::class, 'parent_project_id');
     }
 
     public function department()
