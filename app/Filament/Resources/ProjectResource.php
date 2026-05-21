@@ -76,18 +76,7 @@ class ProjectResource extends Resource
                             Select::make('client_id')
                                 ->required()
                                 ->label('Client')
-                                ->options(function () {
-                                    // For super-admin, show all clients
-                                    if (auth()->user()->hasRole('super-admin')) {
-                                        return Client::pluck('name', 'id');
-                                    }
-
-                                    // For other users, only show their assigned clients
-                                    return Client::whereIn(
-                                        'id',
-                                        auth()->user()->userClients()->pluck('client_id')
-                                    )->pluck('name', 'id');
-                                })
+                                ->options(fn () => Client::pluck('name', 'id'))
                                 ->disableOptionWhen(
                                     fn(string $value): bool =>
                                     Client::find($value)?->status === 'Inactive'
@@ -400,20 +389,8 @@ class ProjectResource extends Resource
                     }
                     ]);
 
-                // If user is super-admin, return the optimized query
-                if ($user->hasRole('super-admin')) {
-                    return $baseQuery;
-                }
-
-                // For other users, optimize by using a join instead of a subquery
-                // Use groupBy to avoid duplicates and explicitly prefix table names
-                return $baseQuery
-                    ->join('user_clients', function ($join) use ($user) {
-                    $join->on('projects.client_id', '=', 'user_clients.client_id')
-                        ->where('user_clients.user_id', $user->id);
-                })
-                    ->select('projects.*')
-                    ->groupBy('projects.id'); // Use groupBy instead of distinct for better performance
+                // No user_clients gate — all authenticated users see all projects.
+                return $baseQuery;
             })
             ->columns([
                 Tables\Columns\TextColumn::make('index')
@@ -579,29 +556,11 @@ class ProjectResource extends Resource
 
                 SelectFilter::make('pic_id')
                     ->label('Person in Charge')
-                    ->options(function () {
-                        $user = auth()->user();
-
-                        if ($user->hasRole('super-admin')) {
-                            // Super admin can see all users as PIC options
-                            return User::whereHas('userClients')
-                                ->where('status', 'active')
-                                ->whereHas('roles', function ($query) {
-                                $query->whereIn('name', ['project-manager', 'direktur', 'super-admin']);
-                            })
-                                ->pluck('name', 'id');
-                        }
-
-                        // Regular users can only see PICs from their clients
-                        return User::whereHas('userClients', function ($query) use ($user) {
-                            $query->whereIn('client_id', $user->userClients()->pluck('client_id'));
-                        })
-                            ->where('status', 'active')
-                            ->whereHas('roles', function ($query) {
-                            $query->whereIn('name', ['project-manager', 'direktur', 'super-admin']);
-                        })
-                            ->pluck('name', 'id');
-                    })
+                    ->options(fn () =>
+                        User::where('status', 'active')
+                            ->whereHas('roles', fn ($q) => $q->whereIn('name', ['project-manager', 'direktur', 'super-admin']))
+                            ->pluck('name', 'id')
+                    )
                     ->searchable()
                     ->preload(),
                 SelectFilter::make('client_status')
@@ -625,16 +584,7 @@ class ProjectResource extends Resource
 
                 SelectFilter::make('client_id')
                     ->label('Client')
-                    ->options(function () {
-                        $user = auth()->user();
-
-                        if ($user->hasRole('super-admin')) {
-                            return Client::pluck('name', 'id');
-                        }
-
-                        return Client::whereIn('id', $user->userClients()->pluck('client_id'))
-                            ->pluck('name', 'id');
-                    })
+                    ->options(fn () => Client::pluck('name', 'id'))
                     ->searchable()
                     ->preload()
                     ->query(function (Builder $query, array $data): Builder {
@@ -725,29 +675,11 @@ class ProjectResource extends Resource
                         ->form([
                             Select::make('pic_id')
                                 ->label('Select Person in Charge (PIC)')
-                                ->options(function () {
-                                    $user = auth()->user();
-
-                                    if ($user->hasRole('super-admin')) {
-                                        // Super admin can assign any user as PIC
-                                        return User::whereHas('userClients')
-                                            ->where('status', 'active')
-                                            ->whereHas('roles', function ($query) {
-                                            $query->whereIn('name', ['project-manager', 'direktur', 'super-admin']);
-                                        })
-                                            ->pluck('name', 'id');
-                                    }
-
-                                    // Regular users can only assign PICs from their clients
-                                    return User::whereHas('userClients', function ($query) use ($user) {
-                                        $query->whereIn('client_id', $user->userClients()->pluck('client_id'));
-                                    })
-                                        ->where('status', 'active')
-                                        ->whereHas('roles', function ($query) {
-                                        $query->whereIn('name', ['project-manager', 'direktur', 'super-admin']);
-                                    })
-                                        ->pluck('name', 'id');
-                                })
+                                ->options(fn () =>
+                                    User::where('status', 'active')
+                                        ->whereHas('roles', fn ($q) => $q->whereIn('name', ['project-manager', 'direktur', 'super-admin']))
+                                        ->pluck('name', 'id')
+                                )
                                 ->searchable()
                                 ->required()
                                 ->native(false)
@@ -766,20 +698,8 @@ class ProjectResource extends Resource
                                 return;
                             }
 
-                            \DB::transaction(function () use ($records, $data, $picUser, &$updatedCount) {
+                            \DB::transaction(function () use ($records, $data, &$updatedCount) {
                                 foreach ($records as $project) {
-                                    // Check if user has permission to assign PIC to this project
-                                    $user = auth()->user();
-                                    if (!$user->hasRole('super-admin')) {
-                                        $hasAccess = $user->userClients()
-                                            ->where('client_id', $project->client_id)
-                                            ->exists();
-
-                                        if (!$hasAccess) {
-                                            continue; // Skip projects user doesn't have access to
-                                        }
-                                    }
-
                                     $project->update(['pic_id' => $data['pic_id']]);
                                     $updatedCount++;
                                 }

@@ -590,18 +590,9 @@ class ProjectListClickup extends Component implements HasActions, HasForms
 
     protected function baseQuery(): Builder
     {
-        $user = auth()->user();
-        $query = Project::query();
-
-        if (!$user->hasRole('super-admin')) {
-            $query->whereIn('client_id', function ($sub) use ($user) {
-                $sub->select('client_id')
-                    ->from('user_clients')
-                    ->where('user_id', $user->id);
-            });
-        }
-
-        return $query;
+        // No user_clients gate — every authenticated user can see all projects.
+        // Access control is handled at the panel/role level, not via user_clients.
+        return Project::query();
     }
 
     protected function filteredQuery(): Builder
