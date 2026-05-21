@@ -86,7 +86,6 @@ class ProjectListClickup extends Component implements HasActions, HasForms
         }
     }
 
-    public array $expanded = [];
     public array $expandedGroups = [];
 
     // Status manager panel
@@ -452,7 +451,7 @@ class ProjectListClickup extends Component implements HasActions, HasForms
 
     public function getGridTemplateProperty(): string
     {
-        $cols = ['30px', '30px', 'minmax(220px, 1.5fr)'];          // expand, status-icon, name
+        $cols = ['30px', 'minmax(220px, 1.5fr)'];                  // status-icon, name
         if ($this->isColumnVisible('status'))    $cols[] = '150px'; // status badge
         if ($this->isColumnVisible('client'))    $cols[] = '160px'; // client
         if ($this->isColumnVisible('type'))      $cols[] = '90px';  // type
@@ -462,15 +461,6 @@ class ProjectListClickup extends Component implements HasActions, HasForms
         if ($this->isColumnVisible('progress'))  $cols[] = '140px'; // progress
         $cols[] = '40px';                                           // actions (always)
         return implode(' ', $cols);
-    }
-
-    public function toggleExpand(int $projectId): void
-    {
-        if (\in_array($projectId, $this->expanded, true)) {
-            $this->expanded = array_values(array_diff($this->expanded, [$projectId]));
-        } else {
-            $this->expanded[] = $projectId;
-        }
     }
 
     public function toggleGroupExpand(string $groupKey): void
@@ -579,11 +569,12 @@ class ProjectListClickup extends Component implements HasActions, HasForms
 
     /**
      * Pool of users that can be added as project members.
-     * Excludes anyone with the 'client' role.
+     * Active users only, excludes anyone with the 'client' role.
      */
     public function getTeamPoolProperty()
     {
-        return User::whereDoesntHave('roles', fn ($q) => $q->where('name', 'client'))
+        return User::where('status', 'active')
+            ->whereDoesntHave('roles', fn ($q) => $q->where('name', 'client'))
             ->orderBy('name')
             ->get(['id', 'name', 'avatar_url', 'avatar_path']);
     }

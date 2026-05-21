@@ -287,7 +287,6 @@
     @php $gridStyle = 'grid-template-columns: ' . $this->gridTemplate . ';'; @endphp
     <div class="cu-scroll-wrap">
     <div class="cu-table-head" style="{{ $gridStyle }}">
-        <div class="cu-col-expand"></div>
         <div class="cu-col-status"></div>
         <div class="cu-col-name cu-sortable" wire:click="sortBy('name')">
             Name
@@ -397,7 +396,6 @@
                 @php
                     $statusMeta = $statuses[$project->status] ?? ['label' => ucfirst($project->status), 'color' => '#64748b', 'bg' => '#f1f5f9', 'shape' => 'empty'];
                     $priorityMeta = $priorities[$project->priority] ?? ['label' => ucfirst($project->priority), 'color' => '#94a3b8', 'bg' => '#f1f5f9'];
-                    $isExpanded = in_array($project->id, $expanded);
                     $hasSteps = $project->steps_count > 0;
                     $progress = $project->steps_count > 0
                         ? round(($project->steps_completed_count / $project->steps_count) * 100)
@@ -415,17 +413,7 @@
                     }
                 @endphp
 
-                <div class="cu-row {{ $isExpanded ? 'expanded' : '' }}" wire:key="proj-{{ $project->id }}" style="{{ $gridStyle }}">
-                    <div class="cu-col-expand">
-                        @if ($hasSteps)
-                            <button wire:click="toggleExpand({{ $project->id }})" class="cu-expand-btn" aria-label="Expand">
-                                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="transform: rotate({{ $isExpanded ? '90deg' : '0deg' }}); transition: transform .15s">
-                                    <polyline points="9 18 15 12 9 6"></polyline>
-                                </svg>
-                            </button>
-                        @endif
-                    </div>
-
+                <div class="cu-row" wire:key="proj-{{ $project->id }}" style="{{ $gridStyle }}">
                     {{-- Status as clickable icon — opens hierarchical picker --}}
                     <div class="cu-col-status">
                         <div x-data="{ open: false }" class="cu-pill-wrap">
@@ -657,56 +645,6 @@
                     </div>
                 </div>
 
-                {{-- ============== EXPANDED SUB-STEPS ============== --}}
-                @if ($isExpanded && $hasSteps)
-                    <div class="cu-subrows" wire:key="proj-{{ $project->id }}-steps">
-                        @foreach ($project->steps->sortBy('order') as $step)
-                            @php
-                                $stepMeta = $stepStatuses[$step->status] ?? ['label' => ucfirst($step->status), 'color' => '#64748b', 'bg' => '#f1f5f9'];
-                            @endphp
-                            <div class="cu-subrow" style="{{ $gridStyle }}">
-                                <div class="cu-col-expand"></div>
-                                <div class="cu-col-status">
-                                    <span class="cu-substep-dot" style="background: {{ $stepMeta['color'] }};" title="{{ $stepMeta['label'] }}"></span>
-                                </div>
-                                <div class="cu-col-name">
-                                    <div class="cu-subrow-name">
-                                        <span>{{ $step->name }}</span>
-                                    </div>
-                                </div>
-                                @if ($this->isColumnVisible('status'))
-                                    <div class="cu-col-status-badge"></div>
-                                @endif
-                                @if ($this->isColumnVisible('client'))
-                                    <div class="cu-col-client"></div>
-                                @endif
-                                @if ($this->isColumnVisible('type'))
-                                    <div class="cu-col-type"></div>
-                                @endif
-                                <div class="cu-col-priority">
-                                    @if ($step->priority)
-                                        <span class="cu-substep-priority">{{ ucfirst($step->priority) }}</span>
-                                    @endif
-                                </div>
-                                @if ($this->isColumnVisible('assignees'))
-                                    <div class="cu-col-assignees"></div>
-                                @endif
-                                <div class="cu-col-department">
-                                    @if ($step->due_date)
-                                        <span class="cu-substep-due" title="Tenggat langkah">
-                                            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" x2="16" y1="2" y2="6"/><line x1="8" x2="8" y1="2" y2="6"/><line x1="3" x2="21" y1="10" y2="10"/></svg>
-                                            {{ \Carbon\Carbon::parse($step->due_date)->translatedFormat('j M') }}
-                                        </span>
-                                    @endif
-                                </div>
-                                @if ($this->isColumnVisible('progress'))
-                                    <div class="cu-col-progress"></div>
-                                @endif
-                                <div class="cu-col-actions"></div>
-                            </div>
-                        @endforeach
-                    </div>
-                @endif
             @endforeach
 
             {{-- "Show all" expand button per group --}}
