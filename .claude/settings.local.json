@@ -29,7 +29,8 @@
       "Bash(awk '/PROJECT VIEW MODAL/,/^[[:space:]]*@once/' /Users/alexjanuar/Projects/coal-management/resources/views/livewire/projects/project-list-clickup.blade.php)",
       "Bash(php -l app/Filament/Resources/ProjectResource.php)",
       "Bash(php -l app/Filament/Resources/ClientResource/Pages/ListClients.php)",
-      "Bash(php -l app/Livewire/Clients/ClientListClickup.php)"
+      "Bash(php -l app/Livewire/Clients/ClientListClickup.php)",
+      "Bash(awk 'NR>=1024 { if \\(/^    @if/\\) depth++; if \\(/^    @endif/\\) { depth--; if \\(depth == 0\\) { print NR\": \"$0; exit } } }' /Users/alexjanuar/Projects/coal-management/resources/views/livewire/projects/project-list-clickup.blade.php)"
     ]
   }
 }

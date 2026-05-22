@@ -60,8 +60,11 @@
             $assigneeOptions = $this->assigneeOptions;
         @endphp
 
-        <div class="cu-filter cu-dropdown {{ $activeCount > 0 ? 'is-active' : '' }}" x-data="{ open: false, sections: { status: true, priority: true, type: false, due: false, pic: false, client: false, assignee: false } }">
-            <button type="button" @click="open = !open" class="cu-filter-btn">
+        <div class="cu-filter cu-dropdown {{ $activeCount > 0 ? 'is-active' : '' }}"
+             x-data="{ open: false, loaded: @js($filterOptionsLoaded), sections: { status: true, priority: true, type: false, due: false, pic: false, client: false, assignee: false } }">
+            <button type="button"
+                    @click="open = !open; if (open && !loaded) { $wire.loadFilterOptions(); loaded = true; }"
+                    class="cu-filter-btn">
                 <svg class="cu-filter-ico" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18l-7 9v6l-4-2v-4z"/></svg>
                 <span class="cu-filter-label">Filter</span>
                 @if ($activeCount > 0)
@@ -1018,12 +1021,15 @@
     @endif
 
     {{-- ============== PROJECT VIEW MODAL ============== --}}
-    @if ($viewingProjectId)
+    {{-- Always rendered + Alpine controls visibility via x-show.
+         This lets closeProjectView() use skipRender() — closing the modal
+         doesn't trigger a full component re-render anymore. --}}
+    <div x-show="$wire.viewingProjectId !== null" x-cloak>
         @if (! $this->viewingProject)
-            {{-- ============ SKELETON STATE ============
-                 Buka instant. x-init trigger second AJAX → loadProjectViewData()
-                 → next render gets the real data and replaces this skeleton. --}}
-            <div class="cu-pv-overlay" wire:keydown.escape.window="closeProjectView" x-init="$wire.loadProjectViewData()">
+            {{-- Skeleton fallback — only renders if viewingProject is null
+                 (e.g. project not found or transitional state). Open+load is a
+                 single round-trip now, so this rarely shows in practice. --}}
+            <div class="cu-pv-overlay" wire:keydown.escape.window="closeProjectView">
                 <div class="cu-pv-backdrop" wire:click="closeProjectView"></div>
                 <div class="cu-pv-modal" role="dialog" aria-modal="true" aria-label="Memuat proyek">
                     {{-- Header skeleton --}}
@@ -1541,7 +1547,7 @@
             </div>
         </div>
         @endif {{-- /skeleton-vs-loaded --}}
-    @endif
+    </div> {{-- /x-show wrapper --}}
 
     @once
         <style>
