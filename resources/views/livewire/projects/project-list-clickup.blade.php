@@ -1363,6 +1363,13 @@
                                                                     @foreach ($submissions as $sub)
                                                                         @php
                                                                             $ext = strtoupper(pathinfo($sub->file_path, PATHINFO_EXTENSION) ?: 'FILE');
+                                                                            $subStatusMeta = match ($sub->status) {
+                                                                                'approved'       => ['label' => 'Disetujui',       'tone' => 'approved'],
+                                                                                'rejected'       => ['label' => 'Ditolak',         'tone' => 'rejected'],
+                                                                                'pending_review' => ['label' => 'Menunggu Review', 'tone' => 'pending'],
+                                                                                'uploaded'       => ['label' => 'Diunggah',        'tone' => 'uploaded'],
+                                                                                default          => ['label' => ucfirst((string) $sub->status), 'tone' => 'neutral'],
+                                                                            };
                                                                         @endphp
                                                                         <li>
                                                                             <button type="button"
@@ -1377,7 +1384,18 @@
                                                                                         <span>{{ $sub->created_at?->diffForHumans() }}</span>
                                                                                     </span>
                                                                                 </span>
-                                                                                <span class="cu-pv-doc-file-status is-{{ $sub->status }}">{{ ucfirst($sub->status ?? 'pending') }}</span>
+                                                                                <span class="cu-pv-doc-file-status is-{{ $subStatusMeta['tone'] }}">
+                                                                                    @if ($subStatusMeta['tone'] === 'approved')
+                                                                                        <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                                                                                    @elseif ($subStatusMeta['tone'] === 'rejected')
+                                                                                        <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+                                                                                    @elseif ($subStatusMeta['tone'] === 'pending')
+                                                                                        <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><polyline points="12 7 12 12 15 14"/></svg>
+                                                                                    @elseif ($subStatusMeta['tone'] === 'uploaded')
+                                                                                        <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19V5"/><polyline points="5 12 12 5 19 12"/></svg>
+                                                                                    @endif
+                                                                                    {{ $subStatusMeta['label'] }}
+                                                                                </span>
                                                                                 <span class="cu-pv-doc-dl" aria-hidden="true">
                                                                                     {{-- Preview icon — eye, replaces direct download --}}
                                                                                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
@@ -4081,26 +4099,29 @@
     .cu-pv-doc-sep { opacity: .6; }
 
     .cu-pv-doc-file-status {
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
         font-size: 10px;
         font-weight: 700;
-        padding: 2px 7px;
+        padding: 3px 8px;
         border-radius: 99px;
         text-transform: uppercase;
         letter-spacing: .04em;
         background: var(--cu-bg-soft);
         color: var(--cu-muted);
         white-space: nowrap;
+        box-shadow: inset 0 0 0 1px rgba(15, 23, 42, .05);
     }
-    .cu-pv-doc-file-status.is-valid,
-    .cu-pv-doc-file-status.is-approved { background: #d1fae5; color: #065f46; }
-    .cu-pv-doc-file-status.is-rejected { background: #fee2e2; color: #b91c1c; }
-    .cu-pv-doc-file-status.is-pending_review,
-    .cu-pv-doc-file-status.is-pending { background: #fef3c7; color: #92400e; }
-    .dark .cu-pv-doc-file-status.is-valid,
-    .dark .cu-pv-doc-file-status.is-approved { background: rgba(16,185,129,.15); color: #34d399; }
+    .cu-pv-doc-file-status.is-approved { background: #d1fae5; color: #065f46; box-shadow: inset 0 0 0 1px rgba(6, 95, 70, .12); }
+    .cu-pv-doc-file-status.is-rejected { background: #fee2e2; color: #b91c1c; box-shadow: inset 0 0 0 1px rgba(185, 28, 28, .12); }
+    .cu-pv-doc-file-status.is-pending  { background: #fef3c7; color: #92400e; box-shadow: inset 0 0 0 1px rgba(146, 64, 14, .12); }
+    .cu-pv-doc-file-status.is-uploaded { background: #dbeafe; color: #1e40af; box-shadow: inset 0 0 0 1px rgba(30, 64, 175, .12); }
+
+    .dark .cu-pv-doc-file-status.is-approved { background: rgba(16,185,129,.15);  color: #34d399; }
     .dark .cu-pv-doc-file-status.is-rejected { background: rgba(248,113,113,.15); color: #f87171; }
-    .dark .cu-pv-doc-file-status.is-pending_review,
-    .dark .cu-pv-doc-file-status.is-pending { background: rgba(251,191,36,.15); color: #fbbf24; }
+    .dark .cu-pv-doc-file-status.is-pending  { background: rgba(251,191,36,.15);  color: #fbbf24; }
+    .dark .cu-pv-doc-file-status.is-uploaded { background: rgba(96,165,250,.15);  color: #60a5fa; }
 
     /* Download arrow on the right — becomes accent-filled on row hover */
     .cu-pv-doc-dl {

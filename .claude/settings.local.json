@@ -27,7 +27,9 @@
       "Bash(awk 'NR>=1450 && NR<=1560 && /@endif/' /Users/alexjanuar/Projects/coal-management/resources/views/livewire/projects/project-list-clickup.blade.php)",
       "Bash(awk -F: '$1 > 1450 && $1 < 1600')",
       "Bash(awk '/PROJECT VIEW MODAL/,/^[[:space:]]*@once/' /Users/alexjanuar/Projects/coal-management/resources/views/livewire/projects/project-list-clickup.blade.php)",
-      "Bash(php -l app/Filament/Resources/ProjectResource.php)"
+      "Bash(php -l app/Filament/Resources/ProjectResource.php)",
+      "Bash(php -l app/Filament/Resources/ClientResource/Pages/ListClients.php)",
+      "Bash(php -l app/Livewire/Clients/ClientListClickup.php)"
     ]
   }
 }
