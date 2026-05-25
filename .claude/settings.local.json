@@ -30,7 +30,11 @@
       "Bash(php -l app/Filament/Resources/ProjectResource.php)",
       "Bash(php -l app/Filament/Resources/ClientResource/Pages/ListClients.php)",
       "Bash(php -l app/Livewire/Clients/ClientListClickup.php)",
-      "Bash(awk 'NR>=1024 { if \\(/^    @if/\\) depth++; if \\(/^    @endif/\\) { depth--; if \\(depth == 0\\) { print NR\": \"$0; exit } } }' /Users/alexjanuar/Projects/coal-management/resources/views/livewire/projects/project-list-clickup.blade.php)"
+      "Bash(awk 'NR>=1024 { if \\(/^    @if/\\) depth++; if \\(/^    @endif/\\) { depth--; if \\(depth == 0\\) { print NR\": \"$0; exit } } }' /Users/alexjanuar/Projects/coal-management/resources/views/livewire/projects/project-list-clickup.blade.php)",
+      "Bash(php -l app/Filament/Pages/ProjectDashboard.php)",
+      "Bash(php -l app/Livewire/Projects/ProjectDashboard.php)",
+      "Bash(php -l /Users/alexjanuar/Projects/coal-management/app/Livewire/Projects/ProjectDashboard.php)",
+      "Bash(awk 'NR>=240 && NR<=340 {print NR\": \"$0}' /Users/alexjanuar/Projects/coal-management/resources/views/livewire/projects/project-dashboard.blade.php)"
     ]
   }
 }
