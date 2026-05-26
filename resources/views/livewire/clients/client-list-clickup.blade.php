@@ -468,6 +468,7 @@
             [x-cloak] { display: none !important; }
 
             .cl-root {
+                /* Light theme tokens */
                 --cl-ink: #0f172a;
                 --cl-muted: #64748b;
                 --cl-subtle: #94a3b8;
@@ -479,12 +480,31 @@
                 --cl-accent: #6366f1;
                 --cl-accent-ink: #4f46e5;
                 --cl-accent-soft: #eef2ff;
+                /* Mode-sensitive surfaces — re-mapped in dark mode */
+                --cl-cred-hover-bg: #e0e7ff;
                 font-family: 'Plus Jakarta Sans', system-ui, sans-serif;
                 color: var(--cl-ink);
                 font-size: 13.5px;
                 display: flex;
                 flex-direction: column;
                 gap: 14px;
+            }
+
+            /* Dark mode — Filament toggles `.dark` on <html>. Same near-black
+               palette as the Project Dashboard so both surfaces match. */
+            .dark .cl-root {
+                --cl-ink: #f3f4f6;
+                --cl-muted: #9ca3af;
+                --cl-subtle: #6b7280;
+                --cl-line: #2e2e2e;
+                --cl-line-strong: #525252;
+                --cl-bg: #171717;
+                --cl-bg-soft: #0a0a0a;
+                --cl-bg-hover: #262626;
+                --cl-accent: #818cf8;
+                --cl-accent-ink: #a5b4fc;
+                --cl-accent-soft: #1e1b4b;
+                --cl-cred-hover-bg: #1e1b4b;
             }
 
             /* Toolbar */
@@ -863,6 +883,27 @@
                 box-shadow: 0 0 0 1.5px color-mix(in srgb, currentColor 10%, transparent);
             }
 
+            /* Dark-mode treatment for status / type / PKP pills.
+               Pills carry inline `color` (dark hue) + `background` (light pastel)
+               set by PHP, which looks like a sticker on a dark page. Override:
+                 1. Lighten the text so it reads on the dark surface,
+                 2. Derive a deep tinted bg from the (now lighter) text color,
+                 3. Drop the white-gloss highlight, keep a subtle outline.
+               Inline `style="..."` must be beaten with `!important`. */
+            .dark .cl-pill,
+            .dark .cl-pill-soft,
+            .dark .cl-chip-pill {
+                color: color-mix(in srgb, currentColor 55%, white) !important;
+                background: color-mix(in srgb, currentColor 22%, var(--cl-bg)) !important;
+                box-shadow: inset 0 0 0 1px color-mix(in srgb, currentColor 28%, transparent) !important;
+            }
+            /* Dot inline bg is the original dark hue — match it to the
+               lightened pill text so it stays visible on the new bg. */
+            .dark .cl-pill-dot,
+            .dark .cl-pill-dot-sm {
+                background: currentColor !important;
+            }
+
             /* Group */
             .cl-group-name { font-size: 12px; color: var(--cl-muted); font-weight: 500; }
             .cl-empty-cell { color: var(--cl-subtle); font-size: 13px; }
@@ -896,7 +937,7 @@
                 transition: background .12s, box-shadow .12s, transform .08s;
             }
             .cl-cred-pill:hover {
-                background: #e0e7ff;
+                background: var(--cl-cred-hover-bg);
                 box-shadow: inset 0 0 0 1px rgba(99, 102, 241, .35), 0 1px 3px rgba(99, 102, 241, .15);
             }
             .cl-cred-pill:active { transform: translateY(1px); }

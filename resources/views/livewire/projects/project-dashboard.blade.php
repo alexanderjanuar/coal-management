@@ -1,15 +1,10 @@
 @php
-    use App\Livewire\Projects\ProjectDashboard;
-    $timeRanges = ProjectDashboard::TIME_RANGES;
-
-    $k = $this->kpis;
     $statusDist = $this->statusDistribution;
     $picWorkload = $this->picWorkload;
     $sopDistribution = $this->sopDistribution;
     $sopSamples = $this->sopSamples;
     $trend = $this->completionTrend;
-    $timeLabel = $this->timeRangeLabel;
-    $timeSummary = $this->dateRangeSummary;
+    $recentActivities = $this->recentActivities;
 
     // Donut math
     $donutSize = 220;
@@ -72,51 +67,8 @@
 @endphp
 
 <div class="pd-root">
-    {{-- ============== TOP BAR: time-range filter ============== --}}
-    <div class="pd-topbar">
-        <div class="pd-topbar-meta">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="pd-topbar-meta-icon">
-                <rect x="3" y="4" width="18" height="18" rx="2"/>
-                <line x1="16" y1="2" x2="16" y2="6"/>
-                <line x1="8" y1="2" x2="8" y2="6"/>
-                <line x1="3" y1="10" x2="21" y2="10"/>
-            </svg>
-            <span>{{ $timeSummary }}</span>
-        </div>
-
-        <div class="pd-time-picker" x-data="{ open: false }" @keydown.escape.window="open = false">
-            <button type="button" @click="open = !open" class="pd-time-trigger" :class="open && 'is-open'">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                    <circle cx="12" cy="12" r="9"/>
-                    <polyline points="12 7 12 12 15 14"/>
-                </svg>
-                <span class="pd-time-label">{{ $timeLabel }}</span>
-                <svg class="pd-time-caret" :class="open && 'is-flipped'" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round">
-                    <polyline points="6 9 12 15 18 9"/>
-                </svg>
-            </button>
-
-            <div x-show="open" @click.outside="open = false" x-cloak class="pd-time-menu" x-transition.opacity.duration.150ms>
-                <div class="pd-time-menu-head">Pilih Periode</div>
-                @foreach ($timeRanges as $key => $label)
-                    <button type="button"
-                            wire:click="setTimeRange('{{ $key }}')"
-                            @click="open = false"
-                            class="pd-time-option {{ $timeRange === $key ? 'is-active' : '' }}">
-                        <span>{{ $label }}</span>
-                        @if ($timeRange === $key)
-                            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-                                <polyline points="20 6 9 17 4 12"/>
-                            </svg>
-                        @endif
-                    </button>
-                @endforeach
-            </div>
-        </div>
-    </div>
-
-    {{-- ============== ROW 1: Pipeline donut + PIC workload ============== --}}
-    <section class="pd-row pd-row-2col">
+    {{-- ============== ROW 1: Pipeline donut + PIC workload + Recent activities ============== --}}
+    <section class="pd-row pd-row-3col">
         {{-- Interactive donut --}}
         <div class="pd-card" x-data="{ hovered: null }">
             <header class="pd-card-head">
@@ -130,7 +82,7 @@
                 <div class="pd-donut-wrap">
                     <svg class="pd-donut" width="{{ $donutSize }}" height="{{ $donutSize }}" viewBox="0 0 {{ $donutSize }} {{ $donutSize }}">
                         <circle cx="{{ $donutSize / 2 }}" cy="{{ $donutSize / 2 }}" r="{{ $donutRadius }}"
-                                fill="none" stroke="#eef0f3" stroke-width="{{ $donutStroke }}"/>
+                                fill="none" class="pd-donut-track" stroke-width="{{ $donutStroke }}"/>
                         @foreach ($donutSegments as $seg)
                             <circle class="pd-donut-seg"
                                     cx="{{ $donutSize / 2 }}" cy="{{ $donutSize / 2 }}" r="{{ $donutRadius }}"
@@ -188,7 +140,7 @@
         <div class="pd-card" x-data="{ hoveredStatus: null }">
             <header class="pd-card-head">
                 <h3 class="pd-card-title">Beban Kerja PIC</h3>
-                <span class="pd-card-meta">10 teratas · proyek aktif</span>
+                <span class="pd-card-meta">10 teratas · semua proyek</span>
             </header>
 
             @if (empty($picWorkload['rows']))
@@ -209,9 +161,15 @@
 
                 <ul class="pd-bars">
                     @foreach ($picWorkload['rows'] as $row)
-                        <li class="pd-bar-row">
+                        @php $isUnassigned = !empty($row['is_unassigned']); @endphp
+                        <li class="pd-bar-row {{ $isUnassigned ? 'pd-bar-row--unassigned' : '' }}">
                             <div class="pd-bar-info">
-                                <span class="pd-bar-name" title="{{ $row['name'] }}">{{ $row['name'] }}</span>
+                                <span class="pd-bar-name" title="{{ $row['name'] }}">
+                                    @if ($isUnassigned)
+                                        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-1px;margin-right:4px;"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+                                    @endif
+                                    {{ $row['name'] }}
+                                </span>
                                 <span class="pd-bar-count">{{ $row['total'] }}</span>
                             </div>
                             <div class="pd-bar-track">
@@ -233,6 +191,51 @@
                         </li>
                     @endforeach
                 </ul>
+            @endif
+        </div>
+
+        {{-- Recent activities — latest project-related entries, grouped by day --}}
+        <div class="pd-card pd-activity-card">
+            <header class="pd-card-head">
+                <h3 class="pd-card-title">Aktivitas Terbaru</h3>
+                @php $totalActivities = count($recentActivities['today']) + count($recentActivities['yesterday']) + count($recentActivities['older']); @endphp
+                <span class="pd-card-meta">{{ $totalActivities }} terakhir</span>
+            </header>
+
+            @if ($totalActivities === 0)
+                <div class="pd-empty">Belum ada aktivitas proyek.</div>
+            @else
+                <div class="pd-activity-list">
+                    @foreach (['today' => 'Hari Ini', 'yesterday' => 'Kemarin', 'older' => 'Lebih Lama'] as $bucketKey => $bucketLabel)
+                        @if (!empty($recentActivities[$bucketKey]))
+                            <div class="pd-activity-group">
+                                <div class="pd-activity-group-head">{{ $bucketLabel }}</div>
+                                <ul class="pd-activity-items">
+                                    @foreach ($recentActivities[$bucketKey] as $act)
+                                        <li class="pd-activity-item">
+                                            <div class="pd-activity-line">
+                                                <span class="pd-activity-text">
+                                                    <strong>{{ $act['user_name'] }}</strong>
+                                                    {{ $act['description'] }}
+                                                </span>
+                                                <span class="pd-activity-time">{{ $act['time_ago'] }}</span>
+                                            </div>
+                                            @if ($act['project_url'])
+                                                <a href="{{ $act['project_url'] }}" class="pd-activity-project" title="{{ $act['client_name'] ? $act['client_name'] . ' · ' : '' }}{{ $act['project_name'] }}">
+                                                    @if ($act['client_name'])
+                                                        <span class="pd-activity-client">{{ $act['client_name'] }}</span>
+                                                        <span class="pd-activity-sep">·</span>
+                                                    @endif
+                                                    {{ $act['project_name'] }}
+                                                </a>
+                                            @endif
+                                        </li>
+                                    @endforeach
+                                </ul>
+                            </div>
+                        @endif
+                    @endforeach
+                </div>
             @endif
         </div>
     </section>
@@ -362,7 +365,7 @@
                                 <div class="pd-donut-wrap pd-sop-donut">
                                     <svg class="pd-donut" width="{{ $sopDonutSize }}" height="{{ $sopDonutSize }}" viewBox="0 0 {{ $sopDonutSize }} {{ $sopDonutSize }}">
                                         <circle cx="{{ $sopDonutSize / 2 }}" cy="{{ $sopDonutSize / 2 }}" r="{{ $sopDonutRadius }}"
-                                                fill="none" stroke="#eef0f3" stroke-width="{{ $sopDonutStroke }}"/>
+                                                fill="none" class="pd-donut-track" stroke-width="{{ $sopDonutStroke }}"/>
                                         @foreach ($row['donutSegments'] as $seg)
                                             <circle class="pd-donut-seg"
                                                     cx="{{ $sopDonutSize / 2 }}" cy="{{ $sopDonutSize / 2 }}" r="{{ $sopDonutRadius }}"
@@ -529,7 +532,7 @@
         <div class="pd-card" x-data="{ hovered: null }">
             <header class="pd-card-head">
                 <h3 class="pd-card-title">Tren Penyelesaian</h3>
-                <span class="pd-card-meta">{{ $timeLabel }} · per {{ $trend['granularity'] === 'day' ? 'hari' : ($trend['granularity'] === 'week' ? 'minggu' : 'bulan') }}</span>
+                <span class="pd-card-meta">12 bulan terakhir · per bulan</span>
             </header>
 
             @php
@@ -560,7 +563,7 @@
                     @for ($i = 0; $i <= 3; $i++)
                         @php $y = $padY + ($innerH * $i / 3); @endphp
                         <line x1="{{ $padX }}" y1="{{ $y }}" x2="{{ $chartW - $padX }}" y2="{{ $y }}"
-                              stroke="#eef0f3" stroke-width="1" stroke-dasharray="2 4"/>
+                              class="pd-trend-grid" stroke-width="1" stroke-dasharray="2 4"/>
                     @endfor
 
                     @if (!empty($points))
@@ -642,7 +645,7 @@
             <div class="pd-trend-summary">
                 <div>
                     <span class="pd-trend-num">{{ $trend['total'] }}</span>
-                    <span class="pd-trend-cap">total selesai · {{ $timeLabel }}</span>
+                    <span class="pd-trend-cap">total selesai · 12 bulan terakhir</span>
                 </div>
                 @if (!empty($points))
                     @php $latest = end($trend['buckets']); @endphp
@@ -660,6 +663,7 @@
             [x-cloak] { display: none !important; }
 
             .pd-root {
+                /* Light theme tokens */
                 --pd-ink: #0f172a;
                 --pd-muted: #64748b;
                 --pd-subtle: #94a3b8;
@@ -673,6 +677,10 @@
                 --pd-accent-soft: #eef2ff;
                 --pd-danger: #dc2626;
                 --pd-danger-soft: #fee2e2;
+                /* Shadow/halo tokens — adjustable per theme */
+                --pd-card-shadow: 0 1px 3px rgba(15, 23, 42, .04);
+                --pd-dot-ring: rgba(255, 255, 255, .8);
+                --pd-donut-track: #eef0f3;
                 font-family: 'Plus Jakarta Sans', system-ui, sans-serif;
                 color: var(--pd-ink);
                 font-size: 13.5px;
@@ -681,94 +689,31 @@
                 gap: 18px;
             }
 
-            /* Top bar */
-            .pd-topbar {
-                display: flex;
-                align-items: center;
-                justify-content: space-between;
-                gap: 12px;
-                flex-wrap: wrap;
+            /* Dark mode — Filament toggles `.dark` on <html>. Card surface
+               sits one shade above the near-black panel chrome so it reads
+               as a contained surface without the heavy lifted shadow look. */
+            .dark .pd-root {
+                --pd-ink: #f3f4f6;
+                --pd-muted: #9ca3af;
+                --pd-subtle: #6b7280;
+                --pd-line: #2e2e2e;
+                --pd-line-strong: #525252;
+                --pd-bg: #171717;
+                --pd-bg-soft: #0a0a0a;
+                --pd-bg-hover: #262626;
+                --pd-accent: #818cf8;
+                --pd-accent-ink: #a5b4fc;
+                --pd-accent-soft: #1e1b4b;
+                --pd-danger: #f87171;
+                --pd-danger-soft: #450a0a;
+                --pd-card-shadow: 0 0 0 1px rgba(255, 255, 255, .03);
+                --pd-dot-ring: rgba(0, 0, 0, .5);
+                --pd-donut-track: #262626;
             }
-            .pd-topbar-meta {
-                display: inline-flex; align-items: center; gap: 8px;
-                font-size: 12.5px;
-                color: var(--pd-muted);
-                font-weight: 500;
-            }
-            .pd-topbar-meta-icon { color: var(--pd-subtle); }
 
-            /* Time picker */
-            .pd-time-picker { position: relative; }
-            .pd-time-trigger {
-                display: inline-flex; align-items: center; gap: 8px;
-                height: 36px;
-                padding: 0 12px 0 14px;
-                background: var(--pd-bg);
-                border: 0;
-                border-radius: 9px;
-                font: inherit; font-size: 13px; font-weight: 600;
-                color: var(--pd-ink);
-                cursor: pointer;
-                box-shadow:
-                    inset 0 0 0 1px var(--pd-line-strong),
-                    0 1px 2px rgba(15, 23, 42, .04);
-                transition: box-shadow .14s, transform .08s, color .12s;
-            }
-            .pd-time-trigger:hover {
-                box-shadow:
-                    inset 0 0 0 1px var(--pd-accent),
-                    0 2px 6px rgba(99, 102, 241, .12);
-                color: var(--pd-accent-ink);
-            }
-            .pd-time-trigger.is-open {
-                box-shadow:
-                    inset 0 0 0 1px var(--pd-accent),
-                    0 0 0 3px rgba(99, 102, 241, .14);
-                color: var(--pd-accent-ink);
-            }
-            .pd-time-trigger:active { transform: translateY(1px); }
-            .pd-time-trigger > svg:first-child { color: var(--pd-accent); }
-            .pd-time-caret { color: var(--pd-subtle); transition: transform .18s; }
-            .pd-time-caret.is-flipped { transform: rotate(180deg); }
-
-            .pd-time-menu {
-                position: absolute; top: calc(100% + 6px); right: 0; z-index: 30;
-                min-width: 200px;
-                background: var(--pd-bg);
-                border-radius: 12px;
-                padding: 6px;
-                box-shadow:
-                    0 0 0 1px rgba(15, 23, 42, .04),
-                    0 12px 32px rgba(15, 23, 42, .12);
-            }
-            .pd-time-menu-head {
-                padding: 8px 10px 4px;
-                font-size: 10.5px;
-                font-weight: 700;
-                text-transform: uppercase;
-                letter-spacing: .08em;
-                color: var(--pd-subtle);
-            }
-            .pd-time-option {
-                display: flex; align-items: center; justify-content: space-between;
-                width: 100%;
-                padding: 8px 10px;
-                background: transparent;
-                border: 0;
-                border-radius: 8px;
-                font: inherit; font-size: 12.5px; font-weight: 500;
-                color: var(--pd-ink);
-                cursor: pointer;
-                text-align: left;
-                transition: background .1s, color .1s;
-            }
-            .pd-time-option:hover { background: var(--pd-bg-hover); }
-            .pd-time-option.is-active {
-                background: var(--pd-accent-soft);
-                color: var(--pd-accent-ink);
-                font-weight: 600;
-            }
-            .pd-time-option.is-active svg { color: var(--pd-accent); }
+            /* SVG strokes via class so they pick up theme tokens */
+            .pd-donut-track { stroke: var(--pd-donut-track); }
+            .pd-trend-grid  { stroke: var(--pd-line); }
 
             /* Rows / cards */
             .pd-row { display: block; }
@@ -779,6 +724,21 @@
                re-introduce dead whitespace. */
             .pd-row-2col--top { align-items: start; }
             @media (max-width: 900px) { .pd-row-2col { grid-template-columns: 1fr; } }
+            /* 3-col row — donut + PIC + activity. Drops to 2-col below 1200px
+               (activity card wraps to its own row), and to 1-col below 760px. */
+            .pd-row-3col { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 14px; }
+            @media (max-width: 1200px) { .pd-row-3col { grid-template-columns: 1fr 1fr; } }
+            @media (max-width: 760px)  { .pd-row-3col { grid-template-columns: 1fr; } }
+
+            /* Mobile tweaks — tighten card padding, drop dashboard gap, shrink
+               donut breathing space so it doesn't dominate narrow viewports. */
+            @media (max-width: 640px) {
+                .pd-root { gap: 12px; font-size: 13px; }
+                .pd-card { padding: 14px 14px 16px; }
+                .pd-card-head { margin-bottom: 12px; }
+                .pd-donut-wrap { margin: 0 0 12px; }
+                .pd-activity-list { max-height: 360px; }
+            }
             .pd-card {
                 background: var(--pd-bg);
                 border: 1px solid var(--pd-line);
@@ -889,6 +849,14 @@
                 justify-content: space-around;
             }
             .pd-bar-row { display: flex; flex-direction: column; gap: 6px; }
+            /* "Tanpa PIC" row — visually flagged as a category, not a person */
+            .pd-bar-row--unassigned .pd-bar-name {
+                font-style: italic;
+                color: var(--pd-muted);
+                display: inline-flex;
+                align-items: center;
+            }
+            .pd-bar-row--unassigned .pd-bar-name svg { color: var(--pd-danger); flex-shrink: 0; }
             .pd-bar-info { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
             .pd-bar-name {
                 font-size: 12.5px; font-weight: 500; color: var(--pd-ink);
@@ -996,7 +964,7 @@
                 display: flex; align-items: center; justify-content: center;
                 color: var(--pd-ink);
                 cursor: pointer;
-                box-shadow: 0 1px 3px rgba(0, 0, 0, .08);
+                box-shadow: var(--pd-card-shadow);
                 transition: background .12s, opacity .15s, transform .12s;
                 padding: 0;
             }
@@ -1118,7 +1086,7 @@
                 transition: background .12s;
             }
             .pd-list-row:hover { background: var(--pd-bg-hover); }
-            .pd-list-dot { width: 8px; height: 8px; border-radius: 50%; box-shadow: 0 0 0 2px rgba(255, 255, 255, .8); }
+            .pd-list-dot { width: 8px; height: 8px; border-radius: 50%; box-shadow: 0 0 0 2px var(--pd-dot-ring); }
             .pd-list-main { min-width: 0; }
             .pd-list-name {
                 font-size: 13px; font-weight: 600; color: var(--pd-ink);
@@ -1135,6 +1103,68 @@
                 display: block; font-size: 10.5px; color: var(--pd-subtle);
                 margin-top: 1px; font-variant-numeric: tabular-nums;
             }
+
+            /* Activity feed — minimal 3-line layout per item, no avatar */
+            .pd-activity-list {
+                max-height: 480px;
+                overflow-y: auto;
+                scrollbar-width: thin;
+                scrollbar-color: var(--pd-line) transparent;
+            }
+            .pd-activity-list::-webkit-scrollbar { width: 6px; }
+            .pd-activity-list::-webkit-scrollbar-track { background: transparent; }
+            .pd-activity-list::-webkit-scrollbar-thumb { background: var(--pd-line); border-radius: 3px; }
+            .pd-activity-list::-webkit-scrollbar-thumb:hover { background: var(--pd-subtle); }
+            .pd-activity-group + .pd-activity-group { margin-top: 8px; }
+            .pd-activity-group-head {
+                position: sticky; top: 0; z-index: 1;
+                background: var(--pd-bg);
+                padding: 8px 0 8px;
+                font-size: 10.5px; font-weight: 700;
+                text-transform: uppercase; letter-spacing: .08em;
+                color: var(--pd-subtle);
+            }
+            .pd-activity-items {
+                list-style: none; padding: 0; margin: 0;
+                display: flex; flex-direction: column;
+            }
+            .pd-activity-item {
+                display: flex; flex-direction: column; gap: 2px;
+                padding: 10px 2px;
+                border-top: 1px solid var(--pd-line);
+            }
+            .pd-activity-item:first-child { border-top: 0; padding-top: 4px; }
+            /* Single line: name + verb description, time stays right-aligned.
+               Long descriptions wrap to the next line under the name. */
+            .pd-activity-line {
+                display: flex; align-items: baseline; gap: 8px;
+            }
+            .pd-activity-text {
+                flex: 1; min-width: 0;
+                font-size: 12.5px;
+                color: var(--pd-muted);
+                line-height: 1.45;
+            }
+            .pd-activity-text strong { color: var(--pd-ink); font-weight: 600; }
+            .pd-activity-time {
+                flex-shrink: 0;
+                font-size: 11px; color: var(--pd-subtle);
+                font-variant-numeric: tabular-nums;
+                white-space: nowrap;
+            }
+            /* Project link — subtle, single-line, shows client · project */
+            .pd-activity-project {
+                display: inline-block;
+                font-size: 11px;
+                color: var(--pd-subtle);
+                text-decoration: none;
+                max-width: 100%;
+                overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+                transition: color .12s;
+            }
+            .pd-activity-project:hover { color: var(--pd-accent-ink); }
+            .pd-activity-client { color: var(--pd-muted); font-weight: 600; }
+            .pd-activity-sep { color: var(--pd-line-strong); margin: 0 3px; }
 
             /* Trend chart */
             .pd-chart-wrap { width: 100%; height: 180px; }

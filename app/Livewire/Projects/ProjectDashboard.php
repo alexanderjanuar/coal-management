@@ -5,113 +5,16 @@ namespace App\Livewire\Projects;
 use App\Filament\Resources\ProjectResource;
 use App\Models\Project;
 use App\Models\ProjectStatus;
+use App\Models\UserActivity;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
-use Livewire\Attributes\Url;
 use Livewire\Component;
 
 class ProjectDashboard extends Component
 {
     /** Cache TTL for all dashboard queries (seconds). */
     protected const CACHE_TTL = 60;
-
-    /** Selected time range preset — affects time-bound widgets (completion KPI, trend). */
-    #[Url(as: 'range')]
-    public string $timeRange = 'this_month';
-
-    public const TIME_RANGES = [
-        'today'        => 'Hari Ini',
-        'yesterday'    => 'Kemarin',
-        'last_7_days'  => '7 Hari Terakhir',
-        'last_30_days' => '30 Hari Terakhir',
-        'this_month'   => 'Bulan Ini',
-        'last_month'   => 'Bulan Lalu',
-        'this_quarter' => 'Kuartal Ini',
-        'this_year'    => 'Tahun Ini',
-        'all_time'     => 'Sepanjang Waktu',
-    ];
-
-    public function setTimeRange(string $range): void
-    {
-        if (\array_key_exists($range, self::TIME_RANGES)) {
-            $this->timeRange = $range;
-        }
-    }
-
-    /** [start, end] Carbon pair for current $timeRange. Null for 'all_time'. */
-    protected function dateRange(): ?array
-    {
-        $now = now();
-        return match ($this->timeRange) {
-            'today'        => [$now->copy()->startOfDay(),                  $now->copy()->endOfDay()],
-            'yesterday'    => [$now->copy()->subDay()->startOfDay(),        $now->copy()->subDay()->endOfDay()],
-            'last_7_days'  => [$now->copy()->subDays(6)->startOfDay(),      $now->copy()->endOfDay()],
-            'last_30_days' => [$now->copy()->subDays(29)->startOfDay(),     $now->copy()->endOfDay()],
-            'this_month'   => [$now->copy()->startOfMonth(),                $now->copy()->endOfMonth()],
-            'last_month'   => [$now->copy()->subMonth()->startOfMonth(),    $now->copy()->subMonth()->endOfMonth()],
-            'this_quarter' => [$now->copy()->startOfQuarter(),              $now->copy()->endOfQuarter()],
-            'this_year'    => [$now->copy()->startOfYear(),                 $now->copy()->endOfYear()],
-            'all_time'     => null,
-            default        => [$now->copy()->startOfMonth(), $now->copy()->endOfMonth()],
-        };
-    }
-
-    public function getTimeRangeLabelProperty(): string
-    {
-        return self::TIME_RANGES[$this->timeRange] ?? 'Periode';
-    }
-
-    public function getDateRangeSummaryProperty(): string
-    {
-        $range = $this->dateRange();
-        if (!$range) return 'sepanjang waktu';
-        [$start, $end] = $range;
-        if ($start->isSameDay($end)) return $start->translatedFormat('j M Y');
-        if ($start->isSameMonth($end)) return $start->translatedFormat('j') . '–' . $end->translatedFormat('j M Y');
-        if ($start->isSameYear($end))  return $start->translatedFormat('j M') . ' – ' . $end->translatedFormat('j M Y');
-        return $start->translatedFormat('j M Y') . ' – ' . $end->translatedFormat('j M Y');
-    }
-
-    protected function cacheKey(string $bucket): string
-    {
-        return "project_dash_{$bucket}_{$this->timeRange}";
-    }
-
-    // ─── KPI cards ────────────────────────────────────────────────
-    public function getKpisProperty(): array
-    {
-        return Cache::remember($this->cacheKey('kpis'), self::CACHE_TTL, function () {
-            $today = today();
-            $weekEnd = $today->copy()->addDays(7);
-
-            $activeKeys = $this->statusKeysInCategories(['active']);
-            $stillRunningKeys = $this->statusKeysInCategories(['active', 'not_started']);
-            $doneKeys = $this->statusKeysInCategories(['done']);
-
-            // "Now" KPIs — always current state, not time-bound. All counts
-            // scoped to projects whose client is currently Active.
-            $active = $this->activeClientProjects()
-                ->whereIn('status', $activeKeys)
-                ->count();
-            $overdue = $this->activeClientProjects()
-                ->where('due_date', '<', $today)
-                ->whereIn('status', $stillRunningKeys)
-                ->count();
-            $dueThisWeek = $this->activeClientProjects()
-                ->whereBetween('due_date', [$today, $weekEnd])
-                ->whereIn('status', $stillRunningKeys)
-                ->count();
-
-            // Time-bound KPI — completed within selected range.
-            $range = $this->dateRange();
-            $completedQuery = $this->activeClientProjects()->whereIn('status', $doneKeys);
-            if ($range) $completedQuery->whereBetween('updated_at', $range);
-            $completedInRange = $completedQuery->count();
-
-            return compact('active', 'overdue', 'dueThisWeek', 'completedInRange');
-        });
-    }
 
     // ─── Status distribution (current state — never time-filtered) ─
     public function getStatusDistributionProperty(): array
@@ -147,21 +50,21 @@ class ProjectDashboard extends Component
         });
     }
 
-    // ─── PIC workload — stacked by status (top 10 by current active total) ────
+    // ─── PIC workload — stacked by status (top 10 across all project statuses) ────
     public function getPicWorkloadProperty(): array
     {
         return Cache::remember('project_dash_pic_workload', self::CACHE_TTL, function () {
-            $activeKeys = $this->statusKeysInCategories(['active']);
             $statusMap  = $this->statusMap();
             // Stable status display order from the status map.
             $statusOrder = array_flip(array_keys($statusMap));
 
             // Counts per (PIC, status) pair — only active PICs assigned to
-            // projects whose client is currently Active.
+            // projects whose client is currently Active. All project statuses
+            // included (Draft → Completed → Canceled) so the bar reflects
+            // each PIC's total accumulated workload.
             $rows = DB::table('projects')
                 ->join('users', 'projects.pic_id', '=', 'users.id')
                 ->join('clients', 'projects.client_id', '=', 'clients.id')
-                ->whereIn('projects.status', $activeKeys)
                 ->whereNotNull('projects.pic_id')
                 ->where('users.status', 'active')
                 ->where('clients.status', 'Active')
@@ -199,6 +102,42 @@ class ProjectDashboard extends Component
             // Top 10 PICs by total active.
             usort($byPic, fn ($a, $b) => $b['total'] <=> $a['total']);
             $top = array_slice(array_values($byPic), 0, 10);
+
+            // Unassigned projects — appended at the bottom of the bar list
+            // so it surfaces as an action item without bumping real PICs down.
+            $noPicRows = DB::table('projects')
+                ->join('clients', 'projects.client_id', '=', 'clients.id')
+                ->whereNull('projects.pic_id')
+                ->where('clients.status', 'Active')
+                ->select('projects.status', DB::raw('COUNT(*) as count'))
+                ->groupBy('projects.status')
+                ->get();
+
+            if ($noPicRows->isNotEmpty()) {
+                $unassigned = [
+                    'id'             => null,
+                    'name'           => 'Tanpa PIC',
+                    'total'          => 0,
+                    'segments'       => [],
+                    'is_unassigned'  => true,
+                ];
+                foreach ($noPicRows as $r) {
+                    $unassigned['total'] += $r->count;
+                    $unassigned['segments'][] = [
+                        'status' => $r->status,
+                        'label'  => $statusMap[$r->status]['label'] ?? ucfirst($r->status),
+                        'color'  => $statusMap[$r->status]['color'] ?? '#94a3b8',
+                        'count'  => (int) $r->count,
+                    ];
+                    $statusesSeen[$r->status] = [
+                        'key'   => $r->status,
+                        'label' => $statusMap[$r->status]['label'] ?? ucfirst($r->status),
+                        'color' => $statusMap[$r->status]['color'] ?? '#94a3b8',
+                        'order' => $statusOrder[$r->status] ?? 999,
+                    ];
+                }
+                $top[] = $unassigned;
+            }
 
             $max = collect($top)->max('total') ?: 1;
 
@@ -317,50 +256,107 @@ class ProjectDashboard extends Component
         });
     }
 
-    // ─── Completion trend bucketed within selected range ──────────
-    public function getCompletionTrendProperty(): array
+    // ─── Recent activities — latest project-related entries, grouped by date bucket ────
+    public function getRecentActivitiesProperty(): array
     {
-        return Cache::remember($this->cacheKey('trend'), self::CACHE_TTL, function () {
-            $doneKeys = $this->statusKeysInCategories(['done']);
+        return Cache::remember('project_dash_recent_activities', self::CACHE_TTL, function () {
+            $activities = UserActivity::query()
+                ->with([
+                    'user:id,name',
+                    'project:id,name,client_id',
+                    'project.client:id,name',
+                ])
+                ->whereNotNull('project_id')
+                // Skip activities whose project belongs to an inactive client
+                ->whereHas('project.client', fn ($q) => $q->where('status', 'Active'))
+                ->orderByDesc('created_at')
+                ->limit(20)
+                ->get();
 
-            // Pick range + granularity based on selection.
-            $range = $this->dateRange();
-            if (!$range) {
-                // All time → last 12 months
-                $start = now()->subMonths(11)->startOfMonth();
-                $end = now()->endOfDay();
-                $granularity = 'month';
-            } else {
-                [$start, $end] = $range;
-                $days = $start->diffInDays($end) + 1;
-                // Auto-bucket: ≤14 days → daily, ≤90 days → weekly, else monthly
-                $granularity = $days <= 14 ? 'day' : ($days <= 90 ? 'week' : 'month');
+            // Action → short verb. Used to bypass the giant filename / details
+            // that summarizeDescription drags along for document-type actions.
+            $shortVerbs = [
+                'document_uploaded'         => 'mengupload dokumen',
+                'client_document_uploaded'  => 'mengupload dokumen',
+                'legal_document_uploaded'   => 'mengupload dokumen legal',
+                'document_submitted'        => 'mengupload dokumen',
+                'document_upload'           => 'mengupload dokumen',
+                'document_approved'         => 'menyetujui dokumen',
+                'client_document_approved'  => 'menyetujui dokumen',
+                'legal_document_approved'   => 'menyetujui dokumen legal',
+                'document_rejected'         => 'menolak dokumen',
+                'client_document_rejected'  => 'menolak dokumen',
+                'legal_document_rejected'   => 'menolak dokumen legal',
+                'document_status_changed'   => 'mengubah status dokumen',
+                'document_pending_review'   => 'mengirim dokumen untuk review',
+            ];
+
+            $groups = ['today' => [], 'yesterday' => [], 'older' => []];
+
+            foreach ($activities as $a) {
+                $bucket = match (true) {
+                    $a->created_at->isToday()     => 'today',
+                    $a->created_at->isYesterday() => 'yesterday',
+                    default                       => 'older',
+                };
+
+                // For known noisy actions, use the short verb. For everything
+                // else, run summarizeDescription then trim the "untuk Y" tail
+                // (project context is shown below) and lowercase the leading
+                // verb so it reads natural after the bold user name.
+                if (isset($shortVerbs[$a->action])) {
+                    $short = $shortVerbs[$a->action];
+                } else {
+                    $short = $a->summarizeDescription();
+                    $short = preg_replace('/\s+untuk\s+.+$/u', '', $short);
+                    if ($short !== '') {
+                        $short = mb_strtolower(mb_substr($short, 0, 1)) . mb_substr($short, 1);
+                    }
+                }
+
+                $groups[$bucket][] = [
+                    'id'           => $a->id,
+                    'user_name'    => $a->user?->name ?? 'Sistem',
+                    'description'  => $short,
+                    'client_name'  => $a->project?->client?->name,
+                    'project_name' => $a->project?->name,
+                    'project_url'  => $a->project ? $this->projectUrl($a->project) : null,
+                    // Absolute syntax drops the "lalu" suffix → "5mnt" instead of "5mnt lalu"
+                    'time_ago'     => $a->created_at->diffForHumans([
+                        'short'  => true,
+                        'syntax' => Carbon::DIFF_ABSOLUTE,
+                    ]),
+                ];
             }
 
-            // Build empty buckets
+            return $groups;
+        });
+    }
+
+    // ─── Completion trend — last 12 months, bucketed by month ────────
+    public function getCompletionTrendProperty(): array
+    {
+        return Cache::remember('project_dash_trend', self::CACHE_TTL, function () {
+            $doneKeys = $this->statusKeysInCategories(['done']);
+
+            $start = now()->subMonths(11)->startOfMonth();
+            $end   = now()->endOfDay();
+
+            // Build empty monthly buckets.
             $buckets = [];
             $cursor = $start->copy();
             while ($cursor <= $end) {
-                $key = match ($granularity) {
-                    'day'   => $cursor->format('Y-m-d'),
-                    'week'  => $cursor->copy()->startOfWeek()->format('Y-m-d'),
-                    'month' => $cursor->format('Y-m'),
-                };
+                $key = $cursor->format('Y-m');
                 if (! isset($buckets[$key])) {
                     $buckets[$key] = [
-                        'label' => match ($granularity) {
-                            'day'   => $cursor->translatedFormat('j M'),
-                            'week'  => 'W' . $cursor->copy()->startOfWeek()->weekOfYear,
-                            'month' => $cursor->translatedFormat('M'),
-                        },
+                        'label' => $cursor->translatedFormat('M'),
                         'count' => 0,
                     ];
                 }
-                $cursor->add($granularity === 'day' ? '1 day' : ($granularity === 'week' ? '1 week' : '1 month'));
-                if ($granularity === 'week') $cursor = $cursor->startOfWeek();
+                $cursor->addMonth();
             }
 
-            // Query completed projects in range — active clients only.
+            // Active-client projects completed in this window.
             $rows = DB::table('projects')
                 ->join('clients', 'projects.client_id', '=', 'clients.id')
                 ->whereIn('projects.status', $doneKeys)
@@ -370,22 +366,16 @@ class ProjectDashboard extends Component
                 ->get();
 
             foreach ($rows as $r) {
-                $dt = Carbon::parse($r->updated_at);
-                $key = match ($granularity) {
-                    'day'   => $dt->format('Y-m-d'),
-                    'week'  => $dt->copy()->startOfWeek()->format('Y-m-d'),
-                    'month' => $dt->format('Y-m'),
-                };
+                $key = Carbon::parse($r->updated_at)->format('Y-m');
                 if (isset($buckets[$key])) $buckets[$key]['count']++;
             }
 
             $values = collect($buckets)->pluck('count')->all();
-            $max = max($values) ?: 1;
 
             return [
                 'buckets'     => array_values($buckets),
-                'max'         => $max,
-                'granularity' => $granularity,
+                'max'         => max($values) ?: 1,
+                'granularity' => 'month',
                 'total'       => array_sum($values),
             ];
         });

@@ -286,7 +286,7 @@ class UserActivity extends Model
     /**
      * Summarize activity description menjadi task title
      */
-    private function summarizeDescription(): string
+    public function summarizeDescription(): string
     {
         $description = $this->description;
         
