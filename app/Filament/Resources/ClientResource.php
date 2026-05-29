@@ -657,18 +657,17 @@ class ClientResource extends Resource
                 ->label('')
                 ->icon('heroicon-o-key')
                 ->color('info')
-                ->tooltip('Lihat Semua Kredensial')
-                ->modalHeading(fn ($record) => 'Kredensial Aplikasi - ' . $record->name)
-                ->modalContent(fn ($record) => view(
-                    'filament.modals.clients.client-all-credentials',
-                    ['record' => \App\Models\Client::with([
-                        'applicationCredentials.application',
-                        'clientCredential',
-                        'pic',
-                    ])->findOrFail($record->id)]
-                ))
+                ->tooltip('Kelola Kredensial')
+                ->modalHeading(fn (Client $record) => 'Kredensial — ' . $record->name)
+                ->modalIcon('heroicon-o-key')
                 ->modalWidth('4xl')
-                ->slideOver(),
+                ->slideOver()
+                ->modalSubmitAction(false)
+                ->modalCancelActionLabel('Tutup')
+                ->modalContent(fn (Client $record) => view(
+                    'filament.modals.clients.client-all-credentials',
+                    ['clientId' => $record->id],
+                )),
 
 
             // PIC Management Actions Group

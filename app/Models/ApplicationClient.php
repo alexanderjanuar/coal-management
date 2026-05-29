@@ -13,6 +13,19 @@ class ApplicationClient extends Pivot
 
     protected $table = 'application_clients';
 
+    protected $fillable = [
+        'application_id',
+        'client_id',
+        'username',
+        'password',
+        'activation_code',
+        'account_period',
+        'additional_data',
+        'notes',
+        'last_used_at',
+        'is_active',
+    ];
+
     protected $casts = [
         'additional_data' => 'array',
         'account_period'  => 'date',

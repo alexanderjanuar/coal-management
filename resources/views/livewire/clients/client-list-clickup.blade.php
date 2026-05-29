@@ -27,6 +27,11 @@
             <input type="text"
                    x-ref="searchInput"
                    wire:model.live.debounce.300ms="search"
+                   name="cl_search"
+                   autocomplete="off"
+                   data-1p-ignore
+                   data-lpignore="true"
+                   data-form-type="other"
                    placeholder="Cari nama, NPWP, atau email…">
 
             {{-- Loading spinner — visible only while Livewire is processing the search --}}
@@ -456,7 +461,7 @@
                         </button>
                     </header>
                     <div class="cl-cred-body">
-                        @include('filament.modals.clients.client-all-credentials', ['record' => $credClient])
+                        @include('filament.modals.clients.client-all-credentials', ['clientId' => $credClient->id])
                     </div>
                 </div>
             </div>
