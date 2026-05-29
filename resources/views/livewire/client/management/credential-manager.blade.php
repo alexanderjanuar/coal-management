@@ -91,14 +91,22 @@
                                 </button>
                             </div>
                         @else
-                            <span class="flex items-center gap-2 text-sm font-semibold text-gray-800 dark:text-gray-100">
-                                <x-heroicon-m-key class="h-4 w-4 text-gray-300 dark:text-gray-500" />
-                                {{ $applicationOptions[$cred['application_id']] ?? 'Tanpa Nama' }}
+                            <span class="flex items-center gap-2.5">
+                                <span class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-blue-50 text-sm font-bold uppercase text-blue-600 dark:bg-blue-900/30 dark:text-blue-300">
+                                    {{ \Illuminate\Support\Str::substr($applicationOptions[$cred['application_id']] ?? '?', 0, 1) }}
+                                </span>
+                                <span class="text-sm font-semibold text-gray-800 dark:text-gray-100">
+                                    {{ $applicationOptions[$cred['application_id']] ?? 'Tanpa Nama' }}
+                                </span>
                             </span>
                             @if ($cred['is_active'])
-                                <span class="rounded-full bg-emerald-50 px-2 py-0.5 text-[11px] font-medium text-emerald-600 dark:bg-emerald-900/20 dark:text-emerald-400">Aktif</span>
+                                <span class="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2 py-0.5 text-[11px] font-medium text-emerald-600 dark:bg-emerald-900/20 dark:text-emerald-400">
+                                    <span class="h-1.5 w-1.5 rounded-full bg-emerald-500"></span> Aktif
+                                </span>
                             @else
-                                <span class="rounded-full bg-gray-100 px-2 py-0.5 text-[11px] font-medium text-gray-500 dark:bg-gray-700 dark:text-gray-400">Nonaktif</span>
+                                <span class="inline-flex items-center gap-1 rounded-full bg-gray-100 px-2 py-0.5 text-[11px] font-medium text-gray-500 dark:bg-gray-700 dark:text-gray-400">
+                                    <span class="h-1.5 w-1.5 rounded-full bg-gray-400"></span> Nonaktif
+                                </span>
                             @endif
                         @endif
                     </div>
