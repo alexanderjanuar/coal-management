@@ -4,15 +4,44 @@ namespace App\Livewire\Client\Management;
 
 use App\Filament\Resources\ClientResource;
 use App\Models\Client;
+use App\Models\ClientContact;
+use Illuminate\Support\Facades\Storage;
 use Livewire\Component;
 
 class IdentitasTab extends Component
 {
     public Client $client;
 
+    protected ?ClientContact $primaryContactCache = null;
+    protected bool $primaryContactResolved = false;
+
     public function mount(Client $client)
     {
-        $this->client = $client->load(['accountRepresentative']);
+        $this->client = $client->load(['accountRepresentative', 'pic', 'contacts']);
+    }
+
+    /** Logo tersimpan di disk `public` (folder avatars); jatuh balik ke monogram bila kosong. */
+    public function getLogoUrl(): ?string
+    {
+        $logo = $this->client->logo;
+        if (! $logo) {
+            return null;
+        }
+        if (str_starts_with($logo, 'http')) {
+            return $logo;
+        }
+        return Storage::disk('public')->url($logo);
+    }
+
+    /** Kontak person utama (type `primary`, jika tidak ada ambil yang pertama). */
+    public function primaryContact(): ?ClientContact
+    {
+        if (! $this->primaryContactResolved) {
+            $contacts = $this->client->contacts;
+            $this->primaryContactCache = $contacts->firstWhere('type', 'primary') ?? $contacts->first();
+            $this->primaryContactResolved = true;
+        }
+        return $this->primaryContactCache;
     }
 
     public function getPkpStatusLabel(): string
@@ -80,17 +109,88 @@ class IdentitasTab extends Component
     }
 
     /**
-     * Compute filled vs total for a section so the header can show "4/5 terisi"
-     * — the building block for the upcoming completeness % feature.
+     * Laporan kelengkapan data klien — dasar untuk ring & breakdown.
+     * Hanya menghitung field yang BENAR-BENAR ada di skema. Field yang tidak
+     * relevan (mis. Sub Tipe / PIC untuk klien Pribadi) di-skip, bukan dihitung kosong.
+     *
+     * @return array{groups: array<string,array>, filled:int, total:int, pct:int, missing:array<int,string>}
      */
-    public function completeness(array $values): array
+    public function completeness(): array
     {
-        $total  = count($values);
-        $filled = count(array_filter($values, fn ($v) => filled($v)));
+        $c        = $this->client;
+        $isBadan  = $c->client_type === 'Badan';
+        $contact  = $this->primaryContact();
+        $hasPhone = $contact && (filled($contact->phone) || filled($contact->mobile));
+
+        // null = tidak relevan untuk klien ini → tidak ikut dihitung.
+        $defs = [
+            'identitas' => [
+                'label'  => 'Identitas Legal',
+                'icon'   => 'building',
+                'fields' => [
+                    'Nama'       => filled($c->name),
+                    'Tipe Klien' => filled($c->client_type),
+                    'Sub Tipe'   => $isBadan ? filled($c->client_subtype) : null,
+                    'Logo'       => filled($c->logo),
+                ],
+            ],
+            'pajak' => [
+                'label'  => 'Perpajakan',
+                'icon'   => 'receipt',
+                'fields' => [
+                    // EFIN sengaja TIDAK dihitung — bersifat opsional.
+                    'NPWP'       => filled($c->NPWP),
+                    'Status PKP' => filled($c->pkp_status),
+                ],
+            ],
+            'kontak' => [
+                'label'  => 'Kontak & Alamat',
+                'icon'   => 'mail',
+                'fields' => [
+                    'Email'   => filled($c->email),
+                    'Telepon' => (bool) $hasPhone,
+                    'Alamat'  => filled($c->adress),
+                ],
+            ],
+            'pj' => [
+                'label'  => 'Penanggung Jawab',
+                'icon'   => 'user',
+                'fields' => [
+                    'Account Rep.' => filled($c->ar_id),
+                    'PIC'          => $isBadan ? filled($c->pic_id) : null,
+                ],
+            ],
+        ];
+
+        $groups = [];
+        $sumFilled = 0;
+        $sumTotal  = 0;
+
+        foreach ($defs as $key => $def) {
+            // Buang field yang null (tidak relevan) sebelum menghitung.
+            $fields = array_filter($def['fields'], fn ($v) => $v !== null);
+            $total  = \count($fields);
+            $filled = \count(array_filter($fields));
+
+            $sumFilled += $filled;
+            $sumTotal  += $total;
+
+            $groups[$key] = [
+                'label'   => $def['label'],
+                'icon'    => $def['icon'],
+                'filled'  => $filled,
+                'total'   => $total,
+                'pct'     => $total > 0 ? (int) round(($filled / $total) * 100) : 0,
+                'missing' => array_keys(array_filter($fields, fn ($v) => $v === false)),
+            ];
+        }
+
         return [
-            'filled' => $filled,
-            'total'  => $total,
-            'pct'    => $total > 0 ? (int) round(($filled / $total) * 100) : 0,
+            'groups'  => $groups,
+            'filled'  => $sumFilled,
+            'total'   => $sumTotal,
+            'pct'     => $sumTotal > 0 ? (int) round(($sumFilled / $sumTotal) * 100) : 0,
+            'missing' => array_merge(...array_values(array_map(fn ($g) => $g['missing'], $groups)) ?: [[]]),
         ];
     }
 

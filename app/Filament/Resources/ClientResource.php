@@ -482,7 +482,7 @@ class ClientResource extends Resource
                 Tables\Columns\TextColumn::make('name')
                     ->label('Client')
                     ->searchable()
-                    ->sortable()                 
+                    ->sortable()
                     ->weight(FontWeight::Medium),
                     
                 Tables\Columns\TextColumn::make('pic.name')
