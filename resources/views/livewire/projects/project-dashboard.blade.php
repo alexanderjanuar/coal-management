@@ -4,7 +4,6 @@
     $sopDistribution = $this->sopDistribution;
     $sopSamples = $this->sopSamples;
     $trend = $this->completionTrend;
-    $recentActivities = $this->recentActivities;
 
     // Donut math
     $donutSize = 220;
@@ -68,7 +67,7 @@
 
 <div class="pd-root">
     {{-- ============== ROW 1: Pipeline donut + PIC workload + Recent activities ============== --}}
-    <section class="pd-row pd-row-3col">
+    <section class="pd-row pd-row-2col">
         {{-- Interactive donut --}}
         <div class="pd-card" x-data="{ hovered: null }">
             <header class="pd-card-head">
@@ -136,7 +135,7 @@
             @endif
         </div>
 
-        {{-- PIC workload — stacked by status --}}
+        {{-- PIC workload — vertical column chart, stacked by status --}}
         <div class="pd-card" x-data="{ hoveredStatus: null }">
             <header class="pd-card-head">
                 <h3 class="pd-card-title">Beban Kerja PIC</h3>
@@ -159,85 +158,48 @@
                     @endforeach
                 </ul>
 
-                <ul class="pd-bars">
+                {{-- Vertical columns: one per PIC, stacked by status, height ∝ total --}}
+                <div class="pd-colchart">
                     @foreach ($picWorkload['rows'] as $row)
-                        @php $isUnassigned = !empty($row['is_unassigned']); @endphp
-                        <li class="pd-bar-row {{ $isUnassigned ? 'pd-bar-row--unassigned' : '' }}">
-                            <div class="pd-bar-info">
-                                <span class="pd-bar-name" title="{{ $row['name'] }}">
-                                    @if ($isUnassigned)
-                                        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-1px;margin-right:4px;"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
-                                    @endif
-                                    {{ $row['name'] }}
-                                </span>
-                                <span class="pd-bar-count">{{ $row['total'] }}</span>
-                            </div>
-                            <div class="pd-bar-track">
-                                <div class="pd-bar-stack" style="width: {{ $row['percent'] }}%;">
-                                    @foreach ($row['segments'] as $seg)
-                                        <div class="pd-bar-seg"
-                                             style="width: {{ $seg['segPercent'] }}%; background: {{ $seg['color'] }};"
-                                             title="{{ $seg['label'] }}: {{ $seg['count'] }} proyek"
-                                             @mouseenter="hoveredStatus = '{{ $seg['status'] }}'"
-                                             @mouseleave="hoveredStatus = null"
-                                             :class="{ 'is-dim': hoveredStatus && hoveredStatus !== '{{ $seg['status'] }}' }">
-                                            @if ($seg['segPercent'] >= 18)
-                                                <span class="pd-bar-seg-count">{{ $seg['count'] }}</span>
-                                            @endif
-                                        </div>
-                                    @endforeach
+                        @php
+                            $isUnassigned = !empty($row['is_unassigned']);
+                            $initials = collect(preg_split('/\s+/', trim($row['name'])))
+                                ->filter()->take(2)
+                                ->map(fn ($w) => mb_strtoupper(mb_substr($w, 0, 1)))
+                                ->implode('');
+                        @endphp
+                        <div class="pd-col {{ $isUnassigned ? 'pd-col--unassigned' : '' }}">
+                            <div class="pd-col-track">
+                                <div class="pd-col-bar" style="height: {{ max($row['percent'] * 0.92, 3) }}%;">
+                                    <span class="pd-col-total">{{ $row['total'] }}</span>
+                                    <div class="pd-col-stack">
+                                        @foreach ($row['segments'] as $seg)
+                                            <div class="pd-col-seg"
+                                                 style="height: {{ $seg['segPercent'] }}%; background: {{ $seg['color'] }};"
+                                                 title="{{ $row['name'] }} — {{ $seg['label'] }}: {{ $seg['count'] }} proyek"
+                                                 @mouseenter="hoveredStatus = '{{ $seg['status'] }}'"
+                                                 @mouseleave="hoveredStatus = null"
+                                                 :class="{ 'is-dim': hoveredStatus && hoveredStatus !== '{{ $seg['status'] }}' }"></div>
+                                        @endforeach
+                                    </div>
                                 </div>
                             </div>
-                        </li>
-                    @endforeach
-                </ul>
-            @endif
-        </div>
-
-        {{-- Recent activities — latest project-related entries, grouped by day --}}
-        <div class="pd-card pd-activity-card">
-            <header class="pd-card-head">
-                <h3 class="pd-card-title">Aktivitas Terbaru</h3>
-                @php $totalActivities = count($recentActivities['today']) + count($recentActivities['yesterday']) + count($recentActivities['older']); @endphp
-                <span class="pd-card-meta">{{ $totalActivities }} terakhir</span>
-            </header>
-
-            @if ($totalActivities === 0)
-                <div class="pd-empty">Belum ada aktivitas proyek.</div>
-            @else
-                <div class="pd-activity-list">
-                    @foreach (['today' => 'Hari Ini', 'yesterday' => 'Kemarin', 'older' => 'Lebih Lama'] as $bucketKey => $bucketLabel)
-                        @if (!empty($recentActivities[$bucketKey]))
-                            <div class="pd-activity-group">
-                                <div class="pd-activity-group-head">{{ $bucketLabel }}</div>
-                                <ul class="pd-activity-items">
-                                    @foreach ($recentActivities[$bucketKey] as $act)
-                                        <li class="pd-activity-item">
-                                            <div class="pd-activity-line">
-                                                <span class="pd-activity-text">
-                                                    <strong>{{ $act['user_name'] }}</strong>
-                                                    {{ $act['description'] }}
-                                                </span>
-                                                <span class="pd-activity-time">{{ $act['time_ago'] }}</span>
-                                            </div>
-                                            @if ($act['project_url'])
-                                                <a href="{{ $act['project_url'] }}" class="pd-activity-project" title="{{ $act['client_name'] ? $act['client_name'] . ' · ' : '' }}{{ $act['project_name'] }}">
-                                                    @if ($act['client_name'])
-                                                        <span class="pd-activity-client">{{ $act['client_name'] }}</span>
-                                                        <span class="pd-activity-sep">·</span>
-                                                    @endif
-                                                    {{ $act['project_name'] }}
-                                                </a>
-                                            @endif
-                                        </li>
-                                    @endforeach
-                                </ul>
+                            <div class="pd-col-foot" title="{{ $row['name'] }}">
+                                @if ($isUnassigned)
+                                    <span class="pd-col-avatar pd-col-avatar--none">
+                                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+                                    </span>
+                                @else
+                                    <span class="pd-col-avatar">{{ $initials }}</span>
+                                @endif
+                                <span class="pd-col-name">{{ $row['name'] }}</span>
                             </div>
-                        @endif
+                        </div>
                     @endforeach
                 </div>
             @endif
         </div>
+
     </section>
 
     {{-- ============== ROW 3: SOP donut carousel + synced sample list ============== --}}
@@ -837,71 +799,108 @@
             .pd-stack-legend-dot { width: 9px; height: 9px; border-radius: 3px; flex-shrink: 0; }
             .pd-stack-legend-label { color: var(--pd-muted); }
 
-            /* PIC stacked bars */
-            .pd-bars {
-                list-style: none; padding: 0; margin: 0;
-                display: flex; flex-direction: column; gap: 14px;
-                /* Stretch to fill the card's remaining height (parent .pd-card is a
-                   flex column) and distribute rows evenly so a short list doesn't
-                   leave dead whitespace at the bottom when the sibling donut card
-                   pulls the row taller. */
-                flex: 1; min-height: 0;
-                justify-content: space-around;
-            }
-            .pd-bar-row { display: flex; flex-direction: column; gap: 6px; }
-            /* "Tanpa PIC" row — visually flagged as a category, not a person */
-            .pd-bar-row--unassigned .pd-bar-name {
-                font-style: italic;
-                color: var(--pd-muted);
-                display: inline-flex;
-                align-items: center;
-            }
-            .pd-bar-row--unassigned .pd-bar-name svg { color: var(--pd-danger); flex-shrink: 0; }
-            .pd-bar-info { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
-            .pd-bar-name {
-                font-size: 12.5px; font-weight: 500; color: var(--pd-ink);
-                overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
-                flex: 1; min-width: 0;
-            }
-            .pd-bar-count { font-size: 12px; font-weight: 700; color: var(--pd-ink); font-variant-numeric: tabular-nums; }
-            .pd-bar-track {
-                height: 16px;
-                background: var(--pd-bg-soft);
-                border-radius: 6px;
-                overflow: hidden;
-            }
-            .pd-bar-stack {
+            /* PIC vertical column chart — fills the card width & height */
+            .pd-colchart {
+                flex: 1 1 auto;            /* grow to fill the card's remaining height */
+                min-height: 210px;
                 display: flex;
-                height: 100%;
-                border-radius: 6px;
-                overflow: hidden;
-                transition: width .35s ease;
+                align-items: stretch;      /* columns take full chart height */
+                gap: 4px;
+                margin-top: 10px;
+                overflow-x: auto;
+                scrollbar-width: thin;
+                scrollbar-color: var(--pd-line-strong) transparent;
             }
-            .pd-bar-seg {
-                position: relative;
-                height: 100%;
-                display: inline-flex;
-                align-items: center;
+            .pd-colchart::-webkit-scrollbar { height: 6px; }
+            .pd-colchart::-webkit-scrollbar-thumb { background: var(--pd-line-strong); border-radius: 3px; }
+            .pd-colchart::-webkit-scrollbar-track { background: transparent; }
+
+            .pd-col {
+                /* No max-width → columns share the full row evenly, bar centered
+                   inside each slot. min-width keeps them legible; chart scrolls
+                   horizontally once there are too many to fit. */
+                flex: 1 1 0;
+                min-width: 44px;
+                display: flex;
+                flex-direction: column;
+                gap: 9px;
+                cursor: default;
+            }
+            .pd-col-track {
+                flex: 1;                   /* fill the column's available height */
+                min-height: 130px;
+                display: flex;
+                align-items: flex-end;
                 justify-content: center;
-                box-shadow: inset 0 1px 0 rgba(255, 255, 255, .25);
+                border-bottom: 1.5px solid var(--pd-line);
+            }
+            .pd-col-bar {
+                position: relative;        /* anchor for the floating total label */
+                width: 68%;
+                max-width: 50px;
+                min-height: 4px;
+                display: flex;
+                transition: height .45s cubic-bezier(.4, 0, .2, 1);
+            }
+            .pd-col-total {                /* sits just above each bar's top */
+                position: absolute;
+                bottom: 100%;
+                left: 0; right: 0;
+                margin-bottom: 5px;
+                text-align: center;
+                font-size: 12px; font-weight: 700;
+                color: var(--pd-ink);
+                font-variant-numeric: tabular-nums;
+                transition: color .15s;
+            }
+            .pd-col:hover .pd-col-total { color: var(--pd-accent-ink); }
+            .pd-col-stack {
+                width: 100%; height: 100%;
+                display: flex;
+                flex-direction: column-reverse;
+                border-radius: 6px 6px 0 0;
+                overflow: hidden;
+                box-shadow: inset 0 0 0 1px rgba(0, 0, 0, .04);
+                transition: filter .15s;
+            }
+            .pd-col:hover .pd-col-stack { filter: brightness(1.07) saturate(1.04); }
+            .pd-col-seg {
+                width: 100%;
+                min-height: 2px;
+                box-shadow: inset 0 1px 0 rgba(255, 255, 255, .22);
                 transition: opacity .15s;
                 cursor: pointer;
-                min-width: 0;
             }
-            .pd-bar-seg.is-dim { opacity: .25; }
-            .pd-bar-seg + .pd-bar-seg {
-                box-shadow:
-                    inset 0 1px 0 rgba(255, 255, 255, .25),
-                    inset 1px 0 0 rgba(255, 255, 255, .35);
+            .pd-col-seg.is-dim { opacity: .2; }
+
+            .pd-col-foot {
+                display: flex; flex-direction: column; align-items: center;
+                gap: 5px; width: 100%;
+                flex-shrink: 0;
             }
-            .pd-bar-seg-count {
-                font-size: 10px;
-                font-weight: 700;
-                color: white;
+            .pd-col-avatar {
+                width: 28px; height: 28px; border-radius: 50%;
+                background: var(--pd-bg-hover);
+                color: var(--pd-ink);
+                font-size: 10.5px; font-weight: 700;
                 letter-spacing: .02em;
-                line-height: 1;
-                text-shadow: 0 1px 1px rgba(0, 0, 0, .15);
+                display: flex; align-items: center; justify-content: center;
+                flex-shrink: 0;
+                font-variant-numeric: tabular-nums;
             }
+            .pd-col-name {
+                width: 100%;
+                font-size: 10.5px; font-weight: 500;
+                color: var(--pd-muted);
+                overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+                text-align: center;
+            }
+            /* "Tanpa PIC" column — flagged as a category, not a person */
+            .pd-col--unassigned .pd-col-avatar--none {
+                background: var(--pd-danger-soft);
+                color: var(--pd-danger);
+            }
+            .pd-col--unassigned .pd-col-name { font-style: italic; color: var(--pd-danger); }
 
             /* SOP carousel — same overall layout as Distribusi Status (donut +
                legend below), but the donut is a swipeable track with the
