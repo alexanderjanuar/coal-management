@@ -34,10 +34,8 @@
             @break
 
             @case('kontrak')
-            <div x-data class="border-b border-gray-200 py-6 transition-opacity duration-300 dark:border-gray-700">
-                <h3 class="text-lg font-medium text-gray-900 dark:text-white mb-4">Kontrak</h3>
-                <p class="text-gray-600 dark:text-gray-400">Konten untuk tab Kontrak akan ditampilkan di sini.</p>
-                {{-- @livewire('client.kontrak-tab', ['client' => $record]) --}}
+            <div x-data class="py-6 transition-opacity duration-300">
+                @livewire('client.management.kontrak-tab', ['client' => $record], key('kontrak-tab-'.$record->id))
             </div>
             @break
 
