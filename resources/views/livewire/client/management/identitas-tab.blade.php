@@ -15,6 +15,10 @@
     // PIC
     $pic        = $client->pic;
 
+    // AR baru wajib kalau ada kontrak pajak aktif (selaras dgn completeness()).
+    $hasActiveContract = (bool) ($client->ppn_contract || $client->pph_contract
+        || $client->bupot_contract || $client->pph_badan_contract);
+
     // Kontak person utama (telepon/HP hidup di relasi contacts, bukan di tabel clients)
     $contact    = $this->primaryContact();
     $cName      = $contact?->name;
@@ -313,6 +317,8 @@
     </x-cm-section>
 
     {{-- ─────────────────  PENANGGUNG JAWAB  ───────────────── --}}
+    {{-- Disembunyikan untuk klien yang tak butuh PIC maupun AR (mis. Pribadi tanpa kontrak). --}}
+    @if (isset($g['pj']))
     <x-cm-section id="sec-pj" icon="user" color="amber" title="Penanggung Jawab"
                   subtitle="PIC internal dan Account Representative pajak."
                   :filled="$g['pj']['filled']" :total="$g['pj']['total']">
@@ -335,7 +341,12 @@
             @endif
 
             <div>
-                <div class="mb-2 text-xs font-medium text-gray-400 dark:text-gray-500">Account Representative</div>
+                <div class="mb-2 flex items-center gap-1.5 text-xs font-medium text-gray-400 dark:text-gray-500">
+                    Account Representative
+                    @unless ($hasActiveContract)
+                        <span class="rounded bg-gray-100 px-1.5 py-px text-[10px] font-medium normal-case text-gray-500 dark:bg-gray-800 dark:text-gray-400">Opsional</span>
+                    @endunless
+                </div>
                 @if (! $arName && ! $arPhone && ! $arEmail && ! $arKpp)
                     <p class="text-sm italic text-gray-400 dark:text-gray-600">Belum ada AR ditugaskan.</p>
                 @else
@@ -373,4 +384,5 @@
             </div>
         </div>
     </x-cm-section>
+    @endif
 </div>

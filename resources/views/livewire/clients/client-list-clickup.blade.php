@@ -326,7 +326,7 @@
 
                     {{-- Name + NPWP/subtype meta --}}
                     <div class="cl-col-name">
-                        <a href="{{ $this->viewUrl($client) }}" class="cl-client-name">{{ $client->display_name }}</a>
+                        <a href="{{ $this->viewUrl($client) }}" class="cl-client-name">{{ $client->name }}</a>
                         <div class="cl-client-meta">
                             @if ($client->NPWP)
                                 <span class="cl-npwp">NPWP {{ $client->NPWP }}</span>

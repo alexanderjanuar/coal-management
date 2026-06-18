@@ -122,6 +122,10 @@ class IdentitasTab extends Component
         $contact  = $this->primaryContact();
         $hasPhone = $contact && (filled($contact->phone) || filled($contact->mobile));
 
+        // AR (pejabat KPP) baru relevan kalau klien punya kontrak pajak aktif.
+        $hasActiveContract = (bool) ($c->ppn_contract || $c->pph_contract
+            || $c->bupot_contract || $c->pph_badan_contract);
+
         // null = tidak relevan untuk klien ini → tidak ikut dihitung.
         $defs = [
             'identitas' => [
@@ -156,7 +160,8 @@ class IdentitasTab extends Component
                 'label'  => 'Penanggung Jawab',
                 'icon'   => 'user',
                 'fields' => [
-                    'Account Rep.' => filled($c->ar_id),
+                    // AR wajib hanya saat ada kontrak pajak aktif; PIC hanya untuk Badan.
+                    'Account Rep.' => $hasActiveContract ? filled($c->ar_id) : null,
                     'PIC'          => $isBadan ? filled($c->pic_id) : null,
                 ],
             ],
@@ -171,6 +176,12 @@ class IdentitasTab extends Component
             $fields = array_filter($def['fields'], fn ($v) => $v !== null);
             $total  = \count($fields);
             $filled = \count(array_filter($fields));
+
+            // Grup yang semua field-nya tidak relevan (mis. Penanggung Jawab untuk
+            // klien Pribadi tanpa kontrak) di-skip — jangan tampil "0/0".
+            if ($total === 0) {
+                continue;
+            }
 
             $sumFilled += $filled;
             $sumTotal  += $total;

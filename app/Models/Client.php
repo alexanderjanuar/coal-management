@@ -19,22 +19,6 @@ class Client extends Model
 
     protected $fillable = ['name', 'email', 'logo'];
 
-    /**
-     * Prefix nama legal berdasarkan jenis badan usaha (client_subtype).
-     * Hanya berlaku untuk client_type = 'Badan'. Tambahkan entri sesuai kebutuhan.
-     */
-    public const SUBTYPE_PREFIXES = [
-        'Perseroan Terbatas (PT)'   => 'PT.',
-        'PT Perorangan'             => 'PT.',
-        'Perseroan Komanditer (CV)' => 'CV.',
-        'Firma'                     => 'Fa.',
-        'Perusahaan Umum'           => 'Perum.',
-        'Badan Usaha Milik Desa'    => 'BUMDes',
-        'Koperasi'                  => 'Koperasi',
-        'Yayasan'                   => 'Yayasan',
-        'Perkumpulan'               => 'Perkumpulan',
-    ];
-
     public function group(): BelongsTo
     {
         return $this->belongsTo(ClientGroup::class, 'group_id');
@@ -254,33 +238,6 @@ class Client extends Model
             return $this->client_type . ' - ' . $this->client_subtype;
         }
         return $this->client_type;
-    }
-
-    /**
-     * Nama client dengan prefix badan usaha (mis. "PT. Maju Jaya").
-     * Tidak menambah query — client_subtype sudah ter-load di row yang sama.
-     */
-    public function getDisplayNameAttribute(): string
-    {
-        $name = (string) $this->name;
-
-        if ($this->client_type !== 'Badan') {
-            return $name;
-        }
-
-        $prefix = self::SUBTYPE_PREFIXES[$this->client_subtype] ?? null;
-
-        if (! $prefix) {
-            return $name;
-        }
-
-        // Hindari prefix ganda jika nama sudah diawali singkatannya (mis. user ketik "PT Maju").
-        $token = preg_replace('/[^A-Za-z]/', '', $prefix); // "PT." -> "PT"
-        if ($token !== '' && preg_match('/^\s*' . preg_quote($token, '/') . '\b/i', $name)) {
-            return $name;
-        }
-
-        return trim($prefix . ' ' . $name);
     }
 
 

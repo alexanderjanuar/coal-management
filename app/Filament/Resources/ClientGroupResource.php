@@ -8,17 +8,16 @@ use App\Models\Client;
 use App\Models\ClientGroup;
 use Filament\Forms;
 use Filament\Forms\Form;
-use Filament\Infolists\Components\Grid;
-use Filament\Infolists\Components\ImageEntry;
-use Filament\Infolists\Components\Section as InfoSection;
-use Filament\Infolists\Components\TextEntry;
 use Filament\Infolists\Components\View as InfolisView;
 use Filament\Infolists\Infolist;
 use Filament\Notifications\Notification;
 use Filament\Resources\Resource;
+use Filament\Support\Enums\Alignment;
 use Filament\Support\Enums\FontWeight;
 use Filament\Tables;
 use Filament\Tables\Actions\ActionGroup;
+use Filament\Tables\Columns\Layout\Split;
+use Filament\Tables\Columns\Layout\Stack;
 use Filament\Tables\Table;
 
 class ClientGroupResource extends Resource
@@ -124,87 +123,9 @@ class ClientGroupResource extends Resource
     public static function infolist(Infolist $infolist): Infolist
     {
         return $infolist->schema([
-            Grid::make(3)->schema([
-
-                InfoSection::make('Profil Grup')
-                    ->columnSpan(1)
-                    ->icon('heroicon-o-building-library')
-                    ->schema([
-                        Grid::make(4)->schema([
-                            ImageEntry::make('logo')
-                                ->label('')
-                                ->circular()
-                                ->height(72)
-                                ->width(72)
-                                ->defaultImageUrl(fn ($record) => 'https://ui-avatars.com/api/?name=' . urlencode($record->name) . '&color=7F9CF5&background=EBF4FF&size=128')
-                                ->columnSpan(1),
-
-                            Grid::make(1)->schema([
-                                TextEntry::make('name')
-                                    ->label('Nama Grup')
-                                    ->weight(FontWeight::Bold)
-                                    ->size(TextEntry\TextEntrySize::Large),
-
-                                TextEntry::make('status')
-                                    ->label('Status')
-                                    ->badge()
-                                    ->color(fn (string $state): string => match ($state) {
-                                        'active'   => 'success',
-                                        'inactive' => 'danger',
-                                        default    => 'gray',
-                                    })
-                                    ->formatStateUsing(fn (string $state): string => match ($state) {
-                                        'active'   => 'Aktif',
-                                        'inactive' => 'Tidak Aktif',
-                                        default    => $state,
-                                    }),
-                            ])->columnSpan(3),
-                        ]),
-
-                        TextEntry::make('address')
-                            ->label('Alamat')
-                            ->icon('heroicon-o-map-pin')
-                            ->placeholder('Tidak ada alamat')
-                            ->columnSpanFull(),
-
-                        TextEntry::make('contact_name')
-                            ->label('Nama Kontak')
-                            ->icon('heroicon-o-user')
-                            ->placeholder('-')
-                            ->columnSpanFull(),
-
-                        TextEntry::make('contact_email')
-                            ->label('Email Kontak')
-                            ->icon('heroicon-o-envelope')
-                            ->copyable()
-                            ->placeholder('-')
-                            ->columnSpanFull(),
-
-                        TextEntry::make('contact_phone')
-                            ->label('Nomor Telepon')
-                            ->icon('heroicon-o-phone')
-                            ->copyable()
-                            ->placeholder('-')
-                            ->columnSpanFull(),
-
-                        TextEntry::make('notes')
-                            ->label('Catatan Internal')
-                            ->icon('heroicon-o-document-text')
-                            ->placeholder('Tidak ada catatan')
-                            ->columnSpanFull(),
-                    ]),
-
-                InfoSection::make('Client dalam Grup')
-                    ->columnSpan(2)
-                    ->icon('heroicon-o-users')
-                    ->schema([
-                        InfolisView::make('filament.resources.client-group-resource.client-cards')
-                            ->viewData(fn ($record) => [
-                                'clients' => $record->clients()->orderBy('name')->get(),
-                            ])
-                            ->columnSpanFull(),
-                    ]),
-            ]),
+            InfolisView::make('filament.resources.client-group-resource.group-panel')
+                ->viewData(fn ($record) => ['group' => $record])
+                ->columnSpanFull(),
         ]);
     }
 
@@ -212,66 +133,62 @@ class ClientGroupResource extends Resource
     {
         return $table
             ->columns([
-                Tables\Columns\ImageColumn::make('logo')
-                    ->label('')
-                    ->circular()
-                    ->defaultImageUrl(fn ($record) => 'https://ui-avatars.com/api/?name=' . urlencode($record->name) . '&color=7F9CF5&background=EBF4FF')
-                    ->size(40),
+                Split::make([
+                    Tables\Columns\ImageColumn::make('logo')
+                        ->label('')
+                        ->circular()
+                        ->size(52)
+                        ->defaultImageUrl(fn ($record) => 'https://ui-avatars.com/api/?name=' . urlencode($record->name) . '&color=7F9CF5&background=EBF4FF&size=128')
+                        ->grow(false),
 
-                Tables\Columns\TextColumn::make('name')
-                    ->label('Nama Grup')
-                    ->searchable()
-                    ->sortable()
-                    ->weight('semibold')
-                    ->description(fn ($record) => $record->address ?? ''),
+                    Stack::make([
+                        Tables\Columns\TextColumn::make('name')
+                            ->searchable()
+                            ->sortable()
+                            ->weight(FontWeight::Bold)
+                            ->size(Tables\Columns\TextColumn\TextColumnSize::Large),
 
-                Tables\Columns\TextColumn::make('clients_count')
-                    ->label('Jumlah Client')
-                    ->counts('clients')
-                    ->badge()
-                    ->color(fn (int $state): string => match (true) {
-                        $state === 0 => 'gray',
-                        $state <= 3  => 'warning',
-                        default      => 'success',
-                    })
-                    ->icon('heroicon-o-users')
-                    ->alignCenter()
-                    ->sortable(),
+                        Tables\Columns\TextColumn::make('contact_name')
+                            ->searchable()
+                            ->color('gray')
+                            ->size(Tables\Columns\TextColumn\TextColumnSize::Small)
+                            ->icon('heroicon-m-user')
+                            ->placeholder('Tanpa kontak')
+                            ->description(fn ($record) => $record->contact_email ?: null),
+                    ])->space(1),
 
-                Tables\Columns\TextColumn::make('contact_name')
-                    ->label('Kontak')
-                    ->searchable()
-                    ->description(fn ($record) => $record->contact_email ?? '')
-                    ->toggleable(),
+                    Stack::make([
+                        Tables\Columns\TextColumn::make('clients_count')
+                            ->counts('clients')
+                            ->badge()
+                            ->color(fn (int $state): string => match (true) {
+                                $state === 0 => 'gray',
+                                $state <= 3  => 'warning',
+                                default      => 'success',
+                            })
+                            ->icon('heroicon-m-users')
+                            ->formatStateUsing(fn (int $state): string => $state . ' perusahaan'),
 
-                Tables\Columns\TextColumn::make('contact_phone')
-                    ->label('Telepon')
-                    ->searchable()
-                    ->icon('heroicon-o-phone')
-                    ->toggleable(),
-
-                Tables\Columns\TextColumn::make('status')
-                    ->label('Status')
-                    ->badge()
-                    ->color(fn (string $state): string => match ($state) {
-                        'active'   => 'success',
-                        'inactive' => 'danger',
-                        default    => 'gray',
-                    })
-                    ->formatStateUsing(fn (string $state): string => match ($state) {
-                        'active'   => 'Aktif',
-                        'inactive' => 'Tidak Aktif',
-                        default    => $state,
-                    }),
-
-                Tables\Columns\TextColumn::make('updated_at')
-                    ->label('Diperbarui')
-                    ->since()
-                    ->sortable()
-                    ->icon('heroicon-o-clock')
-                    ->color('gray')
-                    ->toggleable(isToggledHiddenByDefault: true),
+                        Tables\Columns\TextColumn::make('status')
+                            ->badge()
+                            ->color(fn (string $state): string => match ($state) {
+                                'active'   => 'success',
+                                'inactive' => 'danger',
+                                default    => 'gray',
+                            })
+                            ->formatStateUsing(fn (string $state): string => match ($state) {
+                                'active'   => 'Aktif',
+                                'inactive' => 'Tidak Aktif',
+                                default    => $state,
+                            }),
+                    ])->space(2)->alignment(Alignment::End)->grow(false),
+                ])->from('md'),
             ])
+            ->contentGrid([
+                'default' => 1,
+                'xl'      => 2,
+            ])
+            ->recordUrl(fn ($record) => static::getUrl('view', ['record' => $record]))
             ->filters([
                 Tables\Filters\SelectFilter::make('status')
                     ->label('Status')
@@ -362,7 +279,6 @@ class ClientGroupResource extends Resource
                     ->icon('heroicon-o-plus'),
             ])
             ->defaultSort('name')
-            ->striped()
             ->paginated([10, 25, 50]);
     }
 
