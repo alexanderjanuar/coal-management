@@ -82,8 +82,11 @@ class ClientResource extends Resource
                             ->afterStateUpdated(function (Forms\Get $get, Forms\Set $set, ?string $state) {
                                 // Reset subtype when client type changes
                                 $set('client_subtype', null);
-                                
-                                // Reset PIC for Pribadi
+
+                                // Reset pilihan "individu ini adalah PIC" pada setiap perubahan tipe
+                                $set('pic_is_self', 'no');
+
+                                // Reset PIC for Pribadi (dipilih ulang lewat dropdown bila perlu)
                                 if ($state === 'Pribadi') {
                                     $set('pic_id', null);
                                 }
@@ -183,14 +186,52 @@ class ClientResource extends Resource
                             ->unique(ignoreRecord: true)
                             ->maxLength(255),
                         Forms\Components\TextInput::make('adress')
-                            ->label('Address'),
+                            ->label('Address')
+                            ->columnSpanFull(),
+
+                        // ===== PIC (khusus klien Pribadi) =====
+                        // Gerbang Select: apakah individu ini juga terdaftar / akan didaftarkan
+                        // sebagai PIC. Field bantuan — tidak disimpan ke kolom.
+                        Forms\Components\Select::make('pic_is_self')
+                            ->label('Individu ini terdaftar sebagai PIC?')
+                            ->options([
+                                'no'  => 'Tidak',
+                                'yes' => 'Ya, terdaftar sebagai PIC',
+                            ])
+                            ->default('no')
+                            ->native(false)
+                            ->dehydrated(false)
+                            ->live()
+                            ->visible(fn (Forms\Get $get) => $get('client_type') === 'Pribadi')
+                            ->helperText('Pilih "Ya" jika orang ini sudah ada di daftar PIC atau ingin didaftarkan sebagai PIC baru. Nama, NIK & kredensialnya akan terisi otomatis.')
+                            ->afterStateHydrated(function (Forms\Get $get, Forms\Set $set) {
+                                // Saat edit: set "Ya" bila klien Pribadi sudah ter-link ke PIC
+                                if ($get('client_type') === 'Pribadi' && filled($get('pic_id'))) {
+                                    $set('pic_is_self', 'yes');
+                                }
+                            })
+                            ->afterStateUpdated(function (?string $state, Forms\Set $set) {
+                                // Bersihkan pilihan PIC saat diubah ke "Tidak"
+                                if ($state !== 'yes') {
+                                    $set('pic_id', null);
+                                }
+                            })
+                            ->columnSpanFull(),
+
                         Select::make('pic_id')
                             ->label('Person In Charge (PIC)')
                             ->relationship('pic', 'name')
                             ->searchable()
                             ->preload()
-                            ->visible(fn (Forms\Get $get) => $get('client_type') === 'Badan')
-                            ->disabled(fn (Forms\Get $get) => $get('client_type') !== 'Badan')
+                            ->live()
+                            ->visible(fn (Forms\Get $get) => $get('client_type') === 'Badan'
+                                || ($get('client_type') === 'Pribadi' && ($get('pic_is_self') === 'yes' || filled($get('pic_id')))))
+                            ->disabled(fn (Forms\Get $get) => ! ($get('client_type') === 'Badan'
+                                || ($get('client_type') === 'Pribadi' && ($get('pic_is_self') === 'yes' || filled($get('pic_id'))))))
+                            ->required(fn (Forms\Get $get) => $get('client_type') === 'Pribadi' && $get('pic_is_self') === 'yes')
+                            // Untuk Pribadi: tetap dehydrate walau hidden, agar unlink (pic_id => null)
+                            // saat diubah ke "Tidak" benar-benar tersimpan ke database.
+                            ->dehydratedWhenHidden(fn (Forms\Get $get) => $get('client_type') === 'Pribadi')
                             ->createOptionForm([
                                 Forms\Components\TextInput::make('name')
                                     ->required()
@@ -213,13 +254,34 @@ class ClientResource extends Resource
                                     ->default('active')
                                     ->required(),
                             ])
-                            ->helperText(function (Forms\Get $get) {
-                                if ($get('client_type') === 'Badan') {
-                                    return 'Pilih atau buat PIC baru untuk klien Badan';
+                            ->afterStateUpdated(function (Forms\Get $get, Forms\Set $set, $state) {
+                                // Untuk klien Pribadi: autofill nama klien dari nama PIC yang dipilih/dibuat
+                                if ($get('client_type') === 'Pribadi' && filled($state)) {
+                                    if ($pic = \App\Models\Pic::find($state)) {
+                                        $set('name', $pic->name);
+                                    }
                                 }
-                                return 'PIC tidak diperlukan untuk klien Pribadi';
-                            }),
-                        
+                            })
+                            ->helperText(function (Forms\Get $get) {
+                                return match (true) {
+                                    $get('client_type') === 'Badan' => 'Pilih atau buat PIC baru untuk klien Badan',
+                                    $get('client_type') === 'Pribadi' => 'Pilih orang dari daftar PIC, atau buat PIC baru — nama, NIK & kredensial akan terisi otomatis',
+                                    default => 'PIC tidak diperlukan untuk klien ini',
+                                };
+                            })
+                            ->columnSpanFull(),
+
+                        // Read-only: NIK & password PIC yang dipilih (berdampingan)
+                        Forms\Components\Placeholder::make('pic_nik_display')
+                            ->label('NIK PIC')
+                            ->visible(fn (Forms\Get $get) => $get('client_type') === 'Pribadi' && filled($get('pic_id')))
+                            ->content(fn (Forms\Get $get) => optional(\App\Models\Pic::find($get('pic_id')))->nik ?? '—'),
+
+                        Forms\Components\Placeholder::make('pic_password_display')
+                            ->label('Password PIC')
+                            ->visible(fn (Forms\Get $get) => $get('client_type') === 'Pribadi' && filled($get('pic_id')))
+                            ->content(fn (Forms\Get $get) => optional(\App\Models\Pic::find($get('pic_id')))->password ?? '—'),
+
                         Select::make('ar_id')
                             ->label('Account Representative (AR)')
                             ->relationship('accountRepresentative', 'name')
@@ -278,7 +340,8 @@ class ClientResource extends Resource
                             ->preload()
                             ->nullable()
                             ->placeholder('Tidak ada grup')
-                            ->helperText('Opsional — pilih jika client ini terafiliasi ke suatu grup'),
+                            ->helperText('Opsional — pilih jika client ini terafiliasi ke suatu grup')
+                            ->columnSpanFull(),
                         FileUpload::make('logo')
                             ->label('Client Logo')
                             ->openable()
