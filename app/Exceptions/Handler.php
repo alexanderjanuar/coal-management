@@ -56,35 +56,44 @@ class Handler extends ExceptionHandler
         });
     }
 
-    private function sendErrorWebhook(Throwable $e): void
+    /** Kirim notifikasi contoh ke Discord untuk menguji format & pengiriman (lewati guard production). */
+    public function sendTestWebhook(Throwable $e): bool
+    {
+        return $this->sendErrorWebhook($e, true);
+    }
+
+    private function sendErrorWebhook(Throwable $e, bool $force = false): bool
     {
         // Hanya kirim notifikasi error di production — local/dev tidak perlu ping Discord.
-        if (! app()->isProduction()) {
-            return;
+        // $force = true dipakai command uji (discord:test-error) untuk melewati guard ini.
+        if (! $force && ! app()->isProduction()) {
+            return false;
         }
 
         $webhookUrl = config('app.discord_webhook_url');
 
         if (empty($webhookUrl)) {
-            return;
+            return false;
         }
 
         foreach ($this->skipWebhookFor as $skipped) {
             if ($e instanceof $skipped) {
-                return;
+                return false;
             }
         }
 
         try {
-            // Deduplicate — skip if same error was sent recently
+            // Deduplicate — skip if same error was sent recently (mode uji selalu kirim).
             $cacheKey = 'discord_error:' . md5(get_class($e) . $e->getMessage() . $e->getFile() . $e->getLine());
             $cooldownMinutes = (int) env('DISCORD_ERROR_COOLDOWN_MINUTES', 15);
 
-            if (Cache::has($cacheKey)) {
-                return;
+            if (! $force && Cache::has($cacheKey)) {
+                return false;
             }
 
-            Cache::put($cacheKey, true, now()->addMinutes($cooldownMinutes));
+            if (! $force) {
+                Cache::put($cacheKey, true, now()->addMinutes($cooldownMinutes));
+            }
 
             $request  = request();
             $appName  = config('app.name');
@@ -150,7 +159,7 @@ class Handler extends ExceptionHandler
                 'inline' => true,
             ];
 
-            Http::timeout(5)->post($webhookUrl, [
+            $response = Http::timeout(5)->post($webhookUrl, [
                 'content' => $mentions ?: null,
                 'embeds' => [
                     [
@@ -163,9 +172,13 @@ class Handler extends ExceptionHandler
                     ],
                 ],
             ]);
+
+            return $response->successful();
         } catch (Throwable) {
             // Silently fail — never let the webhook call break the app
             Log::warning('Discord error webhook delivery failed for: ' . $e->getMessage());
+
+            return false;
         }
     }
 
