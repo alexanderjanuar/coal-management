@@ -1,6 +1,4 @@
-<div class="fi-ta-ctn divide-y divide-gray-200 overflow-hidden dark:divide-white/10 dark:bg-gray-900">
-    <!-- Cards Grid -->
-    <div class="p-6">
+<div class="tax-cards">
         @if ($records->isEmpty())
         <!-- Empty State -->
         <div class="flex flex-col items-center justify-center py-16">
@@ -558,5 +556,4 @@
             </div>
         </div>
         @endif
-    </div>
 </div>

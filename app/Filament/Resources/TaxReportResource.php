@@ -328,14 +328,7 @@ class TaxReportResource extends Resource
                         'Kurang Bayar' => 'warning',
                         'Nihil' => 'gray',
                         default => 'gray',
-                    })
-                    ->toggleable(isToggledHiddenByDefault: false),
-            ])
-            ->groups([
-                Group::make('client.name')
-                    ->label('Client'),
-                Group::make('month')
-                    ->label('Month'),
+                    }),
             ])
             ->deferLoading()
             ->filters([
@@ -485,86 +478,15 @@ class TaxReportResource extends Resource
                         );
                     }),
 
-                // Month/Period filter
-                Tables\Filters\SelectFilter::make('month')
-                    ->label('Period')
-                    ->options([
-                        'January' => 'January',
-                        'February' => 'February',
-                        'March' => 'March',
-                        'April' => 'April',
-                        'May' => 'May',
-                        'June' => 'June',
-                        'July' => 'July',
-                        'August' => 'August',
-                        'September' => 'September',
-                        'October' => 'October',
-                        'November' => 'November',
-                        'December' => 'December',
-                    ])
-                    ->multiple(),
-
-                // Year filter
-                Tables\Filters\SelectFilter::make('year')
-                    ->label('Year')
-                    ->options(function () {
-                        $years = TaxReport::distinct()
-                            ->pluck('created_at')
-                            ->map(fn($date) => date('Y', strtotime($date)))
-                            ->unique()
-                            ->toArray();
-
-                        if (empty($years)) {
-                            $currentYear = (int) date('Y');
-                            $years = range($currentYear - 2, $currentYear);
-                        }
-
-                        return array_combine($years, $years);
-                    })
-                    ->query(function (Builder $query, array $data): Builder {
-                        return $query->when(
-                            $data['value'],
-                            fn(Builder $query, $years): Builder => $query->whereYear('created_at', $years)
-                        );
-                    }),
-
-                // Completion Status Filter
-                Tables\Filters\SelectFilter::make('completion_status')
-                    ->label('Status Kelengkapan')
-                    ->options([
-                        'complete' => 'Lengkap',
-                        'incomplete' => 'Belum Lengkap',
-                    ])
-                    ->query(function (Builder $query, array $data): Builder {
-                        return $query->when($data['value'], function (Builder $query, $status) {
-                            if ($status === 'complete') {
-                                return $query->has('invoices');
-                            } else {
-                                return $query->doesntHave('invoices');
-                            }
-                        });
-                    }),
-
-                // Date range filter
-                Tables\Filters\Filter::make('created_at')
-                    ->form([
-                        Forms\Components\DatePicker::make('created_from')
-                            ->label('Dibuat Dari Tanggal'),
-                        Forms\Components\DatePicker::make('created_until')
-                            ->label('Sampai Tanggal'),
-                    ])
-                    ->query(function (Builder $query, array $data): Builder {
-                        return $query
-                            ->when(
-                                $data['created_from'],
-                                fn(Builder $query, $date): Builder => $query->whereDate('created_at', '>=', $date),
-                            )
-                            ->when(
-                                $data['created_until'],
-                                fn(Builder $query, $date): Builder => $query->whereDate('created_at', '<=', $date),
-                            );
-                    }),
             ])
+            ->filtersLayout(\Filament\Tables\Enums\FiltersLayout::Modal)
+            ->filtersTriggerAction(
+                fn (\Filament\Tables\Actions\Action $action) => $action
+                    ->button()
+                    ->label('Filter')
+                    ->icon('heroicon-m-funnel')
+                    ->color('gray'),
+            )
             ->actions([
                 Tables\Actions\ActionGroup::make([
                     Tables\Actions\EditAction::make()
