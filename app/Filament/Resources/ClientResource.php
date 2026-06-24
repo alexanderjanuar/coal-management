@@ -220,10 +220,44 @@ class ClientResource extends Resource
 
                         Select::make('pic_id')
                             ->label('Person In Charge (PIC)')
-                            ->relationship('pic', 'name')
                             ->searchable()
-                            ->preload()
                             ->live()
+                            ->options(function (Forms\Get $get) {
+                                // Untuk Badan: kelompokkan PIC berdasarkan sumbernya —
+                                // record Pic (master) vs klien Pribadi yang terdaftar sebagai PIC.
+                                if ($get('client_type') === 'Badan') {
+                                    $pribadiClients = \App\Models\Client::query()
+                                        ->where('client_type', 'Pribadi')
+                                        ->whereNotNull('pic_id')
+                                        ->orderBy('name')
+                                        ->get(['id', 'name', 'pic_id']);
+
+                                    $linkedPicIds = $pribadiClients->pluck('pic_id')->unique();
+
+                                    $masterPics = \App\Models\Pic::query()
+                                        ->when($linkedPicIds->isNotEmpty(), fn ($q) => $q->whereNotIn('id', $linkedPicIds))
+                                        ->orderBy('name')
+                                        ->pluck('name', 'id')
+                                        ->toArray();
+
+                                    $pribadiOptions = $pribadiClients
+                                        ->mapWithKeys(fn ($client) => [$client->pic_id => $client->name])
+                                        ->toArray();
+
+                                    $options = [];
+                                    if (! empty($masterPics)) {
+                                        $options['PIC (Master)'] = $masterPics;
+                                    }
+                                    if (! empty($pribadiOptions)) {
+                                        $options['Klien Pribadi'] = $pribadiOptions;
+                                    }
+
+                                    return $options;
+                                }
+
+                                // Tipe lain (Pribadi): daftar PIC biasa (flat)
+                                return \App\Models\Pic::orderBy('name')->pluck('name', 'id')->toArray();
+                            })
                             ->visible(fn (Forms\Get $get) => $get('client_type') === 'Badan'
                                 || ($get('client_type') === 'Pribadi' && ($get('pic_is_self') === 'yes' || filled($get('pic_id')))))
                             ->disabled(fn (Forms\Get $get) => ! ($get('client_type') === 'Badan'
@@ -239,7 +273,7 @@ class ClientResource extends Resource
                                 Forms\Components\TextInput::make('nik')
                                     ->label('NIK')
                                     ->required()
-                                    ->unique()
+                                    ->unique(table: \App\Models\Pic::class)
                                     ->length(16)
                                     ->numeric(),
                                 Forms\Components\TextInput::make('password')
@@ -254,6 +288,14 @@ class ClientResource extends Resource
                                     ->default('active')
                                     ->required(),
                             ])
+                            // Tanpa relationship(), createOptionForm butuh createOptionUsing untuk
+                            // membuat record Pic dan mengembalikan id-nya sebagai value select.
+                            ->createOptionUsing(fn (array $data) => \App\Models\Pic::create([
+                                'name'     => $data['name'],
+                                'nik'      => $data['nik'],
+                                'password' => $data['password'],
+                                'status'   => $data['status'] ?? 'active',
+                            ])->getKey())
                             ->afterStateUpdated(function (Forms\Get $get, Forms\Set $set, $state) {
                                 // Untuk klien Pribadi: autofill nama klien dari nama PIC yang dipilih/dibuat
                                 if ($get('client_type') === 'Pribadi' && filled($state)) {
@@ -264,7 +306,7 @@ class ClientResource extends Resource
                             })
                             ->helperText(function (Forms\Get $get) {
                                 return match (true) {
-                                    $get('client_type') === 'Badan' => 'Pilih atau buat PIC baru untuk klien Badan',
+                                    $get('client_type') === 'Badan' => 'Pilih PIC (master) atau klien Pribadi yang terdaftar sebagai PIC, atau buat PIC baru',
                                     $get('client_type') === 'Pribadi' => 'Pilih orang dari daftar PIC, atau buat PIC baru — nama, NIK & kredensial akan terisi otomatis',
                                     default => 'PIC tidak diperlukan untuk klien ini',
                                 };
@@ -479,6 +521,68 @@ class ClientResource extends Resource
                             ->columnSpanFull(),
                     ])
                     ->columns(2),
+
+                // Kredensial utama klien (ClientCredential) — disimpan via relasi belongsTo
+                // (clients.credential_id). Hanya dibuat bila minimal satu field terisi.
+                Section::make('Kredensial Aplikasi Pajak')
+                    ->description('Akun & kata sandi aplikasi pajak (Core Tax, DJP Online, Email). Opsional — bisa juga diisi nanti lewat menu Kelola Kredensial.')
+                    ->icon('heroicon-o-key')
+                    ->collapsible()
+                    ->relationship('clientCredential', condition: fn (?array $state): bool =>
+                        filled($state['core_tax_user_id'] ?? null)
+                        || filled($state['core_tax_password'] ?? null)
+                        || filled($state['djp_account'] ?? null)
+                        || filled($state['djp_password'] ?? null)
+                        || filled($state['email'] ?? null)
+                        || filled($state['email_password'] ?? null)
+                        || filled($state['notes'] ?? null)
+                    )
+                    ->schema([
+                        Forms\Components\Hidden::make('credential_type')->default('general'),
+                        Forms\Components\Hidden::make('is_active')->default(true),
+
+                        Forms\Components\Fieldset::make('Core Tax')
+                            ->schema([
+                                Forms\Components\TextInput::make('core_tax_user_id')
+                                    ->label('Core Tax User ID')
+                                    ->maxLength(255),
+                                Forms\Components\TextInput::make('core_tax_password')
+                                    ->label('Core Tax Password')
+                                    ->password()
+                                    ->revealable()
+                                    ->maxLength(255),
+                            ])->columns(2),
+
+                        Forms\Components\Fieldset::make('DJP Online')
+                            ->schema([
+                                Forms\Components\TextInput::make('djp_account')
+                                    ->label('Akun DJP')
+                                    ->maxLength(255),
+                                Forms\Components\TextInput::make('djp_password')
+                                    ->label('Password DJP')
+                                    ->password()
+                                    ->revealable()
+                                    ->maxLength(255),
+                            ])->columns(2),
+
+                        Forms\Components\Fieldset::make('Email')
+                            ->schema([
+                                Forms\Components\TextInput::make('email')
+                                    ->label('Email')
+                                    ->email()
+                                    ->maxLength(255),
+                                Forms\Components\TextInput::make('email_password')
+                                    ->label('Password Email')
+                                    ->password()
+                                    ->revealable()
+                                    ->maxLength(255),
+                            ])->columns(2),
+
+                        Forms\Components\Textarea::make('notes')
+                            ->label('Catatan')
+                            ->rows(2)
+                            ->columnSpanFull(),
+                    ]),
 
                 Section::make('Contract Management')
                     ->description('Tax service contracts and agreements')
