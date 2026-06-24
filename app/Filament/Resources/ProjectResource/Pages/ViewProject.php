@@ -35,6 +35,11 @@ class ViewProject extends ViewRecord
     public $newTaskStatus = '';
     public $selectedTaskId = null;
 
+    /** State modal "Oper ke Dokumen Klien" (card picker).
+     *  operTarget: 'general' | 'sop:{id}' (dokumen legal) | 'req:{id}' (persyaratan). */
+    public string $operTarget = 'general';
+    public array $operFileIndices = [];
+
 
 
     protected $listeners = [
@@ -1092,6 +1097,164 @@ class ViewProject extends ViewRecord
             // Update deliverables notification sub-title
             // (blank intentional to keep action block clean)
 
+            // Oper (salin) deliverable proyek menjadi dokumen milik klien, dengan pilihan
+            // memetakan ke requirement dokumen yang ditetapkan klien. UI card-based di blade.
+            // Hanya muncul saat proyek completed & punya deliverable. File di proyek tetap utuh.
+            Actions\Action::make('operToClientDocument')
+                ->label('Oper ke Dokumen Klien')
+                ->icon('heroicon-o-arrow-right-circle')
+                ->color('info')
+                ->visible(fn() => $this->record->status === 'completed'
+                    && !empty($this->record->deliverable_files)
+                    && !$clientInactive)
+                ->modalHeading('Oper Deliverable ke Dokumen Klien')
+                ->modalSubmitActionLabel('Oper Sekarang')
+                ->modalWidth('3xl')
+                ->mountUsing(fn() => $this->resetOperState())
+                ->modalContent(function () {
+                    $client = $this->record->client;
+
+                    return view('filament.projects.oper-deliverable-modal', [
+                        'files' => $this->record->deliverable_files ?? [],
+                        'sopDocs' => $client ? $client->getApplicableSopDocuments() : collect(),
+                        'uploadedSopIds' => $client
+                            ? $client->clientDocuments()
+                                ->whereNotNull('sop_legal_document_id')
+                                ->whereNotNull('file_path')
+                                ->pluck('sop_legal_document_id')
+                                ->unique()
+                                ->all()
+                            : [],
+                        'requirements' => $client
+                            ? $client->documentRequirements()
+                                ->where('status', 'pending')
+                                ->with('group')
+                                ->orderBy('name')
+                                ->get()
+                            : collect(),
+                    ]);
+                })
+                ->action(function () {
+                    $client = $this->record->client;
+
+                    if (!$client) {
+                        Notification::make()
+                            ->title('Klien tidak ditemukan')
+                            ->body('Proyek ini tidak tertaut ke klien mana pun.')
+                            ->danger()
+                            ->send();
+                        return;
+                    }
+
+                    if (empty($this->operFileIndices)) {
+                        Notification::make()
+                            ->title('Belum ada file dipilih')
+                            ->body('Pilih minimal satu file deliverable untuk dioper.')
+                            ->warning()
+                            ->send();
+                        return;
+                    }
+
+                    // Parse tujuan: 'general' | 'sop:{id}' | 'req:{id}'.
+                    $target = $this->operTarget ?: 'general';
+                    $sopId = null;
+                    $requirement = null;
+                    $targetLabel = 'dokumen umum';
+
+                    if (str_starts_with($target, 'sop:')) {
+                        $sopId = (int) substr($target, 4);
+                        $sopDoc = \App\Models\SopLegalDocument::find($sopId);
+                        if ($sopDoc) {
+                            $targetLabel = 'dokumen legal "' . $sopDoc->name . '"';
+                        } else {
+                            $sopId = null;
+                        }
+                    } elseif (str_starts_with($target, 'req:')) {
+                        $requirement = $client->documentRequirements()->find((int) substr($target, 4));
+                        if ($requirement) {
+                            $targetLabel = 'persyaratan "' . $requirement->name . '"';
+                        }
+                    }
+
+                    $isMapped = $sopId || $requirement;
+
+                    $files = $this->record->deliverable_files ?? [];
+                    $folder = $client->getLegalFolderPath();
+                    $client->ensureFoldersExist();
+
+                    $success = 0;
+                    $failed = 0;
+
+                    foreach ($this->operFileIndices as $index) {
+                        $file = $files[$index] ?? null;
+                        $sourcePath = $file['path'] ?? null;
+
+                        if (!$file || !$sourcePath || !Storage::disk('public')->exists($sourcePath)) {
+                            $failed++;
+                            continue;
+                        }
+
+                        try {
+                            $originalName = $file['name'] ?? basename($sourcePath);
+                            $ext = pathinfo($sourcePath, PATHINFO_EXTENSION);
+                            $base = \Illuminate\Support\Str::slug(pathinfo($originalName, PATHINFO_FILENAME)) ?: 'dokumen';
+                            $destPath = $folder . '/' . $base . '-' . uniqid() . ($ext ? '.' . $ext : '');
+
+                            Storage::disk('public')->copy($sourcePath, $destPath);
+
+                            $client->clientDocuments()->create([
+                                'user_id' => auth()->id(),
+                                'file_path' => $destPath,
+                                'original_filename' => $originalName,
+                                'sop_legal_document_id' => $sopId,
+                                'requirement_id' => $requirement?->id,
+                                'document_category' => $isMapped ? null : 'additional',
+                                'status' => 'valid',
+                                'description' => 'Dari proyek "' . $this->record->name . '" → ' . ucfirst($targetLabel),
+                            ]);
+
+                            $success++;
+                        } catch (Throwable $e) {
+                            $failed++;
+                            \Log::error('Gagal oper deliverable ke dokumen klien', [
+                                'project_id' => $this->record->id,
+                                'file' => $sourcePath,
+                                'error' => $e->getMessage(),
+                            ]);
+                        }
+                    }
+
+                    // Observer hanya menandai fulfilled saat UPDATE status; pada create perlu eksplisit.
+                    if ($success > 0 && $requirement) {
+                        $requirement->markAsFulfilled();
+                    }
+
+                    if ($success > 0) {
+                        $client->logActivity(
+                            'document_from_project',
+                            "{$success} dokumen dioper dari proyek '{$this->record->name}' ke {$targetLabel}"
+                        );
+
+                        Comment::create([
+                            'user_id' => auth()->id(),
+                            'commentable_id' => $this->record->id,
+                            'commentable_type' => get_class($this->record),
+                            'content' => "{$success} deliverable file(s) operated to client documents ({$targetLabel}).",
+                        ]);
+                    }
+
+                    $notification = Notification::make()
+                        ->title($success > 0 ? 'Deliverable berhasil dioper' : 'Tidak ada file yang dioper')
+                        ->body(trim(
+                            ($success > 0 ? "{$success} file disalin ke {$targetLabel}. " : '')
+                            . ($failed > 0 ? "{$failed} file gagal disalin." : '')
+                        ) ?: 'Tidak ada perubahan.');
+                    $success > 0 ? $notification->success() : $notification->warning();
+                    $notification->send();
+
+                    $this->resetOperState();
+                }),
+
             // Modify edit action to be disabled when project is completed or client inactive
             Actions\Action::make('edit')
                 ->url(static::getResource()::getUrl('edit', ['record' => $this->record]))
@@ -1167,6 +1330,36 @@ class ViewProject extends ViewRecord
         $this->updateRequiredDocumentStatuses();
         $this->updateProjectStepStatus();
         $this->updateProjectStatus();
+    }
+
+    /**
+     * Pilih tujuan dokumen pada modal oper:
+     * 'general' (dokumen umum), 'sop:{id}' (dokumen legal wajib), 'req:{id}' (persyaratan).
+     */
+    public function selectOperTarget(string $target): void
+    {
+        $this->operTarget = $target;
+    }
+
+    /**
+     * Toggle pilihan file deliverable pada modal oper.
+     */
+    public function toggleOperFile(int $index): void
+    {
+        if (in_array($index, $this->operFileIndices, true)) {
+            $this->operFileIndices = array_values(array_diff($this->operFileIndices, [$index]));
+        } else {
+            $this->operFileIndices[] = $index;
+        }
+    }
+
+    /**
+     * Reset state modal oper (dipanggil saat modal dibuka & setelah selesai).
+     */
+    public function resetOperState(): void
+    {
+        $this->operTarget = 'general';
+        $this->operFileIndices = [];
     }
 
     /**
