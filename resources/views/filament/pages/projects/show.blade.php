@@ -192,7 +192,14 @@
                             </h1>
                             <div
                                 class="mt-1 flex flex-col sm:flex-row items-center gap-2 sm:gap-3 text-sm text-gray-500 dark:text-gray-400">
-                                <span>{{ $record->client->name }}</span>
+                                @if($record->client)
+                                    <a href="{{ \App\Filament\Resources\ClientResource::getUrl('view', ['record' => $record->client]) }}"
+                                       wire:navigate
+                                       class="font-medium hover:text-primary-600 dark:hover:text-primary-400 hover:underline transition-colors"
+                                       title="Lihat detail klien {{ $record->client->name }}">
+                                        {{ $record->client->name }}
+                                    </a>
+                                @endif
                                 @if($record->due_date)
                                 <span class="flex items-center gap-1">
                                     <x-heroicon-m-calendar-days class="w-4 h-4" />
