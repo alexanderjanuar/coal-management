@@ -22,6 +22,9 @@ class DatabaseSeeder extends Seeder
      */
     public function run(): void
     {
+        // Patch notes (idempotent via version)
+        $this->call(PatchNoteSeeder::class);
+
         // Create admin user
         // User::factory()->create([
         //     'name' => 'Admin User',

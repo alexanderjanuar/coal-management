@@ -1,4 +1,7 @@
 <x-filament-panels::page class="w-full">
+    {{-- Patch notes — container closable di paling atas dashboard --}}
+    @livewire('patch-notes-banner')
+
     <style>
         /* CSS Tambahan untuk Welcome Card */
         @keyframes float {
