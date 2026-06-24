@@ -4,6 +4,26 @@ Catatan ringkas perubahan, dikelompokkan per tanggal. Tiap entri: **modul** + in
 
 ---
 
+## 24 Juni 2026 · v1.5.0
+
+**👤 Klien**
+- **Section Kredensial** (Core Tax / DJP / Email) langsung bisa diisi saat **membuat klien baru** — tak perlu buka menu terpisah.
+- Dropdown **PIC klien Badan** dikelompokkan: dari daftar PIC (master) **atau** klien Pribadi yang sudah terdaftar sebagai PIC.
+- Halaman daftar **Klien responsif** di tablet & ponsel (kartu bertumpuk di layar kecil).
+
+**📁 Proyek**
+- **Oper Deliverable**: hasil proyek yang selesai bisa disalin ke **Dokumen Klien** — dipetakan ke Dokumen Umum, **Dokumen Legal Wajib (SOP)**, atau **Persyaratan** klien.
+- Nama klien di detail proyek kini **link** ke halaman detail klien.
+
+**🧾 Pajak**
+- Nilai **PPN faktur** kini bisa **diisi manual** (tetap auto-isi) untuk koreksi pembulatan.
+
+**✨ Sistem — Patch Notes**
+- **Banner pembaruan** yang bisa ditutup, tampil di **Dashboard** untuk staff saat ada rilis baru.
+- Dikelola via **Administration → Patch Notes** (versi, judul, perubahan ber-tipe & ber-area). Light/dark mode, tampilan timeline.
+
+---
+
 ## 23 Juni 2026
 
 **👤 Tambah Client — PIC untuk Klien Pribadi**
