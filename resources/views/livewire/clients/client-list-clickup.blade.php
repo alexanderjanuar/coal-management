@@ -1170,8 +1170,73 @@
                 padding: 20px;
             }
 
-            /* Responsive — Columns toggle handles wider screens; the user
-               can hide Type/PKP/Group manually. No automatic hiding here. */
+            /* ============== RESPONSIVE ============== */
+            /* Tablet & down (the grid needs ~1026px to fit all columns):
+               drop the secondary columns and keep a compact table —
+               logo · name · status · actions. */
+            @media (max-width: 1024px) {
+                .cl-table-head,
+                .cl-row {
+                    grid-template-columns: 36px minmax(120px, 1fr) auto auto !important;
+                    gap: 10px;
+                }
+                .cl-col-type,
+                .cl-col-pkp,
+                .cl-col-group { display: none !important; }
+
+                .cl-row { padding: 12px 12px 12px 20px; }
+                .cl-table-head { padding: 4px 14px 10px; }
+
+                /* Icon-only credential button to save horizontal room. */
+                .cl-cred-pill-label { display: none; }
+                .cl-cred-pill { padding: 0; width: 28px; justify-content: center; }
+            }
+
+            /* Phones: stack each row into a card. Header hidden; cells reflow —
+               line 1: logo · name · actions, then the pills wrap onto line 2+. */
+            @media (max-width: 640px) {
+                .cl-table-head { display: none !important; }
+
+                .cl-row {
+                    display: flex !important;
+                    flex-wrap: wrap;
+                    align-items: center;
+                    grid-template-columns: none !important;
+                    column-gap: 8px; row-gap: 8px;
+                    padding: 12px 14px 12px 18px;
+                }
+                .cl-col-logo    { order: 1; }
+                .cl-col-name    { order: 2; flex: 1 1 auto; min-width: 0; overflow: hidden; }
+                .cl-client-name { display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+                .cl-col-actions { order: 3; flex: 0 0 auto; }
+
+                /* Bring the pills back (override the tablet hide) and let them wrap below. */
+                .cl-col-status,
+                .cl-col-type,
+                .cl-col-pkp,
+                .cl-col-group {
+                    display: flex !important;
+                    align-items: center;
+                    order: 4;
+                    flex: 0 0 auto;
+                }
+
+                /* Restore the labelled credential pill — there's room in the wrap. */
+                .cl-cred-pill-label { display: inline; }
+                .cl-cred-pill { padding: 0 11px 0 9px; width: auto; }
+
+                /* Toolbar: full-width search, the icon buttons wrap beneath it. */
+                .cl-search { flex: 1 1 100%; max-width: none; }
+                .cl-toolbar-spacer { display: none; }
+
+                /* Keep filter dropdowns within the viewport. */
+                .cl-filter-mega { width: min(320px, calc(100vw - 28px)) !important; }
+
+                /* Credential modal — tighter padding on small screens. */
+                .cl-cred-overlay { padding: 12px; }
+                .cl-cred-head { padding: 14px 16px; }
+                .cl-cred-body { padding: 14px; }
+            }
         </style>
     @endonce
 </div>
