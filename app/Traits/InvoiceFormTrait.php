@@ -517,11 +517,10 @@ trait InvoiceFormTrait
                             ->prefix('Rp')
                             ->placeholder('0.00')
                             ->required()
-                            ->readOnly()
                             ->mask(RawJs::make('$money($input)'))
                             ->dehydrateStateUsing(fn ($state) => TaxCalculationService::cleanMonetaryInput($state))
                             ->rules(['required'])
-                            ->helperText('Otomatis terhitung sebesar 11% dari DPP'),
+                            ->helperText('Terisi otomatis 11% dari DPP — bisa diubah manual bila ada selisih pembulatan'),
                     ]),
             ]);
     }
