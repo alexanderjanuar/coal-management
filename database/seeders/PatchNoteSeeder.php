@@ -62,5 +62,56 @@ class PatchNoteSeeder extends Seeder
                 ],
             ]
         );
+
+        PatchNote::updateOrCreate(
+            ['version' => '1.6.0'],
+            [
+                'title'        => 'Pelaporan SPT Masa & Penyempurnaan Modul Pajak',
+                'description'  => 'Unggah SPT Masa dari Coretax di tiap jenis pajak, ringkasan SPT untuk klien, notifikasi otomatis, serta navigasi & filter laporan pajak yang lebih pintar.',
+                'is_published' => true,
+                'released_at'  => now()->toDateString(),
+                'created_by'   => User::query()->value('id'),
+                'changes'      => [
+                    // Fitur baru
+                    [
+                        'type' => 'feature',
+                        'area' => 'Pajak',
+                        'text' => 'Unggah SPT Masa: di tiap jenis pajak (PPN & PPh) kini ada tab "SPT" untuk mengunggah berkas SPT/BPE dari Coretax. Setelah diunggah, status masa otomatis menjadi Sudah Lapor & Sudah Bayar, lengkap dengan pratinjau dokumen.',
+                    ],
+                    [
+                        'type' => 'feature',
+                        'area' => 'Pajak',
+                        'text' => 'Halaman klien menampilkan tabel "SPT Dilaporkan" — ringkasan seluruh SPT yang telah dilaporkan. Klik salah satu baris untuk membuka detail laporan masa tersebut.',
+                    ],
+                    [
+                        'type' => 'feature',
+                        'area' => 'Sistem',
+                        'text' => 'Klien otomatis menerima notifikasi begitu SPT mereka diunggah & dilaporkan oleh tim.',
+                    ],
+
+                    // Peningkatan
+                    [
+                        'type' => 'improvement',
+                        'area' => 'Pajak',
+                        'text' => 'Navigasi bulan pada laporan pajak kini berwarna sesuai status pelaporan, dan hanya menghitung jenis pajak yang benar-benar dikontrak klien (berlaku di panel admin maupun klien).',
+                    ],
+                    [
+                        'type' => 'improvement',
+                        'area' => 'Pajak',
+                        'text' => 'Daftar laporan pajak dilengkapi filter "Jenis Kontrak" untuk menyaring klien berdasarkan PPN, PPh, Bupot, atau PPh Badan.',
+                    ],
+                    [
+                        'type' => 'improvement',
+                        'area' => 'Pajak',
+                        'text' => 'Tab PPh kini fokus pada PPh 21; jenis PPh lainnya (23 & 4(2)) akan dikelola di menu PPh Unifikasi.',
+                    ],
+                    [
+                        'type' => 'improvement',
+                        'area' => 'Pajak',
+                        'text' => 'Tabel SPT pada halaman klien dilengkapi pencarian, filter (jenis & tahun), pengurutan kolom, dan pengelompokan (default per jenis SPT).',
+                    ],
+                ],
+            ]
+        );
     }
 }
