@@ -96,6 +96,22 @@
                         <x-filament::icon icon="heroicon-o-clock" class="h-5 w-5" />
                         <span>Riwayat</span>
                     </button>
+
+                    {{-- SPT Tab — indikator: hijau (sudah upload) / "Belum" (belum upload) --}}
+                    <button @click="activeTab = 'spt'"
+                        :class="activeTab === 'spt'
+                            ? 'border-blue-600 text-blue-600 dark:border-blue-400 dark:text-blue-400'
+                            : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300'"
+                        class="inline-flex flex-shrink-0 items-center gap-2 border-b-2 px-1 py-4 text-sm font-medium transition-colors whitespace-nowrap">
+                        <x-filament::icon icon="heroicon-o-arrow-up-tray" class="h-5 w-5" />
+                        <span>SPT</span>
+                        @if($this->sptUploaded)
+                            <span class="ml-1 inline-flex h-2 w-2 rounded-full bg-green-500" title="SPT sudah diunggah"></span>
+                        @else
+                            <span class="ml-1 rounded-full bg-orange-100 px-2.5 py-0.5 text-xs font-medium text-orange-600 dark:bg-orange-500/20 dark:text-orange-400"
+                                title="SPT belum diunggah">Belum</span>
+                        @endif
+                    </button>
                 </nav>
             </div>
         </div>
@@ -111,14 +127,21 @@
                 @livewire('tax-report.pph.pph-tax-list', ['taxReportId' => $taxReportId])
             </div>
 
+            {{-- SPT Tab --}}
+            <div x-show="activeTab === 'spt'" x-transition:enter="transition ease-out duration-200"
+                x-transition:enter-start="opacity-0 translate-y-4" x-transition:enter-end="opacity-100 translate-y-0"
+                x-cloak>
+                @livewire('tax-report.spt-upload', ['taxReportId' => $taxReportId, 'type' => 'pph'], key('spt-pph-' . $taxReportId))
+            </div>
+
             {{-- Kalkulasi Tab --}}
             {{-- Kalkulasi Tab --}}
             <div x-show="activeTab === 'kalkulasi'" x-transition:enter="transition ease-out duration-200"
                 x-transition:enter-start="opacity-0 translate-y-4" x-transition:enter-end="opacity-100 translate-y-0"
                 x-cloak>
 
-                {{-- Section 1: Ringkasan PPh Cards --}}
-                <div class="mb-6 grid gap-4 sm:gap-6 md:grid-cols-2 xl:grid-cols-4">
+                {{-- Section 1: Ringkasan PPh Cards (fokus PPh 21) --}}
+                <div class="mb-6 grid gap-4 sm:gap-6 sm:grid-cols-2">
 
                     {{-- PPh 21 Card --}}
                     <div
@@ -158,119 +181,7 @@
                         </div>
                     </div>
 
-                    {{-- PPh 23 Card --}}
-                    <div
-                        class="rounded-lg bg-white border border-gray-200 dark:bg-gray-900 dark:border-gray-700 overflow-hidden">
-                        <div class="px-5 py-4 border-b border-gray-100 dark:border-gray-800">
-                            <div class="flex items-center justify-between">
-                                <h3 class="text-sm font-semibold text-gray-900 dark:text-white">PPh 23</h3>
-                                <span
-                                    class="inline-flex items-center rounded-md bg-gray-100 px-2 py-1 text-xs font-medium text-gray-600 dark:bg-gray-800 dark:text-gray-400">
-                                    Jasa/Dividen
-                                </span>
-                            </div>
-                        </div>
-                        <div class="px-5 py-4">
-                            <div class="space-y-3">
-                                <div>
-                                    <p class="text-xs text-gray-500 dark:text-gray-400 mb-1">Pajak Terutang</p>
-                                    <p class="text-xl font-bold text-gray-900 dark:text-white">
-                                        Rp {{ number_format($pph23Total, 0, ',', '.') }}
-                                    </p>
-                                </div>
-                                <div class="pt-3 border-t border-gray-100 dark:border-gray-800">
-                                    <div class="flex items-center justify-between text-sm">
-                                        <span class="text-gray-600 dark:text-gray-400">DPP</span>
-                                        <span class="font-medium text-gray-900 dark:text-white">
-                                            Rp {{ number_format($pph23Bruto, 0, ',', '.') }}
-                                        </span>
-                                    </div>
-                                    <div class="flex items-center justify-between text-sm mt-2">
-                                        <span class="text-gray-600 dark:text-gray-400">Bukti Potong</span>
-                                        <span class="font-medium text-gray-900 dark:text-white">
-                                            {{ $pph23Count }}
-                                        </span>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    {{-- PPh 4(2) Card --}}
-                    <div
-                        class="rounded-lg bg-white border border-gray-200 dark:bg-gray-900 dark:border-gray-700 overflow-hidden">
-                        <div class="px-5 py-4 border-b border-gray-100 dark:border-gray-800">
-                            <div class="flex items-center justify-between">
-                                <h3 class="text-sm font-semibold text-gray-900 dark:text-white">PPh 4(2)</h3>
-                                <span
-                                    class="inline-flex items-center rounded-md bg-gray-100 px-2 py-1 text-xs font-medium text-gray-600 dark:bg-gray-800 dark:text-gray-400">
-                                    Final
-                                </span>
-                            </div>
-                        </div>
-                        <div class="px-5 py-4">
-                            <div class="space-y-3">
-                                <div>
-                                    <p class="text-xs text-gray-500 dark:text-gray-400 mb-1">Pajak Terutang</p>
-                                    <p class="text-xl font-bold text-gray-900 dark:text-white">
-                                        Rp {{ number_format($pph42Total, 0, ',', '.') }}
-                                    </p>
-                                </div>
-                                <div class="pt-3 border-t border-gray-100 dark:border-gray-800">
-                                    <div class="flex items-center justify-between text-sm">
-                                        <span class="text-gray-600 dark:text-gray-400">DPP</span>
-                                        <span class="font-medium text-gray-900 dark:text-white">
-                                            Rp {{ number_format($pph42Bruto, 0, ',', '.') }}
-                                        </span>
-                                    </div>
-                                    <div class="flex items-center justify-between text-sm mt-2">
-                                        <span class="text-gray-600 dark:text-gray-400">Bukti Potong</span>
-                                        <span class="font-medium text-gray-900 dark:text-white">
-                                            {{ $pph42Count }}
-                                        </span>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    {{-- Total PPh Card --}}
-                    <div
-                        class="rounded-lg bg-gradient-to-br from-gray-50 to-gray-100 border border-gray-300 dark:from-gray-800 dark:to-gray-900 dark:border-gray-700 overflow-hidden">
-                        <div class="px-5 py-4 border-b border-gray-200 dark:border-gray-700">
-                            <div class="flex items-center justify-between">
-                                <h3 class="text-sm font-semibold text-gray-900 dark:text-white">Total PPh</h3>
-                                <span
-                                    class="inline-flex items-center rounded-md bg-white px-2 py-1 text-xs font-medium text-gray-700 ring-1 ring-inset ring-gray-200 dark:bg-gray-700 dark:text-gray-300 dark:ring-gray-600">
-                                    Keseluruhan
-                                </span>
-                            </div>
-                        </div>
-                        <div class="px-5 py-4">
-                            <div class="space-y-3">
-                                <div>
-                                    <p class="text-xs text-gray-600 dark:text-gray-400 mb-1">Total Pajak</p>
-                                    <p class="text-xl font-bold text-gray-900 dark:text-white">
-                                        Rp {{ number_format($totalPph, 0, ',', '.') }}
-                                    </p>
-                                </div>
-                                <div class="pt-3 border-t border-gray-200 dark:border-gray-700">
-                                    <div class="flex items-center justify-between text-sm">
-                                        <span class="text-gray-600 dark:text-gray-400">Total DPP</span>
-                                        <span class="font-medium text-gray-900 dark:text-white">
-                                            Rp {{ number_format($pph21Bruto + $pph23Bruto + $pph42Bruto, 0, ',', '.') }}
-                                        </span>
-                                    </div>
-                                    <div class="flex items-center justify-between text-sm mt-2">
-                                        <span class="text-gray-600 dark:text-gray-400">Total Bukti Potong</span>
-                                        <span class="font-medium text-gray-900 dark:text-white">
-                                            {{ $totalBuktiPotong }}
-                                        </span>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
+                    {{-- PPh 23, PPh 4(2) & Total dipindahkan ke PPh Unifikasi --}}
 
                 </div>
 
@@ -329,60 +240,6 @@
                                         {{ $pph21Count }}
                                     </td>
                                 </tr>
-                                <tr>
-                                    <td
-                                        class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-white">
-                                        PPh 23
-                                    </td>
-                                    <td
-                                        class="px-6 py-4 whitespace-nowrap text-sm text-right text-gray-900 dark:text-white">
-                                        Rp {{ number_format($pph23Bruto, 0, ',', '.') }}
-                                    </td>
-                                    <td
-                                        class="px-6 py-4 whitespace-nowrap text-sm text-right font-semibold text-gray-900 dark:text-white">
-                                        Rp {{ number_format($pph23Total, 0, ',', '.') }}
-                                    </td>
-                                    <td
-                                        class="px-6 py-4 whitespace-nowrap text-sm text-center text-gray-900 dark:text-white">
-                                        {{ $pph23Count }}
-                                    </td>
-                                </tr>
-                                <tr>
-                                    <td
-                                        class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-white">
-                                        PPh 4(2)
-                                    </td>
-                                    <td
-                                        class="px-6 py-4 whitespace-nowrap text-sm text-right text-gray-900 dark:text-white">
-                                        Rp {{ number_format($pph42Bruto, 0, ',', '.') }}
-                                    </td>
-                                    <td
-                                        class="px-6 py-4 whitespace-nowrap text-sm text-right font-semibold text-gray-900 dark:text-white">
-                                        Rp {{ number_format($pph42Total, 0, ',', '.') }}
-                                    </td>
-                                    <td
-                                        class="px-6 py-4 whitespace-nowrap text-sm text-center text-gray-900 dark:text-white">
-                                        {{ $pph42Count }}
-                                    </td>
-                                </tr>
-                                <tr class="bg-gray-50 dark:bg-gray-800">
-                                    <td
-                                        class="px-6 py-4 whitespace-nowrap text-sm font-bold text-gray-900 dark:text-white">
-                                        TOTAL
-                                    </td>
-                                    <td
-                                        class="px-6 py-4 whitespace-nowrap text-sm text-right font-bold text-gray-900 dark:text-white">
-                                        Rp {{ number_format($pph21Bruto + $pph23Bruto + $pph42Bruto, 0, ',', '.') }}
-                                    </td>
-                                    <td
-                                        class="px-6 py-4 whitespace-nowrap text-sm text-right font-bold text-gray-900 dark:text-white">
-                                        Rp {{ number_format($totalPph, 0, ',', '.') }}
-                                    </td>
-                                    <td
-                                        class="px-6 py-4 whitespace-nowrap text-sm text-center font-bold text-gray-900 dark:text-white">
-                                        {{ $totalBuktiPotong }}
-                                    </td>
-                                </tr>
                             </tbody>
                         </table>
                     </div>
@@ -403,8 +260,8 @@
                             <h4 class="text-sm font-medium text-gray-900 dark:text-gray-300 mb-1">Catatan Perhitungan
                             </h4>
                             <p class="text-xs text-gray-600 dark:text-gray-400 leading-relaxed">
-                                Data dihitung berdasarkan bukti potong yang telah diinput. PPh 21 untuk karyawan, PPh 23
-                                untuk jasa/dividen, dan PPh 4(2) untuk pajak final.
+                                Data dihitung berdasarkan bukti potong PPh 21 (karyawan) yang telah diinput.
+                                PPh 23, PPh 4(2), dan jenis lainnya dikelola di menu PPh Unifikasi.
                             </p>
                         </div>
                     </div>

@@ -38,7 +38,16 @@ class TaxReportPph extends Component
     protected $listeners = [
         'refreshPphCalculations' => 'calculatePph',
         'pphDataUpdated' => 'calculatePph',
+        'spt-updated' => '$refresh', // perbarui indikator tab SPT setelah upload/hapus
     ];
+
+    /** Apakah SPT PPh untuk masa ini sudah diunggah (untuk indikator tab). */
+    public function getSptUploadedProperty(): bool
+    {
+        return (bool) optional(
+            $this->taxReport?->taxCalculationSummaries()->where('tax_type', 'pph')->first()
+        )->bukti_lapor;
+    }
     
     /**
      * Mount the component with tax report ID

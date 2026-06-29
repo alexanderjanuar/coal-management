@@ -61,6 +61,7 @@ class PphTaxList extends Component implements HasForms, HasTable
             ->query(
                 IncomeTax::query()
                     ->where('tax_report_id', $this->taxReportId)
+                    ->where('jenis_pajak', 'Pasal 21') // fokus PPh 21; jenis lain di PPh Unifikasi
                     ->with(['employee', 'createdBy'])
             )
             ->columns([
@@ -167,14 +168,7 @@ class PphTaxList extends Component implements HasForms, HasTable
                     ->color(fn ($state) => $state ? 'success' : 'gray'),
             ])
             ->filters([
-                SelectFilter::make('jenis_pajak')
-                    ->label('Jenis Pajak')
-                    ->options([
-                        'Pasal 21' => 'PPh 21',
-                        'Pasal 23' => 'PPh 23',
-                        'Pasal 4(2)' => 'PPh 4(2)',
-                    ])
-                    ->multiple(),
+                // Fokus PPh 21 — filter jenis dihilangkan (jenis lain ada di PPh Unifikasi).
             ])
             ->headerActions([
                     Action::make('import_excel')
@@ -262,10 +256,11 @@ class PphTaxList extends Component implements HasForms, HasTable
                         Select::make('jenis_pajak')
                             ->label('Jenis Pajak')
                             ->required()
+                            ->default('Pasal 21')
+                            ->disabled()
+                            ->dehydrated()
                             ->options([
                                 'Pasal 21' => 'PPh 21',
-                                'Pasal 23' => 'PPh 23',
-                                'Pasal 4(2)' => 'PPh 4(2)',
                             ]),
                         
                         TextInput::make('nama')
@@ -361,9 +356,7 @@ class PphTaxList extends Component implements HasForms, HasTable
                     })
                     ->deselectRecordsAfterCompletion(),
             ])
-            ->groups(['jenis_pajak'])
-            ->defaultGroup('jenis_pajak')
-            ->emptyStateHeading('Belum ada data PPh')
+            ->emptyStateHeading('Belum ada data PPh 21')
             ->emptyStateDescription('Tambahkan data PPh menggunakan tombol Import Excel')
             ->emptyStateIcon('heroicon-o-document-text')
             ->defaultSort('created_at', 'desc')

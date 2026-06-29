@@ -116,6 +116,22 @@
                         <span class="hidden sm:inline">Yearly Summary</span>
                         <span class="sm:hidden">Yearly</span>
                     </button>
+
+                    {{-- SPT Tab — indikator: hijau (sudah upload) / "Belum" (belum upload) --}}
+                    <button @click="activeTab = 'spt'"
+                        :class="activeTab === 'spt'
+                            ? 'border-blue-600 text-blue-600 dark:border-blue-400 dark:text-blue-400'
+                            : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300'"
+                        class="inline-flex flex-shrink-0 items-center gap-2 border-b-2 px-1 py-4 text-sm font-medium transition-colors whitespace-nowrap">
+                        <x-filament::icon icon="heroicon-o-arrow-up-tray" class="h-5 w-5" />
+                        <span>SPT</span>
+                        @if($this->sptUploaded)
+                            <span class="ml-1 inline-flex h-2 w-2 rounded-full bg-green-500" title="SPT sudah diunggah"></span>
+                        @else
+                            <span class="ml-1 rounded-full bg-orange-100 px-2.5 py-0.5 text-xs font-medium text-orange-600 dark:bg-orange-500/20 dark:text-orange-400"
+                                title="SPT belum diunggah">Belum</span>
+                        @endif
+                    </button>
                 </nav>
             </div>
         </div>
@@ -128,6 +144,13 @@
                 x-transition:enter-start="opacity-0 translate-y-4" x-transition:enter-end="opacity-100 translate-y-0"
                 x-cloak>
                 @livewire('tax-report.ppn.invoice-table', ['taxReportId' => $taxReportId], key('invoice-table-' .$taxReportId))
+            </div>
+
+            {{-- SPT Tab --}}
+            <div x-show="activeTab === 'spt'" x-transition:enter="transition ease-out duration-200"
+                x-transition:enter-start="opacity-0 translate-y-4" x-transition:enter-end="opacity-100 translate-y-0"
+                x-cloak>
+                @livewire('tax-report.spt-upload', ['taxReportId' => $taxReportId, 'type' => 'ppn'], key('spt-ppn-' . $taxReportId))
             </div>
 
             {{-- Kalkulasi Tab - Ultra Clean Design with Headers & Tooltips --}}

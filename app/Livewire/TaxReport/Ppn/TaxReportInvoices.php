@@ -453,11 +453,20 @@ class TaxReportInvoices extends Component
      * Listen for events from nested components to refresh summary
      */
     protected $listeners = [
-        'invoiceCreated' => 'refreshData', 
-        'invoiceUpdated' => 'refreshData', 
+        'invoiceCreated' => 'refreshData',
+        'invoiceUpdated' => 'refreshData',
         'invoiceDeleted' => 'refreshData',
-        'compensationUpdated' => 'refreshData'
+        'compensationUpdated' => 'refreshData',
+        'spt-updated' => '$refresh', // perbarui indikator tab SPT setelah upload/hapus
     ];
+
+    /** Apakah SPT PPN untuk masa ini sudah diunggah (untuk indikator tab). */
+    public function getSptUploadedProperty(): bool
+    {
+        return (bool) optional(
+            $this->taxReport->taxCalculationSummaries()->where('tax_type', 'ppn')->first()
+        )->bukti_lapor;
+    }
 
     /**
      * Refresh all data

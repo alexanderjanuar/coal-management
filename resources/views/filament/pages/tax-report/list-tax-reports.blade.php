@@ -240,10 +240,12 @@
         $fBayar   = $tf['payment_status']['values'] ?? [];
         $fKontrak = (bool) ($tf['has_contracts']['isActive'] ?? false);
         $fKlien   = $tf['client_status']['values'] ?? [];
+        $fJenis   = $tf['contract_types']['values'] ?? [];
         $filterCount = ($fPpn ? 1 : 0)
             + (count($fBayar) ? 1 : 0)
             + (! $fKontrak ? 1 : 0)
-            + ((count($fKlien) && $fKlien !== ['Active']) ? 1 : 0);
+            + ((count($fKlien) && $fKlien !== ['Active']) ? 1 : 0)
+            + (count($fJenis) ? 1 : 0);
     @endphp
     <div class="tax-filter-container mb-4 flex flex-col gap-3 sm:flex-row sm:items-center">
         {{-- Search --}}
@@ -282,6 +284,18 @@
                         <input type="checkbox" wire:model.live="tableFilters.has_contracts.isActive"
                                class="h-4 w-4 rounded border-gray-300 text-teal-600 focus:ring-teal-500 dark:border-gray-600 dark:bg-gray-700">
                     </label>
+
+                    <div class="mt-4">
+                        <div class="mb-2 text-xs font-semibold uppercase tracking-wide text-gray-400 dark:text-gray-500">Jenis Kontrak</div>
+                        <div class="flex flex-wrap gap-x-4 gap-y-2">
+                            @foreach(['ppn_contract' => 'PPN', 'pph_contract' => 'PPh', 'bupot_contract' => 'Bupot', 'pph_badan_contract' => 'PPh Badan'] as $val => $lbl)
+                                <label class="flex items-center gap-1.5 text-sm text-gray-700 dark:text-gray-300">
+                                    <input type="checkbox" value="{{ $val }}" wire:model.live="tableFilters.contract_types.values"
+                                           class="h-4 w-4 rounded border-gray-300 text-teal-600 focus:ring-teal-500 dark:border-gray-600 dark:bg-gray-700">{{ $lbl }}
+                                </label>
+                            @endforeach
+                        </div>
+                    </div>
 
                     <div class="mt-4">
                         <div class="mb-2 text-xs font-semibold uppercase tracking-wide text-gray-400 dark:text-gray-500">Status Klien</div>

@@ -519,6 +519,19 @@
                             Navigasi Bulan - {{ $currentRecordYear }}
                         </h3>
 
+                        <style>
+                            /* Warna kartu navigasi bulan berdasarkan status lapor kontrak klien */
+                            .tr-month { border-color: #e5e7eb; background: #ffffff; transition: box-shadow .15s, border-color .15s, background .15s; }
+                            .tr-month:hover { box-shadow: 0 1px 3px rgba(15,23,42,.10); }
+                            .dark .tr-month { border-color: #374151; background: rgba(31,41,55,.5); }
+                            .tr-month.is-active { border-color: #3b82f6; background: #eff6ff; box-shadow: 0 1px 2px rgba(15,23,42,.08); }
+                            .dark .tr-month.is-active { border-color: #60a5fa; background: rgba(30,58,138,.30); }
+                            .tr-month.is-reported { border-color: #86efac; background: #f0fdf4; }
+                            .dark .tr-month.is-reported { border-color: rgba(34,197,94,.45); background: rgba(20,83,45,.30); }
+                            .tr-month.is-unreported { border-color: #fdba74; background: #fff7ed; }
+                            .dark .tr-month.is-unreported { border-color: rgba(249,115,22,.45); background: rgba(124,45,18,.30); }
+                        </style>
+
                         @php
                         $months = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August',
                         'September',
@@ -538,31 +551,47 @@
                                 $isCurrent = $monthName === $record->month && $currentRecordYear == ($record->year ??
                                 $record->created_at->year);
 
+                                // Hanya jenis pajak yang DIKONTRAK klien yang dihitung status lapornya.
+                                $client = $record->client;
+                                $contracted = array_keys(array_filter([
+                                'ppn'       => $client->ppn_contract ?? false,
+                                'pph'       => $client->pph_contract ?? false,
+                                'bupot'     => $client->bupot_contract ?? false,
+                                'pph_badan' => $client->pph_badan_contract ?? false,
+                                ]));
+
+                                $hasActivity = false;
+                                $monthIsReported = false;
+                                $monthState = 'nodata'; // nodata | reported | unreported | nocontract
+
                                 if ($hasReport) {
                                 $hasActivity = ($monthReport->invoices_count ?? 0) > 0 ||
                                 ($monthReport->income_taxs_count ?? 0) > 0 ||
                                 ($monthReport->bupots_count ?? 0) > 0;
 
-                                $monthSummaries = $monthReport->taxCalculationSummaries ?? collect();
-                                $ppnSum = $monthSummaries->firstWhere('tax_type', 'ppn');
-                                $pphSum = $monthSummaries->firstWhere('tax_type', 'pph');
-                                $bupotSum = $monthSummaries->firstWhere('tax_type', 'bupot');
-                                $pphBadanSum = $monthSummaries->firstWhere('tax_type', 'pph_badan');
+                                $sumByType = ($monthReport->taxCalculationSummaries ?? collect())->keyBy('tax_type');
 
-                                $monthIsReported = ($ppnSum && $ppnSum->report_status === 'Sudah Lapor') &&
-                                ($pphSum && $pphSum->report_status === 'Sudah Lapor') &&
-                                ($bupotSum && $bupotSum->report_status === 'Sudah Lapor') &&
-                                ($pphBadanSum && $pphBadanSum->report_status === 'Sudah Lapor');
+                                if (count($contracted) === 0) {
+                                $monthState = 'nocontract';
                                 } else {
-                                $hasActivity = false;
-                                $monthIsReported = false;
+                                $reportedContracted = collect($contracted)->filter(
+                                fn ($t) => optional($sumByType->get($t))->report_status === 'Sudah Lapor'
+                                )->count();
+                                $monthIsReported = $reportedContracted === count($contracted);
+                                $monthState = $monthIsReported ? 'reported' : 'unreported';
                                 }
+                                }
+
+                                // Kelas warna kartu (lihat <style> .tr-month). Bulan aktif = biru.
+                                $stateClass = $isCurrent ? 'is-active'
+                                : ($monthState === 'reported' ? 'is-reported'
+                                : ($monthState === 'unreported' ? 'is-unreported' : ''));
                                 @endphp
 
                                 @if($hasReport)
                                 <a href="{{ route('filament.admin.resources.tax-reports.view', $monthReport) }}"
                                     wire:navigate
-                                    class="group relative flex flex-col items-center justify-center overflow-hidden rounded-md md:rounded-lg border-2 px-2 py-2 md:px-2 md:py-3 transition-all duration-200 flex-shrink-0 w-16 md:w-auto {{ $isCurrent ? 'border-blue-500 bg-blue-50 shadow-sm dark:border-blue-400 dark:bg-blue-900/20' : 'border-gray-200 bg-white hover:border-blue-300 hover:bg-blue-50/50 hover:shadow-sm dark:border-gray-700 dark:bg-gray-800/50 dark:hover:border-blue-600 dark:hover:bg-blue-900/10' }}">
+                                    class="group relative flex flex-col items-center justify-center overflow-hidden rounded-md md:rounded-lg border-2 px-2 py-2 md:px-2 md:py-3 transition-all duration-200 flex-shrink-0 w-16 md:w-auto tr-month {{ $stateClass }}">
 
                                     {{-- Ripple effect on hover --}}
                                     <div
@@ -571,15 +600,15 @@
 
                                     {{-- Reporting Status Indicator --}}
                                     <div class="absolute left-0.5 top-0.5 md:left-1 md:top-1 z-10">
-                                        @if($monthIsReported)
+                                        @if($monthState === 'reported')
                                         <div class="flex h-3 w-3 md:h-4 md:w-4 items-center justify-center rounded-full bg-green-500 shadow-sm"
-                                            title="Sudah Lapor">
+                                            title="Semua kontrak sudah lapor">
                                             <x-filament::icon icon="heroicon-m-check"
                                                 class="h-1.5 w-1.5 md:h-2.5 md:w-2.5 text-white" />
                                         </div>
-                                        @else
+                                        @elseif($monthState === 'unreported')
                                         <div class="flex h-3 w-3 md:h-4 md:w-4 items-center justify-center rounded-full bg-orange-500 shadow-sm"
-                                            title="Belum Lapor">
+                                            title="Belum semua kontrak lapor">
                                             <x-filament::icon icon="heroicon-m-exclamation-triangle"
                                                 class="h-1.5 w-1.5 md:h-2.5 md:w-2.5 text-white" />
                                         </div>

@@ -30,6 +30,10 @@ class TaxCalculationSummary extends Model
         'bayar_status',
         'bayar_at',
         'bukti_bayar',
+        'report_status',
+        'reported_at',
+        'bukti_lapor',
+        'nomor_bukti_lapor',
     ];
 
     protected $casts = [

@@ -478,6 +478,39 @@ class TaxReportResource extends Resource
                         );
                     }),
 
+                // Filter per jenis kontrak — tampilkan laporan klien yang punya kontrak terpilih.
+                Tables\Filters\Filter::make('contract_types')
+                    ->label('Jenis Kontrak')
+                    ->form([
+                        Select::make('values')
+                            ->label('Jenis Kontrak')
+                            ->options([
+                                'ppn_contract'       => 'PPN',
+                                'pph_contract'       => 'PPh',
+                                'bupot_contract'     => 'Bupot',
+                                'pph_badan_contract' => 'PPh Badan',
+                            ])
+                            ->multiple()
+                            ->native(false),
+                    ])
+                    ->query(function (Builder $query, array $data): Builder {
+                        $cols = array_intersect(
+                            $data['values'] ?? [],
+                            ['ppn_contract', 'pph_contract', 'bupot_contract', 'pph_badan_contract']
+                        );
+
+                        return $query->when(
+                            ! empty($cols),
+                            fn (Builder $query): Builder => $query->whereHas('client', function (Builder $q) use ($cols) {
+                                $q->where(function (Builder $sub) use ($cols) {
+                                    foreach ($cols as $col) {
+                                        $sub->orWhere($col, true);
+                                    }
+                                });
+                            })
+                        );
+                    }),
+
             ])
             ->filtersLayout(\Filament\Tables\Enums\FiltersLayout::Modal)
             ->filtersTriggerAction(
