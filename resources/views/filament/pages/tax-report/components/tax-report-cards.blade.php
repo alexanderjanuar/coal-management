@@ -1,4 +1,4 @@
-<div class="tax-cards">
+<div class="tax-cards" x-data>
         @if ($records->isEmpty())
         <!-- Empty State -->
         <div class="flex flex-col items-center justify-center py-16">
@@ -17,7 +17,8 @@
         </div>
         @else
         <!-- Cards Grid -->
-        <div class="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+        <div x-show="$store.taxView.mode === 'board'" x-cloak
+            class="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
             @foreach ($records as $record)
             @php
             $ppnSummary = $record->taxCalculationSummaries->firstWhere('tax_type', 'ppn');
@@ -525,6 +526,135 @@
                 </div>
             </div>
             @endforeach
+        </div>
+
+        {{-- ===== LIST VIEW ===== --}}
+        <div x-show="$store.taxView.mode === 'list'" x-cloak
+            class="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm dark:border-gray-700 dark:bg-gray-800">
+            @php
+                $sortCol = $this->getTableSortColumn();
+                $sortDir = $this->getTableSortDirection();
+            @endphp
+            {{-- Header (desktop) — Client & Periode bisa diklik untuk sortir --}}
+            <div class="hidden grid-cols-12 gap-3 border-b border-gray-100 bg-gray-50 px-4 py-2.5 text-xs font-semibold uppercase tracking-wide text-gray-400 dark:border-gray-700 dark:bg-gray-900/40 dark:text-gray-500 md:grid">
+                <button type="button" wire:click="sortTable('client.name', @js($sortCol === 'client.name' && $sortDir === 'asc' ? 'desc' : 'asc'))"
+                    @class([
+                        'col-span-3 inline-flex items-center gap-1 uppercase tracking-wide transition hover:text-gray-600 dark:hover:text-gray-300',
+                        'text-teal-600 dark:text-teal-400' => $sortCol === 'client.name',
+                    ])>
+                    Client
+                    @if ($sortCol === 'client.name')
+                        <svg class="h-3 w-3" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="{{ $sortDir === 'asc' ? 'M5 15l7-7 7 7' : 'M19 9l-7 7-7-7' }}" /></svg>
+                    @else
+                        <svg class="h-3 w-3 opacity-40" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M8 9l4-4 4 4m0 6l-4 4-4-4" /></svg>
+                    @endif
+                </button>
+                <button type="button" wire:click="sortTable('month', @js($sortCol === 'month' && $sortDir === 'asc' ? 'desc' : 'asc'))"
+                    @class([
+                        'col-span-2 inline-flex items-center gap-1 uppercase tracking-wide transition hover:text-gray-600 dark:hover:text-gray-300',
+                        'text-teal-600 dark:text-teal-400' => $sortCol === 'month',
+                    ])>
+                    Periode
+                    @if ($sortCol === 'month')
+                        <svg class="h-3 w-3" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="{{ $sortDir === 'asc' ? 'M5 15l7-7 7 7' : 'M19 9l-7 7-7-7' }}" /></svg>
+                    @else
+                        <svg class="h-3 w-3 opacity-40" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M8 9l4-4 4 4m0 6l-4 4-4-4" /></svg>
+                    @endif
+                </button>
+                <div class="col-span-2">Status Pajak</div>
+                <div class="col-span-2 text-right">Saldo PPN</div>
+                <div class="col-span-2 text-right">Status Bayar</div>
+                <div class="col-span-1 text-right">Aksi</div>
+            </div>
+
+            <div class="divide-y divide-gray-100 dark:divide-gray-700/60">
+                @foreach ($records as $record)
+                    @php
+                        $ppnSummary = $record->taxCalculationSummaries->firstWhere('tax_type', 'ppn');
+                        $pphSummary = $record->taxCalculationSummaries->firstWhere('tax_type', 'pph');
+                        $bupotSummary = $record->taxCalculationSummaries->firstWhere('tax_type', 'bupot');
+                        $pphBadanSummary = $record->taxCalculationSummaries->firstWhere('tax_type', 'pph_badan');
+                        $paymentStatus = $ppnSummary?->status_final ?? 'N/A';
+                        $payConfig = match ($paymentStatus) {
+                            'Lebih Bayar'  => ['cls' => 'bg-emerald-50 text-emerald-700 ring-emerald-600/20 dark:bg-emerald-500/10 dark:text-emerald-300 dark:ring-emerald-400/20', 'dot' => 'bg-emerald-500'],
+                            'Kurang Bayar' => ['cls' => 'bg-amber-50 text-amber-700 ring-amber-600/20 dark:bg-amber-500/10 dark:text-amber-300 dark:ring-amber-400/20', 'dot' => 'bg-amber-500'],
+                            'Nihil'        => ['cls' => 'bg-slate-50 text-slate-600 ring-slate-500/20 dark:bg-slate-400/10 dark:text-slate-300 dark:ring-slate-400/20', 'dot' => 'bg-slate-400'],
+                            default        => ['cls' => 'bg-gray-50 text-gray-500 ring-gray-500/20 dark:bg-gray-400/10 dark:text-gray-300 dark:ring-gray-400/20', 'dot' => 'bg-gray-400'],
+                        };
+                        $rowTypes = [
+                            ['label' => 'PPN', 'c' => $record->client->ppn_contract ?? false, 's' => $ppnSummary],
+                            ['label' => 'PPh', 'c' => $record->client->pph_contract ?? false, 's' => $pphSummary],
+                            ['label' => 'Bupot', 'c' => $record->client->bupot_contract ?? false, 's' => $bupotSummary],
+                            ['label' => 'PPh Badan', 'c' => $record->client->pph_badan_contract ?? false, 's' => $pphBadanSummary],
+                        ];
+                    @endphp
+                    <div wire:key="tax-row-{{ $record->id }}"
+                        class="grid grid-cols-1 gap-3 px-4 py-3 transition hover:bg-gray-50 dark:hover:bg-gray-700/30 md:grid-cols-12 md:items-center">
+                        {{-- Client + kontrak --}}
+                        <div class="min-w-0 md:col-span-3">
+                            <a href="{{ \App\Filament\Resources\TaxReportResource::getUrl('view', ['record' => $record]) }}"
+                                class="block truncate font-semibold text-gray-900 transition hover:text-teal-600 dark:text-white dark:hover:text-teal-400">
+                                {{ $record->client->name }}
+                            </a>
+                        </div>
+
+                        {{-- Periode --}}
+                        <div class="text-sm text-gray-600 dark:text-gray-300 md:col-span-2">
+                            <span class="font-medium text-gray-400 md:hidden">Periode: </span>{{ $record->month }} {{ $record->year }}
+                        </div>
+
+                        {{-- Status per jenis --}}
+                        <div class="md:col-span-2">
+                            <div class="flex flex-wrap items-center gap-1.5">
+                                @foreach ($rowTypes as $t) @if ($t['c'])
+                                    @php $r = $t['s']?->report_status === 'Sudah Lapor'; $p = $t['s']?->bayar_status === 'Sudah Bayar'; @endphp
+                                    <span @class([
+                                            'inline-flex items-center gap-1 rounded-md border px-1.5 py-0.5 text-xs font-medium',
+                                            'border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-900/40 dark:bg-emerald-900/20 dark:text-emerald-300' => $r,
+                                            'border-gray-200 bg-gray-50 text-gray-500 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-400' => ! $r,
+                                        ])
+                                        title="{{ $t['label'] }}: {{ $r ? 'Sudah Lapor' : 'Belum Lapor' }}{{ $p ? ' • Sudah Bayar' : '' }}">
+                                        {{ $t['label'] }}
+                                        @if ($r)
+                                            <x-heroicon-s-check-circle class="h-3.5 w-3.5 text-emerald-500" />
+                                        @else
+                                            <x-heroicon-o-clock class="h-3.5 w-3.5 text-gray-400" />
+                                        @endif
+                                        @if ($p)<x-heroicon-s-banknotes class="h-3 w-3 text-amber-500" />@endif
+                                    </span>
+                                @endif @endforeach
+                            </div>
+                        </div>
+
+                        {{-- Saldo PPN --}}
+                        <div class="flex items-center gap-2 md:col-span-2 md:justify-end">
+                            <span class="text-sm font-medium text-gray-400 md:hidden">Saldo PPN:</span>
+                            <span class="text-sm font-bold tabular-nums text-gray-900 dark:text-white">Rp {{ number_format(abs($ppnSummary?->saldo_final ?? 0), 0, ',', '.') }}</span>
+                        </div>
+
+                        {{-- Status Bayar --}}
+                        <div class="flex items-center gap-2 md:col-span-2 md:justify-end">
+                            <span class="text-sm font-medium text-gray-400 md:hidden">Status:</span>
+                            <span class="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-semibold ring-1 ring-inset {{ $payConfig['cls'] }}">
+                                <span class="h-1.5 w-1.5 rounded-full {{ $payConfig['dot'] }}"></span>
+                                {{ $paymentStatus }}
+                            </span>
+                        </div>
+
+                        {{-- Aksi --}}
+                        <div class="flex items-center gap-1 md:col-span-1 md:justify-end">
+                            <a href="{{ \App\Filament\Resources\TaxReportResource::getUrl('view', ['record' => $record]) }}"
+                                title="Lihat" class="inline-flex h-8 w-8 items-center justify-center rounded-lg text-gray-400 transition hover:bg-gray-100 hover:text-gray-700 dark:hover:bg-gray-700 dark:hover:text-gray-200">
+                                <x-heroicon-o-eye class="h-4 w-4" />
+                            </a>
+                            <a href="{{ \App\Filament\Resources\TaxReportResource::getUrl('edit', ['record' => $record]) }}"
+                                title="Edit" class="inline-flex h-8 w-8 items-center justify-center rounded-lg text-gray-400 transition hover:bg-gray-100 hover:text-gray-700 dark:hover:bg-gray-700 dark:hover:text-gray-200">
+                                <x-heroicon-o-pencil-square class="h-4 w-4" />
+                            </a>
+                        </div>
+                    </div>
+                @endforeach
+            </div>
         </div>
 
         <!-- Payment Status Legend -->

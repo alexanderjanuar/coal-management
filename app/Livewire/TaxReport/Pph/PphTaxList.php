@@ -107,27 +107,10 @@ class PphTaxList extends Component implements HasForms, HasTable
                     ->copyMessage('Nomor disalin!')
                     ->copyMessageDuration(1500),
                 
-                TextColumn::make('jenis_pajak')
-                    ->label('Jenis Pajak')
-                    ->badge()
-                    ->color(fn (string $state): string => match ($state) {
-                        'Pasal 21' => 'info',
-                        'Pasal 23' => 'warning',
-                        'Pasal 4(2)', 'Pasal 4 ayat 2' => 'success',
-                        default => 'gray',
-                    })
-                    ->searchable()
-                    ->sortable(),
-                
                 TextColumn::make('nama')
                     ->label('Nama Penerima')
                     ->searchable()
-                    ->sortable()
-                    ->description(fn (IncomeTax $record): string => 
-                        $record->employee 
-                            ? "Karyawan: {$record->employee->name}" 
-                            : 'Data manual'
-                    ),
+                    ->sortable(),
                 
                 TextColumn::make('npwp')
                     ->label('NPWP')
@@ -159,13 +142,15 @@ class PphTaxList extends Component implements HasForms, HasTable
                     ->label('Lapor SPT')
                     ->badge()
                     ->formatStateUsing(fn ($state) => $state ? 'Ya' : 'Tidak')
-                    ->color(fn ($state): string => $state ? 'success' : 'gray'),
-                
+                    ->color(fn ($state): string => $state ? 'success' : 'gray')
+                    ->toggleable(isToggledHiddenByDefault: true),
+
                 TextColumn::make('bukti_potong')
                     ->label('Bukti')
                     ->formatStateUsing(fn ($state) => $state ? '✓' : '-')
                     ->alignCenter()
-                    ->color(fn ($state) => $state ? 'success' : 'gray'),
+                    ->color(fn ($state) => $state ? 'success' : 'gray')
+                    ->toggleable(isToggledHiddenByDefault: true),
             ])
             ->filters([
                 // Fokus PPh 21 — filter jenis dihilangkan (jenis lain ada di PPh Unifikasi).
@@ -183,6 +168,9 @@ class PphTaxList extends Component implements HasForms, HasTable
                                     'application/vnd.ms-excel',
                                     'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
                                     'application/vnd.ms-excel.sheet.macroEnabled.12',
+                                    // .xlsx adalah arsip ZIP — sebagian file terdeteksi sebagai zip/octet-stream
+                                    'application/zip',
+                                    'application/octet-stream',
                                 ])
                                 ->maxSize(10240) // 10MB
                                 ->helperText(new \Illuminate\Support\HtmlString('
@@ -385,64 +373,61 @@ class PphTaxList extends Component implements HasForms, HasTable
             // Start from row 2 (skip header)
             for ($row = 2; $row <= $highestRow; $row++) {
                 try {
+                    // Format DJP (bukti pemotongan PPh 21) — 14 kolom:
+                    // A=No. B=NIK/NPWP C=Nama D=Nomor Bukti Potong E=Tgl Bukti F=Kode Objek
+                    // G=Bruto H=Tarif(%) I=PPh J=Fasilitas K=Negara L=ID Tempat Usaha(NITKU) M=KAP-KJS N=Status
+                    // Catatan: Tarif, Negara, KAP-KJS sengaja diabaikan (tak ada kolom DB).
                     $rowData = [
-                        'masa_pajak' => $worksheet->getCell('A' . $row)->getValue(),
-                        'nomor_pemotongan' => $worksheet->getCell('B' . $row)->getValue(),
-                        'status' => $worksheet->getCell('C' . $row)->getValue() ?: 'NORMAL',
-                        'nitku' => $worksheet->getCell('D' . $row)->getValue(),
-                        'jenis_pajak' => $worksheet->getCell('E' . $row)->getValue(),
-                        'kode_objek_pajak' => $worksheet->getCell('F' . $row)->getValue(),
-                        'npwp' => $worksheet->getCell('G' . $row)->getValue(),
-                        'nama' => $worksheet->getCell('H' . $row)->getValue(),
-                        'dasar_pengenaan_pajak' => $worksheet->getCell('I' . $row)->getValue() ?: 0,
-                        'pajak_penghasilan' => $worksheet->getCell('J' . $row)->getValue() ?: 0,
-                        'fasilitas_pajak' => $worksheet->getCell('K' . $row)->getValue() ?: 'Tanpa Fasilitas',
-                        'dilaporkan_dalam_spt' => $this->convertToBoolean($worksheet->getCell('L' . $row)->getValue()),
-                        'spt_sedang_diperiksa' => $this->convertToBoolean($worksheet->getCell('M' . $row)->getValue()),
-                        'spt_dalam_penanganan_hukum' => $this->convertToBoolean($worksheet->getCell('N' . $row)->getValue()),
+                        'npwp'                  => $worksheet->getCell('B' . $row)->getValue(),
+                        'nama'                  => $worksheet->getCell('C' . $row)->getValue(),
+                        'nomor_pemotongan'      => $worksheet->getCell('D' . $row)->getValue(),
+                        'masa_pajak'            => $this->parseExcelDate($worksheet->getCell('E' . $row)->getValue()),
+                        'kode_objek_pajak'      => $worksheet->getCell('F' . $row)->getValue(),
+                        'dasar_pengenaan_pajak' => $worksheet->getCell('G' . $row)->getValue() ?: 0,
+                        'pajak_penghasilan'     => $worksheet->getCell('I' . $row)->getValue() ?: 0,
+                        'fasilitas_pajak'       => $worksheet->getCell('J' . $row)->getValue() ?: 'Tanpa Fasilitas',
+                        'nitku'                 => $worksheet->getCell('L' . $row)->getValue(),
+                        'status'                => $worksheet->getCell('N' . $row)->getValue() ?: 'NORMAL',
                     ];
-                    
-                    // Skip empty rows
-                    if (empty($rowData['nomor_pemotongan']) || empty($rowData['jenis_pajak'])) {
+
+                    // Skip baris kosong
+                    if (empty($rowData['npwp']) && empty($rowData['nomor_pemotongan'])) {
                         continue;
                     }
-                    
+
                     // Clean and format data
                     $rowData = $this->cleanRowData($rowData);
-                    
-                    // Try to find or create employee
+
+                    // Karyawan dari NPWP + Nama (buat bila belum ada)
                     $employeeId = $this->findOrCreateEmployeeId($rowData['npwp'], $rowData['nama']);
-                    
-                    // Check if record already exists
+
+                    // Dedup per Nomor Bukti Potong
                     $existingRecord = IncomeTax::where('tax_report_id', $this->taxReportId)
                         ->where('nomor_pemotongan', $rowData['nomor_pemotongan'])
                         ->first();
-                    
+
                     // Create or update record
                     $record = IncomeTax::updateOrCreate(
                         [
-                            'tax_report_id' => $this->taxReportId,
+                            'tax_report_id'    => $this->taxReportId,
                             'nomor_pemotongan' => $rowData['nomor_pemotongan'],
                         ],
                         [
-                            'employee_id' => $employeeId,
-                            'masa_pajak' => $rowData['masa_pajak'],
-                            'status' => $rowData['status'],
-                            'nitku' => $rowData['nitku'],
-                            'jenis_pajak' => $rowData['jenis_pajak'],
-                            'kode_objek_pajak' => $rowData['kode_objek_pajak'],
-                            'npwp' => $rowData['npwp'],
-                            'nama' => $rowData['nama'],
+                            'employee_id'           => $employeeId,
+                            'jenis_pajak'           => 'Pasal 21',
+                            'npwp'                  => $rowData['npwp'],
+                            'nama'                  => $rowData['nama'],
+                            'nitku'                 => $rowData['nitku'],
+                            'masa_pajak'            => $rowData['masa_pajak'],
+                            'kode_objek_pajak'      => $rowData['kode_objek_pajak'],
                             'dasar_pengenaan_pajak' => $rowData['dasar_pengenaan_pajak'],
-                            'pajak_penghasilan' => $rowData['pajak_penghasilan'],
-                            'fasilitas_pajak' => $rowData['fasilitas_pajak'],
-                            'dilaporkan_dalam_spt' => $rowData['dilaporkan_dalam_spt'],
-                            'spt_sedang_diperiksa' => $rowData['spt_sedang_diperiksa'],
-                            'spt_dalam_penanganan_hukum' => $rowData['spt_dalam_penanganan_hukum'],
-                            'created_by' => auth()->id(),
+                            'pajak_penghasilan'     => $rowData['pajak_penghasilan'],
+                            'fasilitas_pajak'       => $rowData['fasilitas_pajak'],
+                            'status'                => $rowData['status'],
+                            'created_by'            => auth()->id(),
                         ]
                     );
-                    
+
                     if ($existingRecord) {
                         $updateCount++;
                     } else {
@@ -560,8 +545,47 @@ class PphTaxList extends Component implements HasForms, HasTable
         // Ensure numbers are numeric
         $data['dasar_pengenaan_pajak'] = (float) ($data['dasar_pengenaan_pajak'] ?? 0);
         $data['pajak_penghasilan'] = (float) ($data['pajak_penghasilan'] ?? 0);
-        
+
         return $data;
+    }
+
+    /**
+     * Normalisasi tanggal bukti pemotongan ke string 'd-m-Y'.
+     * Menangani serial date Excel maupun string (dd-mm-yyyy / yyyy-mm-dd / dll).
+     */
+    protected function parseExcelDate($value): ?string
+    {
+        if ($value === null || $value === '') {
+            return null;
+        }
+
+        // Serial date Excel (angka)
+        if (is_numeric($value)) {
+            try {
+                return \PhpOffice\PhpSpreadsheet\Shared\Date::excelToDateTimeObject((float) $value)->format('d-m-Y');
+            } catch (\Throwable $e) {
+                // lanjut ke parsing string
+            }
+        }
+
+        $str = trim((string) $value);
+
+        // Format dd-mm-yyyy eksplisit dulu (ambigu untuk strtotime/Carbon)
+        foreach (['d-m-Y', 'd/m/Y', 'd-m-y'] as $fmt) {
+            $dt = \DateTime::createFromFormat($fmt, $str);
+            if ($dt !== false) {
+                return $dt->format('d-m-Y');
+            }
+        }
+
+        // ISO 8601 (mis. 2026-06-01T00:00:00+07:00) & format lain
+        try {
+            return \Illuminate\Support\Carbon::parse($str)->format('d-m-Y');
+        } catch (\Throwable $e) {
+            // biarkan, pakai fallback di bawah
+        }
+
+        return mb_substr($str, 0, 20); // jaga agar muat kolom varchar(20)
     }
 
     protected function findOrCreateEmployeeId(?string $npwp, ?string $nama): ?int
@@ -666,23 +690,28 @@ class PphTaxList extends Component implements HasForms, HasTable
     private function formatMasaPajak(?string $masaPajak): string
     {
         if (!$masaPajak) return '-';
-        
-        try {
-            // Format: MMDDYYYY (e.g., 06062025)
+
+        $monthNames = [
+            '01' => 'Jan', '02' => 'Feb', '03' => 'Mar',
+            '04' => 'Apr', '05' => 'Mei', '06' => 'Jun',
+            '07' => 'Jul', '08' => 'Agu', '09' => 'Sep',
+            '10' => 'Okt', '11' => 'Nov', '12' => 'Des',
+        ];
+
+        // Format baru: dd-mm-yyyy (tanggal bukti pemotongan)
+        $dt = \DateTime::createFromFormat('d-m-Y', $masaPajak);
+        if ($dt !== false) {
+            return $dt->format('d') . ' ' . ($monthNames[$dt->format('m')] ?? $dt->format('m')) . ' ' . $dt->format('Y');
+        }
+
+        // Format lama: MMDDYYYY (mis. 06062025)
+        if (preg_match('/^\d{8}$/', $masaPajak)) {
             $month = substr($masaPajak, 0, 2);
             $year = substr($masaPajak, 4, 4);
-            
-            $monthNames = [
-                '01' => 'Jan', '02' => 'Feb', '03' => 'Mar',
-                '04' => 'Apr', '05' => 'Mei', '06' => 'Jun',
-                '07' => 'Jul', '08' => 'Agu', '09' => 'Sep',
-                '10' => 'Okt', '11' => 'Nov', '12' => 'Des',
-            ];
-            
             return ($monthNames[$month] ?? $month) . ' ' . $year;
-        } catch (\Exception $e) {
-            return $masaPajak;
         }
+
+        return $masaPajak;
     }
 
     protected function exportToExcel()

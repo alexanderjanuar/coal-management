@@ -61,6 +61,15 @@
         }
     </style>
 
+    <script>
+        document.addEventListener('alpine:init', () => {
+            Alpine.store('taxView', {
+                mode: localStorage.getItem('taxViewMode') || 'board',
+                set(m) { this.mode = m; localStorage.setItem('taxViewMode', m); },
+            });
+        });
+    </script>
+
     <div class="tax-filter-container">
         {{-- Single Row Filter: Year Dropdown | Month Pills --}}
         <div
@@ -258,6 +267,28 @@
         </div>
 
         <div class="flex items-center gap-2 sm:justify-end">
+            {{-- View toggle: Board / List --}}
+            <div x-data class="inline-flex items-center rounded-lg border border-gray-200 bg-white p-0.5 shadow-sm dark:border-gray-700 dark:bg-gray-800">
+                <button type="button" @click="$store.taxView.set('board')"
+                    :class="$store.taxView.mode === 'board' ? 'bg-teal-600 text-white shadow-sm' : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200'"
+                    class="inline-flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-sm font-semibold transition">
+                    <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                        <rect x="3" y="3" width="7" height="7" rx="1" /><rect x="14" y="3" width="7" height="7" rx="1" />
+                        <rect x="3" y="14" width="7" height="7" rx="1" /><rect x="14" y="14" width="7" height="7" rx="1" />
+                    </svg>
+                    <span class="hidden sm:inline">Board</span>
+                </button>
+                <button type="button" @click="$store.taxView.set('list')"
+                    :class="$store.taxView.mode === 'list' ? 'bg-teal-600 text-white shadow-sm' : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200'"
+                    class="inline-flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-sm font-semibold transition">
+                    <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" stroke-linecap="round">
+                        <line x1="8" y1="6" x2="21" y2="6" /><line x1="8" y1="12" x2="21" y2="12" /><line x1="8" y1="18" x2="21" y2="18" />
+                        <line x1="3" y1="6" x2="3.01" y2="6" /><line x1="3" y1="12" x2="3.01" y2="12" /><line x1="3" y1="18" x2="3.01" y2="18" />
+                    </svg>
+                    <span class="hidden sm:inline">List</span>
+                </button>
+            </div>
+
             {{-- Filter dropdown (desain seragam dengan Urutkan) --}}
             <div class="relative" x-data="{ open: false }" @click.away="open = false">
                 <button @click="open = !open" type="button"
