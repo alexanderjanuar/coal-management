@@ -1279,7 +1279,7 @@
                         @if ($p->description)
                             <div class="cu-pv-block">
                                 <h3 class="cu-pv-h3">Deskripsi</h3>
-                                <p class="cu-pv-prose">{!! nl2br(e($p->description)) !!}</p>
+                                <div class="cu-pv-prose">{!! $p->description !!}</div>
                             </div>
                         @endif
 
@@ -3857,9 +3857,64 @@
         font-size: 13.5px;
         line-height: 1.6;
         color: var(--cu-ink);
-        white-space: pre-wrap;
         word-wrap: break-word;
         max-width: 65ch;
+    }
+
+    /* Render konten RichEditor (HTML) dengan rapi */
+    .cu-pv-prose p {
+        margin: 0 0 .6em;
+    }
+
+    .cu-pv-prose p:last-child {
+        margin-bottom: 0;
+    }
+
+    .cu-pv-prose ul,
+    .cu-pv-prose ol {
+        margin: .4em 0 .6em;
+        padding-left: 1.4em;
+    }
+
+    .cu-pv-prose ul {
+        list-style: disc;
+    }
+
+    .cu-pv-prose ol {
+        list-style: decimal;
+    }
+
+    .cu-pv-prose li {
+        margin: .2em 0;
+    }
+
+    .cu-pv-prose strong {
+        font-weight: 600;
+    }
+
+    .cu-pv-prose em {
+        font-style: italic;
+    }
+
+    .cu-pv-prose a {
+        color: var(--cu-accent, #3b82f6);
+        text-decoration: underline;
+    }
+
+    .cu-pv-prose h1,
+    .cu-pv-prose h2,
+    .cu-pv-prose h3,
+    .cu-pv-prose h4 {
+        font-weight: 600;
+        margin: .7em 0 .3em;
+        line-height: 1.3;
+    }
+
+    .cu-pv-prose blockquote {
+        margin: .5em 0;
+        padding-left: .75em;
+        border-left: 3px solid var(--cu-border, #e5e7eb);
+        color: var(--cu-ink-soft, #6b7280);
     }
 
     /* Steps — flat list, no row container, separated by hairlines */
