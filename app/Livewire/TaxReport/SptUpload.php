@@ -192,7 +192,8 @@ class SptUpload extends Component implements HasForms, HasActions
             return;
         }
 
-        $recipients = User::whereIn('id', $recipientIds)->get();
+        // Hanya user klien (role 'client') — jangan kirim ke staff/PM/internal.
+        $recipients = User::whereIn('id', $recipientIds)->role('client')->get();
 
         if ($recipients->isEmpty()) {
             return;
