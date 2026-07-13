@@ -699,24 +699,17 @@
             .dark .spt-grp--default { background:rgba(8,145,178,.14); }         .dark .spt-grp--default .spt-grp-label { color:#67e8f9; }
         </style>
 
-        <div class="overflow-hidden rounded-2xl border border-gray-200/80 bg-white shadow-sm ring-1 ring-gray-900/[0.03] dark:border-gray-800 dark:bg-gray-900 dark:ring-white/[0.04]">
-            {{-- Card header --}}
-            <div class="relative flex items-start justify-between gap-3 overflow-hidden border-b border-gray-100 bg-gradient-to-br from-primary-50/70 via-white to-white px-4 py-4 dark:border-gray-800 dark:from-primary-500/[0.07] dark:via-gray-900 dark:to-gray-900 md:px-6 md:py-5">
-                {{-- aksen dekoratif lembut --}}
-                <div class="pointer-events-none absolute -right-8 -top-12 h-32 w-32 rounded-full bg-primary-200/25 blur-3xl dark:bg-primary-500/10"></div>
-
-                <div class="relative flex items-center gap-3">
-                    <div class="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-primary-600 text-white shadow-sm dark:bg-primary-500">
-                        <x-filament::icon icon="heroicon-o-document-check" class="h-5 w-5" />
-                    </div>
-                    <div>
-                        <h3 class="text-base font-semibold text-gray-900 dark:text-white">SPT Dilaporkan</h3>
-                        <p class="mt-0.5 text-xs text-gray-500 dark:text-gray-400">Riwayat SPT yang telah dilaporkan — klik baris untuk membuka detail.</p>
+        <div class="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900">
+            {{-- Header ala Profil: bar aksen + judul --}}
+            <div class="flex items-center justify-between gap-3 border-b border-slate-100 px-4 py-3 dark:border-slate-800">
+                <div class="flex min-w-0 items-center gap-2">
+                    <div class="h-4 w-1 flex-shrink-0 rounded-full bg-cyan-400"></div>
+                    <div class="min-w-0">
+                        <p class="text-xs font-semibold text-slate-700 dark:text-slate-300">SPT Dilaporkan</p>
+                        <p class="text-[11px] text-slate-400 dark:text-slate-500">Riwayat SPT yang telah dilaporkan — klik baris untuk membuka detail.</p>
                     </div>
                 </div>
-
-                <span class="relative inline-flex shrink-0 items-center gap-1.5 rounded-full border border-primary-200/70 bg-white/70 px-2.5 py-1 text-xs font-semibold text-primary-700 backdrop-blur dark:border-primary-500/20 dark:bg-gray-900/60 dark:text-primary-300">
-                    <span class="h-1.5 w-1.5 rounded-full bg-primary-500"></span>
+                <span class="inline-flex flex-shrink-0 items-center rounded-full border border-cyan-200 bg-cyan-50 px-2 py-0.5 text-[10px] font-semibold text-cyan-700 dark:border-cyan-800 dark:bg-cyan-900/20 dark:text-cyan-400">
                     {{ $grandTotal }} SPT
                 </span>
             </div>
@@ -843,9 +836,9 @@
                         </div>
                     @else
                         {{-- Table --}}
-                        <div class="overflow-x-auto rounded-lg border border-gray-200 dark:border-gray-800">
+                        <div class="overflow-x-auto rounded-lg border border-slate-200 dark:border-slate-800">
                             <table class="min-w-full text-sm">
-                                <thead class="bg-gray-50 dark:bg-gray-800/50">
+                                <thead class="bg-slate-50 dark:bg-slate-800/50">
                                     <tr class="border-b border-gray-200 text-left text-xs text-gray-400 dark:border-gray-700 dark:text-gray-500">
                                         <th class="px-4 py-2.5 font-semibold uppercase tracking-wider">Aksi</th>
                                         <th class="px-4 py-2.5">
