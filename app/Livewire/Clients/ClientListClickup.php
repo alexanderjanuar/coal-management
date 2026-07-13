@@ -25,6 +25,9 @@ class ClientListClickup extends Component
     #[Url(as: 'pkp')]
     public array $pkpFilter = [];
 
+    #[Url(as: 'contract')]
+    public array $contractFilter = [];
+
     #[Url(as: 'group')]
     public string $groupBy = 'type';
 
@@ -65,9 +68,16 @@ class ClientListClickup extends Component
         'Non-PKP' => ['label' => 'Non-PKP', 'color' => '#64748b', 'bg' => '#f1f5f9'],
     ];
 
+    public const CONTRACTS = [
+        'ppn_contract'       => 'PPN',
+        'pph_contract'       => 'PPh 21',
+        'bupot_contract'     => 'PPh Unifikasi',
+        'pph_badan_contract' => 'PPh Badan',
+    ];
+
     public function updating($name): void
     {
-        if (\in_array($name, ['search', 'statusFilter', 'typeFilter', 'pkpFilter', 'groupBy'], true)) {
+        if (\in_array($name, ['search', 'statusFilter', 'typeFilter', 'pkpFilter', 'contractFilter', 'groupBy'], true)) {
             // Reset expanded groups when grouping changes
             if ($name === 'groupBy') {
                 $this->expandedGroups = [];
@@ -77,7 +87,7 @@ class ClientListClickup extends Component
 
     public function clearFilters(): void
     {
-        $this->reset(['search', 'statusFilter', 'typeFilter', 'pkpFilter']);
+        $this->reset(['search', 'statusFilter', 'typeFilter', 'pkpFilter', 'contractFilter']);
     }
 
     public function removeStatus(string $key): void
@@ -95,17 +105,36 @@ class ClientListClickup extends Component
         $this->pkpFilter = array_values(array_diff($this->pkpFilter, [$key]));
     }
 
+    public function removeContract(string $key): void
+    {
+        $this->contractFilter = array_values(array_diff($this->contractFilter, [$key]));
+    }
+
     public function hasActiveFilters(): bool
     {
         return $this->search !== ''
             || !empty($this->statusFilter)
             || !empty($this->typeFilter)
-            || !empty($this->pkpFilter);
+            || !empty($this->pkpFilter)
+            || !empty($this->contractFilter);
     }
 
     public function getActiveFilterCountProperty(): int
     {
-        return \count($this->statusFilter) + \count($this->typeFilter) + \count($this->pkpFilter);
+        return \count($this->statusFilter) + \count($this->typeFilter) + \count($this->pkpFilter) + \count($this->contractFilter);
+    }
+
+    /** Label kombinasi kontrak yang dimiliki klien (untuk grouping). */
+    protected function contractLabel(Client $client): string
+    {
+        $types = [];
+        foreach (self::CONTRACTS as $col => $label) {
+            if ($client->{$col}) {
+                $types[] = $label;
+            }
+        }
+
+        return empty($types) ? 'Tanpa Kontrak' : implode(', ', $types);
     }
 
     public function sortBy(string $field): void
@@ -194,6 +223,17 @@ class ClientListClickup extends Component
         if (!empty($this->typeFilter))   $query->whereIn('client_type', $this->typeFilter);
         if (!empty($this->pkpFilter))    $query->whereIn('pkp_status', $this->pkpFilter);
 
+        // Filter kontrak: klien yang memiliki salah satu kontrak terpilih
+        if (!empty($this->contractFilter)) {
+            $query->where(function ($q) {
+                foreach ($this->contractFilter as $col) {
+                    if (\array_key_exists($col, self::CONTRACTS)) {
+                        $q->orWhere($col, true);
+                    }
+                }
+            });
+        }
+
         return $query->orderBy($this->sortField, $this->sortDirection);
     }
 
@@ -226,6 +266,7 @@ class ClientListClickup extends Component
                 'pkp'    => $client->pkp_status ?: 'unknown',
                 'pic'    => $client->pic?->name ?? 'Tidak Ada PIC',
                 'group'  => $client->group?->name ?? 'Tidak Ada Group',
+                'contract' => $this->contractLabel($client),
                 default  => '',
             };
             $grouped[$key] ??= collect();

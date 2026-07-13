@@ -221,15 +221,15 @@ class ProfileTab extends Component
                 'icon' => 'document-currency-dollar',
             ],
             [
-                'name' => 'PPh',
+                'name' => 'PPh 21',
                 'active' => $client->pph_contract ?? false,
-                'description' => 'Pajak Penghasilan',
+                'description' => 'Pajak Penghasilan Pasal 21',
                 'icon' => 'banknotes',
             ],
             [
-                'name' => 'Bupot',
+                'name' => 'PPh Unifikasi',
                 'active' => $client->bupot_contract ?? false,
-                'description' => 'Bukti Potong',
+                'description' => 'Bukti Potong Unifikasi',
                 'icon' => 'document-check',
             ],
             [

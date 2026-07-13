@@ -66,11 +66,11 @@ class PerpajakanTab extends Component
         }
         
         if ($this->client->pph_contract) {
-            $contracts[] = 'PPh';
+            $contracts[] = 'PPh 21';
         }
-        
+
         if ($this->client->bupot_contract) {
-            $contracts[] = 'Bukti Potong';
+            $contracts[] = 'PPh Unifikasi';
         }
 
         return $contracts;

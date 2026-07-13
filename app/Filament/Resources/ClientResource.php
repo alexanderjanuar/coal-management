@@ -603,15 +603,15 @@ class ClientResource extends Resource
                                     ->columnSpan(1),
                                     
                                 Forms\Components\Toggle::make('pph_contract')
-                                    ->label('PPh Contract')
+                                    ->label('PPh 21 Contract')
                                     ->reactive()
-                                    ->helperText('Kontrak untuk pengelolaan PPh')
+                                    ->helperText('Kontrak untuk pengelolaan PPh 21')
                                     ->columnSpan(1),
-                                    
+
                                 Forms\Components\Toggle::make('bupot_contract')
-                                    ->label('Bupot Contract')
+                                    ->label('PPh Unifikasi Contract')
                                     ->reactive()
-                                    ->helperText('Kontrak untuk bukti potong')
+                                    ->helperText('Kontrak untuk PPh Unifikasi (bukti potong)')
                                     ->columnSpan(1),
                                 
                                 Forms\Components\Toggle::make('pph_badan_contract')
@@ -787,7 +787,7 @@ class ClientResource extends Resource
                 Tables\Filters\Filter::make('has_ppn_contract')
                     ->label('Memiliki Kontrak PPN')
                     ->query(fn (Builder $query): Builder => $query->where('ppn_contract', true)),
-                    
+
                 Tables\Filters\Filter::make('active_contracts')
                     ->label('Memiliki Kontrak Aktif')
                     ->query(fn (Builder $query): Builder => $query->where(function ($q) {

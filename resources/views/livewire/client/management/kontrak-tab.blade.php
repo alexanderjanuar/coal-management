@@ -1,10 +1,10 @@
 <div class="space-y-5" wire:key="kontrak-{{ $client->id }}">
     @php
         $contracts = [
-            ['label' => 'PPN',       'on' => (bool) $client->ppn_contract],
-            ['label' => 'PPh',       'on' => (bool) $client->pph_contract],
-            ['label' => 'Bupot',     'on' => (bool) $client->bupot_contract],
-            ['label' => 'PPh Badan', 'on' => (bool) $client->pph_badan_contract],
+            ['label' => 'PPN',           'on' => (bool) $client->ppn_contract],
+            ['label' => 'PPh 21',        'on' => (bool) $client->pph_contract],
+            ['label' => 'PPh Unifikasi', 'on' => (bool) $client->bupot_contract],
+            ['label' => 'PPh Badan',     'on' => (bool) $client->pph_badan_contract],
         ];
         $hasFile = (bool) $client->contract_file;
     @endphp

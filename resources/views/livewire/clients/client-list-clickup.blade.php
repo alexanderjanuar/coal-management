@@ -3,14 +3,16 @@
     $statuses = ClientListClickup::STATUSES;
     $types    = ClientListClickup::TYPES;
     $pkps     = ClientListClickup::PKP_STATUSES;
+    $contracts = ClientListClickup::CONTRACTS;
     $activeCount = $this->activeFilterCount;
     $groupByOptions = [
-        'type'   => 'Client Type',
-        'status' => 'Status',
-        'pkp'    => 'PKP Status',
-        'pic'    => 'PIC',
-        'group'  => 'Group',
-        'none'   => 'None',
+        'type'     => 'Client Type',
+        'status'   => 'Status',
+        'pkp'      => 'PKP Status',
+        'contract' => 'Jenis Kontrak',
+        'pic'      => 'PIC',
+        'group'    => 'Group',
+        'none'     => 'None',
     ];
 @endphp
 
@@ -82,7 +84,7 @@
         </div>
 
         {{-- Filter button --}}
-        <div class="cl-filter cl-dropdown {{ $activeCount > 0 ? 'is-active' : '' }}" x-data="{ open: false, sections: { status: true, type: true, pkp: false } }">
+        <div class="cl-filter cl-dropdown {{ $activeCount > 0 ? 'is-active' : '' }}" x-data="{ open: false, sections: { status: true, type: true, pkp: false, contract: false } }">
             <button type="button" @click="open = !open" class="cl-filter-btn">
                 <svg class="cl-filter-ico" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18l-7 9v6l-4-2v-4z"/></svg>
                 <span class="cl-filter-label">Filter</span>
@@ -147,6 +149,23 @@
                                 <label class="cl-dropdown-item">
                                     <input type="checkbox" wire:model.live="pkpFilter" value="{{ $key }}">
                                     <span class="cl-pill" style="color: {{ $meta['color'] }}; background: {{ $meta['bg'] }};">{{ $meta['label'] }}</span>
+                                </label>
+                            @endforeach
+                        </div>
+                    </div>
+
+                    {{-- Jenis Kontrak --}}
+                    <div class="cl-fs">
+                        <button type="button" @click="sections.contract = !sections.contract" class="cl-fs-head">
+                            <span class="cl-fs-name">Jenis Kontrak</span>
+                            @if (count($contractFilter)) <span class="cl-fs-count">{{ count($contractFilter) }}</span> @endif
+                            <svg class="cl-fs-caret" :class="{ 'is-open': sections.contract }" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><polyline points="6 9 12 15 18 9"/></svg>
+                        </button>
+                        <div x-show="sections.contract" class="cl-fs-body">
+                            @foreach ($contracts as $col => $label)
+                                <label class="cl-dropdown-item">
+                                    <input type="checkbox" wire:model.live="contractFilter" value="{{ $col }}">
+                                    <span class="cl-pill" style="color: #0e7490; background: #cffafe;">{{ $label }}</span>
                                 </label>
                             @endforeach
                         </div>
@@ -217,6 +236,17 @@
                     <button type="button" wire:click="removePkp('{{ $key }}')" class="cl-active-chip">
                         <span class="cl-chip-kind">PKP</span><span class="cl-chip-sep">:</span>
                         <span class="cl-chip-value cl-chip-pill" style="color: {{ $m['color'] }}; background: {{ $m['bg'] }};">{{ $m['label'] }}</span>
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+                    </button>
+                @endif
+            @endforeach
+
+            @foreach ($contractFilter as $col)
+                @php $label = $contracts[$col] ?? null; @endphp
+                @if ($label)
+                    <button type="button" wire:click="removeContract('{{ $col }}')" class="cl-active-chip">
+                        <span class="cl-chip-kind">Kontrak</span><span class="cl-chip-sep">:</span>
+                        <span class="cl-chip-value cl-chip-pill" style="color: #0e7490; background: #cffafe;">{{ $label }}</span>
                         <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
                     </button>
                 @endif
