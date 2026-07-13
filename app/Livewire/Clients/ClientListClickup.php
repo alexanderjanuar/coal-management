@@ -17,7 +17,7 @@ class ClientListClickup extends Component
     public string $search = '';
 
     #[Url(as: 'status')]
-    public array $statusFilter = [];
+    public array $statusFilter = ['Active']; // default: hanya klien Aktif saat halaman dibuka
 
     #[Url(as: 'type')]
     public array $typeFilter = [];
