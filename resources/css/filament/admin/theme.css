@@ -1,3 +1,471 @@
 @import '/vendor/filament/filament/resources/css/theme.css';
 @import '../../../../vendor/kenepa/banner/resources/css/index.css';
+
 @config 'tailwind.config.js';
+
+/*
+ * Dashboard Laporan Pajak
+ * Token discoped ke .tp-dash supaya tidak mempengaruhi halaman admin lain.
+ *
+ * Aturan warna: netral di-tint ke hue cyan (mengikuti primary Filament).
+ * Warna hanya dipakai untuk masalah. "Sudah Lapor" sengaja netral, karena
+ * itu kondisi normal dan tidak berhak menarik mata.
+ *
+ * Rasio kontras terhadap --tp-surface sudah dihitung, target WCAG AA:
+ *   --tp-text        9.9:1   teks normal
+ *   --tp-text-muted  4.9:1   teks normal
+ *   --tp-text-faint  3.3:1   HANYA teks besar (>=18.66px bold atau >=24px)
+ *   --tp-overdue     4.9:1   teks normal
+ *   --tp-due         4.8:1   teks normal
+ *   --tp-accent-text 4.9:1   teks normal
+ */
+.tp-dash {
+    /*
+     * Pemisahan figure/ground dikerjakan oleh border + shadow, bukan dengan
+     * menggelapkan latar halaman. Latar halaman tetap milik Filament.
+     */
+    --tp-surface: oklch(0.995 0.002 235);
+    --tp-surface-sunken: oklch(0.975 0.004 235);
+    --tp-border: oklch(0.885 0.008 235);
+    --tp-border-strong: oklch(0.8 0.01 235);
+
+    /*
+     * Pita judul panel memakai --tp-surface-sunken, netral.
+     *
+     * Dua versi berwarna sudah dicoba dan dibatalkan: tint cyan halus (#e9f6fb)
+     * dan brand penuh (#005f79). Yang menggugurkan keduanya bukan kontras
+     * (dua-duanya lolos AA) melainkan keseragaman: warnanya dipasang identik di
+     * keempat panel, jadi tulang punggung tenggat dan chart tren mendapat
+     * perlakuan sama dan warnanya tidak membedakan apa pun. Karakter kepala
+     * panel datang dari judul 16px semibold, bukan dari latarnya.
+     */
+
+    /*
+     * Bayangan berlapis dua: satu garis rapat untuk menegaskan tepi, satu
+     * sebaran lembut untuk mengangkat. Tetap dalam porsi, tidak ada shadow besar.
+     */
+    --tp-shadow: 0 1px 2px oklch(0.3 0.02 240 / 0.05), 0 1px 3px oklch(0.3 0.02 240 / 0.06);
+    --tp-shadow-sm: 0 1px 2px oklch(0.3 0.02 240 / 0.06);
+    --tp-ring: oklch(0.55 0.104 225 / 0.35);
+
+    /*
+     * Identitas jenis pajak.
+     *
+     * Ini satu-satunya warna dekoratif-tampak yang punya tugas nyata: PPN, PPh,
+     * dan Bupot adalah dimensi kategori utama seluruh domain ini, dan itulah
+     * yang dipindai mata di daftar. Dipakai hanya sebagai titik kecil dan isi
+     * bar progres, tidak pernah sebagai latar bidang, jadi luasnya tetap kecil.
+     *
+     * Hue dipilih agar jauh dari merah (27), amber (50), dan cyan aksen (225),
+     * supaya tidak pernah tertukar dengan sinyal urgensi.
+     */
+    --tp-ppn: oklch(0.55 0.15 270);
+    --tp-pph: oklch(0.53 0.14 150);
+    --tp-bupot: oklch(0.55 0.16 315);
+
+    --tp-text: oklch(0.27 0.012 240);
+    --tp-text-muted: oklch(0.47 0.01 240);
+    --tp-text-faint: oklch(0.58 0.008 240);
+
+    /*
+     * Chroma tiap warna di bawah ini sudah dijepit ke maksimum yang masih muat
+     * di gamut sRGB pada lightness dan hue-nya. Nilai di luar gamut tetap
+     * tampil karena browser meng-clamp-nya, tapi hasilnya bukan warna yang
+     * ditulis dan hue-nya bisa bergeser.
+     */
+
+    /*
+     * Aksen: hanya untuk aksi primer, seleksi, dan penanda keadaan.
+     * Tidak pernah dekorasi.
+     *
+     * --tp-accent-solid adalah latar tombol primer. Lightness-nya sengaja 0.50,
+     * lebih gelap dari --tp-accent, supaya teks putih di atasnya mencapai 5,8:1.
+     * Memakai --tp-accent langsung hanya menghasilkan 3,6:1 dan gagal AA.
+     */
+    --tp-accent: oklch(0.55 0.104 225);
+    --tp-accent-text: oklch(0.47 0.092 228);
+    --tp-accent-bg: oklch(0.96 0.02 225);
+    --tp-accent-border: oklch(0.85 0.06 225);
+    --tp-accent-solid: oklch(0.5 0.095 225);
+    --tp-accent-solid-hover: oklch(0.44 0.088 225);
+    --tp-accent-on: oklch(0.99 0.005 225);
+
+    /* Lewat jatuh tempo. Satu-satunya hal yang boleh berteriak. */
+    --tp-overdue: oklch(0.47 0.19 27);
+    --tp-overdue-bg: oklch(0.96 0.019 27);
+    --tp-overdue-border: oklch(0.88 0.06 27);
+
+    /*
+     * Mendekati tenggat (<= 3 hari).
+     * Hue 50, bukan 58: memaksa kontras AA di atas putih menekan lightness ke
+     * ~0.55, dan pada lightness itu hue 58 terbaca sebagai cokelat mustard,
+     * bukan peringatan. Hue 50 menghasilkan oranye bakar yang jelas maksudnya
+     * dan masih 23 derajat dari merah di hue 27, jadi keduanya tetap terbedakan.
+     */
+    --tp-due: oklch(0.55 0.145 50);
+    --tp-due-bg: oklch(0.965 0.021 60);
+    --tp-due-border: oklch(0.88 0.07 55);
+
+    /*
+     * Tanda data (batang chart, bar progres, rel garis waktu).
+     * Bukan --tp-border-strong: itu warna garis pemisah dengan kontras 1.6:1,
+     * dan memakainya untuk batang chart membuat datanya nyaris tak terbaca.
+     */
+    --tp-mark: oklch(0.64 0.018 240);
+    --tp-mark-quiet: oklch(0.86 0.008 240);
+
+    /*
+     * Skala tipografi, fixed rem (bukan fluid).
+     * Langkah kecilnya rapat (~1.08-1.15) karena register product punya banyak
+     * elemen teks dan kontras berlebih di sana justru jadi kebisingan. Yang
+     * penting rentangnya benar-benar dipakai: 2xl untuk angka yang jadi subjek,
+     * xl untuk judul halaman. Versi sebelumnya mendefinisikan rentang ini tapi
+     * praktiknya semua menumpuk di 11-16px, dan itulah yang membuatnya datar.
+     */
+    --tp-size-2xs: 0.6875rem;
+    --tp-size-xs: 0.75rem;
+    --tp-size-sm: 0.8125rem;
+    --tp-size-base: 0.875rem;
+    --tp-size-md: 1rem;
+    --tp-size-lg: 1.125rem;
+    --tp-size-xl: 1.75rem;
+    --tp-size-2xl: 2.5rem;
+
+    /*
+     * Radius. 8px/4px terbaca teknis dan kaku; 12px/6px memberi permukaan yang
+     * sama rasa yang jauh lebih modern tanpa mengubah satu pun warna.
+     */
+    --tp-radius-sm: 0.375rem;
+    --tp-radius: 0.75rem;
+
+    /* Motion: 150-250ms, ease-out kuartik. Tanpa bounce. */
+    --tp-ease: cubic-bezier(0.25, 1, 0.5, 1);
+    --tp-dur: 180ms;
+
+    color: var(--tp-text);
+    font-size: var(--tp-size-base);
+}
+
+.dark .tp-dash {
+    --tp-surface: oklch(0.245 0.012 240);
+    --tp-surface-sunken: oklch(0.21 0.012 240);
+    --tp-border: oklch(0.36 0.012 240);
+    --tp-border-strong: oklch(0.46 0.014 240);
+
+    /* Bayangan nyaris tak berguna di atas permukaan gelap, jadi tepinya
+       ditanggung border yang sedikit lebih terang. */
+    --tp-shadow: 0 1px 2px oklch(0 0 0 / 0.3), 0 1px 3px oklch(0 0 0 / 0.25);
+    --tp-shadow-sm: 0 1px 2px oklch(0 0 0 / 0.3);
+    --tp-ring: oklch(0.68 0.11 225 / 0.45);
+
+    --tp-ppn: oklch(0.72 0.14 270);
+    --tp-pph: oklch(0.72 0.15 150);
+    --tp-bupot: oklch(0.72 0.15 315);
+
+    --tp-text: oklch(0.96 0.004 240);
+    --tp-text-muted: oklch(0.74 0.008 240);
+    --tp-text-faint: oklch(0.62 0.008 240);
+
+    --tp-mark: oklch(0.62 0.018 240);
+    --tp-mark-quiet: oklch(0.38 0.012 240);
+
+    --tp-accent: oklch(0.68 0.11 225);
+    --tp-accent-text: oklch(0.72 0.11 225);
+    --tp-accent-bg: oklch(0.3 0.04 225);
+    --tp-accent-border: oklch(0.42 0.07 225);
+    /*
+     * Rentangnya sempit di mode gelap: harus cukup gelap agar teks putih lolos
+     * AA (batas atas ~0.555) tapi cukup terang agar tombolnya terpisah dari
+     * panel gelap (batas bawah ~0.52). Termasuk keadaan hover.
+     */
+    --tp-accent-solid: oklch(0.52 0.099 225);
+    --tp-accent-solid-hover: oklch(0.55 0.105 225);
+    --tp-accent-on: oklch(0.99 0.005 225);
+
+    --tp-overdue: oklch(0.72 0.15 27);
+    --tp-overdue-bg: oklch(0.31 0.06 27);
+    --tp-overdue-border: oklch(0.43 0.1 27);
+
+    --tp-due: oklch(0.78 0.115 55);
+    --tp-due-bg: oklch(0.32 0.05 55);
+    --tp-due-border: oklch(0.44 0.08 55);
+}
+
+/*
+ * Angka rata kolom. Wajib untuk kolom Rupiah dan hitungan hari:
+ * tanpa ini digit bergeser tiap kali nilainya berubah dan kolom terlihat goyang.
+ */
+.tp-num {
+    font-variant-numeric: tabular-nums;
+    font-feature-settings: 'tnum' 1;
+}
+
+.tp-panel {
+    background: var(--tp-surface);
+    border: 1px solid var(--tp-border);
+    border-radius: var(--tp-radius);
+    box-shadow: var(--tp-shadow);
+    overflow: hidden;
+}
+
+/*
+ * Pita judul panel. Latar cekung membuat tiap panel punya kepala yang jelas,
+ * dan halaman jadi berirama pita-isi-pita-isi alih-alih satu bidang putih
+ * panjang tanpa sendi.
+ */
+/*
+ * Pita judul panel. Latar cekung netral memberi tiap panel kepala yang jelas
+ * dan halaman jadi berirama pita-isi-pita-isi, tanpa memakai warna untuk
+ * sesuatu yang tidak membedakan apa pun.
+ */
+.tp-panel-header {
+    background: var(--tp-surface-sunken);
+    border-bottom: 1px solid var(--tp-border);
+}
+
+/*
+ * Toolbar filter. Sebelumnya empat select telanjang mengambang di atas latar
+ * kosong tanpa wadah; sekarang mereka punya bidang sendiri yang terbaca sebagai
+ * satu kelompok kontrol.
+ */
+.tp-toolbar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.5rem;
+    background: var(--tp-surface);
+    border: 1px solid var(--tp-border);
+    border-radius: var(--tp-radius);
+    box-shadow: var(--tp-shadow);
+    padding: 0.625rem 0.75rem;
+}
+
+/*
+ * Judul panel.
+ *
+ * Dipisahkan dari .tp-label karena keduanya beda tugas. Sebelumnya judul panel
+ * memakai label 11px uppercase, sehingga tiap panel praktis tidak punya kepala,
+ * cuma bisikan. Teks normal 16px semibold membuatnya benar-benar jadi judul.
+ *
+ * .tp-label tetap 11px uppercase untuk yang memang label: kepala kolom tabel,
+ * baris meta tenggat, penanda toolbar.
+ */
+.tp-panel-title {
+    font-size: var(--tp-size-md);
+    font-weight: 600;
+    letter-spacing: -0.01em;
+    color: var(--tp-text);
+}
+
+/*
+ * Label kecil. Memakai --tp-text, bukan --tp-text-muted: saat semua label
+ * berwarna abu-abu, halaman kehilangan seluruh jangkarnya dan tidak ada satu
+ * pun yang menahan mata.
+ */
+.tp-label {
+    font-size: var(--tp-size-2xs);
+    font-weight: 600;
+    letter-spacing: 0.07em;
+    text-transform: uppercase;
+    color: var(--tp-text);
+}
+
+/* Varian kalem, untuk label yang memang sekunder (kepala kolom tabel). */
+.tp-label-quiet {
+    color: var(--tp-text-muted);
+    font-weight: 500;
+}
+
+.tp-row {
+    transition: background-color var(--tp-dur) var(--tp-ease);
+}
+
+.tp-row:hover {
+    background: var(--tp-surface-sunken);
+}
+
+.tp-focus:focus-visible {
+    outline: 2px solid var(--tp-accent);
+    outline-offset: 2px;
+    border-radius: var(--tp-radius-sm);
+}
+
+/*
+ * Kosakata kontrol.
+ *
+ * shadcn/ui adalah komponen React di atas Radix, jadi tidak bisa dipasang di
+ * stack Blade/Livewire ini. Yang diambil adalah bahasanya: tinggi kontrol tetap
+ * 2.25rem, border 1px yang tegas, shadow rambut, radius terukur, dan focus ring
+ * melingkar (bukan outline kotak) yang muncul bersama perubahan warna border.
+ */
+.tp-select,
+.tp-btn {
+    height: 2.25rem;
+    border: 1px solid var(--tp-border);
+    border-radius: var(--tp-radius-sm);
+    background-color: var(--tp-surface);
+    color: var(--tp-text);
+    font-size: var(--tp-size-sm);
+    box-shadow: var(--tp-shadow-sm);
+    transition:
+        border-color var(--tp-dur) var(--tp-ease),
+        box-shadow var(--tp-dur) var(--tp-ease),
+        background-color var(--tp-dur) var(--tp-ease);
+}
+
+.tp-select:focus-visible,
+.tp-btn:focus-visible {
+    outline: none;
+    border-color: var(--tp-accent);
+    box-shadow: 0 0 0 3px var(--tp-ring);
+}
+
+.tp-select {
+    appearance: none;
+    line-height: 1.25rem;
+    padding: 0 1.875rem 0 0.625rem;
+
+    /* Chevron sebagai data URI: tanpa ini appearance:none menghapus panah. */
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3E%3Cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='m6 8 4 4 4-4'/%3E%3C/svg%3E");
+    background-position: right 0.5rem center;
+    background-repeat: no-repeat;
+    background-size: 1.125rem;
+}
+
+.tp-select:hover {
+    border-color: var(--tp-border-strong);
+}
+
+/* Filter aktif memakai aksen, karena itu satu-satunya keadaan yang perlu
+   diketahui tanpa membaca isinya. */
+.tp-select[data-active='true'] {
+    border-color: var(--tp-accent-border);
+    background-color: var(--tp-accent-bg);
+    color: var(--tp-accent-text);
+    font-weight: 500;
+}
+
+.tp-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.375rem;
+    font-weight: 500;
+    padding: 0 0.75rem;
+    white-space: nowrap;
+}
+
+.tp-btn:hover:not(:disabled) {
+    background: var(--tp-surface-sunken);
+    border-color: var(--tp-border-strong);
+}
+
+.tp-btn:active:not(:disabled) {
+    background: var(--tp-surface-sunken);
+    box-shadow: none;
+}
+
+.tp-btn:disabled {
+    color: var(--tp-text-faint);
+    cursor: not-allowed;
+    box-shadow: none;
+}
+
+/*
+ * Aksi primer. Ini satu-satunya bidang berwarna penuh di dashboard, dan ia ada
+ * karena seluruh halaman ini tentang "lakukan sesuatu": tanpa satu pun elemen
+ * yang menyatakan mana yang harus dikerjakan, aksen jadi tidak terpakai dan
+ * halaman kehilangan titik fokusnya.
+ */
+.tp-btn-primary {
+    background: var(--tp-accent-solid);
+    border-color: var(--tp-accent-solid);
+    color: var(--tp-accent-on);
+    font-weight: 600;
+}
+
+.tp-btn-primary:hover:not(:disabled) {
+    background: var(--tp-accent-solid-hover);
+    border-color: var(--tp-accent-solid-hover);
+}
+
+.tp-btn-ghost {
+    background: transparent;
+    border-color: transparent;
+    color: var(--tp-text-muted);
+    box-shadow: none;
+}
+
+.tp-btn-ghost:hover:not(:disabled) {
+    background: var(--tp-surface-sunken);
+    border-color: var(--tp-border);
+    color: var(--tp-text);
+}
+
+/*
+ * Chip kewajiban. Selalu memuat teks jenis pajaknya, jadi tetap terbaca
+ * tanpa persepsi warna. Warna hanya menambah lapisan urgensi di atas teks.
+ */
+.tp-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3125rem;
+    border: 1px solid var(--tp-border);
+    border-radius: var(--tp-radius-sm);
+    background: var(--tp-surface);
+    color: var(--tp-text);
+    font-size: var(--tp-size-2xs);
+    font-weight: 600;
+    letter-spacing: 0.03em;
+    padding: 0.125rem 0.375rem;
+    white-space: nowrap;
+}
+
+/*
+ * Titik identitas jenis pajak. Warnanya menandai PPN / PPh / Bupot, bukan
+ * urgensi, jadi ia tidak pernah bersaing dengan merah dan amber. Labelnya tetap
+ * tertulis, sehingga titik ini menambah kecepatan pindai tanpa pernah menjadi
+ * satu-satunya pembawa makna.
+ */
+.tp-chip[data-type]::before {
+    content: '';
+    width: 0.375rem;
+    height: 0.375rem;
+    border-radius: 9999px;
+    background: var(--tp-type);
+    flex: none;
+}
+
+.tp-chip[data-type='ppn'] {
+    --tp-type: var(--tp-ppn);
+}
+
+.tp-chip[data-type='pph'] {
+    --tp-type: var(--tp-pph);
+}
+
+.tp-chip[data-type='bupot'] {
+    --tp-type: var(--tp-bupot);
+}
+
+.tp-chip[data-tone='overdue'] {
+    border-color: var(--tp-overdue-border);
+    background: var(--tp-overdue-bg);
+    color: var(--tp-overdue);
+}
+
+.tp-chip[data-tone='due'] {
+    border-color: var(--tp-due-border);
+    background: var(--tp-due-bg);
+    color: var(--tp-due);
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .tp-dash *,
+    .tp-dash *::before,
+    .tp-dash *::after {
+        transition-duration: 0.01ms !important;
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+    }
+}

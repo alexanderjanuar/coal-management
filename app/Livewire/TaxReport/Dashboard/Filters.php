@@ -2,285 +2,168 @@
 
 namespace App\Livewire\TaxReport\Dashboard;
 
-use Filament\Widgets\Widget;
-use Filament\Forms\Concerns\InteractsWithForms;
-use Filament\Forms\Contracts\HasForms;
-use Filament\Forms\Form;
-use Filament\Forms\Components\Select;
-use Filament\Forms\Components\DatePicker;
 use App\Models\Client;
-use App\Models\TaxReport;
-use Illuminate\Support\Carbon;
+use App\Services\TaxDeadlineService;
+use Carbon\Carbon;
+use Livewire\Attributes\On;
+use Livewire\Attributes\Url;
+use Livewire\Component;
 
-class Filters extends Widget implements HasForms
+/**
+ * Toolbar dashboard laporan pajak.
+ *
+ * Satu-satunya kontrol waktu di halaman ini adalah periode pelaporan (bulan +
+ * tahun), karena kewajiban pajak di Indonesia memang bulanan. Rentang bebas
+ * seperti "kuartal ini" atau "tahun lalu" dihapus: agregat status pelaporan
+ * lintas bulan tidak bisa ditindaklanjuti, dan tenggat hanya punya arti
+ * relatif terhadap satu periode.
+ *
+ * Komponen ini memegang state, section lain hanya mendengarkan.
+ */
+class Filters extends Component
 {
-    use InteractsWithForms;
+    /**
+     * Nama query di bawah ini adalah kontrak: concern ReadsDashboardFilters
+     * membacanya langsung supaya render server pertama tiap section sudah
+     * benar tanpa menunggu event dari komponen ini.
+     */
+    #[Url(as: 'periode', keep: false)]
+    public string $period = '';
 
-    protected static string $view = 'livewire.tax-report.dashboard.filters';
-    
-    public ?array $data = [];
-    
-    protected static ?int $sort = 1; // Display above other widgets
+    #[Url(as: 'klien')]
+    public ?string $clientId = null;
 
-    public function mount(): void
+    #[Url(as: 'jenis')]
+    public ?string $taxType = null;
+
+    #[Url(as: 'lapor')]
+    public ?string $reportStatus = null;
+
+    #[Url(as: 'bayar')]
+    public ?string $paymentStatus = null;
+
+    public function mount(TaxDeadlineService $deadlines): void
     {
-        // Set default values
-        $this->form->fill([
-            'date_range' => 'this_year',
-            'from' => now()->startOfYear()->format('Y-m-d'),
-            'to' => now()->endOfYear()->format('Y-m-d'),
-            'client_id' => null,
-            'tax_type' => null,
-            'report_status' => null,
-            'payment_status' => null,
-        ]);
-
-        // Dispatch initial events
-        $this->dispatchFilters();
-    }
-
-    public function form(Form $form): Form
-    {
-        return $form
-            ->statePath('data')
-            ->schema([
-                // Date Range (hidden, used for internal state)
-                Select::make('date_range')
-                    ->options([
-                        'this_month' => 'This Month',
-                        'last_month' => 'Last Month',
-                        'this_quarter' => 'This Quarter',
-                        'last_quarter' => 'Last Quarter',
-                        'this_year' => 'This Year',
-                        'last_year' => 'Last Year',
-                        'custom' => 'Custom',
-                    ])
-                    ->default('this_year')
-                    ->live()
-                    ->afterStateUpdated(function (?string $state) {
-                        $this->updateDateRange($state);
-                        $this->dispatchFilters();
-                    })
-                    ->hiddenLabel()
-                    ->extraAttributes(['style' => 'display: none;']),
-
-                // From Date
-                DatePicker::make('from')
-                    ->label('From Date')
-                    ->live()
-                    ->afterStateUpdated(function (?string $state) {
-                        if ($state) {
-                            $this->dispatch('updateFromDate', from: $state);
-                            $this->dispatchFilters();
-                        }
-                    })
-                    ->displayFormat('M Y'),
-
-                // To Date
-                DatePicker::make('to')
-                    ->label('To Date')
-                    ->live()
-                    ->afterStateUpdated(function (?string $state) {
-                        if ($state) {
-                            $this->dispatch('updateToDate', to: $state);
-                            $this->dispatchFilters();
-                        }
-                    })
-                    ->displayFormat('M Y'),
-
-                // Client Filter
-                Select::make('client_id')
-                    ->label('Client')
-                    ->options($this->getClientOptions())
-                    ->placeholder('All Clients')
-                    ->searchable()
-                    ->live()
-                    ->afterStateUpdated(function (?string $state) {
-                        $this->dispatch('updateClient', client_id: $state);
-                        $this->dispatchFilters();
-                    })
-                    ->native(false),
-
-                // Tax Type Filter
-                Select::make('tax_type')
-                    ->label('Tax Type')
-                    ->options([
-                        'ppn' => 'PPN',
-                        'pph' => 'PPh',
-                        'bupot' => 'Bupot',
-                    ])
-                    ->placeholder('All Tax Types')
-                    ->live()
-                    ->afterStateUpdated(function (?string $state) {
-                        $this->dispatch('updateTaxType', tax_type: $state);
-                        $this->dispatchFilters();
-                    })
-                    ->native(false),
-
-                // Report Status Filter
-                Select::make('report_status')
-                    ->label('Report Status')
-                    ->options([
-                        'Belum Lapor' => 'Belum Lapor',
-                        'Sudah Lapor' => 'Sudah Lapor',
-                    ])
-                    ->placeholder('All Status')
-                    ->live()
-                    ->afterStateUpdated(function (?string $state) {
-                        $this->dispatch('updateReportStatus', report_status: $state);
-                        $this->dispatchFilters();
-                    })
-                    ->native(false),
-
-                // Payment Status Filter
-                Select::make('payment_status')
-                    ->label('Payment Status')
-                    ->options([
-                        'Lebih Bayar' => 'Lebih Bayar',
-                        'Kurang Bayar' => 'Kurang Bayar',
-                        'Nihil' => 'Nihil',
-                    ])
-                    ->placeholder('All Payment Status')
-                    ->live()
-                    ->afterStateUpdated(function (?string $state) {
-                        $this->dispatch('updatePaymentStatus', payment_status: $state);
-                        $this->dispatchFilters();
-                    })
-                    ->native(false),
-            ]);
-    }
-
-    // Method to handle date range selection from view
-    public function setDateRange(string $range): void
-    {
-        $this->updateDateRange($range);
-        $this->form->fill(array_merge($this->form->getState(), ['date_range' => $range]));
-        $this->dispatchFilters();
-    }
-
-    // Method to reset filters
-    public function resetFilters(): void
-    {
-        $this->form->fill([
-            'date_range' => 'this_year',
-            'from' => now()->startOfYear()->format('Y-m-d'),
-            'to' => now()->endOfYear()->format('Y-m-d'),
-            'client_id' => null,
-            'tax_type' => null,
-            'report_status' => null,
-            'payment_status' => null,
-        ]);
-        $this->dispatchFilters();
-    }
-
-    // Method to get display date based on current filter
-    public function getDisplayDate(): string
-    {
-        $data = $this->form->getState();
-        $dateRange = $data['date_range'] ?? 'this_year';
-
-        return match($dateRange) {
-            'this_month' => now()->format('M Y'),
-            'last_month' => now()->subMonth()->format('M Y'),
-            'this_quarter' => 'Q' . now()->quarter . ' ' . now()->format('Y'),
-            'last_quarter' => 'Q' . now()->subQuarter()->quarter . ' ' . now()->subQuarter()->format('Y'),
-            'this_year' => now()->format('Y'),
-            'last_year' => now()->subYear()->format('Y'),
-            'custom' => ($data['from'] && $data['to']) 
-                ? \Carbon\Carbon::parse($data['from'])->format('M Y') . ' - ' . \Carbon\Carbon::parse($data['to'])->format('M Y')
-                : now()->format('M Y'),
-            default => now()->format('Y')
-        };
-    }
-
-    protected function updateDateRange(string $range): void
-    {
-        $dates = $this->getDateRangeFromString($range);
-        
-        if ($range !== 'custom') {
-            $currentData = $this->form->getState();
-            $currentData['from'] = $dates['from'];
-            $currentData['to'] = $dates['to'];
-            $this->form->fill($currentData);
+        // Default: periode yang sedang dilaporkan saat ini, yaitu bulan lalu.
+        // Pada bulan Juli, yang sedang dikerjakan tim adalah periode Juni.
+        if ($this->period === '' || ! $this->isValidPeriod($this->period)) {
+            $this->period = $deadlines->periodFor(Carbon::today())->format('Y-m');
         }
 
-        $this->dispatch('updateDateRange', 
-            range: $range,
-            from: $dates['from'],
-            to: $dates['to']
-        );
+        $this->dispatchFilters();
     }
 
-    protected function getDateRangeFromString(string $range): array
+    public function periodDate(): Carbon
     {
-        return match($range) {
-            'this_month' => [
-                'from' => now()->startOfMonth()->format('Y-m-d'),
-                'to' => now()->endOfMonth()->format('Y-m-d'),
-            ],
-            'last_month' => [
-                'from' => now()->subMonth()->startOfMonth()->format('Y-m-d'),
-                'to' => now()->subMonth()->endOfMonth()->format('Y-m-d'),
-            ],
-            'this_quarter' => [
-                'from' => now()->startOfQuarter()->format('Y-m-d'),
-                'to' => now()->endOfQuarter()->format('Y-m-d'),
-            ],
-            'last_quarter' => [
-                'from' => now()->subQuarter()->startOfQuarter()->format('Y-m-d'),
-                'to' => now()->subQuarter()->endOfQuarter()->format('Y-m-d'),
-            ],
-            'this_year' => [
-                'from' => now()->startOfYear()->format('Y-m-d'),
-                'to' => now()->endOfYear()->format('Y-m-d'),
-            ],
-            'last_year' => [
-                'from' => now()->subYear()->startOfYear()->format('Y-m-d'),
-                'to' => now()->subYear()->endOfYear()->format('Y-m-d'),
-            ],
-            default => [
-                'from' => now()->startOfYear()->format('Y-m-d'),
-                'to' => now()->endOfYear()->format('Y-m-d'),
-            ],
-        };
+        return Carbon::createFromFormat('Y-m', $this->period)->startOfMonth();
     }
 
-    protected function getClientOptions(): array
+    public function periodLabel(TaxDeadlineService $deadlines): string
     {
-        return Client::where('status', 'Active')
+        return $deadlines->periodLabel($this->periodDate());
+    }
+
+    public function previousPeriod(): void
+    {
+        $this->period = $this->periodDate()->subMonth()->format('Y-m');
+        $this->dispatchFilters();
+    }
+
+    public function nextPeriod(): void
+    {
+        $this->period = $this->periodDate()->addMonth()->format('Y-m');
+        $this->dispatchFilters();
+    }
+
+    public function goToCurrentPeriod(TaxDeadlineService $deadlines): void
+    {
+        $this->period = $deadlines->periodFor(Carbon::today())->format('Y-m');
+        $this->dispatchFilters();
+    }
+
+    /**
+     * Dikirim saat sebuah bulan diklik di chart tren. Periode tetap dipegang
+     * komponen ini supaya kontrol waktunya hanya ada satu.
+     */
+    #[On('periodRequested')]
+    public function setPeriod(string $period): void
+    {
+        if (! $this->isValidPeriod($period)) {
+            return;
+        }
+
+        $this->period = $period;
+        $this->dispatchFilters();
+    }
+
+    public function isCurrentPeriod(TaxDeadlineService $deadlines): bool
+    {
+        return $this->period === $deadlines->periodFor(Carbon::today())->format('Y-m');
+    }
+
+    /**
+     * Melangkah maju melewati periode berjalan tidak ada gunanya: laporannya
+     * belum jatuh tempo, jadi angkanya pasti nol dan hanya membingungkan.
+     */
+    public function canGoForward(TaxDeadlineService $deadlines): bool
+    {
+        return $this->periodDate()->lt($deadlines->periodFor(Carbon::today()));
+    }
+
+    public function updated(string $property): void
+    {
+        if (in_array($property, ['clientId', 'taxType', 'reportStatus', 'paymentStatus'], true)) {
+            $this->dispatchFilters();
+        }
+    }
+
+    public function resetFilters(): void
+    {
+        $this->clientId = null;
+        $this->taxType = null;
+        $this->reportStatus = null;
+        $this->paymentStatus = null;
+
+        $this->dispatchFilters();
+    }
+
+    public function activeFilterCount(): int
+    {
+        return count(array_filter([
+            $this->clientId,
+            $this->taxType,
+            $this->reportStatus,
+            $this->paymentStatus,
+        ]));
+    }
+
+    public function clientOptions(): array
+    {
+        return Client::query()
+            ->where('status', 'Active')
             ->orderBy('name')
             ->pluck('name', 'id')
-            ->toArray();
+            ->all();
     }
 
-    protected function getMonthOptions(): array
+    protected function isValidPeriod(string $value): bool
     {
-        // Get distinct months from tax reports
-        return TaxReport::distinct('month')
-            ->orderBy('month', 'desc')
-            ->pluck('month', 'month')
-            ->toArray();
+        return (bool) preg_match('/^\d{4}-(0[1-9]|1[0-2])$/', $value);
     }
 
     protected function dispatchFilters(): void
     {
-        $data = $this->form->getState();
-        
-        $filters = [
-            'date_range' => $data['date_range'] ?? 'this_year',
-            'from' => $data['from'] ?? now()->startOfYear()->format('Y-m-d'),
-            'to' => $data['to'] ?? now()->endOfYear()->format('Y-m-d'),
-            'client_id' => $data['client_id'] ?? null,
-            'tax_type' => $data['tax_type'] ?? null,
-            'report_status' => $data['report_status'] ?? null,
-            'payment_status' => $data['payment_status'] ?? null,
-        ];
-
-        $this->dispatch('filtersUpdated', filters: $filters);
+        $this->dispatch('taxFiltersUpdated', filters: [
+            'period' => $this->period,
+            'client_id' => $this->clientId ?: null,
+            'tax_type' => $this->taxType ?: null,
+            'report_status' => $this->reportStatus ?: null,
+            'payment_status' => $this->paymentStatus ?: null,
+        ]);
     }
 
-    public static function canView(): bool
+    public function render()
     {
-        return true;
+        return view('livewire.tax-report.dashboard.filters');
     }
 }
