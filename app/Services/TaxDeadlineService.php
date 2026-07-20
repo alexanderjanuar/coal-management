@@ -25,6 +25,30 @@ class TaxDeadlineService
     public const SOON_THRESHOLD = 3;
 
     /**
+     * Hanya kewajiban yang benar-benar dikontrakkan klien yang dihitung.
+     *
+     * tax_calculation_summaries membuat baris untuk setiap jenis pajak tanpa
+     * memandang kontrak, sehingga klien yang tidak berkontrak PPh Unifikasi
+     * tetap punya baris "Belum Lapor" untuk jenis itu. Tanpa penyaringan ini
+     * dashboard melaporkan tunggakan yang tidak pernah menjadi kewajiban, dan
+     * tim mengejar klien untuk pekerjaan yang tidak ada.
+     *
+     * pph_badan_contract tidak ikut: tidak ada tax_type padanannya di tabel
+     * summary, karena PPh Badan bersifat tahunan dan tidak dilaporkan per masa.
+     */
+    private const CONTRACTED = "(
+        (s.tax_type = 'ppn'   AND clients.ppn_contract = 1) OR
+        (s.tax_type = 'pph'   AND clients.pph_contract = 1) OR
+        (s.tax_type = 'bupot' AND clients.bupot_contract = 1)
+    )";
+
+    /** Kondisi SQL yang sama untuk kueri yang tidak lewat periodQuery(). */
+    public static function contractedCondition(): string
+    {
+        return self::CONTRACTED;
+    }
+
+    /**
      * Nama bulan Indonesia dipetakan eksplisit, bukan lewat Carbon::translatedFormat().
      * Locale aplikasi adalah 'en', dan mengubahnya secara global akan mengubah
      * tampilan tanggal di seluruh panel.
@@ -206,6 +230,7 @@ class TaxDeadlineService
             ->where('tax_reports.month', $period->format('F'))
             ->where('tax_reports.year', $period->year)
             ->where('clients.status', 'Active')
+            ->whereRaw(self::CONTRACTED)
             ->when($clientId, fn ($q) => $q->where('clients.id', $clientId));
     }
 

@@ -251,10 +251,22 @@ class Filters extends Component implements HasForms
         ]));
     }
 
+    /**
+     * Hanya klien aktif yang punya minimal satu kontrak.
+     *
+     * Aturan yang sama dipakai form pembuatan laporan di TaxReportResource.
+     * Klien tanpa kontrak tidak akan pernah punya kewajiban di dashboard ini,
+     * jadi memilihnya hanya menghasilkan tampilan kosong.
+     */
     public function clientOptions(): array
     {
         return Client::query()
             ->where('status', 'Active')
+            ->where(fn ($q) => $q
+                ->where('ppn_contract', true)
+                ->orWhere('pph_contract', true)
+                ->orWhere('bupot_contract', true)
+                ->orWhere('pph_badan_contract', true))
             ->orderBy('name')
             ->pluck('name', 'id')
             ->all();

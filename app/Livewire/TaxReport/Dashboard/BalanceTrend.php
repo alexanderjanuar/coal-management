@@ -117,6 +117,11 @@ class BalanceTrend extends Component
             ->join('tax_reports', 's.tax_report_id', '=', 'tax_reports.id')
             ->join('clients', 'tax_reports.client_id', '=', 'clients.id')
             ->where('clients.status', 'Active')
+            // Aturan yang sama dengan periodQuery(): hanya kewajiban yang
+            // dikontrakkan. Saat ini semua baris tanpa kontrak bersaldo nol
+            // sehingga angkanya tidak berubah, tapi aturannya harus seragam
+            // agar tidak menyimpang begitu ada data yang tidak nol.
+            ->whereRaw(TaxDeadlineService::contractedCondition())
             ->whereIn(DB::raw($periodKey), $keys)
             ->when($this->clientId, fn ($q) => $q->where('clients.id', $this->clientId))
             ->when($this->taxType, fn ($q) => $q->where('s.tax_type', $this->taxType))
