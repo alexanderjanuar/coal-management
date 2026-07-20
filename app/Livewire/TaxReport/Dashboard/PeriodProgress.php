@@ -55,16 +55,27 @@ class PeriodProgress extends Component
     {
         $period = $this->periodDate();
 
-        $row = $service->periodQuery($period, $this->clientId)
+        /*
+         * onlyObligations: false — panel ini satu-satunya yang perlu melihat
+         * masa tanpa aktivitas, supaya bisa membedakan "belum lapor" dari
+         * "tidak wajib lapor". Kondisi aktivitasnya diterapkan per kolom di
+         * bawah, bukan pada seluruh kueri.
+         */
+        $activity = TaxDeadlineService::activityCondition();
+
+        $row = $service->periodQuery($period, $this->clientId, onlyObligations: false)
             ->selectRaw("
                 SUM(CASE WHEN s.tax_type = 'ppn' THEN 1 ELSE 0 END) as ppn_total,
                 SUM(CASE WHEN s.tax_type = 'ppn' AND s.report_status = 'Sudah Lapor' THEN 1 ELSE 0 END) as ppn_done,
                 SUM(CASE WHEN s.tax_type = 'pph' THEN 1 ELSE 0 END) as pph_total,
                 SUM(CASE WHEN s.tax_type = 'pph' AND s.report_status = 'Sudah Lapor' THEN 1 ELSE 0 END) as pph_done,
-                SUM(CASE WHEN s.tax_type = 'bupot' THEN 1 ELSE 0 END) as bupot_total,
-                SUM(CASE WHEN s.tax_type = 'bupot' AND s.report_status = 'Sudah Lapor' THEN 1 ELSE 0 END) as bupot_done,
-                SUM(CASE WHEN s.status_final <> 'Nihil' THEN 1 ELSE 0 END) as pay_total,
-                SUM(CASE WHEN s.status_final <> 'Nihil' AND s.bayar_status = 'Sudah Bayar' THEN 1 ELSE 0 END) as pay_done
+
+                SUM(CASE WHEN s.tax_type = 'bupot' AND {$activity} THEN 1 ELSE 0 END) as bupot_total,
+                SUM(CASE WHEN s.tax_type = 'bupot' AND {$activity} AND s.report_status = 'Sudah Lapor' THEN 1 ELSE 0 END) as bupot_done,
+                SUM(CASE WHEN s.tax_type = 'bupot' AND NOT {$activity} THEN 1 ELSE 0 END) as bupot_idle,
+
+                SUM(CASE WHEN s.status_final <> 'Nihil' AND {$activity} THEN 1 ELSE 0 END) as pay_total,
+                SUM(CASE WHEN s.status_final <> 'Nihil' AND {$activity} AND s.bayar_status = 'Sudah Bayar' THEN 1 ELSE 0 END) as pay_done
             ")
             ->first();
 
@@ -91,9 +102,14 @@ class PeriodProgress extends Component
                 $total = (int) ($row->{$definition['key'] . '_total'} ?? 0);
                 $done = (int) ($row->{$definition['key'] . '_done'} ?? 0);
 
+                // Jumlah masa yang tidak menimbulkan kewajiban lapor. Hanya
+                // berlaku untuk PPh Unifikasi; jenis lain wajib tiap masa.
+                $idle = (int) ($row->{$definition['key'] . '_idle'} ?? 0);
+
                 return $definition + [
                     'total' => $total,
                     'done' => $done,
+                    'idle' => $idle,
                     'remaining' => max(0, $total - $done),
                     'percent' => $total > 0 ? round(($done / $total) * 100) : null,
                     // Pembayaran bukan jenis pajak, jadi ia tidak punya padanan
@@ -108,7 +124,11 @@ class PeriodProgress extends Component
             'rows' => $rows,
             'service' => $service,
             'periodDate' => $period,
-            'hasData' => $rows->sum('total') > 0,
+            // Masa tanpa aktivitas ikut dihitung sebagai "ada data": panelnya
+            // memang punya sesuatu untuk dikatakan, yaitu bahwa masa itu tidak
+            // menimbulkan kewajiban. Tanpa ini panel berbunyi "belum ada data"
+            // padahal datanya ada.
+            'hasData' => ($rows->sum('total') + $rows->sum('idle')) > 0,
         ]);
     }
 }

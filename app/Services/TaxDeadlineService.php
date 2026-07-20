@@ -42,10 +42,42 @@ class TaxDeadlineService
         (s.tax_type = 'bupot' AND clients.bupot_contract = 1)
     )";
 
+    /**
+     * PPh Unifikasi hanya wajib dilaporkan bila masa itu memang ada pemotongan.
+     *
+     * PPN dan PPh 21 wajib dilaporkan tiap masa meski nihil, jadi keduanya
+     * selalu jadi kewajiban selama kontraknya aktif. Unifikasi bersifat
+     * kondisional: tanpa aktivitas, tidak ada SPT yang perlu dilaporkan.
+     *
+     * Tiga sinyal digabung dengan OR, bukan satu dipilih, karena kerugiannya
+     * asimetris. Salah menyatakan "tidak ada aktivitas" menyembunyikan kewajiban
+     * nyata dan berujung denda; salah menyatakan "ada aktivitas" hanya
+     * menyisakan satu baris untuk diperiksa. Jadi saat sinyalnya berselisih,
+     * yang dimenangkan adalah "ada aktivitas".
+     *
+     * Sinyal ketiga (sudah lapor / ada berkas SPT) wajib ikut: tanpa itu, masa
+     * yang SPT-nya sudah diunggah akan berbalik menjadi "tidak ada aktivitas"
+     * dan status selesainya hilang.
+     */
+    private const HAS_ACTIVITY = "(
+        s.tax_type <> 'bupot'
+        OR EXISTS (SELECT 1 FROM bupots b WHERE b.tax_report_id = tax_reports.id)
+        OR s.pajak_keluar <> 0
+        OR s.saldo_final <> 0
+        OR s.report_status = 'Sudah Lapor'
+        OR s.bukti_lapor IS NOT NULL
+    )";
+
     /** Kondisi SQL yang sama untuk kueri yang tidak lewat periodQuery(). */
     public static function contractedCondition(): string
     {
         return self::CONTRACTED;
+    }
+
+    /** Kondisi "masa ini memang menimbulkan kewajiban lapor". */
+    public static function activityCondition(): string
+    {
+        return self::HAS_ACTIVITY;
     }
 
     /**
@@ -222,8 +254,11 @@ class TaxDeadlineService
      * Memfilter month DAN year. Kode sebelumnya hanya memfilter nama bulan,
      * sehingga periode Januari 2026 tercampur dengan Januari 2025.
      */
-    public function periodQuery(Carbon $period, ?int $clientId = null): \Illuminate\Database\Query\Builder
-    {
+    public function periodQuery(
+        Carbon $period,
+        ?int $clientId = null,
+        bool $onlyObligations = true
+    ): \Illuminate\Database\Query\Builder {
         return DB::table('tax_calculation_summaries as s')
             ->join('tax_reports', 's.tax_report_id', '=', 'tax_reports.id')
             ->join('clients', 'tax_reports.client_id', '=', 'clients.id')
@@ -231,6 +266,11 @@ class TaxDeadlineService
             ->where('tax_reports.year', $period->year)
             ->where('clients.status', 'Active')
             ->whereRaw(self::CONTRACTED)
+            // Aman secara bawaan: pemanggil harus meminta secara eksplisit bila
+            // ingin melihat masa yang tidak menimbulkan kewajiban. Hanya panel
+            // kelengkapan yang membutuhkannya, untuk membedakan "belum lapor"
+            // dari "tidak ada aktivitas".
+            ->when($onlyObligations, fn ($q) => $q->whereRaw(self::HAS_ACTIVITY))
             ->when($clientId, fn ($q) => $q->where('clients.id', $clientId));
     }
 

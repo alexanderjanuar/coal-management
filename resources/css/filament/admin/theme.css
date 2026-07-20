@@ -720,6 +720,17 @@
     background: var(--tp-col-color);
 }
 
+/*
+ * Masa tanpa aktivitas: track digaris putus-putus dan tanpa latar.
+ * Bentuknya sendiri yang membedakan "tidak wajib lapor" dari "nol persen",
+ * jadi maknanya tidak bergantung pada membaca angka di bawahnya.
+ */
+.tp-col-track-idle {
+    background: transparent;
+    box-shadow: none;
+    border: 1px dashed var(--tp-border-strong);
+}
+
 .tp-col-label {
     font-size: var(--tp-size-2xs);
     font-weight: 500;

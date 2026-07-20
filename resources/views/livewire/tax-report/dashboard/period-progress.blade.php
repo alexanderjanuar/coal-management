@@ -39,8 +39,21 @@
     @else
 
         @php
-            // Dipakai kedua bentuk tampilan, jadi disiapkan sekali di sini.
-            $tipFor = function (array $row) {
+            /*
+             * "Tidak ada aktivitas" adalah keadaan ketiga, bukan nol persen.
+             *
+             * PPh Unifikasi hanya wajib dilaporkan bila masa itu ada pemotongan.
+             * Menampilkannya sebagai 0% membuatnya terbaca seperti pekerjaan
+             * tertunggak, padahal justru tidak ada yang perlu dikerjakan.
+             */
+            $isIdle = fn (array $row) => $row['total'] === 0 && ($row['idle'] ?? 0) > 0;
+
+            $tipFor = function (array $row) use ($isIdle) {
+                if ($isIdle($row)) {
+                    return $row['idle'] . ' klien tanpa aktivitas ' . $row['label']
+                        . ' pada periode ini, jadi tidak ada SPT yang wajib dilaporkan';
+                }
+
                 if ($row['total'] === 0) {
                     return 'Tidak ada kewajiban ' . $row['label'] . ' pada periode ini';
                 }
@@ -81,27 +94,45 @@
                             urgensi. Kelengkapan adalah status, bukan alarm; urgensi
                             sudah ditangani tulang punggung tenggat di atas.
                         --}}
-                        <span class="h-1.5 min-w-0 flex-1 overflow-hidden rounded-full"
-                              style="background: var(--tp-surface-sunken); box-shadow: inset 0 0 0 1px var(--tp-border);"
-                              aria-hidden="true">
-                            @if ($hasRow)
-                                {{-- Tanpa transisi: width adalah properti layout, dan
-                                     menganimasikannya memaksa reflow. Bar ini penanda
-                                     status, bukan momen gerak. --}}
-                                <span class="block h-full rounded-full"
-                                      style="width: {{ $row['percent'] }}%; background: {{ $row['color'] }};"></span>
-                            @endif
-                        </span>
+                        @if ($isIdle($row))
+                            {{-- Bar kosong tetap terbaca "0% selesai". Label
+                                 menggantikannya supaya tidak tertukar dengan
+                                 pekerjaan yang tertinggal. --}}
+                            <span class="min-w-0 flex-1"
+                                  style="font-size: var(--tp-size-xs); color: var(--tp-text-muted);"
+                                  aria-hidden="true">
+                                Tidak ada aktivitas, tidak wajib lapor
+                            </span>
+                        @else
+                            <span class="h-1.5 min-w-0 flex-1 overflow-hidden rounded-full"
+                                  style="background: var(--tp-surface-sunken); box-shadow: inset 0 0 0 1px var(--tp-border);"
+                                  aria-hidden="true">
+                                @if ($hasRow)
+                                    {{-- Tanpa transisi: width adalah properti layout, dan
+                                         menganimasikannya memaksa reflow. Bar ini penanda
+                                         status, bukan momen gerak. --}}
+                                    <span class="block h-full rounded-full"
+                                          style="width: {{ $row['percent'] }}%; background: {{ $row['color'] }};"></span>
+                                @endif
+                            </span>
+                        @endif
 
                         <span class="tp-num w-28 shrink-0 text-right"
                               style="font-size: var(--tp-size-xs); color: var(--tp-text-muted);"
                               aria-hidden="true">
-                            {{ $hasRow ? $row['done'] . ' dari ' . $row['total'] : 'Tidak ada' }}
+                            @if ($hasRow)
+                                {{ $row['done'] }} dari {{ $row['total'] }}
+                            @elseif ($isIdle($row))
+                                {{ $row['idle'] }} klien
+                            @else
+                                Tidak ada
+                            @endif
                         </span>
 
-                        {{-- Kolom dibiarkan kosong saat tidak ada data. Sel di sebelahnya
-                             sudah berbunyi "Tidak ada", jadi penanda apa pun di sini
-                             hanya mengulang. --}}
+                        {{-- Kolom persen diganti label saat masa itu memang tidak
+                             menimbulkan kewajiban. Menulis 0% di sana keliru: bukan
+                             berarti tertinggal, melainkan tidak ada yang perlu
+                             dilaporkan. --}}
                         <span class="tp-num w-11 shrink-0 text-right font-semibold"
                               style="font-size: var(--tp-size-sm); color: var(--tp-text);"
                               aria-hidden="true">
@@ -139,8 +170,13 @@
 
                             {{-- Track penuh digambar di belakang isian: tanpa itu
                                  batang 0% tidak punya bentuk sama sekali dan tidak
-                                 bisa dibedakan dari kolom yang tidak ada datanya. --}}
-                            <span class="tp-col-track" aria-hidden="true">
+                                 bisa dibedakan dari kolom yang tidak ada datanya.
+
+                                 Saat tidak ada aktivitas, track-nya digaris putus
+                                 putus: bentuknya sendiri yang mengatakan "kolom ini
+                                 memang kosong karena tidak wajib", bukan "nol dari
+                                 sekian yang seharusnya dikerjakan". --}}
+                            <span class="tp-col-track {{ $isIdle($row) ? 'tp-col-track-idle' : '' }}" aria-hidden="true">
                                 @if ($hasRow)
                                     <span class="tp-col-fill" style="height: {{ max($row['percent'], 1.5) }}%;"></span>
                                 @endif
@@ -148,7 +184,13 @@
 
                             <span class="tp-col-label" aria-hidden="true">{{ $row['label'] }}</span>
                             <span class="tp-num tp-col-count" aria-hidden="true">
-                                {{ $hasRow ? $row['done'] . '/' . $row['total'] : 'Tidak ada' }}
+                                @if ($hasRow)
+                                    {{ $row['done'] }}/{{ $row['total'] }}
+                                @elseif ($isIdle($row))
+                                    Tanpa aktivitas
+                                @else
+                                    Tidak ada
+                                @endif
                             </span>
 
                             <span class="sr-only">
