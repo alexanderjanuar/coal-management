@@ -3,8 +3,7 @@
 namespace App\Livewire\TaxReport\Dashboard;
 
 use App\Services\TaxDeadlineService;
-use Carbon\Carbon;
-use Livewire\Attributes\On;
+use Livewire\Attributes\Session;
 use Livewire\Component;
 
 /**
@@ -19,9 +18,37 @@ class PeriodProgress extends Component
 {
     use Concerns\ReadsDashboardFilters;
 
+    /**
+     * Bentuk tampilan: 'bar' (baris progres) atau 'kolom' (chart batang).
+     *
+     * Disimpan di sesi, bukan di URL: ini preferensi cara melihat, bukan bagian
+     * dari data yang ditampilkan. Menaruhnya di URL akan membuat tautan yang
+     * dibagikan ikut memaksakan selera tampilan penerimanya.
+     */
+    #[Session(key: 'tp-progress-view')]
+    public string $view = 'bar';
+
     public function mount(TaxDeadlineService $deadlines): void
     {
         $this->hydrateFiltersFromRequest($deadlines);
+    }
+
+    public function setView(string $view): void
+    {
+        if (\in_array($view, ['bar', 'kolom'], true)) {
+            $this->view = $view;
+        }
+    }
+
+    /**
+     * Mengklik satu jenis pajak menyaring seluruh dashboard ke jenis itu.
+     *
+     * Filters yang memegang state dan menulisnya ke URL, jadi di sini cukup
+     * mengirim permintaan. Mengklik jenis yang sedang aktif akan melepasnya.
+     */
+    public function toggleTaxType(string $key): void
+    {
+        $this->dispatch('taxTypeRequested', taxType: $this->taxType === $key ? null : $key);
     }
 
     public function render(TaxDeadlineService $service)
@@ -52,10 +79,14 @@ class PeriodProgress extends Component
             ['key' => 'pay', 'label' => 'Pembayaran', 'verb' => 'sudah bayar', 'color' => 'var(--tp-mark)'],
         ];
 
+        /*
+         * Seluruh baris selalu ditampilkan, termasuk saat filter jenis pajak
+         * aktif. Sebelumnya baris yang tidak difilter disembunyikan, tapi begitu
+         * baris ini jadi kontrol filter, menyembunyikannya membuat pengguna
+         * terkunci: tidak ada lagi baris lain untuk diklik supaya berpindah.
+         * Yang aktif ditandai, bukan yang lain dihilangkan.
+         */
         $rows = collect($definitions)
-            // Filter jenis pajak menyembunyikan baris yang tidak diminta.
-            // Baris pembayaran selalu tampil: ia berlaku untuk semua jenis.
-            ->filter(fn (array $d) => ! $this->taxType || $d['key'] === $this->taxType || $d['key'] === 'pay')
             ->map(function (array $definition) use ($row) {
                 $total = (int) ($row->{$definition['key'] . '_total'} ?? 0);
                 $done = (int) ($row->{$definition['key'] . '_done'} ?? 0);
@@ -63,7 +94,12 @@ class PeriodProgress extends Component
                 return $definition + [
                     'total' => $total,
                     'done' => $done,
+                    'remaining' => max(0, $total - $done),
                     'percent' => $total > 0 ? round(($done / $total) * 100) : null,
+                    // Pembayaran bukan jenis pajak, jadi ia tidak punya padanan
+                    // di filter tax_type dan tidak bisa dipakai menyaring.
+                    'filterable' => $definition['key'] !== 'pay',
+                    'active' => $this->taxType === $definition['key'],
                 ];
             })
             ->values();

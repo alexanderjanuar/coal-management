@@ -182,6 +182,32 @@ class Filters extends Component implements HasForms
         $this->dispatchFilters();
     }
 
+    /**
+     * Dikirim saat satu jenis pajak diklik di panel kelengkapan. State-nya tetap
+     * dipegang komponen ini supaya URL dan seluruh section ikut menyesuaikan.
+     */
+    #[On('taxTypeRequested')]
+    public function setTaxType(?string $taxType): void
+    {
+        if ($taxType !== null && ! \in_array($taxType, ['ppn', 'pph', 'bupot'], true)) {
+            return;
+        }
+
+        $this->taxType = $taxType;
+
+        // Form Filament perlu diisi ulang: mengubah properti saja tidak
+        // menyegarkan state internalnya, dan select-nya akan tetap
+        // menampilkan pilihan yang lama.
+        $this->form->fill([
+            'clientId' => $this->clientId,
+            'taxType' => $this->taxType,
+            'reportStatus' => $this->reportStatus,
+            'paymentStatus' => $this->paymentStatus,
+        ]);
+
+        $this->dispatchFilters();
+    }
+
     public function isCurrentPeriod(TaxDeadlineService $deadlines): bool
     {
         return $this->period === $deadlines->periodFor(Carbon::today())->format('Y-m');
