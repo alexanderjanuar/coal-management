@@ -45,9 +45,10 @@ class PeriodProgress extends Component
         // chip di daftar triase, supaya pemetaannya satu dan bisa dipelajari.
         // Pembayaran bukan jenis pajak, jadi barnya netral.
         $definitions = [
+            // 'key' tetap nilai tax_type di database; hanya 'label' yang berubah.
             ['key' => 'ppn', 'label' => 'PPN', 'verb' => 'sudah lapor', 'color' => 'var(--tp-ppn)'],
-            ['key' => 'pph', 'label' => 'PPh', 'verb' => 'sudah lapor', 'color' => 'var(--tp-pph)'],
-            ['key' => 'bupot', 'label' => 'Bupot', 'verb' => 'sudah lapor', 'color' => 'var(--tp-bupot)'],
+            ['key' => 'pph', 'label' => 'PPh 21', 'verb' => 'sudah lapor', 'color' => 'var(--tp-pph)'],
+            ['key' => 'bupot', 'label' => 'PPh Unifikasi', 'verb' => 'sudah lapor', 'color' => 'var(--tp-bupot)'],
             ['key' => 'pay', 'label' => 'Pembayaran', 'verb' => 'sudah bayar', 'color' => 'var(--tp-mark)'],
         ];
 

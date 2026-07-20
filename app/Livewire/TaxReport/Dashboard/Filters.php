@@ -5,6 +5,11 @@ namespace App\Livewire\TaxReport\Dashboard;
 use App\Models\Client;
 use App\Services\TaxDeadlineService;
 use Carbon\Carbon;
+use Filament\Forms\Components\Grid;
+use Filament\Forms\Components\Select;
+use Filament\Forms\Concerns\InteractsWithForms;
+use Filament\Forms\Contracts\HasForms;
+use Filament\Forms\Form;
 use Livewire\Attributes\On;
 use Livewire\Attributes\Url;
 use Livewire\Component;
@@ -20,8 +25,10 @@ use Livewire\Component;
  *
  * Komponen ini memegang state, section lain hanya mendengarkan.
  */
-class Filters extends Component
+class Filters extends Component implements HasForms
 {
+    use InteractsWithForms;
+
     /**
      * Nama query di bawah ini adalah kontrak: concern ReadsDashboardFilters
      * membacanya langsung supaya render server pertama tiap section sudah
@@ -50,7 +57,86 @@ class Filters extends Component
             $this->period = $deadlines->periodFor(Carbon::today())->format('Y-m');
         }
 
+        // Diisi dengan nilai yang sudah ada, bukan fill() kosong: properti ini
+        // mungkin sudah terisi dari query string lewat #[Url], dan fill() tanpa
+        // argumen akan mengembalikannya ke default dan membuang filter yang
+        // dibawa URL.
+        $this->form->fill([
+            'clientId' => $this->clientId,
+            'taxType' => $this->taxType,
+            'reportStatus' => $this->reportStatus,
+            'paymentStatus' => $this->paymentStatus,
+        ]);
+
         $this->dispatchFilters();
+    }
+
+    /**
+     * Sengaja TANPA statePath().
+     *
+     * Tanpa statePath, Filament mengikat tiap field langsung ke properti publik
+     * komponen, sehingga atribut #[Url] di atas tetap bekerja. Kalau state
+     * dipindah ke array $data seperti pola statePath biasa, seluruh parameter
+     * query (?klien=, ?jenis=, ...) putus, dan concern ReadsDashboardFilters
+     * yang dipakai keempat section lain ikut kehilangan sumbernya.
+     */
+    public function form(Form $form): Form
+    {
+        return $form->schema([
+            Grid::make()
+                ->schema([
+                    Select::make('clientId')
+                        ->label('Klien')
+                        ->placeholder('Semua klien')
+                        ->options(fn () => $this->clientOptions())
+                        ->searchable()
+                        ->preload()
+                        ->native(false)
+                        ->live()
+                        ->afterStateUpdated(fn () => $this->dispatchFilters()),
+
+                    Select::make('taxType')
+                        ->label('Jenis pajak')
+                        ->placeholder('Semua jenis')
+                        // Kunci tetap nilai tax_type di database.
+                        ->options([
+                            'ppn' => 'PPN',
+                            'pph' => 'PPh 21',
+                            'bupot' => 'PPh Unifikasi',
+                        ])
+                        ->native(false)
+                        ->live()
+                        ->afterStateUpdated(fn () => $this->dispatchFilters()),
+
+                    Select::make('reportStatus')
+                        ->label('Status lapor')
+                        ->placeholder('Semua status lapor')
+                        ->options([
+                            'Belum Lapor' => 'Belum Lapor',
+                            'Sudah Lapor' => 'Sudah Lapor',
+                        ])
+                        ->native(false)
+                        ->live()
+                        ->afterStateUpdated(fn () => $this->dispatchFilters()),
+
+                    Select::make('paymentStatus')
+                        ->label('Status bayar')
+                        ->placeholder('Semua status bayar')
+                        ->options([
+                            'Kurang Bayar' => 'Kurang Bayar',
+                            'Lebih Bayar' => 'Lebih Bayar',
+                            'Nihil' => 'Nihil',
+                        ])
+                        ->native(false)
+                        ->live()
+                        ->afterStateUpdated(fn () => $this->dispatchFilters()),
+                ])
+                ->columns([
+                    'default' => 1,
+                    'sm' => 2,
+                    'lg' => 4,
+                ]),
+        ]);
     }
 
     public function periodDate(): Carbon
@@ -110,13 +196,6 @@ class Filters extends Component
         return $this->periodDate()->lt($deadlines->periodFor(Carbon::today()));
     }
 
-    public function updated(string $property): void
-    {
-        if (in_array($property, ['clientId', 'taxType', 'reportStatus', 'paymentStatus'], true)) {
-            $this->dispatchFilters();
-        }
-    }
-
     public function resetFilters(): void
     {
         $this->clientId = null;
@@ -124,12 +203,21 @@ class Filters extends Component
         $this->reportStatus = null;
         $this->paymentStatus = null;
 
+        // Form-nya ikut diisi ulang: mengubah properti saja tidak menyegarkan
+        // state internal Filament, dan select-nya akan tetap menampilkan nilai lama.
+        $this->form->fill([
+            'clientId' => null,
+            'taxType' => null,
+            'reportStatus' => null,
+            'paymentStatus' => null,
+        ]);
+
         $this->dispatchFilters();
     }
 
     public function activeFilterCount(): int
     {
-        return count(array_filter([
+        return \count(array_filter([
             $this->clientId,
             $this->taxType,
             $this->reportStatus,

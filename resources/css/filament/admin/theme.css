@@ -32,12 +32,16 @@
     /*
      * Pita judul panel memakai --tp-surface-sunken, netral.
      *
-     * Dua versi berwarna sudah dicoba dan dibatalkan: tint cyan halus (#e9f6fb)
-     * dan brand penuh (#005f79). Yang menggugurkan keduanya bukan kontras
-     * (dua-duanya lolos AA) melainkan keseragaman: warnanya dipasang identik di
-     * keempat panel, jadi tulang punggung tenggat dan chart tren mendapat
-     * perlakuan sama dan warnanya tidak membedakan apa pun. Karakter kepala
-     * panel datang dari judul 16px semibold, bukan dari latarnya.
+     * Dua versi berwarna sudah dicoba dan dibatalkan setelah dilihat langsung:
+     * tint cyan halus (#e9f6fb) dan brand penuh (#005f79). Keduanya lolos AA,
+     * jadi yang menggugurkan bukan aksesibilitas melainkan pilihan bahwa isi
+     * halaman ini harus mendominasi, bukan chrome-nya. Karakter kepala panel
+     * datang dari judul 16px semibold.
+     *
+     * Kalau versi berwarna dicoba lagi: satu-satunya batas keras yang berlaku
+     * adalah cyan di halaman ini berarti "bisa diklik". Header aman karena jelas
+     * bukan elemen interaktif; batang chart, bar progres, dan chip TIDAK aman,
+     * karena di situ tombol primer berhenti terbaca sebagai aksi.
      */
 
     /*
@@ -115,6 +119,27 @@
     --tp-mark-quiet: oklch(0.86 0.008 240);
 
     /*
+     * Garis waktu tenggat.
+     *
+     * --tp-track-fill (bagian bulan yang sudah lewat) bernada aksen, tapi
+     * lightness-nya 0.66 dan bukan 0.55 seperti --tp-accent. Alasannya: penanda
+     * "Hari ini" berwarna --tp-accent dan berdiri TEPAT di batas isian ini.
+     * Kalau keduanya sama, garis itu lenyap ke dalam isian yang diakhirinya.
+     * Pada 0.66 isian tetap 3:1 terhadap panel (syarat tanda data) sekaligus
+     * 1,55:1 terhadap aksen, jadi penanda hari ini tetap terbaca.
+     */
+    --tp-track: oklch(0.93 0.006 235);
+    --tp-track-fill: oklch(0.66 0.075 225);
+
+    /* Tooltip: permukaan gelap di tema terang, konvensi yang sudah mapan. */
+    --tp-tip-bg: oklch(0.26 0.014 240);
+    --tp-tip-border: oklch(0.26 0.014 240);
+    --tp-tip-text: oklch(0.98 0.004 240);
+    --tp-tip-muted: oklch(0.8 0.008 240);
+    --tp-tip-hint: oklch(0.68 0.008 240);
+    --tp-shadow-pop: 0 4px 6px oklch(0.3 0.02 240 / 0.1), 0 10px 20px oklch(0.3 0.02 240 / 0.12);
+
+    /*
      * Skala tipografi, fixed rem (bukan fluid).
      * Langkah kecilnya rapat (~1.08-1.15) karena register product punya banyak
      * elemen teks dan kontras berlebih di sana justru jadi kebisingan. Yang
@@ -169,6 +194,25 @@
     --tp-mark: oklch(0.62 0.018 240);
     --tp-mark-quiet: oklch(0.38 0.012 240);
 
+    /* Di mode gelap arahnya dibalik: isian lebih GELAP dari --tp-accent (0.68),
+       supaya penanda hari ini tetap menonjol di atasnya. */
+    --tp-track: oklch(0.32 0.008 240);
+    --tp-track-fill: oklch(0.52 0.075 225);
+
+    /*
+     * Di tema gelap tidak ada satu pun lightness yang sekaligus terpisah dari
+     * panel DAN cukup kontras untuk teks kalem di atasnya: yang lebih terang
+     * mematikan keterbacaan teks, yang lebih gelap kehilangan pemisahan.
+     * Jadi fill-nya dibuat nyaris hitam (teks utama 18:1) dan pemisahan
+     * ditanggung border, strategi yang sama dengan permukaan gelap lain di sini.
+     */
+    --tp-tip-bg: oklch(0.16 0.012 240);
+    --tp-tip-border: oklch(0.42 0.014 240);
+    --tp-tip-text: oklch(0.98 0.004 240);
+    --tp-tip-muted: oklch(0.8 0.008 240);
+    --tp-tip-hint: oklch(0.72 0.008 240);
+    --tp-shadow-pop: 0 4px 6px oklch(0 0 0 / 0.4), 0 10px 20px oklch(0 0 0 / 0.35);
+
     --tp-accent: oklch(0.68 0.11 225);
     --tp-accent-text: oklch(0.72 0.11 225);
     --tp-accent-bg: oklch(0.3 0.04 225);
@@ -215,30 +259,13 @@
  */
 /*
  * Pita judul panel. Latar cekung netral memberi tiap panel kepala yang jelas
- * dan halaman jadi berirama pita-isi-pita-isi, tanpa memakai warna untuk
- * sesuatu yang tidak membedakan apa pun.
+ * dan halaman jadi berirama pita-isi-pita-isi.
  */
 .tp-panel-header {
     background: var(--tp-surface-sunken);
     border-bottom: 1px solid var(--tp-border);
 }
 
-/*
- * Toolbar filter. Sebelumnya empat select telanjang mengambang di atas latar
- * kosong tanpa wadah; sekarang mereka punya bidang sendiri yang terbaca sebagai
- * satu kelompok kontrol.
- */
-.tp-toolbar {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    gap: 0.5rem;
-    background: var(--tp-surface);
-    border: 1px solid var(--tp-border);
-    border-radius: var(--tp-radius);
-    box-shadow: var(--tp-shadow);
-    padding: 0.625rem 0.75rem;
-}
 
 /*
  * Judul panel.
@@ -276,6 +303,273 @@
     font-weight: 500;
 }
 
+/*
+ * Penanda tenggat di garis waktu.
+ *
+ * Titiknya kecil (12px), jadi tombolnya dibuat jauh lebih lebar dari titiknya
+ * dan bagian yang bisa diklik meluas ke label tanggal di bawahnya. Tanpa itu
+ * sasaran kliknya terlalu kecil untuk dipakai dengan nyaman.
+ */
+.tp-pin {
+    position: absolute;
+    transform: translateX(-50%);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    background: none;
+    border: 0;
+    padding: 0 0.75rem;
+    cursor: pointer;
+}
+
+.tp-pin:focus-visible {
+    outline: 2px solid var(--tp-accent);
+    outline-offset: 2px;
+    border-radius: var(--tp-radius-sm);
+}
+
+/* Kepala lollipop. Skalanya naik saat hover supaya ia terbaca sebagai sasaran,
+   bukan sekadar hiasan. Transform, bukan width/height, jadi tidak memicu reflow. */
+.tp-pin-dot {
+    height: 0.75rem;
+    width: 0.75rem;
+    border-radius: 9999px;
+    border: 2px solid var(--tp-pin-color);
+    background: var(--tp-pin-fill);
+    transition: transform var(--tp-dur) var(--tp-ease);
+}
+
+.tp-pin:hover .tp-pin-dot,
+.tp-pin[aria-pressed='true'] .tp-pin-dot {
+    transform: scale(1.25);
+}
+
+.tp-pin-stem {
+    width: 2px;
+    height: 0.5rem;
+    background: var(--tp-pin-color);
+}
+
+.tp-pin-day {
+    margin-top: 0.6875rem;
+    font-size: var(--tp-size-xs);
+    font-weight: 600;
+    color: var(--tp-pin-label);
+    transition: color var(--tp-dur) var(--tp-ease);
+}
+
+.tp-pin:hover .tp-pin-day,
+.tp-pin[aria-pressed='true'] .tp-pin-day {
+    color: var(--tp-pin-color);
+}
+
+/* Garis bawah tipis menandai tenggat yang sedang disorot, tanpa menambah warna. */
+.tp-pin[aria-pressed='true'] .tp-pin-day {
+    box-shadow: 0 2px 0 -1px currentColor;
+}
+
+/*
+ * Tenggat yang jatuh tepat pada hari ini.
+ *
+ * Cincin aksen di sekeliling titik menggantikan garis "Hari ini" yang berdiri
+ * sendiri. Tanpa ini, pada tanggal 10, 20, dan 30 dua tanda bertumpuk di posisi
+ * yang sama persis dan garisnya tertutup pin. Cincin memakai box-shadow, bukan
+ * border, supaya tidak menggeser ukuran titik dan merusak keselarasannya.
+ */
+.tp-pin[data-today='true'] .tp-pin-dot {
+    box-shadow:
+        0 0 0 2px var(--tp-surface),
+        0 0 0 4px var(--tp-accent);
+}
+
+.tp-pin[data-today='true'] .tp-pin-stem {
+    background: var(--tp-accent);
+}
+
+/*
+ * Tooltip bersama, dipakai penanda tenggat di garis waktu dan batang chart.
+ *
+ * Menggantikan atribut title bawaan browser, yang muncul setelah jeda ~1 detik,
+ * tidak bisa distyle, dan menempel di kursor alih-alih di elemennya.
+ *
+ * Diletakkan DI BAWAH pin, bukan di atas: .tp-panel memakai overflow:hidden
+ * untuk merapikan sudut pita judul, dan tooltip di atas pin akan terpotong.
+ *
+ * pointer-events:none wajib. Tanpa itu tooltip menutupi tombolnya sendiri
+ * begitu muncul, dan kliknya jadi tidak sampai.
+ */
+.tp-tip {
+    position: absolute;
+    top: calc(100% + 0.5rem);
+    z-index: 30;
+    width: max-content;
+    max-width: 14rem;
+    padding: 0.5rem 0.625rem;
+    border-radius: var(--tp-radius-sm);
+    background: var(--tp-tip-bg);
+    border: 1px solid var(--tp-tip-border);
+    box-shadow: var(--tp-shadow-pop);
+    text-align: left;
+    white-space: normal;
+    pointer-events: none;
+
+    opacity: 0;
+    transform: translateY(-0.25rem) scale(0.97);
+    transition:
+        opacity var(--tp-dur) var(--tp-ease),
+        transform var(--tp-dur) var(--tp-ease);
+}
+
+/*
+ * Perataan mengikuti posisi pin di dalam bulan. Pin tanggal 30 duduk di ~97%,
+ * dan tooltip yang ditengahkan di sana akan meluber melewati tepi panel lalu
+ * terpotong overflow:hidden.
+ */
+.tp-tip[data-align='center'] {
+    left: 50%;
+    transform: translate(-50%, -0.25rem) scale(0.97);
+}
+
+/* Rata tepat di tepi tombol, bukan menjorok keluar 4px: pin terakhir hanya
+   menyisakan ~2px ke tepi panel, dan menjorok akan memotongnya. */
+.tp-tip[data-align='start'] {
+    left: 0;
+}
+
+.tp-tip[data-align='end'] {
+    right: 0;
+}
+
+/* Jeda muncul 90ms supaya tooltip tidak berkedip saat kursor menyapu lewat.
+   Menghilangnya tanpa jeda, karena menunda kepergian terasa lengket. */
+.tp-pin:hover .tp-tip,
+.tp-pin:focus-visible .tp-tip,
+.tp-bar:hover .tp-tip,
+.tp-bar:focus-visible .tp-tip {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+    transition-delay: 90ms;
+}
+
+.tp-pin:hover .tp-tip[data-align='center'],
+.tp-pin:focus-visible .tp-tip[data-align='center'],
+.tp-bar:hover .tp-tip[data-align='center'],
+.tp-bar:focus-visible .tp-tip[data-align='center'] {
+    transform: translate(-50%, 0) scale(1);
+}
+
+/* Pin yang sedang di-hover naik ke depan, kalau tidak tooltipnya bisa tertutup
+   pin tetangga yang dirender belakangan. */
+.tp-pin:hover,
+.tp-pin:focus-visible {
+    z-index: 30;
+}
+
+/* Kerucut penunjuk. Bujur sangkar diputar 45 derajat, dengan dua sisi atasnya
+   saja yang berborder supaya menyatu dengan badan tooltip. */
+.tp-tip::before {
+    content: '';
+    position: absolute;
+    top: -0.3125rem;
+    width: 0.5rem;
+    height: 0.5rem;
+    background: var(--tp-tip-bg);
+    border-left: 1px solid var(--tp-tip-border);
+    border-top: 1px solid var(--tp-tip-border);
+    transform: rotate(45deg);
+}
+
+.tp-tip[data-align='center']::before {
+    left: 50%;
+    margin-left: -0.25rem;
+}
+
+.tp-tip[data-align='start']::before {
+    left: 0.875rem;
+}
+
+.tp-tip[data-align='end']::before {
+    right: 0.875rem;
+}
+
+.tp-tip-title {
+    display: block;
+    font-size: var(--tp-size-sm);
+    font-weight: 600;
+    color: var(--tp-tip-text);
+    line-height: 1.3;
+}
+
+.tp-tip-meta {
+    margin-top: 0.1875rem;
+    font-size: var(--tp-size-xs);
+    color: var(--tp-tip-muted);
+}
+
+.tp-tip-hint {
+    margin-top: 0.375rem;
+    padding-top: 0.375rem;
+    border-top: 1px solid oklch(1 0 0 / 0.12);
+    font-size: var(--tp-size-2xs);
+    color: var(--tp-tip-hint);
+}
+
+/*
+ * Batang chart saldo akhir.
+ *
+ * Warnanya seragam di keluarga aksen, tidak dibedakan menurut tanda. Merah dan
+ * hijau untuk kurang/lebih bayar akan bentrok dengan merah "lewat tempo" yang
+ * sudah punya arti tegas di halaman ini, sementara tandanya sendiri sudah
+ * dikodekan lewat posisi di atas atau di bawah garis nol.
+ */
+.tp-bar {
+    position: relative;
+    flex: 1 1 0;
+    min-width: 0;
+    background: none;
+    border: 0;
+    padding: 0;
+    cursor: pointer;
+}
+
+.tp-bar:focus-visible {
+    outline: 2px solid var(--tp-accent);
+    outline-offset: 2px;
+    border-radius: var(--tp-radius-sm);
+}
+
+.tp-bar-fill {
+    position: absolute;
+    left: 0;
+    right: 0;
+    border-radius: 3px;
+    background: var(--tp-track-fill);
+    transition: background-color var(--tp-dur) var(--tp-ease);
+}
+
+.tp-bar:hover .tp-bar-fill {
+    background: var(--tp-accent);
+}
+
+.tp-bar[aria-current='true'] .tp-bar-fill {
+    background: var(--tp-accent-solid);
+}
+
+/* Latar hover selebar kolom: sasaran kliknya tetap besar walau batangnya pendek. */
+.tp-bar-hit {
+    position: absolute;
+    inset: 0;
+    border-radius: var(--tp-radius-sm);
+    background: var(--tp-surface-sunken);
+    opacity: 0;
+    transition: opacity var(--tp-dur) var(--tp-ease);
+}
+
+.tp-bar:hover .tp-bar-hit,
+.tp-bar:focus-visible .tp-bar-hit {
+    opacity: 1;
+}
+
 .tp-row {
     transition: background-color var(--tp-dur) var(--tp-ease);
 }
@@ -291,14 +585,16 @@
 }
 
 /*
- * Kosakata kontrol.
+ * Kosakata tombol.
+ *
+ * Select-nya sekarang dirender komponen Filament Forms, jadi bentuknya sudah
+ * konsisten dengan seluruh panel admin dan tidak perlu ditulis ulang di sini.
  *
  * shadcn/ui adalah komponen React di atas Radix, jadi tidak bisa dipasang di
  * stack Blade/Livewire ini. Yang diambil adalah bahasanya: tinggi kontrol tetap
  * 2.25rem, border 1px yang tegas, shadow rambut, radius terukur, dan focus ring
  * melingkar (bukan outline kotak) yang muncul bersama perubahan warna border.
  */
-.tp-select,
 .tp-btn {
     height: 2.25rem;
     border: 1px solid var(--tp-border);
@@ -313,36 +609,10 @@
         background-color var(--tp-dur) var(--tp-ease);
 }
 
-.tp-select:focus-visible,
 .tp-btn:focus-visible {
     outline: none;
     border-color: var(--tp-accent);
     box-shadow: 0 0 0 3px var(--tp-ring);
-}
-
-.tp-select {
-    appearance: none;
-    line-height: 1.25rem;
-    padding: 0 1.875rem 0 0.625rem;
-
-    /* Chevron sebagai data URI: tanpa ini appearance:none menghapus panah. */
-    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3E%3Cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='m6 8 4 4 4-4'/%3E%3C/svg%3E");
-    background-position: right 0.5rem center;
-    background-repeat: no-repeat;
-    background-size: 1.125rem;
-}
-
-.tp-select:hover {
-    border-color: var(--tp-border-strong);
-}
-
-/* Filter aktif memakai aksen, karena itu satu-satunya keadaan yang perlu
-   diketahui tanpa membaca isinya. */
-.tp-select[data-active='true'] {
-    border-color: var(--tp-accent-border);
-    background-color: var(--tp-accent-bg);
-    color: var(--tp-accent-text);
-    font-weight: 500;
 }
 
 .tp-btn {
@@ -387,6 +657,42 @@
 .tp-btn-primary:hover:not(:disabled) {
     background: var(--tp-accent-solid-hover);
     border-color: var(--tp-accent-solid-hover);
+}
+
+/*
+ * Lencana hitung di dalam tombol.
+ *
+ * Tanpa wadah sendiri, angkanya menempel jadi bagian label: "PPh 21 & Unifikasi 1"
+ * terbaca seolah nama kewajibannya "Unifikasi 1". Pil dengan latar dan border
+ * memisahkannya secara tegas.
+ */
+.tp-count {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 1.25rem;
+    height: 1.25rem;
+    padding: 0 0.375rem;
+    margin-left: 0.125rem;
+    border-radius: 9999px;
+    background: var(--tp-surface-sunken);
+    border: 1px solid var(--tp-border);
+    font-size: var(--tp-size-2xs);
+    font-weight: 600;
+    line-height: 1;
+    color: var(--tp-text-muted);
+    font-variant-numeric: tabular-nums;
+}
+
+/*
+ * Di atas tombol primer, lencananya GELAP transparan, bukan terang.
+ * Menerangkan latar teal justru menurunkan kontras teks putih ke 3,2:1 dan
+ * gagal AA; menggelapkannya menaikkannya ke ~6,9:1.
+ */
+.tp-btn-primary .tp-count {
+    background: oklch(0 0 0 / 0.25);
+    border-color: oklch(1 0 0 / 0.22);
+    color: var(--tp-accent-on);
 }
 
 .tp-btn-ghost {

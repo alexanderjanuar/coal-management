@@ -26,7 +26,7 @@
                 <button type="button"
                         wire:click="previousPeriod"
                         class="tp-btn tp-btn-ghost rounded-none rounded-l"
-                        style="padding: 0.375rem 0.5rem;"
+                        style="padding: 0 0.5rem;"
                         aria-label="Periode sebelumnya">
                     <x-heroicon-o-chevron-left class="h-4 w-4" aria-hidden="true" />
                 </button>
@@ -41,7 +41,7 @@
                         wire:click="nextPeriod"
                         @disabled(! $canForward)
                         class="tp-btn tp-btn-ghost rounded-none rounded-r"
-                        style="padding: 0.375rem 0.5rem;"
+                        style="padding: 0 0.5rem;"
                         aria-label="Periode berikutnya"
                         @if (! $canForward) title="Periode setelah {{ $periodLabel }} belum jatuh tempo" @endif>
                     <x-heroicon-o-chevron-right class="h-4 w-4" aria-hidden="true" />
@@ -56,66 +56,33 @@
         </div>
     </div>
 
-    {{-- Filter. Empat select biasa di dalam satu toolbar, tanpa dropdown bertingkat. --}}
-    <div class="tp-toolbar">
-        <span class="tp-label tp-label-quiet mr-1 hidden sm:inline">Saring</span>
+    {{--
+        Filter memakai komponen Filament Forms, jadi select-nya berperilaku sama
+        persis dengan kontrol di seluruh panel admin (dropdown searchable, bukan
+        select native).
 
-        <label class="sr-only" for="tp-filter-client">Klien</label>
-        <select id="tp-filter-client"
-                wire:model.live="clientId"
-                class="tp-select max-w-[14rem]"
-                data-active="{{ $this->clientId ? 'true' : 'false' }}">
-            <option value="">Semua klien</option>
-            @foreach ($this->clientOptions() as $id => $name)
-                <option value="{{ $id }}">{{ $name }}</option>
-            @endforeach
-        </select>
-
-        <label class="sr-only" for="tp-filter-type">Jenis pajak</label>
-        <select id="tp-filter-type"
-                wire:model.live="taxType"
-                class="tp-select"
-                data-active="{{ $this->taxType ? 'true' : 'false' }}">
-            <option value="">Semua jenis</option>
-            <option value="ppn">PPN</option>
-            <option value="pph">PPh</option>
-            <option value="bupot">Bupot</option>
-        </select>
-
-        <label class="sr-only" for="tp-filter-report">Status lapor</label>
-        <select id="tp-filter-report"
-                wire:model.live="reportStatus"
-                class="tp-select"
-                data-active="{{ $this->reportStatus ? 'true' : 'false' }}">
-            <option value="">Semua status lapor</option>
-            <option value="Belum Lapor">Belum Lapor</option>
-            <option value="Sudah Lapor">Sudah Lapor</option>
-        </select>
-
-        <label class="sr-only" for="tp-filter-payment">Status bayar</label>
-        <select id="tp-filter-payment"
-                wire:model.live="paymentStatus"
-                class="tp-select"
-                data-active="{{ $this->paymentStatus ? 'true' : 'false' }}">
-            <option value="">Semua status bayar</option>
-            <option value="Kurang Bayar">Kurang Bayar</option>
-            <option value="Lebih Bayar">Lebih Bayar</option>
-            <option value="Nihil">Nihil</option>
-        </select>
+        Tanpa container: filter bukan objek tersendiri, ia bagian dari kepala
+        halaman. Membungkusnya dengan panel berbingkai membuatnya terbaca sejajar
+        dengan section data di bawahnya, padahal ia hanya kontrol.
+    --}}
+    <div class="pb-2">
+        {{ $this->form }}
 
         @if ($activeCount > 0)
-            <button type="button" wire:click="resetFilters" class="tp-btn tp-btn-ghost">
-                <x-heroicon-o-x-mark class="h-3.5 w-3.5" aria-hidden="true" />
-                Hapus {{ $activeCount }} filter
-            </button>
-        @endif
+            <div class="mt-3 flex items-center gap-3">
+                <button type="button" wire:click="resetFilters" class="tp-btn tp-btn-ghost">
+                    <x-heroicon-o-x-mark class="h-3.5 w-3.5" aria-hidden="true" />
+                    Hapus {{ $activeCount }} filter
+                </button>
 
-        <span class="ml-auto flex items-center gap-1.5"
-              style="font-size: var(--tp-size-xs); color: var(--tp-text-muted);"
-              wire:loading
-              wire:target="previousPeriod, nextPeriod, goToCurrentPeriod, clientId, taxType, reportStatus, paymentStatus">
-            <x-heroicon-o-arrow-path class="h-3.5 w-3.5 animate-spin" aria-hidden="true" />
-            Memuat
-        </span>
+                <span wire:loading
+                      wire:target="resetFilters, previousPeriod, nextPeriod, goToCurrentPeriod"
+                      class="flex items-center gap-1.5"
+                      style="font-size: var(--tp-size-xs); color: var(--tp-text-muted);">
+                    <x-heroicon-o-arrow-path class="h-3.5 w-3.5 animate-spin" aria-hidden="true" />
+                    Memuat
+                </span>
+            </div>
+        @endif
     </div>
 </div>

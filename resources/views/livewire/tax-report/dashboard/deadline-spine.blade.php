@@ -41,7 +41,14 @@
             sebelumnya memakai garis 3px dengan sisa bulan berkontras 1,5:1,
             jadi tidak ada satu pun tepi yang bisa dipegang mata.
         --}}
-        <div class="relative" style="height: 3.75rem;" aria-hidden="true">
+        {{--
+            Tanpa aria-hidden: penanda tenggat di sini adalah tombol sungguhan.
+            Elemen fokusabel di dalam aria-hidden bisa dijangkau keyboard tapi
+            tidak terlihat pembaca layar, dan itu jebakan aksesibilitas.
+            Bagian yang murni dekoratif (track, garis hari ini) tetap ditandai
+            aria-hidden satu per satu.
+        --}}
+        <div class="relative" style="height: 3.75rem;">
 
             {{--
                 Penanda hari ini: garis tinggi yang menembus dari label sampai
@@ -51,60 +58,116 @@
             --}}
             @if ($todayPosition !== null)
                 <span class="absolute top-0 whitespace-nowrap font-semibold"
-                      style="left: {{ $todayPosition }}%; transform: translateX(-50%); font-size: var(--tp-size-2xs); letter-spacing: 0.04em; color: var(--tp-accent-text);">
+                      style="left: {{ $todayPosition }}%; transform: translateX(-50%); font-size: var(--tp-size-2xs); letter-spacing: 0.04em; color: var(--tp-accent-text);"
+                      aria-hidden="true">
                     Hari ini
                 </span>
-                <div class="absolute rounded-full"
-                     style="left: {{ $todayPosition }}%; transform: translateX(-50%); top: 0.95rem; height: 2.05rem; width: 3px; background: var(--tp-accent);"></div>
+
+                {{-- Garis berdiri sendiri hanya digambar kalau hari ini TIDAK
+                     berimpit dengan tenggat. Saat berimpit, pin-nya sendiri yang
+                     ditandai (lihat --tp-pin-today di bawah), jadi tidak ada dua
+                     tanda yang bertumpuk di satu titik. --}}
+                @unless ($todayKey)
+                    <div class="absolute rounded-full"
+                         style="left: {{ $todayPosition }}%; transform: translateX(-50%); top: 0.95rem; height: 1.95rem; width: 3px; background: var(--tp-accent);"
+                         aria-hidden="true"></div>
+                @endunless
             @endif
 
             {{--
-                Tenggat digambar sebagai lollipop: titik di ujung tangkai, berdiri
-                DI ATAS track. Versi sebelumnya menaruh titik 12px di tengah track
-                8px, jadi titiknya tidak pernah menjorok dan justru tenggelam ke
-                dalam relnya. Yang berlubang bahkan hampir tak terbedakan dari track.
-
-                Isi titik tetap membawa status: terisi berarti masih ada tunggakan,
-                berlubang berarti bersih. Statusnya terbaca dari bentuk, bukan warna.
+                Track: tanggal 1 sampai hari terakhir bulan tenggat. Ramping (4px)
+                supaya penanda lollipop di atasnya yang jadi subjek, bukan relnya.
+                Bagian yang sudah lewat memakai nada aksen; sisanya netral pucat.
             --}}
-            @foreach ($deadlines as $deadline)
-                <span class="absolute rounded-full"
-                      style="left: {{ $deadline['position'] }}%;
-                             top: 0.95rem;
-                             transform: translateX(-50%);
-                             height: 0.75rem;
-                             width: 0.75rem;
-                             border: 2px solid {{ $toneDot($deadline['tone']) }};
-                             background: {{ $deadline['outstanding'] > 0 ? $toneDot($deadline['tone']) : 'var(--tp-surface)' }};"></span>
-
-                <span class="absolute"
-                      style="left: {{ $deadline['position'] }}%;
-                             transform: translateX(-50%);
-                             top: 1.65rem;
-                             height: 0.5rem;
-                             width: 2px;
-                             background: {{ $toneDot($deadline['tone']) }};"></span>
-            @endforeach
-
-            {{-- Track: tanggal 1 sampai hari terakhir bulan tenggat --}}
             <div class="absolute inset-x-0 overflow-hidden rounded-full"
-                 style="top: 2.15rem; height: 0.625rem; background: var(--tp-surface-sunken); border: 1px solid var(--tp-border);">
+                 style="top: 2.35rem; height: 0.25rem; background: var(--tp-track);"
+                 aria-hidden="true">
                 @if ($todayPosition !== null)
-                    <div class="h-full" style="width: {{ $todayPosition }}%; background: var(--tp-mark);"></div>
+                    <div class="h-full rounded-full" style="width: {{ $todayPosition }}%; background: var(--tp-track-fill);"></div>
                 @elseif ($isPast)
-                    <div class="h-full w-full" style="background: var(--tp-mark);"></div>
+                    <div class="h-full w-full" style="background: var(--tp-track-fill);"></div>
                 @endif
             </div>
 
+            {{--
+                Tenggat digambar sebagai lollipop yang bisa diklik: titik di ujung
+                tangkai, berdiri DI ATAS track. Mengkliknya menyorot kewajiban itu
+                di daftar triase, aksi yang sama persis dengan tombol "Sorot di
+                daftar" di ruas bawah.
+
+                Isi titik membawa status: terisi berarti masih ada tunggakan,
+                berlubang berarti bersih. Statusnya terbaca dari bentuk, bukan warna.
+            --}}
             @foreach ($deadlines as $deadline)
-                <span class="tp-num absolute whitespace-nowrap font-semibold"
-                      style="left: {{ $deadline['position'] }}%;
-                             top: 2.95rem;
-                             transform: translateX(-50%);
-                             font-size: var(--tp-size-xs);
-                             color: {{ $deadline['tone'] === 'neutral' ? 'var(--tp-text-muted)' : $toneColor($deadline['tone']) }};">
-                    {{ $deadline['date']->day }}
-                </span>
+                @php
+                    $pinFocused = $focused === $deadline['key'];
+                    $pinIsToday = $todayKey === $deadline['key'];
+                    $pinColor = $toneDot($deadline['tone']);
+                    $verbPin = $deadline['key'] === \App\Services\TaxDeadlineService::PAYMENT
+                        ? 'belum bayar'
+                        : 'belum lapor';
+
+                    // Perataan tooltip ditentukan dari posisi pin, bukan diukur di
+                    // browser: tooltip yang ditengahkan pada pin ~97% akan meluber
+                    // melewati tepi panel dan terpotong overflow:hidden.
+                    $tipAlign = match (true) {
+                        $deadline['position'] >= 70 => 'end',
+                        $deadline['position'] <= 15 => 'start',
+                        default => 'center',
+                    };
+                @endphp
+
+                <button type="button"
+                        wire:click="focus('{{ $deadline['key'] }}')"
+                        aria-pressed="{{ $pinFocused ? 'true' : 'false' }}"
+                        @if ($pinIsToday) data-today="true" @endif
+                        class="tp-pin"
+                        style="left: {{ $deadline['position'] }}%;
+                               top: 0.95rem;
+                               --tp-pin-color: {{ $pinColor }};
+                               --tp-pin-fill: {{ $deadline['outstanding'] > 0 ? $pinColor : 'var(--tp-surface)' }};
+                               --tp-pin-label: {{ $deadline['tone'] === 'neutral' ? 'var(--tp-text-muted)' : $toneColor($deadline['tone']) }};">
+                    <span class="tp-pin-dot" aria-hidden="true"></span>
+                    <span class="tp-pin-stem" aria-hidden="true"></span>
+                    <span class="tp-num tp-pin-day" aria-hidden="true">{{ $deadline['date']->day }}</span>
+
+                    {{-- Tooltip. aria-hidden karena isinya sudah disampaikan teks
+                         sr-only di bawah; tanpa itu pembaca layar mendengar hal
+                         yang sama dua kali. --}}
+                    <span class="tp-tip" data-align="{{ $tipAlign }}" aria-hidden="true">
+                        <span class="tp-tip-title">{{ $deadline['label'] }}</span>
+                        <span class="tp-tip-meta block">
+                            <span class="tp-num">{{ $deadline['date']->day }}</span>
+                            {{ $service->monthName($anchor) }}
+                            <span aria-hidden="true">&middot;</span>
+                            {{ $service->humanDistance($deadline['days_remaining']) }}
+                        </span>
+                        <span class="tp-tip-meta block">
+                            @if ($deadline['outstanding'] > 0)
+                                <span class="tp-num font-semibold">{{ $deadline['outstanding'] }}</span>
+                                klien {{ $verbPin }}
+                            @else
+                                Tidak ada tunggakan
+                            @endif
+                        </span>
+                        @if ($deadline['outstanding'] > 0)
+                            <span class="tp-tip-hint block">
+                                {{ $pinFocused ? 'Klik untuk hapus sorotan' : 'Klik untuk sorot di daftar' }}
+                            </span>
+                        @endif
+                    </span>
+
+                    {{-- Teks untuk pembaca layar: tanggal telanjang tidak cukup
+                         menjelaskan apa yang terjadi kalau tombol ini ditekan. --}}
+                    <span class="sr-only">
+                        {{ $deadline['label'] }},
+                        {{ $deadline['date']->day }} {{ $service->monthName($anchor) }},
+                        {{ $service->humanDistance($deadline['days_remaining']) }},
+                        {{ $deadline['outstanding'] > 0
+                            ? $deadline['outstanding'] . ' klien ' . $verbPin . '. Sorot di daftar.'
+                            : 'tidak ada tunggakan.' }}
+                    </span>
+                </button>
             @endforeach
         </div>
     </div>
@@ -181,40 +244,10 @@
                     {{ $deadline['detail'] }}
                 </p>
 
-                @if ($hasOutstanding)
-                    <div class="mt-2.5 flex flex-wrap gap-1.5">
-                        {{--
-                            Aksi primer ruas ini. Diberi aksen penuh karena tanpa
-                            satu pun elemen yang menyatakan mana yang harus
-                            dikerjakan, halaman ini kehilangan titik fokusnya dan
-                            aksen jadi nyaris tak terpakai. Saat sorotan sedang
-                            aktif ia turun jadi sekunder: mematikan sorotan bukan
-                            aksi yang perlu diarahkan.
-                        --}}
-                        <button type="button"
-                                wire:click="focus('{{ $deadline['key'] }}')"
-                                aria-pressed="{{ $isFocused ? 'true' : 'false' }}"
-                                class="tp-btn {{ $isFocused ? '' : 'tp-btn-primary' }}"
-                                style="{{ $isFocused ? 'border-color: var(--tp-accent-border); color: var(--tp-accent-text);' : '' }}">
-                            {{ $isFocused ? 'Hapus sorotan' : 'Sorot di daftar' }}
-                        </button>
-
-                        {{--
-                            Pengingat keluar dari aplikasi: notifikasi ke setiap
-                            project manager plus banner untuk semua pengguna.
-                            Satu klik saja tidak boleh cukup untuk memicunya.
-                        --}}
-                        <button type="button"
-                                wire:click="sendReminder('{{ $deadline['key'] }}')"
-                                wire:confirm="Kirim pengingat ke seluruh project manager dan pasang banner untuk semua pengguna?&#10;&#10;{{ $deadline['outstanding'] }} klien belum {{ $verb }} {{ $deadline['short'] }} periode {{ $service->periodLabel($periodDate) }}."
-                                wire:loading.attr="disabled"
-                                wire:target="sendReminder('{{ $deadline['key'] }}')"
-                                class="tp-btn tp-btn-ghost">
-                            <span wire:loading.remove wire:target="sendReminder('{{ $deadline['key'] }}')">Kirim pengingat</span>
-                            <span wire:loading wire:target="sendReminder('{{ $deadline['key'] }}')">Mengirim</span>
-                        </button>
-                    </div>
-                @endif
+                {{-- Tombol "Sorot di daftar" dan "Kirim pengingat" pindah ke panel
+                     "Perlu ditindak": aksinya bekerja pada daftar itu, jadi lebih
+                     masuk akal berada di sana ketimbang diulang tiga kali di sini.
+                     Pin di garis waktu di atas tetap bisa diklik untuk menyorot. --}}
             </div>
         @endforeach
     </div>

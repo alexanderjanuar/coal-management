@@ -40,17 +40,52 @@ class TriageList extends Component
         $this->error = null;
     }
 
-    #[On('deadlineFocused')]
-    public function setFocus(?string $key): void
+    /**
+     * Komponen ini pemilik state sorotan.
+     *
+     * Garis waktu tenggat duduk di panel ini dan menyaring tabel ini juga, jadi
+     * statenya tinggal di sini. Tombol "Sorot di daftar" di panel tenggat cukup
+     * mengirim permintaan, lalu ikut menyesuaikan lewat 'deadlineFocusChanged'.
+     */
+    public function toggleFocus(string $key): void
     {
-        $this->focused = $key;
-        $this->showAll = false;
+        $this->applyFocus($this->focused === $key ? null : $key);
+    }
+
+    #[On('deadlineFocusRequested')]
+    public function focusRequested(string $key): void
+    {
+        $this->toggleFocus($key);
     }
 
     public function clearFocus(): void
     {
-        $this->focused = null;
-        $this->dispatch('deadlineFocusCleared');
+        $this->applyFocus(null);
+    }
+
+    /**
+     * Meneruskan permintaan kirim pengingat ke DeadlineSpine.
+     *
+     * Logikanya (notifikasi ke tiap project manager + banner sitewide) tetap
+     * tinggal di sana bersama seluruh perkakas banner-nya; yang pindah ke sini
+     * hanya tombolnya. Konfirmasi tetap dipasang di tombol, jadi satu klik saja
+     * tidak pernah cukup untuk memicunya.
+     */
+    public function requestReminder(): void
+    {
+        if ($this->focused === null) {
+            return;
+        }
+
+        $this->dispatch('sendDeadlineReminder', key: $this->focused);
+    }
+
+    protected function applyFocus(?string $key): void
+    {
+        $this->focused = $key;
+        $this->showAll = false;
+
+        $this->dispatch('deadlineFocusChanged', key: $key);
     }
 
     public function toggleShowAll(): void
@@ -100,6 +135,11 @@ class TriageList extends Component
             // Periode tanpa laporan sama sekali bukan hal yang sama dengan periode
             // yang semua kewajibannya sudah beres. Empty state-nya harus berbeda.
             'periodHasReports' => $reportCount > 0,
+
+            // Tombol aksi per tenggat duduk di panel ini, jadi daftar tenggatnya
+            // ikut dikirim. Garis waktunya sendiri tetap di panel tenggat.
+            'deadlines' => $deadlines,
+            'anchor' => $anchor,
         ]);
     }
 
@@ -168,7 +208,7 @@ class TriageList extends Component
                 ];
             }
 
-            if ($this->isUnpaid($summary) && $this->wantsPayment()) {
+            if ($this->isUnpaid($summary) && $this->wantsPaymentOf($summary->tax_type)) {
                 $obligations[] = [
                     'key' => TaxDeadlineService::PAYMENT,
                     // Pembayaran bukan jenis pajak, jadi ia tidak punya warna
@@ -244,9 +284,21 @@ class TriageList extends Component
         return $this->focused === null;
     }
 
-    protected function wantsPayment(): bool
+    /**
+     * Kewajiban bayar juga tunduk pada filter jenis pajak.
+     *
+     * bayar_status disimpan per summary, dan summary itu per jenis pajak. Tanpa
+     * pengecekan ini, menyaring ke PPN tetap memunculkan chip "Bayar" yang
+     * sebenarnya berasal dari summary PPh yang belum dibayar, sehingga barisnya
+     * mengaku ada tunggakan bayar PPN padahal tidak.
+     */
+    protected function wantsPaymentOf(string $taxType): bool
     {
         if ($this->reportStatus === 'Sudah Lapor') {
+            return false;
+        }
+
+        if ($this->taxType && $this->taxType !== $taxType) {
             return false;
         }
 
@@ -262,12 +314,16 @@ class TriageList extends Component
         return ! $this->paymentStatus || $this->paymentStatus === $summary->status_final;
     }
 
+    /**
+     * Label tampilan. Nilai tax_type di database tetap 'pph' dan 'bupot';
+     * hanya cara menyebutnya ke pengguna yang berubah.
+     */
     protected function taxTypeLabel(string $taxType): string
     {
         return match ($taxType) {
             'ppn' => 'PPN',
-            'pph' => 'PPh',
-            'bupot' => 'Bupot',
+            'pph' => 'PPh 21',
+            'bupot' => 'PPh Unifikasi',
             default => strtoupper($taxType),
         };
     }

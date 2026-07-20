@@ -90,9 +90,13 @@ class TaxDeadlineService
             [
                 'key' => self::PPH,
                 'day' => 10,
-                'label' => 'Batas Lapor PPh',
-                'short' => 'PPh',
-                'detail' => 'SPT Masa PPh 21 & PPh Unifikasi',
+                // Tenggat tanggal 10 adalah payung untuk DUA kewajiban: PPh 21
+                // (tax_type 'pph') dan PPh Unifikasi (tax_type 'bupot'). Menamainya
+                // "Batas Lapor PPh 21" saja akan menghapus Unifikasi dari tenggat
+                // yang sebenarnya juga menagihnya.
+                'label' => 'Batas Lapor PPh 21 & Unifikasi',
+                'short' => 'PPh 21 & Unifikasi',
+                'detail' => 'SPT Masa PPh 21 dan PPh Unifikasi',
                 'outstanding' => $counts[self::PPH],
             ],
             [

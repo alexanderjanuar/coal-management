@@ -6,6 +6,19 @@
      * Batas 26rem menjaga jarak baca tetap dekat.
      */
     $cols = 'grid-cols-[minmax(0,1fr)_auto] lg:grid-cols-[minmax(0,26rem)_minmax(0,1fr)_8rem_9rem_1rem]';
+
+    // Dipakai garis waktu tenggat di bawah header panel ini.
+    $toneColor = fn (string $tone) => match ($tone) {
+        'overdue' => 'var(--tp-overdue)',
+        'due' => 'var(--tp-due)',
+        default => 'var(--tp-text-muted)',
+    };
+
+    $toneDot = fn (string $tone) => match ($tone) {
+        'overdue' => 'var(--tp-overdue)',
+        'due' => 'var(--tp-due)',
+        default => 'var(--tp-mark)',
+    };
 @endphp
 
 <section class="tp-panel" aria-labelledby="tp-triage-heading">
@@ -36,6 +49,66 @@
             Tenggat terdekat lebih dulu
         </p>
     </div>
+
+    {{--
+        Bilah aksi. Sebelumnya pasangan tombol ini diulang di tiap ruas panel
+        tenggat, tiga kali. Di sini ia muncul sekali, tepat di atas daftar yang
+        memang jadi sasarannya.
+
+        Hanya tenggat yang punya tunggakan yang ditampilkan: menyorot kewajiban
+        yang sudah beres akan selalu menghasilkan daftar kosong.
+    --}}
+    @php
+        $actionable = collect($deadlines)->filter(fn ($d) => $d['outstanding'] > 0);
+    @endphp
+
+    @if ($actionable->isNotEmpty())
+        <div class="flex flex-wrap items-center gap-2 px-5 py-3"
+             style="border-bottom: 1px solid var(--tp-border);">
+            <span class="tp-label tp-label-quiet mr-1">Sorot</span>
+
+            @foreach ($actionable as $action)
+                @php $isOn = $focused === $action['key']; @endphp
+                <button type="button"
+                        wire:click="toggleFocus('{{ $action['key'] }}')"
+                        aria-pressed="{{ $isOn ? 'true' : 'false' }}"
+                        class="tp-btn {{ $isOn ? 'tp-btn-primary' : '' }}">
+                    {{ $action['short'] }}
+                    <span class="tp-count">{{ $action['outstanding'] }}</span>
+
+                    {{-- Angka telanjang tidak menjelaskan apa yang dihitung.
+                         Pembaca layar mendapat kalimat utuhnya di sini. --}}
+                    <span class="sr-only">
+                        , {{ $action['outstanding'] }} klien
+                        {{ $action['key'] === \App\Services\TaxDeadlineService::PAYMENT ? 'belum bayar' : 'belum lapor' }}
+                    </span>
+                </button>
+            @endforeach
+
+            @if ($focusedDeadline && $focusedDeadline['outstanding'] > 0)
+                @php
+                    $verbTip = $focusedDeadline['key'] === \App\Services\TaxDeadlineService::PAYMENT
+                        ? 'belum bayar'
+                        : 'belum lapor';
+                @endphp
+
+                {{-- Pengingat keluar dari aplikasi: notifikasi ke setiap project
+                     manager plus banner untuk semua pengguna. Satu klik saja
+                     tidak boleh cukup untuk memicunya. --}}
+                <button type="button"
+                        wire:click="requestReminder"
+                        wire:confirm="Kirim pengingat ke seluruh project manager dan pasang banner untuk semua pengguna?&#10;&#10;{{ $focusedDeadline['outstanding'] }} klien {{ $verbTip }} {{ $focusedDeadline['short'] }} periode {{ $service->periodLabel($periodDate) }}."
+                        wire:loading.attr="disabled"
+                        wire:target="requestReminder"
+                        class="tp-btn tp-btn-ghost ml-auto">
+                    <x-heroicon-o-bell-alert class="h-3.5 w-3.5" aria-hidden="true" />
+                    <span wire:loading.remove wire:target="requestReminder">Kirim pengingat</span>
+                    <span wire:loading wire:target="requestReminder">Mengirim</span>
+                </button>
+            @endif
+        </div>
+    @endif
+
 
     @if ($error)
         {{-- Error harus terlihat. Daftar kosong palsu di surface tenggat lebih

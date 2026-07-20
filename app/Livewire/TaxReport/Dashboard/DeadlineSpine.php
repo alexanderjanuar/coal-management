@@ -38,18 +38,20 @@ class DeadlineSpine extends Component
      * Mengklik satu ruas menyorot kewajiban itu di daftar triase. Tanpa ini
      * angka di tulang punggung hanya jadi hiasan, dan itu melanggar prinsip
      * "setiap angka punya tujuan".
+     *
+     * State sorotannya sendiri dipegang TriageList, karena garis waktu dan tabel
+     * yang disorotnya sama-sama ada di panel itu. Komponen ini hanya mengirim
+     * permintaan lalu menyesuaikan tampilannya lewat 'deadlineFocusChanged'.
      */
     public function focus(string $key): void
     {
-        $this->focused = $this->focused === $key ? null : $key;
-
-        $this->dispatch('deadlineFocused', key: $this->focused);
+        $this->dispatch('deadlineFocusRequested', key: $key);
     }
 
-    #[On('deadlineFocusCleared')]
-    public function clearFocus(): void
+    #[On('deadlineFocusChanged')]
+    public function syncFocus(?string $key): void
     {
-        $this->focused = null;
+        $this->focused = $key;
     }
 
     /**
@@ -62,6 +64,7 @@ class DeadlineSpine extends Component
      * Aksi ini keluar dari aplikasi (notifikasi ke orang sungguhan dan banner
      * sitewide), jadi view mewajibkan konfirmasi sebelum memanggilnya.
      */
+    #[On('sendDeadlineReminder')]
     public function sendReminder(string $key, TaxDeadlineService $service): void
     {
         $period = $this->periodDate();
@@ -190,6 +193,25 @@ class DeadlineSpine extends Component
         // tenggat yang sedang ditampilkan. Untuk periode lama, tidak digambar.
         $todayInAnchor = $today->isSameMonth($anchor);
 
+        /*
+         * Tenggat yang jatuh TEPAT pada hari ini.
+         *
+         * Ini terjadi tiga hari setiap bulan (10, 20, 30), dan justru di hari
+         * paling penting. Pada hari itu garis "Hari ini" dan penanda tenggat
+         * berada di posisi yang sama persis, sehingga garisnya tertutup pin dan
+         * label "Hari ini" tampak seolah milik pin itu. Ketimbang menumpuk dua
+         * tanda di satu titik, pin-nya sendiri yang ditandai sebagai hari ini.
+         */
+        $todayKey = null;
+        if ($todayInAnchor) {
+            foreach ($items as $item) {
+                if ($item['date']->isSameDay($today)) {
+                    $todayKey = $item['key'];
+                    break;
+                }
+            }
+        }
+
         return view('livewire.tax-report.dashboard.deadline-spine', [
             'deadlines' => $items,
             'service' => $service,
@@ -198,6 +220,7 @@ class DeadlineSpine extends Component
             // setelah data render, jadi $period akan tertimpa string 'Y-m'.
             'periodDate' => $period,
             'todayPosition' => $todayInAnchor ? $service->positionInMonth($today) : null,
+            'todayKey' => $todayKey,
             'isPast' => $anchor->endOfMonth()->lt($today),
             'totalOutstanding' => array_sum(array_column($items, 'outstanding')),
         ]);

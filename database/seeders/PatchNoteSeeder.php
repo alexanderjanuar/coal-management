@@ -113,5 +113,88 @@ class PatchNoteSeeder extends Seeder
                 ],
             ]
         );
+
+        PatchNote::updateOrCreate(
+            ['version' => '1.7.0'],
+            [
+                'title'        => 'Dashboard Laporan Pajak Baru',
+                'description'  => 'Dashboard pajak dirombak agar menjawab satu pertanyaan lebih dulu: klien mana yang belum lapor dan tenggatnya sudah dekat. Ditambah beberapa perbaikan perhitungan yang membuat angkanya lebih tepat.',
+                'is_published' => true,
+                'released_at'  => now()->toDateString(),
+                'created_by'   => User::query()->value('id'),
+                'changes'      => [
+                    // Fitur baru
+                    [
+                        'type' => 'feature',
+                        'area' => 'Pajak',
+                        'text' => 'Garis waktu tenggat: satu bilah yang menunjukkan posisi hari ini terhadap batas lapor PPh 21 & Unifikasi (tgl 10), PPN (tgl 20), dan batas bayar (tgl 30), lengkap dengan jumlah klien yang masih tertunggak di tiap tenggat.',
+                    ],
+                    [
+                        'type' => 'feature',
+                        'area' => 'Pajak',
+                        'text' => 'Daftar "Perlu ditindak" mengurutkan klien berdasarkan tenggat terdekat, bukan berdasarkan besarnya omzet. Tiap baris bisa diklik langsung menuju laporan pajaknya.',
+                    ],
+                    [
+                        'type' => 'feature',
+                        'area' => 'Pajak',
+                        'text' => 'Tombol "Sorot" menyaring daftar ke satu jenis tenggat saja, dan pengingat ke seluruh project manager bisa dikirim dari situ (dengan konfirmasi terlebih dahulu).',
+                    ],
+                    [
+                        'type' => 'feature',
+                        'area' => 'Pajak',
+                        'text' => 'Grafik saldo akhir 12 bulan terakhir. Klik salah satu bulan untuk langsung berpindah ke periode tersebut.',
+                    ],
+
+                    // Peningkatan
+                    [
+                        'type' => 'improvement',
+                        'area' => 'Pajak',
+                        'text' => 'Pemilih periode disederhanakan menjadi satu stepper bulan. Rentang bebas seperti "kuartal ini" dihapus karena kewajiban pajak selalu dihitung per masa bulanan.',
+                    ],
+                    [
+                        'type' => 'improvement',
+                        'area' => 'Pajak',
+                        'text' => 'Filter dashboard (klien, jenis pajak, status lapor, status bayar) kini tersimpan di alamat halaman, sehingga tampilan yang sudah disaring bisa disimpan sebagai bookmark atau dibagikan ke rekan.',
+                    ],
+                    [
+                        'type' => 'improvement',
+                        'area' => 'Pajak',
+                        'text' => 'Istilah diseragamkan: "Bupot" kini ditulis "PPh Unifikasi" dan "PPh" menjadi "PPh 21", mengikuti penamaan di modul Klien.',
+                    ],
+                    [
+                        'type' => 'improvement',
+                        'area' => 'Sistem',
+                        'text' => 'Dashboard pajak lebih ringan dibuka. Pengambilan data daftar klien yang sebelumnya menjalankan belasan kueri sekarang cukup satu kali, berapa pun jumlah kliennya.',
+                    ],
+
+                    // Perbaikan
+                    [
+                        'type' => 'fix',
+                        'area' => 'Pajak',
+                        'text' => 'Angka pada dashboard sebelumnya menggabungkan masa dengan nama bulan yang sama dari tahun berbeda (misalnya Januari 2025 ikut terhitung di Januari 2026). Perhitungan kini memakai bulan sekaligus tahun.',
+                    ],
+                    [
+                        'type' => 'fix',
+                        'area' => 'Pajak',
+                        'text' => 'Tenggat pembayaran tanggal 30 tidak pernah muncul pada bulan Februari. Tenggat kini otomatis menyesuaikan ke hari terakhir bulan tersebut.',
+                    ],
+                    [
+                        'type' => 'fix',
+                        'area' => 'Pajak',
+                        'text' => 'Menyaring dashboard ke jenis pajak tertentu sebelumnya tetap menampilkan penanda "Bayar" milik jenis pajak lain. Penanda kini ikut menyesuaikan filter.',
+                    ],
+                    [
+                        'type' => 'fix',
+                        'area' => 'Sistem',
+                        'text' => 'Kegagalan memuat data pada dashboard sebelumnya tampil sebagai daftar kosong, sehingga menyerupai kondisi "semua sudah beres". Kegagalan kini ditampilkan sebagai pesan yang jelas beserta tombol muat ulang.',
+                    ],
+                    [
+                        'type' => 'fix',
+                        'area' => 'Sistem',
+                        'text' => 'Menu Dashboard pada Tax Management sebelumnya mengikuti hak akses modul Tugas Harian. Kini menggunakan hak akses miliknya sendiri.',
+                    ],
+                ],
+            ]
+        );
     }
 }
