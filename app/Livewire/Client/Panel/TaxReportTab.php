@@ -253,6 +253,11 @@ class TaxReportTab extends Component
         return TaxCalculationSummary::query()
             ->whereHas('taxReport', fn ($q) => $q->where('client_id', $this->currentClient->id))
             ->where(fn ($q) => $q->where('report_status', 'Sudah Lapor')->orWhereNotNull('bukti_lapor'))
+            // Masa yang ditandai tanpa aktivitas berstatus "Sudah Lapor" supaya
+            // perhitungan internal tetap bekerja, tapi tidak ada SPT yang pernah
+            // dilaporkan. Menampilkannya di sini akan membuat klien melihat SPT
+            // yang tidak pernah ada dan mencari dokumennya.
+            ->where('no_activity', false)
             ->with(['taxReport:id,month,client_id,created_at'])
             ->get()
             ->map(function ($s) use ($monthIndex, $monthsId, $jenisLabels) {

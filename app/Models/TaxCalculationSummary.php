@@ -34,6 +34,9 @@ class TaxCalculationSummary extends Model
         'reported_at',
         'bukti_lapor',
         'nomor_bukti_lapor',
+        'no_activity',
+        'no_activity_by',
+        'no_activity_at',
     ];
 
     protected $casts = [
@@ -47,7 +50,70 @@ class TaxCalculationSummary extends Model
         'saldo_final' => 'decimal:2',
         'calculated_at' => 'datetime',
         'bayar_at' => 'date',
+        'no_activity' => 'boolean',
+        'no_activity_at' => 'datetime',
     ];
+
+    /**
+     * Jenis pajak yang hanya wajib dilaporkan bila masa itu ada aktivitas.
+     *
+     * PPN dan PPh 21 wajib dilaporkan tiap masa meski nihil, jadi keduanya tidak
+     * pernah bisa ditandai "tanpa aktivitas".
+     */
+    public const CONDITIONAL_TYPES = ['bupot', 'pph_badan'];
+
+    public function isConditional(): bool
+    {
+        return \in_array($this->tax_type, self::CONDITIONAL_TYPES, true);
+    }
+
+    /** Siapa yang menyatakan masa ini tanpa aktivitas. */
+    public function noActivityBy()
+    {
+        return $this->belongsTo(User::class, 'no_activity_by');
+    }
+
+    /**
+     * Tandai masa ini tidak ada aktivitas: dianggap selesai tanpa SPT.
+     *
+     * report_status tetap disetel "Sudah Lapor" supaya seluruh perhitungan yang
+     * sudah ada terus bekerja tanpa perlu mengenal nilai status baru. Kolom
+     * no_activity yang membedakannya dari pelaporan sungguhan, dan dipakai
+     * tempat-tempat yang memang perlu membedakan (mis. daftar SPT klien).
+     */
+    public function markNoActivity(?int $userId = null): void
+    {
+        $this->update([
+            'no_activity' => true,
+            'no_activity_by' => $userId,
+            'no_activity_at' => now(),
+            'report_status' => 'Sudah Lapor',
+            'bayar_status' => 'Sudah Bayar',
+            // Sengaja TIDAK mengisi reported_at, bukti_lapor, atau
+            // nomor_bukti_lapor: tidak ada pelaporan yang terjadi.
+        ]);
+    }
+
+    /**
+     * Batalkan penandaan, kembalikan masa ini menjadi kewajiban.
+     *
+     * Status hanya dikembalikan ke "Belum" bila memang tidak ada bukti pelaporan.
+     * Tanpa penjagaan ini, masa yang SPT-nya sudah diunggah akan kehilangan
+     * status selesainya hanya karena penanda nihil dibersihkan.
+     */
+    public function clearNoActivity(): void
+    {
+        $adaPelaporanNyata = $this->bukti_lapor !== null;
+
+        $this->update([
+            'no_activity' => false,
+            'no_activity_by' => null,
+            'no_activity_at' => null,
+        ] + ($adaPelaporanNyata ? [] : [
+            'report_status' => 'Belum Lapor',
+            'bayar_status' => 'Belum Bayar',
+        ]));
+    }
 
     /**
      * Relationships

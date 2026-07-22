@@ -1063,15 +1063,33 @@
             <div x-show="activeTab === 'bupot'" x-transition:enter="transition ease-out duration-200"
                 x-transition:enter-start="opacity-0 transform translate-y-2"
                 x-transition:enter-end="opacity-100 transform translate-y-0" style="display: none;">
-                {{-- @livewire('tax-report.components.tax-report-bupot', ['taxReportId' => $record->id]) --}}
+                <div class="space-y-4">
+                    {{-- Konfirmasi ada/tidaknya aktivitas. PPh Unifikasi hanya
+                         wajib dilaporkan bila masa ini memang ada pemotongan;
+                         tanpa pernyataan eksplisit, masa ini akan terus terhitung
+                         sebagai tunggakan di dashboard. --}}
+                    @livewire('tax-report.activity-confirmation',
+                        ['taxReportId' => $record->id, 'type' => 'bupot'],
+                        key('act-bupot-' . $record->id))
+
+                    @livewire('tax-report.spt-upload',
+                        ['taxReportId' => $record->id, 'type' => 'bupot'],
+                        key('spt-bupot-' . $record->id))
+                </div>
             </div>
 
             {{-- ✅ NEW: PPh Badan Content --}}
             <div x-show="activeTab === 'pph_badan'" x-transition:enter="transition ease-out duration-200"
                 x-transition:enter-start="opacity-0 transform translate-y-2"
                 x-transition:enter-end="opacity-100 transform translate-y-0" style="display: none;">
-                {{-- Livewire component commented out for now --}}
-                {{-- @livewire('tax-report.components.tax-report-pph-badan', ['taxReportId' => $record->id]) --}}
+                {{-- Konfirmasi ada/tidaknya aktivitas. PPh Badan bersifat
+                     tahunan dan hanya dilaporkan bila ada aktivitas, jadi
+                     perlakuannya sama dengan PPh Unifikasi. --}}
+                <div class="mb-4">
+                    @livewire('tax-report.activity-confirmation',
+                        ['taxReportId' => $record->id, 'type' => 'pph_badan'],
+                        key('act-badan-' . $record->id))
+                </div>
 
                 {{-- Placeholder content --}}
                 <div

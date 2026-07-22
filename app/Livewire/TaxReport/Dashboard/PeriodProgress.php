@@ -56,26 +56,24 @@ class PeriodProgress extends Component
         $period = $this->periodDate();
 
         /*
-         * onlyObligations: false — panel ini satu-satunya yang perlu melihat
-         * masa tanpa aktivitas, supaya bisa membedakan "belum lapor" dari
-         * "tidak wajib lapor". Kondisi aktivitasnya diterapkan per kolom di
-         * bawah, bukan pada seluruh kueri.
+         * Masa yang dinyatakan tanpa aktivitas dihitung terpisah (kolom _idle),
+         * bukan dikeluarkan dari total. Statusnya memang "Sudah Lapor" sehingga
+         * ia tidak menjadi tunggakan, tapi menampilkannya sebagai "selesai"
+         * akan menyamarkan bahwa tidak pernah ada SPT di sana.
          */
-        $activity = TaxDeadlineService::activityCondition();
-
-        $row = $service->periodQuery($period, $this->clientId, onlyObligations: false)
+        $row = $service->periodQuery($period, $this->clientId)
             ->selectRaw("
                 SUM(CASE WHEN s.tax_type = 'ppn' THEN 1 ELSE 0 END) as ppn_total,
                 SUM(CASE WHEN s.tax_type = 'ppn' AND s.report_status = 'Sudah Lapor' THEN 1 ELSE 0 END) as ppn_done,
                 SUM(CASE WHEN s.tax_type = 'pph' THEN 1 ELSE 0 END) as pph_total,
                 SUM(CASE WHEN s.tax_type = 'pph' AND s.report_status = 'Sudah Lapor' THEN 1 ELSE 0 END) as pph_done,
 
-                SUM(CASE WHEN s.tax_type = 'bupot' AND {$activity} THEN 1 ELSE 0 END) as bupot_total,
-                SUM(CASE WHEN s.tax_type = 'bupot' AND {$activity} AND s.report_status = 'Sudah Lapor' THEN 1 ELSE 0 END) as bupot_done,
-                SUM(CASE WHEN s.tax_type = 'bupot' AND NOT {$activity} THEN 1 ELSE 0 END) as bupot_idle,
+                SUM(CASE WHEN s.tax_type = 'bupot' AND s.no_activity = 0 THEN 1 ELSE 0 END) as bupot_total,
+                SUM(CASE WHEN s.tax_type = 'bupot' AND s.no_activity = 0 AND s.report_status = 'Sudah Lapor' THEN 1 ELSE 0 END) as bupot_done,
+                SUM(CASE WHEN s.tax_type = 'bupot' AND s.no_activity = 1 THEN 1 ELSE 0 END) as bupot_idle,
 
-                SUM(CASE WHEN s.status_final <> 'Nihil' AND {$activity} THEN 1 ELSE 0 END) as pay_total,
-                SUM(CASE WHEN s.status_final <> 'Nihil' AND {$activity} AND s.bayar_status = 'Sudah Bayar' THEN 1 ELSE 0 END) as pay_done
+                SUM(CASE WHEN s.status_final <> 'Nihil' AND s.no_activity = 0 THEN 1 ELSE 0 END) as pay_total,
+                SUM(CASE WHEN s.status_final <> 'Nihil' AND s.no_activity = 0 AND s.bayar_status = 'Sudah Bayar' THEN 1 ELSE 0 END) as pay_done
             ")
             ->first();
 

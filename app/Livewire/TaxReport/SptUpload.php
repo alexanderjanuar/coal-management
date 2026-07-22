@@ -131,6 +131,13 @@ class SptUpload extends Component implements HasForms, HasActions
                     'report_status'     => 'Sudah Lapor',
                     'bayar_status'      => 'Sudah Bayar',
                     'bayar_at'          => $data['reported_at'],
+
+                    // Penanda nihil dibersihkan: begitu ada SPT sungguhan, masa
+                    // ini jelas bukan masa tanpa aktivitas. Tanpa ini satu baris
+                    // bisa mengaku keduanya sekaligus.
+                    'no_activity'       => false,
+                    'no_activity_by'    => null,
+                    'no_activity_at'    => null,
                 ]);
 
                 $this->taxReport->refresh();
