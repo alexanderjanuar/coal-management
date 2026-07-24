@@ -15,8 +15,94 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  # ---------------------------------------------------------------------------
+  # GERBANG. Mereproduksi build produksi di runner bersih SEBELUM menyentuh
+  # server. Kalau langkah mana pun gagal, job `deploy` di bawah tidak jalan.
+  #
+  # Latar: insiden 24 Jul 2026. composer.json mem-pin filament-log-viewer 2.3.0
+  # (menyasar Filament 4) yang tak kompatibel dengan Filament 3.3.18. Lolos ke
+  # produksi karena vendor lokal basi tak pernah fresh-install, jadi tak ada
+  # yang ketahuan sampai `composer install` bersih di SERVER memicu
+  # `package:discover` yang gagal memuat class Heroicon -> seluruh app 500.
+  # Job ini menjalankan langkah yang sama persis di CI, jadi lock rusak gagal
+  # DI SINI, bukan di server hidup.
+  # ---------------------------------------------------------------------------
+  verify:
+    name: Verifikasi build bersih
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Ambil kode
+        uses: actions/checkout@v4
+
+      - name: Siapkan PHP 8.3
+        # Samakan dengan server (PHP 8.3.31).
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          extensions: mbstring, zip, gd, intl, bcmath, exif, pcntl, sodium, curl, dom, xml
+          coverage: none
+
+      - name: Validasi composer.json & lock sinkron
+        # Menangkap composer.json yang disunting tangan tanpa regen lock —
+        # salah satu cara lock bisa jadi tak konsisten. Warning gaya (pin versi
+        # eksak) tidak menggagalkan; hanya error konsistensi yang menggagalkan.
+        run: composer validate --no-check-publish
+
+      - name: Siapkan .env minimal
+        # Repo tak punya .env.example, sedangkan package:discover butuh aplikasi
+        # bisa boot. Nilai-nilai ini cukup untuk enumerasi service provider dan
+        # build aset; tidak ada DB atau jaringan nyata yang disentuh.
+        run: |
+          cat > .env <<'EOF'
+          APP_NAME=CI
+          APP_ENV=testing
+          APP_DEBUG=true
+          APP_URL=http://localhost
+          LOG_CHANNEL=stderr
+          DB_CONNECTION=sqlite
+          DB_DATABASE=:memory:
+          CACHE_DRIVER=array
+          SESSION_DRIVER=array
+          QUEUE_CONNECTION=sync
+          BROADCAST_DRIVER=null
+          FILESYSTEM_DISK=local
+          MAIL_MAILER=array
+          EOF
+          echo "APP_KEY=base64:$(head -c 32 /dev/urandom | base64)" >> .env
+
+      - name: Install dependensi PHP (bersih, dari lock, --no-dev seperti server)
+        # Inti gerbang. composer install memicu post-autoload-dump
+        # `php artisan package:discover`. Kalau lock memuat paket yang class-nya
+        # tak bisa dimuat, langkah ini gagal — persis kegagalan produksi tadi.
+        run: composer install --no-dev --no-interaction --prefer-dist --optimize-autoloader
+
+      - name: Pastikan semua service provider termuat
+        # Redundan dengan langkah di atas, tapi memberi sinyal kegagalan yang
+        # jelas dan bernama di log CI.
+        run: php artisan package:discover --ansi
+
+      - name: Siapkan Node 22
+        # Samakan dengan server (Node v22).
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+
+      - name: Bangun aset frontend
+        # Kegagalan build (impor rusak, token CSS hilang) juga tertangkap di sini,
+        # bukan setelah aset lama sudah tergusur di server.
+        run: |
+          npm ci
+          npm run build
+
+  # ---------------------------------------------------------------------------
+  # DEPLOY. Hanya jalan bila `verify` hijau (needs: verify). Kalau gerbang
+  # merah, server tidak pernah disentuh.
+  # ---------------------------------------------------------------------------
   deploy:
     name: Tarik & bangun di server
+    needs: verify
     runs-on: ubuntu-latest
 
     steps:

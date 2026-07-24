@@ -220,10 +220,9 @@
                                 {{-- TABLE BODY --}}
                                 <div class="divide-y divide-black/[.05] dark:divide-white/[.05]">
                                     @forelse($paginatedTasks as $task)
-                                        <div
-                                            :class="selectedTasks.includes({{ $task->id }}) ? 'bg-cyan-50 dark:bg-cyan-900/10' : ''">
-                                            <livewire:daily-task.components.daily-task-item :task="$task"
-                                                :key="'task-' . $task->id . '-' . now()->timestamp" />
+                                        <div wire:key="flatrow-{{ $task->id }}"
+                                            :class="(typeof selectedTasks !== 'undefined' && selectedTasks.includes({{ $task->id }})) ? 'bg-cyan-50 dark:bg-cyan-900/10' : ''">
+                                            @include('components.daily-task.list.task-row', ['task' => $task])
                                         </div>
                                     @empty
                                         <div class="py-20 text-center">
@@ -300,7 +299,14 @@
                                 $displayTasks = $this->getGroupTasks($groupName);
                             @endphp
 
-                            <div class="bg-white dark:bg-[#111110] rounded-2xl border border-black/[.07] dark:border-white/[.07] shadow-sm overflow-hidden"
+                            {{-- wire:key WAJIB di sini DAN di pembungkus baris di bawah.
+                                 Keduanya jadi jangkar penanda blok Alpine (<!--[if BLOCK]-->)
+                                 saat morph. Tanpanya, akun blok kacau karena penanda dari
+                                 komponen anak daily-task-item bocor ke perhitungan blok induk
+                                 -> morph gugur ("reading 'before' of null") dan hanya grup
+                                 PERTAMA yang bertahan tiap re-render (switch/filter/status).
+                                 Jangan hapus. --}}
+                            <div wire:key="grp-{{ $groupKey }}" class="bg-white dark:bg-[#111110] rounded-2xl border border-black/[.07] dark:border-white/[.07] shadow-sm overflow-hidden"
                                 x-data="{ collapsed: false }">
 
                                 {{-- Group Header --}}
@@ -374,10 +380,9 @@
                                             {{-- Group rows --}}
                                             <div class="divide-y divide-black/[.04] dark:divide-white/[.04]">
                                                 @foreach($displayTasks as $task)
-                                                    <div
+                                                    <div wire:key="row-{{ $task->id }}"
                                                         class="hover:bg-gray-50/60 dark:hover:bg-white/[.02] transition-colors duration-100">
-                                                        <livewire:daily-task.components.daily-task-item :task="$task"
-                                                            :key="'group-task-' . $task->id . '-' . now()->timestamp" />
+                                                        @include('components.daily-task.list.task-row', ['task' => $task])
                                                     </div>
                                                 @endforeach
 
@@ -516,7 +521,11 @@
         @else
             {{-- ── Kanban View ── --}}
             <livewire:daily-task.components.kanban-board-component :initial-filters="$this->currentFilters"
-                :key="'kanban-' . $kanbanMountKey . '-' . json_encode($this->currentFilters)" />
+                {{-- md5: json_encode mentah memuat " { } : yang, saat key ini masuk
+                     ke peta memo.children snapshot induk lalu diproses ulang Livewire
+                     JS, menutup objek JSON lebih awal dan merusak snapshot induk
+                     (update(null) -> "array offset on null" saat klik apa pun). --}}
+                :key="'kanban-' . $kanbanMountKey . '-' . md5(json_encode($this->currentFilters))" />
         @endif
 
     </div>{{-- /main content --}}

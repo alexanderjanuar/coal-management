@@ -328,9 +328,13 @@ class DailyTaskDetailModal extends Component implements HasForms, HasActions
 
         $data = $this->newSubtaskForm->getState();
 
+        // Subtask baru diletakkan di urutan paling akhir.
+        $nextOrder = (int) $this->task->subtasks()->max('order') + 1;
+
         $this->task->subtasks()->create([
             'title' => $data['title'],
             'status' => 'pending',
+            'order' => $nextOrder,
         ]);
 
         $this->newSubtaskForm->fill(['title' => '']);
@@ -341,6 +345,30 @@ class DailyTaskDetailModal extends Component implements HasForms, HasActions
             ->success()
             ->duration(2000)
             ->send();
+    }
+
+    /**
+     * Simpan urutan subtask hasil drag-and-drop.
+     * $orderedIds = daftar id subtask sesuai urutan baru di DOM. Siapa saja boleh
+     * mengurutkan; hanya subtask milik task ini yang diproses.
+     */
+    public function reorderSubtasks(array $orderedIds): void
+    {
+        if (!$this->task)
+            return;
+
+        $valid = $this->task->subtasks()->pluck('id')->map(fn ($id) => (string) $id)->all();
+
+        $position = 1;
+        foreach ($orderedIds as $id) {
+            if (!in_array((string) $id, $valid, true)) {
+                continue;
+            }
+            $this->task->subtasks()->whereKey($id)->update(['order' => $position]);
+            $position++;
+        }
+
+        $this->task->refresh();
     }
 
     public function startEditSubtask(int $subtaskId): void

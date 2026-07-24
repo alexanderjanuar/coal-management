@@ -56,7 +56,8 @@ class DailyTask extends Model
     // Subtask relationships
     public function subtasks(): HasMany
     {
-        return $this->hasMany(DailyTaskSubTask::class);
+        // Urutan manual (drag-and-drop) dulu, id sebagai pemecah seri.
+        return $this->hasMany(DailyTaskSubTask::class)->orderBy('order')->orderBy('id');
     }
 
     // Relationship to comments

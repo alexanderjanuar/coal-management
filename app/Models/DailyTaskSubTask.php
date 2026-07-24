@@ -17,6 +17,7 @@ class DailyTaskSubTask extends Model
         'daily_task_id',
         'title',
         'status',
+        'order',
     ];
 
     protected $casts = [
@@ -53,7 +54,8 @@ class DailyTaskSubTask extends Model
 
     public function scopeOrdered($query)
     {
-        return $query->orderBy('id'); // Order by creation time instead
+        // Urutan manual (drag-and-drop) dulu, id sebagai pemecah seri.
+        return $query->orderBy('order')->orderBy('id');
     }
 
     // Helper Methods

@@ -416,6 +416,32 @@ class DailyTaskListComponent extends Component
     }
 
     /**
+     * Toggle penyelesaian dari baris list (aksi cepat inline).
+     * Baris list kini HTML biasa, jadi wire:click memanggil metode induk ini
+     * alih-alih komponen anak. completed <-> pending.
+     */
+    public function toggleTaskComplete(int $taskId): void
+    {
+        $task = DailyTask::find($taskId);
+
+        if (!$task) {
+            Notification::make()->title('Error')->body('Task tidak ditemukan')->danger()->send();
+            return;
+        }
+
+        $newStatus = $task->status === 'completed' ? 'pending' : 'completed';
+        $task->update(['status' => $newStatus]);
+
+        Notification::make()
+            ->title('Status Diperbarui')
+            ->body("Task '{$task->title}' ditandai " . ($newStatus === 'completed' ? 'selesai' : 'belum selesai'))
+            ->success()
+            ->send();
+
+        $this->handleTaskStatusChanged();
+    }
+
+    /**
      * Sort by field - RESET pagination
      */
     public function sortBy(string $field): void

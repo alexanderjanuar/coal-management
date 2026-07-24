@@ -8,7 +8,7 @@
                     hover:border-l-cyan-500 dark:hover:border-l-cyan-400
                     hover:bg-cyan-50/40 dark:hover:bg-cyan-900/10
                     transition-all duration-150 group"
-             :class="selectedTasks && selectedTasks.includes({{ $task->id }}) ? 'bg-cyan-50 dark:bg-cyan-900/20 border-l-cyan-500 dark:border-l-cyan-400' : ''">
+             :class="(typeof selectedTasks !== 'undefined' && selectedTasks?.includes({{ $task->id }})) ? 'bg-cyan-50 dark:bg-cyan-900/20 border-l-cyan-500 dark:border-l-cyan-400' : ''">
 
             {{-- 1. Completion toggle (1/12) --}}
             <div class="col-span-1 flex items-center justify-center">

@@ -438,9 +438,37 @@
 
                             {{-- List --}}
                             @if($task->subtasks && $task->subtasks->count() > 0)
-                                <div class="flex flex-col gap-0.5 dt-stagger">
-                                    @foreach($task->subtasks->sortBy('id') as $subtask)
-                                                <div class="dt-sub-row dt-fade-up flex items-start gap-3 px-3.5 py-2.5 rounded-lg hover:bg-gray-50 dark:hover:bg-white/[.03] transition-colors">
+                                {{-- Sortable drag-and-drop: onEnd mengumpulkan urutan id dari DOM
+                                     lalu memanggil reorderSubtasks di server. Sortable.js sudah
+                                     dimuat oleh komponen list di halaman ini. --}}
+                                <div class="flex flex-col gap-0.5 dt-stagger"
+                                     x-data="{
+                                         sortable: null,
+                                         initSort() {
+                                             if (!window.Sortable || !this.$el) return;
+                                             if (this.sortable) { this.sortable.destroy(); this.sortable = null; }
+                                             this.sortable = window.Sortable.create(this.$el, {
+                                                 handle: '.subtask-handle',
+                                                 animation: 150,
+                                                 ghostClass: 'opacity-40',
+                                                 onEnd: () => {
+                                                     const ids = Array.from(this.$el.querySelectorAll('[data-subtask-id]'))
+                                                         .map(el => el.getAttribute('data-subtask-id'));
+                                                     $wire.call('reorderSubtasks', ids);
+                                                 }
+                                             });
+                                         }
+                                     }"
+                                     x-init="$nextTick(() => initSort())">
+                                    @foreach($task->subtasks->sortBy('order') as $subtask)
+                                                <div wire:key="subtask-{{ $subtask->id }}" data-subtask-id="{{ $subtask->id }}"
+                                                    class="dt-sub-row dt-fade-up flex items-start gap-2 px-2 py-2.5 rounded-lg hover:bg-gray-50 dark:hover:bg-white/[.03] transition-colors">
+
+                                                    {{-- Drag handle --}}
+                                                    <button type="button" title="Seret untuk mengurutkan"
+                                                        class="subtask-handle flex-shrink-0 mt-0.5 flex items-center justify-center w-5 h-5 rounded text-gray-300 dark:text-gray-600 hover:text-gray-500 dark:hover:text-gray-300 cursor-grab active:cursor-grabbing transition-colors">
+                                                        <x-heroicon-o-bars-3 class="w-4 h-4" />
+                                                    </button>
 
                                                     {{-- Toggle --}}
                                                     <button wire:click="toggleSubtask({{ $subtask->id }})"
