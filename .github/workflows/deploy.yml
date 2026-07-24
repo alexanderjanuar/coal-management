@@ -1,0 +1,66 @@
+name: Deploy ke produksi
+
+# Berjalan otomatis setiap push ke main, dan bisa dijalankan manual dari
+# tab Actions (tombol "Run workflow") saat perlu deploy ulang tanpa commit baru.
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+# Deploy tidak boleh saling tumpang tindih. cancel-in-progress sengaja false:
+# membatalkan deploy di tengah jalan bisa meninggalkan server dalam keadaan
+# setengah jadi (dependensi sudah berubah tapi aset belum dibangun).
+concurrency:
+  group: deploy-produksi
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    name: Tarik & bangun di server
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Siapkan kunci SSH
+        env:
+          SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+          HOST: ${{ secrets.DEPLOY_HOST }}
+          PORT: ${{ secrets.DEPLOY_PORT }}
+        run: |
+          set -euo pipefail
+          mkdir -p ~/.ssh
+          # Lewat variabel env, bukan interpolasi langsung ke baris perintah,
+          # supaya kunci tidak pernah muncul di log maupun daftar proses.
+          printf '%s\n' "$SSH_KEY" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+
+          # ssh-keyscan mempercayai host apa adanya pada koneksi pertama.
+          # Untuk pengamanan lebih, simpan sidik jari host sebagai secret
+          # DEPLOY_KNOWN_HOSTS lalu tulis langsung ke known_hosts di sini.
+          ssh-keyscan -p "${PORT:-22}" -H "$HOST" >> ~/.ssh/known_hosts 2>/dev/null
+
+      - name: Jalankan deploy
+        env:
+          HOST: ${{ secrets.DEPLOY_HOST }}
+          USER_NAME: ${{ secrets.DEPLOY_USER }}
+          PORT: ${{ secrets.DEPLOY_PORT }}
+          APP_DIR: ${{ secrets.DEPLOY_PATH }}
+        run: |
+          set -euo pipefail
+          # Menarik lebih dulu dari sisi ini supaya deploy.sh yang dieksekusi
+          # adalah versi terbaru. Tarikan kedua di dalam deploy.sh menjadi
+          # no-op, dan itu disengaja: deploy.sh tetap bisa dijalankan sendiri
+          # secara manual dari server.
+          ssh -i ~/.ssh/deploy_key \
+              -p "${PORT:-22}" \
+              -o BatchMode=yes \
+              -o ServerAliveInterval=30 \
+              "$USER_NAME@$HOST" \
+              "set -euo pipefail
+               cd '$APP_DIR'
+               git fetch origin main
+               git merge --ff-only origin/main
+               APP_DIR='$APP_DIR' bash deploy.sh"
+
+      - name: Bersihkan kunci
+        if: always()
+        run: rm -f ~/.ssh/deploy_key
