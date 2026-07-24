@@ -33,11 +33,15 @@ git fetch origin "$BRANCH"
 # di server, deploy berhenti dengan pesan jelas alih-alih menghapusnya diam-diam.
 git merge --ff-only "origin/$BRANCH"
 
-log "Membersihkan cache lama"
-# Dilakukan sebelum composer install, karena config cache yang basi bisa
-# membuat package:discover gagal saat autoload di-dump ulang.
-php artisan optimize:clear
-php artisan filament:optimize-clear
+log "Membersihkan cache lama (tanpa mem-boot Laravel)"
+# Sengaja pakai rm, BUKAN `php artisan optimize:clear`. Perintah artisan
+# mem-boot aplikasi lebih dulu; kalau vendor sedang setengah jalan — misalnya
+# paket lama yang tak kompatibel belum digusur composer — boot itu sendiri yang
+# gagal (mis. "Class Heroicon not found") dan `set -e` menjatuhkan seluruh
+# deploy SEBELUM composer sempat memperbaikinya. Menghapus manifest cache
+# langsung dari disk tidak mem-boot apa pun, jadi aman; semua diregenerasi di
+# tahap "Menyiapkan cache produksi" di bawah, setelah vendor bersih.
+rm -f bootstrap/cache/*.php
 
 log "Memasang dependensi PHP"
 composer install --no-dev --optimize-autoloader --no-interaction --prefer-dist
